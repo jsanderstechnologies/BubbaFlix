@@ -11,6 +11,7 @@ const HeroBanner = () => {
 	const [backgroundImg, setBackgroundImg] = useState("");
 	const [query, setQuery] = useState("");
 	const [isReadOnly, setIsReadOnly] = useState(true);
+	const [isVisible, setIsVisible] = useState(true);
 	const navigate = useNavigate();
 	const { url } = useSelector((state) => state.home);
 
@@ -26,6 +27,35 @@ const HeroBanner = () => {
 		}
 	}, [data, url.backdrop]);
 
+	useEffect(() => {
+		const handleScrollAndFocus = () => {
+			const scrollY = window.scrollY || document.documentElement.scrollTop;
+			const activeEl = document.activeElement;
+
+			// Check if focus is currently inside header or hero banner
+			const isFocusedInHeroOrHeader =
+				activeEl &&
+				(activeEl.closest(".hero-banner") ||
+					activeEl.closest(".header") ||
+					activeEl.closest(".menuItems") ||
+					activeEl.closest(".logo"));
+
+			if (scrollY <= 50 || isFocusedInHeroOrHeader) {
+				setIsVisible(true);
+			} else if (scrollY > 150 && !isFocusedInHeroOrHeader) {
+				setIsVisible(false);
+			}
+		};
+
+		window.addEventListener("scroll", handleScrollAndFocus, { passive: true });
+		document.addEventListener("focusin", handleScrollAndFocus);
+
+		return () => {
+			window.removeEventListener("scroll", handleScrollAndFocus);
+			document.removeEventListener("focusin", handleScrollAndFocus);
+		};
+	}, []);
+
 	const handleSearch = () => {
 		if (query.trim().length > 0) {
 			navigate(`search/${query.trim()}`);
@@ -40,7 +70,7 @@ const HeroBanner = () => {
 	};
 
 	return (
-		<div className="hero-banner">
+		<div className={`hero-banner ${!isVisible ? "collapsed" : ""}`}>
 			{!loading && (
 				<div className="backdrop-img">
 					<Img src={backgroundImg} />
@@ -63,7 +93,7 @@ const HeroBanner = () => {
 							placeholder="Search for movies or tv shows.."
 							value={query}
 							readOnly={isReadOnly}
-							onChange={(e) => setQuery(e.target.value)}
+							onChange={(e) => setQuery(e.value)}
 							onClick={() => setIsReadOnly(false)}
 							onBlur={() => setIsReadOnly(true)}
 							onKeyDown={(e) => {
