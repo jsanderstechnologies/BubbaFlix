@@ -45,7 +45,6 @@ export const fetchServerSettings = async () => {
       }
       if (s.bitsearchKey) localStorage.setItem("bitsearch_api_key", s.bitsearchKey);
       if (s.stream_resolutions) localStorage.setItem("stream_resolutions", JSON.stringify(s.stream_resolutions));
-      if (s.stream_codecs) localStorage.setItem("stream_codecs", JSON.stringify(s.stream_codecs));
       if (s.stream_exclude_low_quality !== undefined) {
         localStorage.setItem("stream_exclude_low_quality", JSON.stringify(s.stream_exclude_low_quality));
       }

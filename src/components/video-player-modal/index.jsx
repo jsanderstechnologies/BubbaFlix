@@ -1,51 +1,17 @@
 /* eslint-disable react/prop-types */
 import { useState, useEffect, useRef } from "react";
 import { FiArrowLeft } from "react-icons/fi";
-import { getServerUrl } from "../../utils/serverSettings";
 import "./index.scss";
 
-const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, transcodeUrl, title, filename }) => {
+const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, transcodeUrl }) => {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   const backBtnRef = useRef(null);
   const [currentUrl, setCurrentUrl] = useState("");
 
-  const getAutoStreamUrl = () => {
-    const serverBase = getServerUrl();
-
-    // 1. If cloud transcode is ready, use cloud H.264+AAC web stream
-    if (transcodeUrl) {
-      return transcodeUrl;
-    }
-
-    const source = rawUrl || videoUrl;
-    if (!source) return "";
-
-    const name = (filename || title || source).toLowerCase();
-    // 2. Automatically detect if file requires FFmpeg backend transcoding
-    const needsFmpeg =
-      name.endsWith(".mkv") ||
-      name.endsWith(".avi") ||
-      name.includes("x265") ||
-      name.includes("hevc") ||
-      name.includes("h265") ||
-      name.includes("dts") ||
-      name.includes("ac3") ||
-      name.includes("eac3") ||
-      name.includes("5.1") ||
-      name.includes("7.1");
-
-    if (needsFmpeg) {
-      console.log("[Video Player] Auto-enabling FFmpeg Realtime Transcoder for incompatible format:", name);
-      return `${serverBase}/api/transcode?url=${encodeURIComponent(source)}`;
-    }
-
-    return source;
-  };
-
   useEffect(() => {
     if (show) {
-      const targetUrl = getAutoStreamUrl();
+      const targetUrl = transcodeUrl || rawUrl || videoUrl || "";
       setCurrentUrl(targetUrl);
 
       // Immediately focus video element or container for TV remote control
@@ -75,7 +41,7 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, transcodeUrl, title
         }
       }
     }
-  }, [show, videoUrl, rawUrl, transcodeUrl, filename, title]);
+  }, [show, videoUrl, rawUrl, transcodeUrl]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -124,15 +90,6 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, transcodeUrl, title
     return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, [show, setShow]);
 
-  const handleVideoError = () => {
-    const source = rawUrl || videoUrl;
-    const serverBase = getServerUrl();
-    if (source && !currentUrl.includes("/api/transcode")) {
-      console.warn("[Video Player] Native browser decode failed. Automatically switching to FFmpeg Transcoder...");
-      setCurrentUrl(`${serverBase}/api/transcode?url=${encodeURIComponent(source)}`);
-    }
-  };
-
   const hidePopup = () => {
     setShow(false);
   };
@@ -171,7 +128,6 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, transcodeUrl, title
               autoPlay
               tabIndex="0"
               className="videoElement"
-              onError={handleVideoError}
             >
               Your browser does not support the video tag.
             </video>

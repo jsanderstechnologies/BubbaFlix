@@ -20,13 +20,6 @@ const ALL_RESOLUTIONS = [
   { id: "480p", label: "480p / SD" },
 ];
 
-const ALL_CODECS = [
-  { id: "x265", label: "x265 / HEVC" },
-  { id: "x264", label: "x264 / H.264" },
-  { id: "av1", label: "AV1" },
-  { id: "xvid", label: "XviD / DivX" },
-];
-
 const SettingsPage = () => {
   // Theme State
   const [activeTheme, setActiveTheme] = useState("dark-red");
@@ -75,9 +68,8 @@ const SettingsPage = () => {
   const [groqStatus, setGroqStatus] = useState(null);
   const [hasGroqCustom, setHasGroqCustom] = useState(false);
 
-  // Stream Resolution & Codec Filter State
+  // Stream Resolution & Quality Filter State
   const [selectedResolutions, setSelectedResolutions] = useState(["2160p", "1080p", "720p", "480p"]);
-  const [selectedCodecs, setSelectedCodecs] = useState(["x265", "x264", "av1", "xvid"]);
   const [excludeLowQuality, setExcludeLowQuality] = useState(true);
   const [filterStatus, setFilterStatus] = useState(null);
 
@@ -123,10 +115,8 @@ const SettingsPage = () => {
     setHasGroqCustom(!!savedGroq);
 
     const savedRes = localStorage.getItem("stream_resolutions");
-    const savedCodecs = localStorage.getItem("stream_codecs");
     const savedExcludeLow = localStorage.getItem("stream_exclude_low_quality");
     if (savedRes) setSelectedResolutions(JSON.parse(savedRes));
-    if (savedCodecs) setSelectedCodecs(JSON.parse(savedCodecs));
     if (savedExcludeLow !== null) setExcludeLowQuality(JSON.parse(savedExcludeLow));
   };
 
@@ -344,25 +334,17 @@ const SettingsPage = () => {
     );
   };
 
-  const handleToggleCodec = (codecId) => {
-    setSelectedCodecs((prev) =>
-      prev.includes(codecId) ? prev.filter((id) => id !== codecId) : [...prev, codecId]
-    );
-  };
-
   const handleSaveStreamFilters = async (e) => {
     e.preventDefault();
     localStorage.setItem("stream_resolutions", JSON.stringify(selectedResolutions));
-    localStorage.setItem("stream_codecs", JSON.stringify(selectedCodecs));
     localStorage.setItem("stream_exclude_low_quality", JSON.stringify(excludeLowQuality));
     await updateServerSettings({
       stream_resolutions: selectedResolutions,
-      stream_codecs: selectedCodecs,
       stream_exclude_low_quality: excludeLowQuality,
     });
     setFilterStatus({
       type: "success",
-      text: "Stream resolution, codec, and CAM/HDTS exclusion preferences saved & synced to backend server!",
+      text: "Stream resolution and CAM/HDTS quality exclusion preferences saved & synced to backend server!",
     });
   };
 
@@ -405,7 +387,7 @@ const SettingsPage = () => {
             <p className="subtitle">
               {isTv
                 ? "Adjust screen zoom scale for this TV device, set your backend server address, and manage SIMKL watch history tracking credentials."
-                : "Centralized backend server configuration for SIMKL watch status tracking, Premiumize streaming, color themes, API keys, and stream filters."}
+                : "Centralized backend server configuration for SIMKL watch status tracking, Premiumize streaming, color themes, API keys, and stream resolution filters."}
             </p>
           </div>
 
@@ -486,7 +468,7 @@ const SettingsPage = () => {
             </div>
 
             <p className="description">
-              Specify a custom BubbaFlix backend server IP or URL for FFmpeg video transcoding and central settings storage (saved independently on each device).
+              Specify a custom BubbaFlix backend server IP or URL for central settings storage and API proxying (saved independently on each device).
             </p>
 
             <form onSubmit={handleSaveServerUrl} className="tokenForm">
@@ -942,14 +924,14 @@ const SettingsPage = () => {
               {/* Stream Filter Preferences Card */}
               <div className="settingsCard">
                 <div className="cardHeader">
-                  <h2><FiSliders style={{ marginRight: 8 }} /> Stream Resolution & Codec Filters</h2>
+                  <h2><FiSliders style={{ marginRight: 8 }} /> Stream Resolution Filters</h2>
                   <span className="badge custom">
                     <FiServer style={{ marginRight: 4 }} /> Server Synced
                   </span>
                 </div>
 
                 <p className="description">
-                  Select which video resolutions, codecs, and release qualities to return when searching Available Streams. Synced across all client devices.
+                  Select which video resolutions and release qualities to return when searching Available Streams. Synced across all client devices.
                 </p>
 
                 <form onSubmit={handleSaveStreamFilters} className="tokenForm">
@@ -964,22 +946,6 @@ const SettingsPage = () => {
                             onChange={() => handleToggleResolution(res.id)}
                           />
                           <span>{res.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="filterGroup">
-                    <label className="groupLabel">Allowed Codecs</label>
-                    <div className="checkboxGrid">
-                      {ALL_CODECS.map((codec) => (
-                        <label key={codec.id} className="checkboxOption">
-                          <input
-                            type="checkbox"
-                            checked={selectedCodecs.includes(codec.id)}
-                            onChange={() => handleToggleCodec(codec.id)}
-                          />
-                          <span>{codec.label}</span>
                         </label>
                       ))}
                     </div>

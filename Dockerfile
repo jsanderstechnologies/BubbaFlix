@@ -17,11 +17,11 @@ COPY . .
 # Build production bundle
 RUN npm run build
 
-# Stage 2: Serve application using Nginx + Node.js FFmpeg Transcoder Backend
+# Stage 2: Serve application using Nginx + Node.js Settings Backend
 FROM nginx:alpine
 
-# Install FFmpeg, Node.js, and npm for real-time video/audio transcoding
-RUN apk add --no-cache ffmpeg nodejs npm
+# Install Node.js and npm for backend settings server
+RUN apk add --no-cache nodejs npm
 
 WORKDIR /app
 

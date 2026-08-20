@@ -13,16 +13,13 @@ export const getStreamPreferences = () => {
   if (typeof window === "undefined") {
     return {
       resolutions: ["2160p", "1080p", "720p", "480p"],
-      codecs: ["x265", "x264", "av1", "xvid"],
       excludeLowQuality: true,
     };
   }
   const savedRes = localStorage.getItem("stream_resolutions");
-  const savedCodecs = localStorage.getItem("stream_codecs");
   const savedExcludeLow = localStorage.getItem("stream_exclude_low_quality");
   return {
     resolutions: savedRes ? JSON.parse(savedRes) : ["2160p", "1080p", "720p", "480p"],
-    codecs: savedCodecs ? JSON.parse(savedCodecs) : ["x265", "x264", "av1", "xvid"],
     excludeLowQuality: savedExcludeLow !== null ? JSON.parse(savedExcludeLow) : true,
   };
 };
@@ -48,6 +45,20 @@ export const isAdultOrAudioFile = (titleStr) => {
   return hasAdult || hasAudio;
 };
 
+export const isWebCompatibleStream = (titleStr) => {
+  if (!titleStr) return false;
+  const t = titleStr.toLowerCase();
+
+  // Incompatible containers, video codecs, and multi-channel surround audio codecs for native HTML5 web players
+  const incompatibleKeywords = [
+    ".mkv", ".avi", "x265", "h265", "h.265", "hevc", "av1", "xvid", "divx",
+    "dts", "dts-hd", "dts-x", "ac3", "eac3", "truehd", "atmos", "5.1", "7.1"
+  ];
+
+  const isIncompatible = incompatibleKeywords.some((word) => t.includes(word));
+  return !isIncompatible;
+};
+
 export const isLowQualityCamOrTS = (titleStr) => {
   if (!titleStr) return false;
   const t = titleStr.toLowerCase();
@@ -71,32 +82,28 @@ const detectResolution = (titleStr) => {
   if (t.includes("2160p") || t.includes("4k") || t.includes("uhd")) return "2160p";
   if (t.includes("1080p") || t.includes("fhd") || t.includes("fullhd")) return "1080p";
   if (t.includes("720p") || t.includes("hd")) return "720p";
-  if (t.includes("480p") || t.includes("576p") || t.includes("sd") || t.includes("dvd") || t.includes("xvid")) return "480p";
+  if (t.includes("480p") || t.includes("576p") || t.includes("sd") || t.includes("dvd")) return "480p";
   return "1080p";
-};
-
-const detectCodec = (titleStr) => {
-  const t = titleStr.toLowerCase();
-  if (t.includes("x265") || t.includes("h265") || t.includes("h.265") || t.includes("hevc")) return "x265";
-  if (t.includes("x264") || t.includes("h264") || t.includes("h.264") || t.includes("avc")) return "x264";
-  if (t.includes("av1")) return "av1";
-  if (t.includes("xvid") || t.includes("divx")) return "xvid";
-  return "x264";
 };
 
 const filterByPreferences = (results) => {
   if (!results || results.length === 0) return [];
 
-  const { resolutions, codecs, excludeLowQuality } = getStreamPreferences();
+  const { resolutions, excludeLowQuality } = getStreamPreferences();
 
   // 1. Filter out Adult content & standalone audio/music files
   let pool = results.filter((item) => !isAdultOrAudioFile(item.title));
   if (pool.length === 0 && results.length > 0) {
-    // If everything was adult/audio, keep empty
     return [];
   }
 
-  // 2. Filter out CAM, HDCAM, Telesync, HDTS, TC videos if excludeLowQuality is true
+  // 2. Filter out Web-incompatible formats (MKV, x265, HEVC, DTS, AC3, 5.1/7.1)
+  const webPool = pool.filter((item) => isWebCompatibleStream(item.title));
+  if (webPool.length > 0) {
+    pool = webPool;
+  }
+
+  // 3. Filter out CAM, HDCAM, Telesync, HDTS, TC videos if excludeLowQuality is true
   if (excludeLowQuality) {
     const cleanPool = pool.filter((item) => !isLowQualityCamOrTS(item.title));
     if (cleanPool.length > 0) {
@@ -104,22 +111,15 @@ const filterByPreferences = (results) => {
     }
   }
 
-  // 3. Filter by user resolution and codec selections
+  // 4. Filter by user resolution selections
   const resActive = resolutions && resolutions.length > 0 && resolutions.length < 4;
-  const codecActive = codecs && codecs.length > 0 && codecs.length < 4;
-
-  if (!resActive && !codecActive) {
+  if (!resActive) {
     return pool;
   }
 
   const filtered = pool.filter((item) => {
     const res = detectResolution(item.title);
-    const cod = detectCodec(item.title);
-
-    const resMatch = !resActive || resolutions.includes(res);
-    const codMatch = !codecActive || codecs.includes(cod);
-
-    return resMatch && codMatch;
+    return resolutions.includes(res);
   });
 
   return filtered.length > 0 ? filtered : pool;
@@ -142,7 +142,7 @@ const formatSize = (bytes) => {
 const fetchMagnetResults = async (searchQuery) => {
   const apiKey = getBitsearchApiKey();
 
-  // 1. Try Nginx/Vite proxied torrent API (/api/torrent?q=...)
+  // 1. Try Nginx proxied torrent API (/api/torrent?q=...)
   try {
     const proxyUrl = `/api/torrent?q=${encodeURIComponent(searchQuery)}`;
     console.log(`[Torrent API] Fetching magnet links via proxy: ${proxyUrl}`);

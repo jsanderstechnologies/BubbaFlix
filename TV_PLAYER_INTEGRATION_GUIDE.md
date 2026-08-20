@@ -1,14 +1,14 @@
 # BubbaFlix 📺 - Smart TV & Native Player Integration Guide
 
-This guide provides technical specifications, API endpoints, stream resolution logic, environment variable configuration for Docker/Portainer/CasaOS, and remote control KeyCode mappings for developers building or integrating native TV client applications (Android TV, Google TV, Firestick, Apple TV, LG webOS, Samsung Tizen, VLC, ExoPlayer, MX Player, etc.) with the **BubbaFlix Backend Engine**.
+This guide provides technical specifications, API endpoints, web-compatible stream resolution logic, environment variable configuration for Docker/Portainer/CasaOS, and remote control KeyCode mappings for developers building or integrating native TV client applications (Android TV, Google TV, Firestick, Apple TV, LG webOS, Samsung Tizen, VLC, ExoPlayer, MX Player, etc.) with the **BubbaFlix Backend Engine**.
 
 ---
 
 ## 📋 Table of Contents
 
 1. [Backend Server Architecture](#-backend-server-architecture)
-2. [Docker, Portainer, and CasaOS Environment Variables](#-docker-portainer-and-casaos-environment-variables)
-3. [Real-Time Stream Transcoding API (`/api/transcode`)](#-real-time-stream-transcoding-api-apitranscode)
+2. [Web-Compatible Stream Filtering](#-web-compatible-stream-filtering)
+3. [Docker, Portainer, and CasaOS Environment Variables](#-docker-portainer-and-casaos-environment-variables)
 4. [Resolving Torrent Magnets to Stream URLs](#-resolving-torrent-magnets-to-stream-urls)
 5. [Centralized Server Settings API (`/api/settings`)](#-centralized-server-settings-api-apisettings)
 6. [SIMKL Watch Status Synchronization API](#-simkl-watch-status-synchronization-api)
@@ -19,17 +19,31 @@ This guide provides technical specifications, API endpoints, stream resolution l
 
 ## 🏗️ Backend Server Architecture
 
-The BubbaFlix backend server runs on Express.js and FFmpeg (default port: `3000` or custom port via `TRANSCODER_PORT`). It serves three primary functions:
+The BubbaFlix backend server runs on Express.js (default port: `3000` or custom port via `TRANSCODER_PORT`). It serves two primary functions:
 
-1. **On-the-Fly Video & Audio Transcoding**: Real-time conversion of MKV, x265, HEVC, and 5.1/7.1 audio into web/native-compatible H.264 + AAC stereo streams.
-2. **Centralized Settings Storage**: Persists shared API keys and configuration across devices in `/app/server/settings.json`.
-3. **SIMKL Sync Proxy**: Proxies watch history tracking calls to SIMKL API.
+1. **Centralized Settings Storage**: Persists shared API keys and configuration across devices in `/app/server/settings.json`.
+2. **SIMKL Sync Proxy**: Proxies watch history tracking calls to SIMKL API.
+
+---
+
+## 🍿 Web-Compatible Stream Filtering
+
+BubbaFlix pre-filters all magnet stream results (`src/utils/bitsearch.js`) to return ONLY natively playable x264/H.264 MP4 streams with AAC audio, ensuring direct playback in HTML5 web players and Smart TV browsers without needing backend transcoding.
+
+### Web Format Filtering Rules
+
+| Format Type | Status | Action |
+| :--- | :--- | :--- |
+| **MP4 / x264 / H.264 / AAC** | Supported | Included in Available Streams |
+| **MKV (`.mkv`) / AVI (`.avi`)** | Excluded | Filtered out from stream results |
+| **x265 / HEVC / H.265 / AV1 / XviD** | Excluded | Filtered out from stream results |
+| **DTS / AC3 / EAC3 / TrueHD / Atmos / 5.1 / 7.1** | Excluded | Filtered out from stream results |
 
 ---
 
 ## 🐳 Docker, Portainer, and CasaOS Environment Variables
 
-You can define default API keys via environment variables in `docker-compose.yml`, Portainer Stacks, or CasaOS app settings:
+Define API keys via environment variables in `docker-compose.yml`, Portainer Stacks, or CasaOS app settings:
 
 | Variable Name | Purpose | Example |
 | :--- | :--- | :--- |
@@ -40,28 +54,7 @@ You can define default API keys via environment variables in `docker-compose.yml
 | `TMDB_READ_ACCESS_TOKEN` | TMDB v4 Read Access Token | `eyJhbGci...` |
 | `BITSEARCH_API_KEY` | Bitsearch API Key | `bit_key_123` |
 
-All settings persist across container restarts and redeployments using the Docker volume mapping: `bubbaflix-data:/app/server`.
-
----
-
-## 🍿 Real-Time Stream Transcoding API (`/api/transcode`)
-
-### When to Transcode vs. Direct Stream
-
-| Video / Audio Format | Action Required | Stream URL Format |
-| :--- | :--- | :--- |
-| **MP4 / x264 / AAC Stereo** | Direct Play | `https://...energycdn.com/.../movie.mp4` |
-| **MKV (`.mkv`)** | Transcode via FFmpeg | `http://<SERVER_IP>:3000/api/transcode?url=<ENCODED_URL>` |
-| **AVI (`.avi`)** | Transcode via FFmpeg | `http://<SERVER_IP>:3000/api/transcode?url=<ENCODED_URL>` |
-| **x265 / HEVC / H.265** | Transcode via FFmpeg | `http://<SERVER_IP>:3000/api/transcode?url=<ENCODED_URL>` |
-| **DTS / AC3 / EAC3 / 5.1 / 7.1 Audio** | Transcode via FFmpeg | `http://<SERVER_IP>:3000/api/transcode?url=<ENCODED_URL>` |
-
-### Endpoint Details
-
-- **HTTP Method**: `GET`
-- **URL**: `http://<SERVER_IP>:3000/api/transcode?url=<ENCODED_STREAM_URL>`
-- **Content-Type**: `video/mp4`
-- **Streaming Protocol**: Progressive MP4 fragmented stream (`frag_keyframe+empty_moov+default_base_moof`).
+Settings persist across container restarts and redeployments using the Docker volume mapping: `bubbaflix-data:/app/server`.
 
 ---
 
@@ -133,16 +126,9 @@ Native Android TV, Google TV, Firestick, Apple TV, and Smart TV remote keycodes 
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.MediaItem
 
-fun playBubbaFlixStream(context: Context, rawStreamUrl: String, isFmpegNeeded: Boolean) {
-    val serverIp = "http://192.168.10.10:3000"
-    val targetUrl = if (isFmpegNeeded) {
-        "$serverIp/api/transcode?url=${URLEncoder.encode(rawStreamUrl, "UTF-8")}"
-    } else {
-        rawStreamUrl
-    }
-
+fun playBubbaFlixStream(context: Context, streamUrl: String) {
     val player = ExoPlayer.Builder(context).build()
-    val mediaItem = MediaItem.fromUri(targetUrl)
+    val mediaItem = MediaItem.fromUri(streamUrl)
     player.setMediaItem(mediaItem)
     player.prepare()
     player.play()
