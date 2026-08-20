@@ -8,9 +8,11 @@ const FOCUSABLE_SELECTOR = [
   "select:not([disabled])",
   "textarea:not([disabled])",
   '[tabindex]:not([tabindex="-1"])',
+  ".logo",
+  ".menuItem",
+  ".headerIconBtn",
   ".movieCard",
   ".themeCard",
-  ".menuItem",
   ".tabItem",
 ].join(", ");
 

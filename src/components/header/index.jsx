@@ -14,7 +14,7 @@ const Header = () => {
 	const [lastScrollY, setLastScrollY] = useState(0);
 	const [mobileMenu, setMobileMenu] = useState(false);
 	const [query, setQuery] = useState("");
-	const [showSearch, setShowSearch] = useState("");
+	const [showSearch, setShowSearch] = useState(false);
 	const navigate = useNavigate();
 	const location = useLocation();
 
@@ -43,26 +43,29 @@ const Header = () => {
 	}, [lastScrollY]);
 
 	const searchQuery = (e) => {
-		if (e.key === "Enter" && query.length > 0) {
-			navigate(`search/${query}`);
-		}
-		setTimeout(() => {
+		const code = e.keyCode;
+		if ((e.key === "Enter" || code === 13 || code === 23 || code === 66) && query.trim().length > 0) {
+			navigate(`search/${query.trim()}`);
 			setShowSearch(false);
-		}, 3000);
+		}
 	};
 
 	const openSearch = () => {
-		setShowSearch(true);
+		setShowSearch((prev) => !prev);
 		setMobileMenu(false);
+		setShow("show");
 	};
 
 	const openMobileMenu = () => {
 		setShowSearch(false);
-		setMobileMenu(true);
+		setMobileMenu((prev) => !prev);
+		setShow("show");
 	};
 
 	const handleNavigation = (navigationType) => {
-		if (navigationType === "movies") {
+		if (navigationType === "home") {
+			navigate("/");
+		} else if (navigationType === "movies") {
 			navigate("/explore/movie");
 		} else if (navigationType === "tvShows") {
 			navigate("/explore/tv");
@@ -72,54 +75,91 @@ const Header = () => {
 		setMobileMenu(false);
 	};
 
+	const handleKeyActivate = (e, callback) => {
+		const code = e.keyCode;
+		if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+			e.preventDefault();
+			callback();
+		}
+	};
+
 	return (
-		<header className={`header ${mobileMenu ? "mobileView" : ""} ${show}`}>
+		<header
+			className={`header ${mobileMenu ? "mobileView" : ""} ${show}`}
+			onFocus={() => setShow("show")}
+		>
 			<ContentWrapper>
-				<div className="logo" onClick={() => navigate("/")}>
+				<div
+					className="logo"
+					tabIndex="0"
+					role="button"
+					aria-label="BubbaFlix Home"
+					onClick={() => handleNavigation("home")}
+					onKeyDown={(e) => handleKeyActivate(e, () => handleNavigation("home"))}
+				>
 					<img src="/logo.svg" alt="BubbaFlix" />
 				</div>
 
 				<ul className="menuItems">
 					<li
 						className="menuItem"
+						tabIndex="0"
+						role="button"
 						onClick={() => handleNavigation("movies")}
+						onKeyDown={(e) => handleKeyActivate(e, () => handleNavigation("movies"))}
 					>
 						Movies
 					</li>
 					<li
 						className="menuItem"
+						tabIndex="0"
+						role="button"
 						onClick={() => handleNavigation("tvShows")}
+						onKeyDown={(e) => handleKeyActivate(e, () => handleNavigation("tvShows"))}
 					>
 						TV Shows
 					</li>
 					<li
 						className="menuItem"
+						tabIndex="0"
+						role="button"
 						onClick={() => handleNavigation("settings")}
+						onKeyDown={(e) => handleKeyActivate(e, () => handleNavigation("settings"))}
 						title="Settings"
 					>
-						<FiSettings />
+						<FiSettings style={{ marginRight: 6 }} /> Settings
 					</li>
-					<li className="menuItem">
-						<HiOutlineSearch
-							style={{ cursor: "pointer" }}
-							onClick={openSearch}
-						/>
+					<li
+						className="menuItem searchIcon"
+						tabIndex="0"
+						role="button"
+						aria-label="Toggle Search"
+						onClick={openSearch}
+						onKeyDown={(e) => handleKeyActivate(e, openSearch)}
+					>
+						<HiOutlineSearch style={{ cursor: "pointer" }} />
 					</li>
 				</ul>
 
 				<div className="mobileMenuItems">
-					<HiOutlineSearch
-						style={{ cursor: "pointer" }}
+					<button
+						className="headerIconBtn"
+						tabIndex="0"
+						aria-label="Open Search"
 						onClick={openSearch}
-					/>
-					{mobileMenu ? (
-						<VscChromeClose onClick={() => setMobileMenu(false)} />
-					) : (
-						<SlMenu
-							style={{ cursor: "pointer" }}
-							onClick={openMobileMenu}
-						/>
-					)}
+						onKeyDown={(e) => handleKeyActivate(e, openSearch)}
+					>
+						<HiOutlineSearch />
+					</button>
+					<button
+						className="headerIconBtn"
+						tabIndex="0"
+						aria-label="Toggle Mobile Menu"
+						onClick={openMobileMenu}
+						onKeyDown={(e) => handleKeyActivate(e, openMobileMenu)}
+					>
+						{mobileMenu ? <VscChromeClose /> : <SlMenu />}
+					</button>
 				</div>
 			</ContentWrapper>
 
@@ -129,13 +169,22 @@ const Header = () => {
 						<div className="searchInput">
 							<input
 								type="text"
+								tabIndex="0"
+								autoFocus
 								placeholder="Search for movies or tv shows.."
+								value={query}
 								onChange={(e) => setQuery(e.target.value)}
-								onKeyUp={searchQuery}
+								onKeyDown={searchQuery}
 							/>
-							<VscChromeClose
+							<button
+								className="closeSearchBtn"
+								tabIndex="0"
+								aria-label="Close Search"
 								onClick={() => setShowSearch(false)}
-							/>
+								onKeyDown={(e) => handleKeyActivate(e, () => setShowSearch(false))}
+							>
+								<VscChromeClose />
+							</button>
 						</div>
 					</ContentWrapper>
 				</div>
