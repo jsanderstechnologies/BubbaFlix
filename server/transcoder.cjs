@@ -1,14 +1,74 @@
 const express = require("express");
 const { spawn } = require("child_process");
+const fs = require("fs");
+const path = require("path");
 
 const app = express();
 const PORT = process.env.TRANSCODER_PORT || 5000;
+const SETTINGS_FILE = path.join(__dirname, "settings.json");
 
 app.use(express.json());
 
+// Default centralized backend server settings schema
+const DEFAULT_SETTINGS = {
+  theme: "dark-red",
+  simklClientId: "",
+  simklToken: "",
+  premiumizeKey: "",
+  groqKey: "",
+  tmdbToken: "",
+  bitsearchKey: "",
+  stream_resolutions: ["2160p", "1080p", "720p", "480p"],
+  stream_codecs: ["x265", "x264", "av1", "xvid"],
+  stream_exclude_low_quality: true,
+};
+
+// Load settings from disk
+const loadServerSettings = () => {
+  try {
+    if (fs.existsSync(SETTINGS_FILE)) {
+      const data = fs.readFileSync(SETTINGS_FILE, "utf8");
+      return { ...DEFAULT_SETTINGS, ...JSON.parse(data) };
+    }
+  } catch (err) {
+    console.error("[Backend Settings Storage Error]: Failed to read settings.json", err.message);
+  }
+  return { ...DEFAULT_SETTINGS };
+};
+
+// Save settings to disk
+const saveServerSettings = (settingsData) => {
+  try {
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settingsData, null, 2), "utf8");
+    console.log("[Backend Settings Storage] Updated global settings.json on server disk.");
+    return true;
+  } catch (err) {
+    console.error("[Backend Settings Storage Error]: Failed to save settings.json", err.message);
+    return false;
+  }
+};
+
 // Health check endpoint
 app.get("/api/transcode/health", (req, res) => {
-  res.json({ status: "ok", service: "BubbaFlix FFmpeg Transcoder Engine" });
+  res.json({ status: "ok", service: "BubbaFlix Backend Engine" });
+});
+
+// Centralized Settings API Endpoints
+app.get("/api/settings", (req, res) => {
+  const currentSettings = loadServerSettings();
+  res.json({ status: "success", settings: currentSettings });
+});
+
+app.post("/api/settings", (req, res) => {
+  const currentSettings = loadServerSettings();
+  const updatedSettings = { ...currentSettings, ...(req.body || {}) };
+  const saved = saveServerSettings(updatedSettings);
+
+  if (saved) {
+    res.json({ status: "success", message: "Global server settings updated successfully.", settings: updatedSettings });
+  } else {
+    res.status(500).json({ error: "Failed to persist settings on server storage." });
+  }
 });
 
 // FFmpeg On-the-Fly Video & Audio Transcoding Stream Endpoint
@@ -109,9 +169,9 @@ process.on("unhandledRejection", (reason) => {
 });
 
 const server = app.listen(PORT, "0.0.0.0", () => {
-  console.log(`[BubbaFlix FFmpeg Transcoder Engine] Server listening on 0.0.0.0:${PORT}`);
+  console.log(`[BubbaFlix Backend Engine] Server listening on 0.0.0.0:${PORT}`);
 });
 
 server.on("error", (err) => {
-  console.error("[FFmpeg Transcoder Listen Error]:", err);
+  console.error("[BubbaFlix Backend Listen Error]:", err);
 });

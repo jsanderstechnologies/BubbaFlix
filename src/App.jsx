@@ -17,6 +17,7 @@ import { getSavedTheme, applyTheme } from "./utils/theme";
 import { initDpadNavigation } from "./utils/dpadNavigation";
 import { fetchUserSimklHistory } from "./utils/simkl";
 import { getSavedZoom, applyZoom } from "./utils/zoom";
+import { fetchServerSettings } from "./utils/serverSettings";
 
 const App = () => {
 	const dispatch = useDispatch();
@@ -26,8 +27,13 @@ const App = () => {
 		const currentTheme = getSavedTheme();
 		applyTheme(currentTheme);
 		applyZoom(getSavedZoom());
-		fetchApiConfig();
-		fetchUserSimklHistory();
+
+		// Pull global settings from backend server on startup
+		fetchServerSettings().then(() => {
+			fetchApiConfig();
+			fetchUserSimklHistory();
+		});
+
 		const cleanupDpad = initDpadNavigation();
 		return () => {
 			if (cleanupDpad) cleanupDpad();

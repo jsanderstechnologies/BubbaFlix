@@ -7,9 +7,10 @@ import { getGroqApiKey } from "../../utils/groqFilter";
 import { getPremiumizeApiKey, testPremiumizeAccount } from "../../utils/premiumize";
 import { getSimklConfig, testSimklConnection } from "../../utils/simkl";
 import { isTvDevice, getSavedZoom, applyZoom } from "../../utils/zoom";
+import { updateServerSettings, fetchServerSettings } from "../../utils/serverSettings";
 import { getApiConfiguration } from "../../store/homeSlice";
 import { THEMES, getSavedTheme, applyTheme } from "../../utils/theme";
-import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning, FiCheckSquare, FiTv, FiPlus, FiMinus } from "react-icons/fi";
+import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning, FiCheckSquare, FiTv, FiPlus, FiMinus, FiServer } from "react-icons/fi";
 import "./index.scss";
 
 const ALL_RESOLUTIONS = [
@@ -30,7 +31,7 @@ const SettingsPage = () => {
   // Theme State
   const [activeTheme, setActiveTheme] = useState("dark-red");
 
-  // TV Zoom & Device State
+  // TV Zoom & Device State (Per-device client side only)
   const [isTv, setIsTv] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(100);
 
@@ -76,54 +77,56 @@ const SettingsPage = () => {
 
   const dispatch = useDispatch();
 
-  useEffect(() => {
-    // Theme
-    const currentTheme = getSavedTheme();
-    setActiveTheme(currentTheme);
-
-    // TV & Zoom Detection
+  const loadAllSettings = async () => {
+    // 1. Per-device Zoom
     setIsTv(isTvDevice());
     setZoomLevel(getSavedZoom());
 
-    // TMDB
+    // 2. Pull Centralized Backend Settings
+    const serverData = await fetchServerSettings();
+
+    // 3. Populate state
+    const currentTheme = getSavedTheme();
+    setActiveTheme(currentTheme);
+
     const savedToken = localStorage.getItem("tmdb_token");
     const active = getActiveTmdbToken();
     setToken(savedToken || active || "");
     setIsCustom(!!savedToken);
 
-    // Premiumize
     const savedPrem = getPremiumizeApiKey();
     setPremiumizeKey(savedPrem || "");
     setHasPremiumizeCustom(!!savedPrem);
 
-    // SIMKL
     const { clientId, userToken } = getSimklConfig();
     setSimklClientId(clientId || "");
     setSimklToken(userToken || "");
     setHasSimklCustom(!!clientId);
 
-    // Bitsearch
     const savedBitsearch = getBitsearchApiKey();
     setBitsearchKey(savedBitsearch || "");
     setHasBitsearchCustom(!!savedBitsearch);
 
-    // Groq AI
     const savedGroq = getGroqApiKey();
     setGroqKey(savedGroq || "");
     setHasGroqCustom(!!savedGroq);
 
-    // Stream Filters
     const savedRes = localStorage.getItem("stream_resolutions");
     const savedCodecs = localStorage.getItem("stream_codecs");
     const savedExcludeLow = localStorage.getItem("stream_exclude_low_quality");
     if (savedRes) setSelectedResolutions(JSON.parse(savedRes));
     if (savedCodecs) setSelectedCodecs(JSON.parse(savedCodecs));
     if (savedExcludeLow !== null) setExcludeLowQuality(JSON.parse(savedExcludeLow));
+  };
+
+  useEffect(() => {
+    loadAllSettings();
   }, []);
 
   const handleSelectTheme = (themeId) => {
     setActiveTheme(themeId);
     applyTheme(themeId);
+    updateServerSettings({ theme: themeId });
   };
 
   const handleZoomChange = (newLevel) => {
@@ -158,10 +161,11 @@ const SettingsPage = () => {
     }
     localStorage.setItem("tmdb_token", cleanToken);
     setIsCustom(true);
+    await updateServerSettings({ tmdbToken: cleanToken });
     await refreshConfig();
     setStatusMessage({
       type: "success",
-      text: "TMDB Access Token saved successfully!",
+      text: "TMDB Access Token saved & synced to backend server!",
     });
   };
 
@@ -170,6 +174,7 @@ const SettingsPage = () => {
     const defaultToken = import.meta.env.VITE_APP_TMDB_KEY || "";
     setToken(defaultToken);
     setIsCustom(false);
+    await updateServerSettings({ tmdbToken: "" });
     await refreshConfig();
     setStatusMessage({
       type: "info",
@@ -186,23 +191,25 @@ const SettingsPage = () => {
     }
     localStorage.setItem("premiumize_api_key", cleanKey);
     setHasPremiumizeCustom(true);
+    await updateServerSettings({ premiumizeKey: cleanKey });
 
     setTestingPremiumize(true);
     const testRes = await testPremiumizeAccount(cleanKey);
     setTestingPremiumize(false);
 
     if (testRes.success) {
-      setPremiumizeStatus({ type: "success", text: testRes.message });
+      setPremiumizeStatus({ type: "success", text: `${testRes.message} (Synced to Backend)` });
     } else {
       setPremiumizeStatus({ type: "error", text: testRes.message });
     }
   };
 
-  const handleClearPremiumize = () => {
+  const handleClearPremiumize = async () => {
     localStorage.removeItem("premiumize_api_key");
     setPremiumizeKey("");
     setHasPremiumizeCustom(false);
-    setPremiumizeStatus({ type: "info", text: "Premiumize API Key cleared." });
+    await updateServerSettings({ premiumizeKey: "" });
+    setPremiumizeStatus({ type: "info", text: "Premiumize API Key cleared on server." });
   };
 
   const handleSaveSimkl = async (e) => {
@@ -216,28 +223,30 @@ const SettingsPage = () => {
     localStorage.setItem("simkl_client_id", cleanId);
     localStorage.setItem("simkl_access_token", cleanToken);
     setHasSimklCustom(true);
+    await updateServerSettings({ simklClientId: cleanId, simklToken: cleanToken });
 
     setTestingSimkl(true);
     const testRes = await testSimklConnection(cleanId, cleanToken);
     setTestingSimkl(false);
 
     if (testRes.success) {
-      setSimklStatus({ type: "success", text: testRes.message });
+      setSimklStatus({ type: "success", text: `${testRes.message} (Synced to Backend)` });
     } else {
       setSimklStatus({ type: "error", text: testRes.message });
     }
   };
 
-  const handleClearSimkl = () => {
+  const handleClearSimkl = async () => {
     localStorage.removeItem("simkl_client_id");
     localStorage.removeItem("simkl_access_token");
     setSimklClientId("");
     setSimklToken("");
     setHasSimklCustom(false);
-    setSimklStatus({ type: "info", text: "SIMKL credentials cleared." });
+    await updateServerSettings({ simklClientId: "", simklToken: "" });
+    setSimklStatus({ type: "info", text: "SIMKL credentials cleared on server." });
   };
 
-  const handleSaveBitsearch = (e) => {
+  const handleSaveBitsearch = async (e) => {
     e.preventDefault();
     const cleanKey = bitsearchKey.trim();
     if (!cleanKey) {
@@ -246,23 +255,25 @@ const SettingsPage = () => {
     }
     localStorage.setItem("bitsearch_api_key", cleanKey);
     setHasBitsearchCustom(true);
+    await updateServerSettings({ bitsearchKey: cleanKey });
     setBitsearchStatus({
       type: "success",
-      text: "Bitsearch API Key saved successfully!",
+      text: "Bitsearch API Key saved & synced to backend server!",
     });
   };
 
-  const handleClearBitsearch = () => {
+  const handleClearBitsearch = async () => {
     localStorage.removeItem("bitsearch_api_key");
     setBitsearchKey("");
     setHasBitsearchCustom(false);
+    await updateServerSettings({ bitsearchKey: "" });
     setBitsearchStatus({
       type: "info",
-      text: "Bitsearch API Key cleared.",
+      text: "Bitsearch API Key cleared on server.",
     });
   };
 
-  const handleSaveGroq = (e) => {
+  const handleSaveGroq = async (e) => {
     e.preventDefault();
     const cleanKey = groqKey.trim();
     if (!cleanKey) {
@@ -271,19 +282,21 @@ const SettingsPage = () => {
     }
     localStorage.setItem("groq_api_key", cleanKey);
     setHasGroqCustom(true);
+    await updateServerSettings({ groqKey: cleanKey });
     setGroqStatus({
       type: "success",
-      text: "Groq AI Key saved successfully! AI stream filtering is active.",
+      text: "Groq AI Key saved & synced to backend server! AI stream filtering is active.",
     });
   };
 
-  const handleClearGroq = () => {
+  const handleClearGroq = async () => {
     localStorage.removeItem("groq_api_key");
     setGroqKey("");
     setHasGroqCustom(false);
+    await updateServerSettings({ groqKey: "" });
     setGroqStatus({
       type: "info",
-      text: "Groq API Key cleared.",
+      text: "Groq API Key cleared on server.",
     });
   };
 
@@ -299,14 +312,19 @@ const SettingsPage = () => {
     );
   };
 
-  const handleSaveStreamFilters = (e) => {
+  const handleSaveStreamFilters = async (e) => {
     e.preventDefault();
     localStorage.setItem("stream_resolutions", JSON.stringify(selectedResolutions));
     localStorage.setItem("stream_codecs", JSON.stringify(selectedCodecs));
     localStorage.setItem("stream_exclude_low_quality", JSON.stringify(excludeLowQuality));
+    await updateServerSettings({
+      stream_resolutions: selectedResolutions,
+      stream_codecs: selectedCodecs,
+      stream_exclude_low_quality: excludeLowQuality,
+    });
     setFilterStatus({
       type: "success",
-      text: "Stream resolution, codec, and CAM/HDTS exclusion preferences saved!",
+      text: "Stream resolution, codec, and CAM/HDTS exclusion preferences saved & synced to backend server!",
     });
   };
 
@@ -347,7 +365,7 @@ const SettingsPage = () => {
               <FiKey className="icon" /> API & System Settings
             </h1>
             <p className="subtitle">
-              Manage SIMKL watch status tracking, Premiumize streaming, color themes, TV screen zoom levels, API keys, and resolution filters.
+              Centralized backend server configuration for SIMKL watch status tracking, Premiumize streaming, color themes, API keys, and stream filters.
             </p>
           </div>
 
@@ -356,12 +374,12 @@ const SettingsPage = () => {
             <div className="cardHeader">
               <h2><FiSun style={{ marginRight: 8 }} /> Application Color Theme</h2>
               <span className="badge custom">
-                {THEMES.find((t) => t.id === activeTheme)?.name || "Active"}
+                <FiServer style={{ marginRight: 4 }} /> Server Synced
               </span>
             </div>
 
             <p className="description">
-              Select your preferred color theme for BubbaFlix, including Dark Red (Netflix Style).
+              Select your preferred color theme for BubbaFlix, including Dark Red (Netflix Style). Synced across all client devices.
             </p>
 
             <div className="themeGrid">
@@ -412,18 +430,18 @@ const SettingsPage = () => {
             </div>
           </div>
 
-          {/* TV & Streaming Device Screen Zoom Card */}
+          {/* TV & Streaming Device Screen Zoom Card (Per-Device Local Setting) */}
           {(isTv || true) && (
             <div className="settingsCard">
               <div className="cardHeader">
                 <h2><FiTv style={{ marginRight: 8 }} /> TV Screen Zoom & Display Scale</h2>
-                <span className={`badge ${isTv ? "custom" : "default"}`}>
-                  {isTv ? "TV Device Detected" : "Client Side Saved"}
+                <span className="badge default">
+                  Per-Device Local Setting
                 </span>
               </div>
 
               <p className="description">
-                Customize the UI scale and zoom level for 10ft TV viewing on Android TV, Google TV, Firestick, Apple TV, or Smart TV devices.
+                Customize the UI scale and zoom level for 10ft TV viewing on Android TV, Google TV, Firestick, Apple TV, or Smart TV devices (saved independently on each device).
               </p>
 
               <div className="zoomControls">
@@ -486,12 +504,12 @@ const SettingsPage = () => {
             <div className="cardHeader">
               <h2><FiCheckSquare style={{ marginRight: 8 }} /> SIMKL Watch Status Tracker</h2>
               <span className={`badge ${hasSimklCustom ? "custom" : "default"}`}>
-                {hasSimklCustom ? "SIMKL Sync Active" : "SIMKL ID Required"}
+                <FiServer style={{ marginRight: 4 }} /> {hasSimklCustom ? "SIMKL Sync Active" : "SIMKL ID Required"}
               </span>
             </div>
 
             <p className="description">
-              Sync watched movies and TV episode playback history automatically with your SIMKL watchlist.
+              Sync watched movies and TV episode playback history automatically with your SIMKL watchlist across all devices.
             </p>
 
             <form onSubmit={handleSaveSimkl} className="tokenForm">
@@ -559,7 +577,7 @@ const SettingsPage = () => {
             <div className="cardHeader">
               <h2><FiCloudLightning style={{ marginRight: 8 }} /> Premiumize.me Streaming API Key</h2>
               <span className={`badge ${hasPremiumizeCustom ? "custom" : "default"}`}>
-                {hasPremiumizeCustom ? "Premiumize Stream Active" : "Key Required to Play Streams"}
+                <FiServer style={{ marginRight: 4 }} /> {hasPremiumizeCustom ? "Premiumize Stream Active" : "Key Required to Play Streams"}
               </span>
             </div>
 
@@ -619,7 +637,7 @@ const SettingsPage = () => {
             <div className="cardHeader">
               <h2><FiCpu style={{ marginRight: 8 }} /> Groq AI Stream Filter Key</h2>
               <span className={`badge ${hasGroqCustom ? "custom" : "default"}`}>
-                {hasGroqCustom ? "Groq AI Active" : "Regex Filter Mode"}
+                <FiServer style={{ marginRight: 4 }} /> {hasGroqCustom ? "Groq AI Active" : "Regex Filter Mode"}
               </span>
             </div>
 
@@ -679,7 +697,7 @@ const SettingsPage = () => {
             <div className="cardHeader">
               <h2>TMDB Read Access Token</h2>
               <span className={`badge ${isCustom ? "custom" : "default"}`}>
-                {isCustom ? "Custom Token Active" : "Default Token Active"}
+                <FiServer style={{ marginRight: 4 }} /> {isCustom ? "Custom Token Active" : "Default Token Active"}
               </span>
             </div>
 
@@ -748,7 +766,7 @@ const SettingsPage = () => {
             <div className="cardHeader">
               <h2>Bitsearch API Key</h2>
               <span className={`badge ${hasBitsearchCustom ? "custom" : "default"}`}>
-                {hasBitsearchCustom ? "API Key Configured" : "Public Mode Active"}
+                <FiServer style={{ marginRight: 4 }} /> {hasBitsearchCustom ? "API Key Configured" : "Public Mode Active"}
               </span>
             </div>
 
@@ -807,10 +825,13 @@ const SettingsPage = () => {
           <div className="settingsCard">
             <div className="cardHeader">
               <h2><FiSliders style={{ marginRight: 8 }} /> Stream Resolution & Codec Filters</h2>
+              <span className="badge custom">
+                <FiServer style={{ marginRight: 4 }} /> Server Synced
+              </span>
             </div>
 
             <p className="description">
-              Select which video resolutions, codecs, and release qualities to return when searching Available Streams.
+              Select which video resolutions, codecs, and release qualities to return when searching Available Streams. Synced across all client devices.
             </p>
 
             <form onSubmit={handleSaveStreamFilters} className="tokenForm">
