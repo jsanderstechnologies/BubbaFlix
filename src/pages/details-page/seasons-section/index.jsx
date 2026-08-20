@@ -8,7 +8,7 @@ import PosterFallback from "../../../assets/no-poster.png";
 import Spinner from "../../../components/spinner";
 import { useSelector } from "react-redux";
 import dayjs from "dayjs";
-import { FiTv, FiCalendar } from "react-icons/fi";
+import { FiTv, FiCalendar, FiClock } from "react-icons/fi";
 import "./index.scss";
 
 const SeasonsSection = ({ tvId, seasons, showTitle }) => {
@@ -33,6 +33,8 @@ const SeasonsSection = ({ tvId, seasons, showTitle }) => {
   );
 
   if (!validSeasons || validSeasons.length === 0) return null;
+
+  const today = dayjs();
 
   return (
     <div className="seasonsSection">
@@ -83,6 +85,11 @@ const SeasonsSection = ({ tvId, seasons, showTitle }) => {
                 ? dayjs(ep.air_date).format("MMM D, YYYY")
                 : "Air Date N/A";
 
+              // Check if episode has already been released (air_date is on or before today)
+              const isReleased = ep.air_date
+                ? !dayjs(ep.air_date).isAfter(today, "day")
+                : false;
+
               return (
                 <div key={ep.id} className="episodeCard">
                   <div className="episodeMain">
@@ -115,14 +122,21 @@ const SeasonsSection = ({ tvId, seasons, showTitle }) => {
                     </div>
                   </div>
 
-                  {/* Episode-Level Available Streams Dropdown */}
+                  {/* Episode-Level Available Streams Dropdown (Only for Released Episodes) */}
                   <div className="episodeStreams">
-                    <MagnetSection
-                      title={showTitle}
-                      seasonNum={selectedSeasonNumber}
-                      episodeNum={ep.episode_number}
-                      compact={true}
-                    />
+                    {isReleased ? (
+                      <MagnetSection
+                        title={showTitle}
+                        seasonNum={selectedSeasonNumber}
+                        episodeNum={ep.episode_number}
+                        compact={true}
+                      />
+                    ) : (
+                      <div className="unreleasedNotice">
+                        <FiClock className="clockIcon" />
+                        <span>Unreleased Episode — Streams available after release on {formattedDate}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
