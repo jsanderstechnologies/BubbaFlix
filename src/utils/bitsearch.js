@@ -66,7 +66,6 @@ const filterByPreferences = (results) => {
 
   const { resolutions, codecs, excludeLowQuality } = getStreamPreferences();
 
-  // 1. Filter out CAM, HDCAM, Telesync, HDTS, TC videos if excludeLowQuality is true
   let pool = results;
   if (excludeLowQuality) {
     const cleanPool = results.filter((item) => !isLowQualityCamOrTS(item.title));
@@ -75,7 +74,6 @@ const filterByPreferences = (results) => {
     }
   }
 
-  // 2. Filter by user resolution and codec selections
   const resActive = resolutions && resolutions.length > 0 && resolutions.length < 4;
   const codecActive = codecs && codecs.length > 0 && codecs.length < 4;
 
@@ -198,10 +196,24 @@ const fetchMagnetResults = async (searchQuery) => {
   return [];
 };
 
-export const searchBitsearchMagnets = async (title, year) => {
+export const searchBitsearchMagnets = async (title, year, seasonNum, episodeNum) => {
   if (!title) return { results: [], error: "No title provided" };
 
-  // 1. If year is present and not current/future, try title + year first
+  // 1. If season and episode numbers are provided for a TV Episode:
+  if (seasonNum !== undefined && episodeNum !== undefined) {
+    const sPad = String(seasonNum).padStart(2, "0");
+    const ePad = String(episodeNum).padStart(2, "0");
+
+    const epQuery1 = `${title} S${sPad}E${ePad}`;
+    const res1 = await fetchMagnetResults(epQuery1);
+    if (res1 && res1.length > 0) return { results: res1, error: null };
+
+    const epQuery2 = `${title} S${seasonNum}E${episodeNum}`;
+    const res2 = await fetchMagnetResults(epQuery2);
+    if (res2 && res2.length > 0) return { results: res2, error: null };
+  }
+
+  // 2. Movie search with year
   const currentYear = new Date().getFullYear();
   const yearNum = Number(year);
   if (year && !isNaN(yearNum) && yearNum <= currentYear) {
@@ -211,7 +223,7 @@ export const searchBitsearchMagnets = async (title, year) => {
     }
   }
 
-  // 2. Search by title alone (returns best matches for all releases)
+  // 3. Fallback: Search title alone
   const resultsTitleOnly = await fetchMagnetResults(title);
   if (resultsTitleOnly && resultsTitleOnly.length > 0) {
     return { results: resultsTitleOnly, error: null };

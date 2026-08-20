@@ -3,6 +3,7 @@ import Cast from "./cast-section";
 import DetailsBanner from "./details-banner";
 import VideosSection from "./videos-section";
 import MagnetSection from "./magnet-section";
+import SeasonsSection from "./seasons-section";
 import "./index.scss";
 import { useParams } from "react-router-dom";
 
@@ -20,7 +21,21 @@ const DetailsPage = () => {
 	return (
 		<div className="details-page">
 			<DetailsBanner video={data?.results?.[0]} crew={credits?.crew} />
-			<MagnetSection title={title} year={releaseYear} />
+			
+			{/* Show series-level magnet section ONLY for movies */}
+			{mediaType === "movie" && (
+				<MagnetSection title={title} year={releaseYear} />
+			)}
+
+			{/* Show season dropdown & episode magnet streams ONLY for TV series */}
+			{mediaType === "tv" && (
+				<SeasonsSection
+					tvId={id}
+					seasons={detailsData?.seasons}
+					showTitle={title}
+				/>
+			)}
+
 			<Cast data={credits?.cast} loading={creditsLoading} />
 			<VideosSection data={data} loading={loading} />
 		</div>
