@@ -2,23 +2,38 @@ import { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import ContentWrapper from "../../components/content-wrapper";
 import { fetchDataFromAPI, getActiveTmdbToken } from "../../utils/api";
+import { getBitsearchApiKey } from "../../utils/bitsearch";
 import { getApiConfiguration } from "../../store/homeSlice";
 import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff } from "react-icons/fi";
 import "./index.scss";
 
 const SettingsPage = () => {
+  // TMDB Key State
   const [token, setToken] = useState("");
   const [showToken, setShowToken] = useState(false);
-  const [statusMessage, setStatusMessage] = useState(null); // { type: 'success' | 'error' | 'info', text: string }
+  const [statusMessage, setStatusMessage] = useState(null);
   const [testing, setTesting] = useState(false);
   const [isCustom, setIsCustom] = useState(false);
+
+  // Bitsearch Key State
+  const [bitsearchKey, setBitsearchKey] = useState("");
+  const [showBitsearchKey, setShowBitsearchKey] = useState(false);
+  const [bitsearchStatus, setBitsearchStatus] = useState(null);
+  const [hasBitsearchCustom, setHasBitsearchCustom] = useState(false);
+
   const dispatch = useDispatch();
 
   useEffect(() => {
+    // TMDB
     const savedToken = localStorage.getItem("tmdb_token");
     const active = getActiveTmdbToken();
     setToken(savedToken || active || "");
     setIsCustom(!!savedToken);
+
+    // Bitsearch
+    const savedBitsearch = getBitsearchApiKey();
+    setBitsearchKey(savedBitsearch || "");
+    setHasBitsearchCustom(!!savedBitsearch);
   }, []);
 
   const refreshConfig = async () => {
@@ -38,11 +53,11 @@ const SettingsPage = () => {
     }
   };
 
-  const handleSave = async (e) => {
+  const handleSaveTmdb = async (e) => {
     e.preventDefault();
     const cleanToken = token.trim();
     if (!cleanToken) {
-      setStatusMessage({ type: "error", text: "Token cannot be empty." });
+      setStatusMessage({ type: "error", text: "TMDB Token cannot be empty." });
       return;
     }
     localStorage.setItem("tmdb_token", cleanToken);
@@ -50,11 +65,11 @@ const SettingsPage = () => {
     await refreshConfig();
     setStatusMessage({
       type: "success",
-      text: "TMDB Access Token saved and image configuration updated successfully!",
+      text: "TMDB Access Token saved successfully!",
     });
   };
 
-  const handleClear = async () => {
+  const handleClearTmdb = async () => {
     localStorage.removeItem("tmdb_token");
     const defaultToken = import.meta.env.VITE_APP_TMDB_KEY || "";
     setToken(defaultToken);
@@ -62,7 +77,32 @@ const SettingsPage = () => {
     await refreshConfig();
     setStatusMessage({
       type: "info",
-      text: "Custom token cleared. Reverted to default application token.",
+      text: "Custom TMDB token cleared. Reverted to default application token.",
+    });
+  };
+
+  const handleSaveBitsearch = (e) => {
+    e.preventDefault();
+    const cleanKey = bitsearchKey.trim();
+    if (!cleanKey) {
+      setBitsearchStatus({ type: "error", text: "Bitsearch API Key cannot be empty." });
+      return;
+    }
+    localStorage.setItem("bitsearch_api_key", cleanKey);
+    setHasBitsearchCustom(true);
+    setBitsearchStatus({
+      type: "success",
+      text: "Bitsearch API Key saved successfully! Magnet link searches will use your API Key.",
+    });
+  };
+
+  const handleClearBitsearch = () => {
+    localStorage.removeItem("bitsearch_api_key");
+    setBitsearchKey("");
+    setHasBitsearchCustom(false);
+    setBitsearchStatus({
+      type: "info",
+      text: "Bitsearch API Key cleared. Public search fallback will be used.",
     });
   };
 
@@ -75,19 +115,19 @@ const SettingsPage = () => {
         await refreshConfig();
         setStatusMessage({
           type: "success",
-          text: "Connection test successful! Your TMDB API key is valid and posters are ready to load.",
+          text: "TMDB connection test successful! Key is valid.",
         });
       } else {
         setStatusMessage({
           type: "error",
-          text: "Connection failed. Please check that your TMDB API token is correct.",
+          text: "Connection failed. Please check your TMDB API token.",
         });
       }
     } catch (err) {
       console.error(err);
       setStatusMessage({
         type: "error",
-        text: "Error testing connection. Invalid API token or network issue.",
+        text: "Error testing connection. Invalid TMDB API token.",
       });
     } finally {
       setTesting(false);
@@ -103,10 +143,11 @@ const SettingsPage = () => {
               <FiKey className="icon" /> API & System Settings
             </h1>
             <p className="subtitle">
-              Manage your TMDB (The Movie Database) API Access Token and configuration.
+              Manage your TMDB (The Movie Database) and Bitsearch API Access Keys.
             </p>
           </div>
 
+          {/* TMDB API Card */}
           <div className="settingsCard">
             <div className="cardHeader">
               <h2>TMDB Read Access Token</h2>
@@ -116,10 +157,10 @@ const SettingsPage = () => {
             </div>
 
             <p className="description">
-              BubbaFlix uses the TMDB v4 Read Access Token (Bearer Token) to fetch live movies, TV shows, and poster assets.
+              Used to fetch live movies, TV shows, backdrop banners, and poster images.
             </p>
 
-            <form onSubmit={handleSave} className="tokenForm">
+            <form onSubmit={handleSaveTmdb} className="tokenForm">
               <div className="inputGroup">
                 <label htmlFor="tmdbToken">VITE_APP_TMDB_KEY</label>
                 <div className="inputWrapper">
@@ -151,7 +192,7 @@ const SettingsPage = () => {
 
               <div className="buttonGroup">
                 <button type="submit" className="saveBtn">
-                  <FiSave /> Save Token
+                  <FiSave /> Save TMDB Key
                 </button>
                 <button
                   type="button"
@@ -166,7 +207,7 @@ const SettingsPage = () => {
                   <button
                     type="button"
                     className="clearBtn"
-                    onClick={handleClear}
+                    onClick={handleClearTmdb}
                   >
                     Reset to Default
                   </button>
@@ -175,13 +216,76 @@ const SettingsPage = () => {
             </form>
           </div>
 
+          {/* Bitsearch API Card */}
+          <div className="settingsCard">
+            <div className="cardHeader">
+              <h2>Bitsearch API Key 🧲</h2>
+              <span className={`badge ${hasBitsearchCustom ? "custom" : "default"}`}>
+                {hasBitsearchCustom ? "API Key Configured" : "Public Mode Active"}
+              </span>
+            </div>
+
+            <p className="description">
+              Used on Movie & TV detail pages to search and fetch torrent magnet links via Bitsearch API.
+            </p>
+
+            <form onSubmit={handleSaveBitsearch} className="tokenForm">
+              <div className="inputGroup">
+                <label htmlFor="bitsearchKey">BITSEARCH_API_KEY</label>
+                <div className="inputWrapper">
+                  <input
+                    id="bitsearchKey"
+                    type={showBitsearchKey ? "text" : "password"}
+                    value={bitsearchKey}
+                    onChange={(e) => setBitsearchKey(e.target.value)}
+                    placeholder="Enter your Bitsearch API key..."
+                  />
+                  <button
+                    type="button"
+                    className="toggleVisibility"
+                    onClick={() => setShowBitsearchKey(!showBitsearchKey)}
+                    title={showBitsearchKey ? "Hide Key" : "Show Key"}
+                  >
+                    {showBitsearchKey ? <FiEyeOff /> : <FiEye />}
+                  </button>
+                </div>
+              </div>
+
+              {bitsearchStatus && (
+                <div className={`statusBanner ${bitsearchStatus.type}`}>
+                  {bitsearchStatus.type === "success" && <FiCheckCircle />}
+                  {bitsearchStatus.type === "error" && <FiXCircle />}
+                  <span>{bitsearchStatus.text}</span>
+                </div>
+              )}
+
+              <div className="buttonGroup">
+                <button type="submit" className="saveBtn">
+                  <FiSave /> Save Bitsearch Key
+                </button>
+                {hasBitsearchCustom && (
+                  <button
+                    type="button"
+                    className="clearBtn"
+                    onClick={handleClearBitsearch}
+                  >
+                    Clear Key
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+
+          {/* Help Instructions */}
           <div className="helpCard">
-            <h3>How to get a TMDB Read Access Token?</h3>
+            <h3>How to get API Keys?</h3>
             <ol>
-              <li>Create a free account on <a href="https://www.themoviedb.org/" target="_blank" rel="noreferrer">The Movie Database (TMDB)</a>.</li>
-              <li>Go to <strong>Settings</strong> &gt; <strong>API</strong>.</li>
-              <li>Generate an API key and copy the <strong>API Read Access Token</strong> (v4 Bearer Token).</li>
-              <li>Paste your key into the input field above and click <strong>Save Token</strong>.</li>
+              <li>
+                <strong>TMDB API Token</strong>: Register at <a href="https://www.themoviedb.org/" target="_blank" rel="noreferrer">TMDB</a> &gt; Settings &gt; API &gt; API Read Access Token (v4).
+              </li>
+              <li>
+                <strong>Bitsearch API Key</strong>: Obtain your API key from <a href="https://bitsearch.to" target="_blank" rel="noreferrer">Bitsearch.to</a> to search torrent magnet links.
+              </li>
             </ol>
           </div>
         </div>

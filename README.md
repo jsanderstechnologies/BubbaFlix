@@ -12,8 +12,8 @@ BubbaFlix features automatic content filtering for **English-only live-action mo
 
 ## 🌟 Key Features
 
-- 🔍 **Browse & Search**: Explore trending, popular, top-rated movies and TV shows with instant search.
-- ⚙️ **In-App API Key Settings**: Dedicated Settings page (`/settings`) to view, save, test, and manage your TMDB v4 Read Access Token (`VITE_APP_TMDB_KEY`) without needing to rebuild or restart.
+- 🧲 **Torrent Magnet Links**: Search and view live torrent magnet links on any movie or TV show detail page powered by Bitsearch API. Includes file size, seeders, leechers, one-click magnet link copying, and direct torrent client opening.
+- ⚙️ **In-App API Key Settings**: Dedicated Settings page (`/settings`) to view, save, test, and manage your TMDB v4 Read Access Token (`VITE_APP_TMDB_KEY`) and Bitsearch API Key (`BITSEARCH_API_KEY`) without needing to rebuild or restart.
 - 🍿 **English-Only & No Anime Filter**: Automatic server & client-side filtering enforcing English language content and excluding all animation / anime titles.
 - ⚡ **Optimized Performance**: Built with Vite, lazy-loading image components, and infinite scrolling.
 - 🎬 **Video Trailer Modal**: Watch official movie & show trailers powered by React Player.
@@ -31,7 +31,7 @@ BubbaFlix features automatic content filtering for **English-only live-action mo
 - **Build Tool**: [Vite](https://vitejs.dev/)
 - **Styling**: SASS / SCSS Modules
 - **HTTP Client**: Axios
-- **API**: [TMDB (The Movie Database) API](https://www.themoviedb.org/)
+- **APIs**: [TMDB (The Movie Database) API](https://www.themoviedb.org/), Bitsearch API
 - **Containerization & Hosting**: Docker, Nginx, GitHub Container Registry (GHCR)
 
 ---
@@ -41,10 +41,10 @@ BubbaFlix features automatic content filtering for **English-only live-action mo
 BubbaFlix includes an in-app **Settings Page** accessible via the gear icon in the navigation header or by navigating to `/settings`.
 
 ### Features:
-- **Save Custom Key**: Store your TMDB Read Access Token directly in browser `localStorage`.
-- **Test Connection**: Run instant connection tests to verify whether your token is valid and active.
-- **Show / Hide Key Toggle**: Easily inspect or mask your secret API key.
-- **Reset to Default**: Instantly revert back to the default `.env` token with one click.
+- **TMDB Read Access Token**: Store custom TMDB token in browser `localStorage`, test connection live, or reset to default.
+- **Bitsearch API Key**: Save your Bitsearch API Key to search and fetch torrent magnet links on detail pages.
+- **Show / Hide Key Toggle**: Easily inspect or mask your secret API keys.
+- **Reset to Default**: Instantly revert back to default configuration with one click.
 
 ---
 
