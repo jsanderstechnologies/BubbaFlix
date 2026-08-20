@@ -12,6 +12,12 @@ export default defineConfig({
         secure: false,
         rewrite: (path) => path.replace(/^\/api\/bitsearch/, '/api'),
       },
+      '/api/torrent': {
+        target: 'https://apibay.org',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/torrent/, '/q.php'),
+      },
     },
   },
 })
