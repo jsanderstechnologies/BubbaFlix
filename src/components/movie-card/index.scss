@@ -1,17 +1,27 @@
 @import "../../mixins.scss";
 .movieCard {
-	width: calc(50% - 5px);
+	width: calc(33.333% - 8px);
 	margin-bottom: 25px;
 	cursor: pointer;
 	flex-shrink: 0;
 	border-radius: 12px;
 	padding: 4px;
 	transition: transform 0.2s ease, box-shadow 0.2s ease, outline 0.2s ease;
+
+	@include sm {
+		width: calc(25% - 10px);
+	}
 	@include md {
-		width: calc(25% - 15px);
+		width: calc(20% - 12px);
 	}
 	@include lg {
-		width: calc(20% - 16px);
+		width: calc(16.666% - 14px);
+	}
+	@include xl {
+		width: calc(14.285% - 15px);
+	}
+	@include xxl {
+		width: calc(12.5% - 16px);
 	}
 
 	&:focus,
@@ -28,7 +38,7 @@
 		aspect-ratio: 1 / 1.5;
 		background-size: cover;
 		background-position: center;
-		margin-bottom: 30px;
+		margin-bottom: 25px;
 		display: flex;
 		align-items: flex-end;
 		justify-content: space-between;
@@ -50,15 +60,15 @@
 			}
 		}
 		.circleRating {
-			width: 40px;
-			height: 40px;
+			width: 36px;
+			height: 36px;
 			position: relative;
-			top: 30px;
+			top: 25px;
 			background-color: white;
 			flex-shrink: 0;
 			@include md {
-				width: 50px;
-				height: 50px;
+				width: 44px;
+				height: 44px;
 			}
 		}
 		.cardCheckmark {
@@ -85,16 +95,16 @@
 		display: flex;
 		flex-direction: column;
 		.title {
-			font-size: 16px;
-			margin-bottom: 10px;
-			line-height: 24px;
+			font-size: 14px;
+			margin-bottom: 6px;
+			line-height: 20px;
 			@include ellipsis(1);
 			@include md {
-				font-size: 20px;
+				font-size: 16px;
 			}
 		}
 		.date {
-			font-size: 14px;
+			font-size: 12px;
 			opacity: 0.5;
 		}
 	}
