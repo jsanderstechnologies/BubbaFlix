@@ -14,6 +14,7 @@ import Header from "./components/header";
 import Footer from "./components/footer";
 
 import { getSavedTheme, applyTheme } from "./utils/theme";
+import { initDpadNavigation } from "./utils/dpadNavigation";
 
 const App = () => {
 	const dispatch = useDispatch();
@@ -23,6 +24,10 @@ const App = () => {
 		const currentTheme = getSavedTheme();
 		applyTheme(currentTheme);
 		fetchApiConfig();
+		const cleanupDpad = initDpadNavigation();
+		return () => {
+			if (cleanupDpad) cleanupDpad();
+		};
 	}, []);
 
 	const fetchApiConfig = () => {

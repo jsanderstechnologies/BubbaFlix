@@ -20,12 +20,21 @@ const MovieCard = ({ data, fromSearch, mediaType }) => {
 		? posterBase + data.poster_path
 		: PosterFallback;
 
+	const handleSelect = () => {
+		navigate(`/${data.media_type || mediaType}/${data.id}`);
+	};
+
 	return (
 		<div
 			className="movieCard"
-			onClick={() =>
-				navigate(`/${data.media_type || mediaType}/${data.id}`)
-			}
+			tabIndex="0"
+			onClick={handleSelect}
+			onKeyDown={(e) => {
+				if (e.key === "Enter" || e.key === " ") {
+					e.preventDefault();
+					handleSelect();
+				}
+			}}
 		>
 			<div className="posterBlock">
 				<Img className="posterImg" src={posterUrl} />

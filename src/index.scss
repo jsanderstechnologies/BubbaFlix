@@ -34,6 +34,26 @@ body {
   display: none;
 }
 
+/* D-Pad / Smart TV Remote Focus Ring & Highlighting */
+:focus,
+:focus-visible {
+  outline: 3px solid var(--pink) !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 20px var(--pink) !important;
+  border-radius: 8px;
+  z-index: 50 !important;
+}
+
+.movieCard:focus,
+.movieCard:focus-visible {
+  transform: scale(1.06);
+  transition: transform 0.2s ease, outline 0.2s ease;
+  .posterBlock {
+    border-radius: 12px;
+    overflow: hidden;
+  }
+}
+
 .skeleton {
   position: relative;
   overflow: hidden;
