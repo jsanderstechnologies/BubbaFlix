@@ -4,7 +4,8 @@ import ContentWrapper from "../../components/content-wrapper";
 import { fetchDataFromAPI, getActiveTmdbToken } from "../../utils/api";
 import { getBitsearchApiKey } from "../../utils/bitsearch";
 import { getApiConfiguration } from "../../store/homeSlice";
-import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders } from "react-icons/fi";
+import { THEMES, getSavedTheme, applyTheme } from "../../utils/theme";
+import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun } from "react-icons/fi";
 import "./index.scss";
 
 const ALL_RESOLUTIONS = [
@@ -22,6 +23,9 @@ const ALL_CODECS = [
 ];
 
 const SettingsPage = () => {
+  // Theme State
+  const [activeTheme, setActiveTheme] = useState("dark-red");
+
   // TMDB Key State
   const [token, setToken] = useState("");
   const [showToken, setShowToken] = useState(false);
@@ -43,6 +47,10 @@ const SettingsPage = () => {
   const dispatch = useDispatch();
 
   useEffect(() => {
+    // Theme
+    const currentTheme = getSavedTheme();
+    setActiveTheme(currentTheme);
+
     // TMDB
     const savedToken = localStorage.getItem("tmdb_token");
     const active = getActiveTmdbToken();
@@ -60,6 +68,11 @@ const SettingsPage = () => {
     if (savedRes) setSelectedResolutions(JSON.parse(savedRes));
     if (savedCodecs) setSelectedCodecs(JSON.parse(savedCodecs));
   }, []);
+
+  const handleSelectTheme = (themeId) => {
+    setActiveTheme(themeId);
+    applyTheme(themeId);
+  };
 
   const refreshConfig = async () => {
     try {
@@ -190,8 +203,69 @@ const SettingsPage = () => {
               <FiKey className="icon" /> API & System Settings
             </h1>
             <p className="subtitle">
-              Manage your TMDB & Bitsearch API keys, resolution preferences, and codec filters.
+              Manage color themes, API keys, resolution preferences, and codec filters.
             </p>
+          </div>
+
+          {/* Color Theme Selector Card */}
+          <div className="settingsCard">
+            <div className="cardHeader">
+              <h2><FiSun style={{ marginRight: 8 }} /> Application Color Theme</h2>
+              <span className="badge custom">
+                {THEMES.find((t) => t.id === activeTheme)?.name || "Active"}
+              </span>
+            </div>
+
+            <p className="description">
+              Select your preferred color theme for BubbaFlix, including Dark Red (Netflix Style).
+            </p>
+
+            <div className="themeGrid">
+              {THEMES.map((theme) => (
+                <div
+                  key={theme.id}
+                  className={`themeCard ${activeTheme === theme.id ? "active" : ""}`}
+                  onClick={() => handleSelectTheme(theme.id)}
+                >
+                  <div
+                    className="themePreview"
+                    style={{
+                      background: theme.bg,
+                      borderColor: activeTheme === theme.id ? theme.primary : "rgba(255,255,255,0.1)",
+                    }}
+                  >
+                    <div
+                      className="previewHeader"
+                      style={{ background: theme.bg2 }}
+                    >
+                      <div
+                        className="previewBadge"
+                        style={{ background: theme.gradient }}
+                      />
+                    </div>
+                    <div className="previewBody">
+                      <div
+                        className="previewDot"
+                        style={{ background: theme.primary }}
+                      />
+                      <div
+                        className="previewDot"
+                        style={{ background: theme.secondary }}
+                      />
+                    </div>
+                  </div>
+                  <div className="themeInfo">
+                    <span className="themeName">{theme.name}</span>
+                    <span className="themeDesc">{theme.description}</span>
+                  </div>
+                  {activeTheme === theme.id && (
+                    <div className="activeCheck">
+                      <FiCheckCircle />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* TMDB API Card */}

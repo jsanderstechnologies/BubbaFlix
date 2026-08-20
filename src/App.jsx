@@ -13,11 +13,15 @@ import Page404 from "./pages/404-page";
 import Header from "./components/header";
 import Footer from "./components/footer";
 
+import { getSavedTheme, applyTheme } from "./utils/theme";
+
 const App = () => {
 	const dispatch = useDispatch();
 	const { url } = useSelector((state) => state.home);
 
 	useEffect(() => {
+		const currentTheme = getSavedTheme();
+		applyTheme(currentTheme);
 		fetchApiConfig();
 	}, []);
 
