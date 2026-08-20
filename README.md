@@ -14,6 +14,7 @@ BubbaFlix features automatic content filtering for **English-only live-action mo
 - ⚡ **Optimized Performance**: Built with Vite, lazy-loading image components, and infinite scrolling.
 - 🎬 **Video Trailer Modal**: Watch official movie & show trailers powered by React Player.
 - 🐳 **Docker Ready**: Multi-stage production Docker build served via lightweight Nginx with SPA routing support.
+- 🚢 **Portainer Compatible**: Full deployment support via Portainer Stacks, Repository deployment, and GHCR images.
 - 🤖 **GitHub Actions CI/CD**: Automatic Docker image builds pushed to GitHub Container Registry (`ghcr.io`).
 - 📱 **PWA & Container App Store Manifest**: Includes `manifest.json` for homelab app managers (Portainer, Cosmos, CasaOS, Unraid) and PWA desktop/mobile installation.
 - 📱 **Fully Responsive**: Sleek dark UI optimized for desktop, tablets, mobile, and TV browsers.
@@ -96,13 +97,55 @@ To stop the container:
 docker compose down
 ```
 
-### Option 2: Pull & Run from GitHub Container Registry (GHCR)
+---
+
+### Option 2: Deploying via Portainer 🚢
+
+#### Method A: Portainer Stack (Direct GitHub Repository - Recommended)
+1. Open your **Portainer** dashboard.
+2. Go to **Stacks** > **+ Add stack**.
+3. Name your stack (e.g., `bubbaflix`).
+4. Under **Build method**, select **Repository**:
+   - **Repository URL**: `https://github.com/jsanderstechnologies/BubbaFlix`
+   - **Repository reference**: `refs/heads/master`
+   - **Compose path**: `docker-compose.yml`
+5. Click **Deploy the stack**.
+6. Access BubbaFlix at **`http://<your-server-ip>:3000`**.
+
+#### Method B: Portainer Stack (Web Editor)
+1. In Portainer, go to **Stacks** > **+ Add stack**.
+2. Select **Web editor** and paste:
+   ```yaml
+   version: '3.8'
+   services:
+     bubbaflix:
+       image: ghcr.io/jsanderstechnologies/bubbaflix:latest
+       container_name: bubbaflix-app
+       ports:
+         - "3000:80"
+       restart: unless-stopped
+   ```
+3. Click **Deploy the stack**.
+
+#### Method C: Portainer Container (Pre-built Image)
+1. Go to **Containers** > **+ Add container**.
+2. Set Name: `bubbaflix`.
+3. Set Image: `ghcr.io/jsanderstechnologies/bubbaflix:latest`.
+4. Under **Port mapping**, click **+ publish a new network port**:
+   - Host: `3000` | Container: `80`
+5. Click **Deploy the container**.
+
+---
+
+### Option 3: Pull & Run from GitHub Container Registry (GHCR)
 
 ```bash
 docker run -d -p 3000:80 --name bubbaflix ghcr.io/jsanderstechnologies/bubbaflix:latest
 ```
 
-### Option 3: Build & Run directly from GitHub URL
+---
+
+### Option 4: Build & Run directly from GitHub URL
 
 ```bash
 docker build -t bubbaflix https://github.com/jsanderstechnologies/BubbaFlix.git#master
