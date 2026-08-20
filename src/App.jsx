@@ -35,9 +35,9 @@ const App = () => {
 			console.log(res);
 
 			const config_url = {
-				backdrop: res?.images?.secure_base_url + "original",
-				profile: res?.images?.secure_base_url + "original",
-				poster: res?.images?.secure_base_url + "original",
+				backdrop: res?.images?.secure_base_url + "w1280",
+				poster: res?.images?.secure_base_url + "w500",
+				profile: res?.images?.secure_base_url + "w185",
 			};
 
 			dispatch(getApiConfiguration(config_url));

@@ -55,13 +55,20 @@
 		}
 		.left {
 			flex-shrink: 0;
+			width: 100%;
+			max-width: 280px;
+			margin: 0 auto;
+
+			@include md {
+				max-width: 350px;
+				margin: 0;
+			}
+
 			.posterImg {
 				width: 100%;
 				display: block;
 				border-radius: 12px;
-				@include md {
-					max-width: 350px;
-				}
+				object-fit: cover;
 			}
 		}
 		.right {
