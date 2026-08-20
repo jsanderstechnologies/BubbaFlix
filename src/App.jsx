@@ -8,6 +8,7 @@ import HomePage from "./pages/home-page";
 import DetailsPage from "./pages/details-page";
 import SearchResult from "./pages/search-result";
 import ExplorePage from "./pages/explore-page";
+import SettingsPage from "./pages/settings-page";
 import Page404 from "./pages/404-page";
 import Header from "./components/header";
 import Footer from "./components/footer";
@@ -25,9 +26,9 @@ const App = () => {
 			console.log(res);
 
 			const config_url = {
-				backdrop: res.images.secure_base_url + "original",
-				profile: res.images.secure_base_url + "original",
-				poster: res.images.secure_base_url + "original",
+				backdrop: res?.images?.secure_base_url + "original",
+				profile: res?.images?.secure_base_url + "original",
+				poster: res?.images?.secure_base_url + "original",
 			};
 
 			dispatch(getApiConfiguration(config_url));
@@ -39,6 +40,7 @@ const App = () => {
 			<Header />
 			<Routes>
 				<Route path="/" element={<HomePage />} />
+				<Route path="/settings" element={<SettingsPage />} />
 				<Route path="/:mediaType/:id" element={<DetailsPage />} />
 				<Route path="/search/:query" element={<SearchResult />} />
 				<Route path="/explore/:mediaType" element={<ExplorePage />} />

@@ -5,6 +5,7 @@ import { HiOutlineSearch } from "react-icons/hi";
 import { SlMenu } from "react-icons/sl";
 import { VscChromeClose } from "react-icons/vsc";
 import { useNavigate, useLocation } from "react-router-dom";
+import { FiSettings } from "react-icons/fi";
 import ContentWrapper from "../content-wrapper";
 import logo from "../../assets/main-logo.png";
 
@@ -63,8 +64,10 @@ const Header = () => {
 	const handleNavigation = (navigationType) => {
 		if (navigationType === "movies") {
 			navigate("/explore/movie");
-		} else {
+		} else if (navigationType === "tvShows") {
 			navigate("/explore/tv");
+		} else if (navigationType === "settings") {
+			navigate("/settings");
 		}
 		setMobileMenu(false);
 	};
@@ -88,6 +91,13 @@ const Header = () => {
 						onClick={() => handleNavigation("tvShows")}
 					>
 						TV Shows
+					</li>
+					<li
+						className="menuItem"
+						onClick={() => handleNavigation("settings")}
+						title="Settings"
+					>
+						<FiSettings />
 					</li>
 					<li className="menuItem">
 						<HiOutlineSearch

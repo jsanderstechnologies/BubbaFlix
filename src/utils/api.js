@@ -2,10 +2,12 @@ import axios from "axios";
 
 const BASE_URL = "https://api.themoviedb.org/3";
 
-const TMDB_TOKEN = import.meta.env.VITE_APP_TMDB_KEY;
-
-const headers = {
-  Authorization: "bearer " + TMDB_TOKEN,
+export const getActiveTmdbToken = () => {
+  const customToken = typeof window !== "undefined" ? localStorage.getItem("tmdb_token") : null;
+  if (customToken && customToken.trim().length > 0) {
+    return customToken.trim();
+  }
+  return import.meta.env.VITE_APP_TMDB_KEY || "";
 };
 
 // Helper function to filter out non-English content and Anime/Animation
@@ -41,6 +43,11 @@ const isEnglishAndNotAnime = (item) => {
 
 export const fetchDataFromAPI = async (url, params) => {
   try {
+    const activeToken = getActiveTmdbToken();
+    const headers = {
+      Authorization: "bearer " + activeToken,
+    };
+
     const customParams = { ...params };
 
     // Pre-filter on TMDB discover endpoints
