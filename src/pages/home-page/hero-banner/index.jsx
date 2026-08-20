@@ -17,10 +17,13 @@ const HeroBanner = () => {
 	console.log("data", data);
 
 	useEffect(() => {
-		const img =
-			url.backdrop +
-			data?.results?.[Math.floor(Math.random() * 20)]?.backdrop_path;
-		setBackgroundImg(img);
+		if (data?.results?.length > 0) {
+			const randomIndex = Math.floor(Math.random() * data.results.length);
+			const bgPath = data.results[randomIndex]?.backdrop_path;
+			if (bgPath && url.backdrop) {
+				setBackgroundImg(url.backdrop + bgPath);
+			}
+		}
 	}, [data, url.backdrop]);
 
 	const searchQuery = (e) => {
