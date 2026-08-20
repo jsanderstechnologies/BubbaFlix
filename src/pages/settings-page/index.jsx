@@ -42,6 +42,7 @@ const SettingsPage = () => {
   // Stream Resolution & Codec Filter State
   const [selectedResolutions, setSelectedResolutions] = useState(["2160p", "1080p", "720p", "480p"]);
   const [selectedCodecs, setSelectedCodecs] = useState(["x265", "x264", "av1", "xvid"]);
+  const [excludeLowQuality, setExcludeLowQuality] = useState(true);
   const [filterStatus, setFilterStatus] = useState(null);
 
   const dispatch = useDispatch();
@@ -65,8 +66,10 @@ const SettingsPage = () => {
     // Stream Filters
     const savedRes = localStorage.getItem("stream_resolutions");
     const savedCodecs = localStorage.getItem("stream_codecs");
+    const savedExcludeLow = localStorage.getItem("stream_exclude_low_quality");
     if (savedRes) setSelectedResolutions(JSON.parse(savedRes));
     if (savedCodecs) setSelectedCodecs(JSON.parse(savedCodecs));
+    if (savedExcludeLow !== null) setExcludeLowQuality(JSON.parse(savedExcludeLow));
   }, []);
 
   const handleSelectTheme = (themeId) => {
@@ -160,9 +163,10 @@ const SettingsPage = () => {
     e.preventDefault();
     localStorage.setItem("stream_resolutions", JSON.stringify(selectedResolutions));
     localStorage.setItem("stream_codecs", JSON.stringify(selectedCodecs));
+    localStorage.setItem("stream_exclude_low_quality", JSON.stringify(excludeLowQuality));
     setFilterStatus({
       type: "success",
-      text: "Stream resolution and codec preferences saved successfully!",
+      text: "Stream resolution, codec, and CAM/HDTS exclusion preferences saved!",
     });
   };
 
@@ -404,7 +408,7 @@ const SettingsPage = () => {
             </div>
 
             <p className="description">
-              Select which video resolutions and audio/video codecs to return when searching Available Streams.
+              Select which video resolutions, codecs, and release qualities to return when searching Available Streams.
             </p>
 
             <form onSubmit={handleSaveStreamFilters} className="tokenForm">
@@ -437,6 +441,20 @@ const SettingsPage = () => {
                       <span>{codec.label}</span>
                     </label>
                   ))}
+                </div>
+              </div>
+
+              <div className="filterGroup">
+                <label className="groupLabel">Quality Exclusions</label>
+                <div className="checkboxGrid">
+                  <label className="checkboxOption">
+                    <input
+                      type="checkbox"
+                      checked={excludeLowQuality}
+                      onChange={(e) => setExcludeLowQuality(e.target.checked)}
+                    />
+                    <span>Exclude CAM, Telesync (HDTS), & TC Videos</span>
+                  </label>
                 </div>
               </div>
 

@@ -9,14 +9,38 @@ export const getBitsearchApiKey = () => {
 
 export const getStreamPreferences = () => {
   if (typeof window === "undefined") {
-    return { resolutions: ["2160p", "1080p", "720p", "480p"], codecs: ["x265", "x264", "av1", "xvid"] };
+    return {
+      resolutions: ["2160p", "1080p", "720p", "480p"],
+      codecs: ["x265", "x264", "av1", "xvid"],
+      excludeLowQuality: true,
+    };
   }
   const savedRes = localStorage.getItem("stream_resolutions");
   const savedCodecs = localStorage.getItem("stream_codecs");
+  const savedExcludeLow = localStorage.getItem("stream_exclude_low_quality");
   return {
     resolutions: savedRes ? JSON.parse(savedRes) : ["2160p", "1080p", "720p", "480p"],
     codecs: savedCodecs ? JSON.parse(savedCodecs) : ["x265", "x264", "av1", "xvid"],
+    excludeLowQuality: savedExcludeLow !== null ? JSON.parse(savedExcludeLow) : true,
   };
+};
+
+export const isLowQualityCamOrTS = (titleStr) => {
+  if (!titleStr) return false;
+  const t = titleStr.toLowerCase();
+
+  return (
+    t.includes("hdcam") ||
+    t.includes("camrip") ||
+    t.includes("telesync") ||
+    t.includes("telecine") ||
+    t.includes("hdts") ||
+    t.includes("hdtc") ||
+    /\b(cam|ts|tc)\b/i.test(t) ||
+    /\.(cam|ts|tc)\./i.test(t) ||
+    /-(cam|ts|tc)\b/i.test(t) ||
+    /\b(cam|ts|tc)-/i.test(t)
+  );
 };
 
 const detectResolution = (titleStr) => {
@@ -38,19 +62,28 @@ const detectCodec = (titleStr) => {
 };
 
 const filterByPreferences = (results) => {
-  const { resolutions, codecs } = getStreamPreferences();
-
   if (!results || results.length === 0) return [];
 
-  // If user selected all or empty, return unfiltered results
+  const { resolutions, codecs, excludeLowQuality } = getStreamPreferences();
+
+  // 1. Filter out CAM, HDCAM, Telesync, HDTS, TC videos if excludeLowQuality is true
+  let pool = results;
+  if (excludeLowQuality) {
+    const cleanPool = results.filter((item) => !isLowQualityCamOrTS(item.title));
+    if (cleanPool.length > 0) {
+      pool = cleanPool;
+    }
+  }
+
+  // 2. Filter by user resolution and codec selections
   const resActive = resolutions && resolutions.length > 0 && resolutions.length < 4;
   const codecActive = codecs && codecs.length > 0 && codecs.length < 4;
 
   if (!resActive && !codecActive) {
-    return results;
+    return pool;
   }
 
-  const filtered = results.filter((item) => {
+  const filtered = pool.filter((item) => {
     const res = detectResolution(item.title);
     const cod = detectCodec(item.title);
 
@@ -60,7 +93,7 @@ const filterByPreferences = (results) => {
     return resMatch && codMatch;
   });
 
-  return filtered.length > 0 ? filtered : results;
+  return filtered.length > 0 ? filtered : pool;
 };
 
 const formatSize = (bytes) => {
