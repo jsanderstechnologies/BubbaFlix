@@ -1,13 +1,14 @@
 import axios from "axios";
 
 const BASE_URL = "https://api.themoviedb.org/3";
+const DEFAULT_TMDB_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmYjM3ODM3YzJiMDlkNzEyMDIwMDIxZjc0NGI5ZTQwNyIsInN1YiI6IjY0NjNlNzE5ZTNmYTJmMDEyNDQ3ODk1NCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.3Y0VloCdPlprLy-OMZQmqtZd4_Ti9GDfHo4SZXh3erU";
 
 export const getActiveTmdbToken = () => {
   const customToken = typeof window !== "undefined" ? localStorage.getItem("tmdb_token") : null;
   if (customToken && customToken.trim().length > 0) {
     return customToken.trim();
   }
-  return import.meta.env.VITE_APP_TMDB_KEY || "";
+  return import.meta.env.VITE_APP_TMDB_KEY || DEFAULT_TMDB_TOKEN;
 };
 
 // Helper function to filter out non-English content and Anime/Animation
@@ -67,7 +68,7 @@ export const fetchDataFromAPI = async (url, params) => {
 
     return data;
   } catch (e) {
-    console.log(e);
+    console.error("[TMDB API Request Failed]:", e.message || e);
     return e;
   }
 };

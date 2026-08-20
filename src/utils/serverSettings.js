@@ -16,7 +16,9 @@ export const fetchServerSettings = async () => {
       if (s.simklToken) localStorage.setItem("simkl_access_token", s.simklToken);
       if (s.premiumizeKey) localStorage.setItem("premiumize_api_key", s.premiumizeKey);
       if (s.groqKey) localStorage.setItem("groq_api_key", s.groqKey);
-      if (s.tmdbToken) localStorage.setItem("tmdb_token", s.tmdbToken);
+      if (s.tmdbToken && s.tmdbToken.trim().length > 0) {
+        localStorage.setItem("tmdb_token", s.tmdbToken.trim());
+      }
       if (s.bitsearchKey) localStorage.setItem("bitsearch_api_key", s.bitsearchKey);
       if (s.stream_resolutions) localStorage.setItem("stream_resolutions", JSON.stringify(s.stream_resolutions));
       if (s.stream_codecs) localStorage.setItem("stream_codecs", JSON.stringify(s.stream_codecs));

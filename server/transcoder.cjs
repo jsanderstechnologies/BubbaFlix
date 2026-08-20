@@ -9,6 +9,8 @@ const SETTINGS_FILE = path.join(__dirname, "settings.json");
 
 app.use(express.json());
 
+const DEFAULT_TMDB_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmYjM3ODM3YzJiMDlkNzEyMDIwMDIxZjc0NGI5ZTQwNyIsInN1YiI6IjY0NjNlNzE5ZTNmYTJmMDEyNDQ3ODk1NCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.3Y0VloCdPlprLy-OMZQmqtZd4_Ti9GDfHo4SZXh3erU";
+
 // Default centralized backend server settings schema
 const DEFAULT_SETTINGS = {
   theme: "dark-red",
@@ -16,7 +18,7 @@ const DEFAULT_SETTINGS = {
   simklToken: "",
   premiumizeKey: "",
   groqKey: "",
-  tmdbToken: "",
+  tmdbToken: DEFAULT_TMDB_KEY,
   bitsearchKey: "",
   stream_resolutions: ["2160p", "1080p", "720p", "480p"],
   stream_codecs: ["x265", "x264", "av1", "xvid"],
@@ -28,7 +30,11 @@ const loadServerSettings = () => {
   try {
     if (fs.existsSync(SETTINGS_FILE)) {
       const data = fs.readFileSync(SETTINGS_FILE, "utf8");
-      return { ...DEFAULT_SETTINGS, ...JSON.parse(data) };
+      const loaded = JSON.parse(data);
+      if (!loaded.tmdbToken || loaded.tmdbToken.trim() === "") {
+        loaded.tmdbToken = DEFAULT_TMDB_KEY;
+      }
+      return { ...DEFAULT_SETTINGS, ...loaded };
     }
   } catch (err) {
     console.error("[Backend Settings Storage Error]: Failed to read settings.json", err.message);
@@ -62,6 +68,9 @@ app.get("/api/settings", (req, res) => {
 app.post("/api/settings", (req, res) => {
   const currentSettings = loadServerSettings();
   const updatedSettings = { ...currentSettings, ...(req.body || {}) };
+  if (!updatedSettings.tmdbToken || updatedSettings.tmdbToken.trim() === "") {
+    updatedSettings.tmdbToken = DEFAULT_TMDB_KEY;
+  }
   const saved = saveServerSettings(updatedSettings);
 
   if (saved) {
