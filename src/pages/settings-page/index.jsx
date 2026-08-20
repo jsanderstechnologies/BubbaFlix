@@ -4,9 +4,10 @@ import ContentWrapper from "../../components/content-wrapper";
 import { fetchDataFromAPI, getActiveTmdbToken } from "../../utils/api";
 import { getBitsearchApiKey } from "../../utils/bitsearch";
 import { getGroqApiKey } from "../../utils/groqFilter";
+import { getPremiumizeApiKey, testPremiumizeAccount } from "../../utils/premiumize";
 import { getApiConfiguration } from "../../store/homeSlice";
 import { THEMES, getSavedTheme, applyTheme } from "../../utils/theme";
-import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu } from "react-icons/fi";
+import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning } from "react-icons/fi";
 import "./index.scss";
 
 const ALL_RESOLUTIONS = [
@@ -33,6 +34,13 @@ const SettingsPage = () => {
   const [statusMessage, setStatusMessage] = useState(null);
   const [testing, setTesting] = useState(false);
   const [isCustom, setIsCustom] = useState(false);
+
+  // Premiumize Key State
+  const [premiumizeKey, setPremiumizeKey] = useState("");
+  const [showPremiumizeKey, setShowPremiumizeKey] = useState(false);
+  const [premiumizeStatus, setPremiumizeStatus] = useState(null);
+  const [hasPremiumizeCustom, setHasPremiumizeCustom] = useState(false);
+  const [testingPremiumize, setTestingPremiumize] = useState(false);
 
   // Bitsearch Key State
   const [bitsearchKey, setBitsearchKey] = useState("");
@@ -64,6 +72,11 @@ const SettingsPage = () => {
     const active = getActiveTmdbToken();
     setToken(savedToken || active || "");
     setIsCustom(!!savedToken);
+
+    // Premiumize
+    const savedPrem = getPremiumizeApiKey();
+    setPremiumizeKey(savedPrem || "");
+    setHasPremiumizeCustom(!!savedPrem);
 
     // Bitsearch
     const savedBitsearch = getBitsearchApiKey();
@@ -132,6 +145,34 @@ const SettingsPage = () => {
       type: "info",
       text: "Custom TMDB token cleared. Reverted to default application token.",
     });
+  };
+
+  const handleSavePremiumize = async (e) => {
+    e.preventDefault();
+    const cleanKey = premiumizeKey.trim();
+    if (!cleanKey) {
+      setPremiumizeStatus({ type: "error", text: "Premiumize API Key cannot be empty." });
+      return;
+    }
+    localStorage.setItem("premiumize_api_key", cleanKey);
+    setHasPremiumizeCustom(true);
+
+    setTestingPremiumize(true);
+    const testRes = await testPremiumizeAccount(cleanKey);
+    setTestingPremiumize(false);
+
+    if (testRes.success) {
+      setPremiumizeStatus({ type: "success", text: testRes.message });
+    } else {
+      setPremiumizeStatus({ type: "error", text: testRes.message });
+    }
+  };
+
+  const handleClearPremiumize = () => {
+    localStorage.removeItem("premiumize_api_key");
+    setPremiumizeKey("");
+    setHasPremiumizeCustom(false);
+    setPremiumizeStatus({ type: "info", text: "Premiumize API Key cleared." });
   };
 
   const handleSaveBitsearch = (e) => {
@@ -244,7 +285,7 @@ const SettingsPage = () => {
               <FiKey className="icon" /> API & System Settings
             </h1>
             <p className="subtitle">
-              Manage color themes, API keys, Groq AI filtering, resolution preferences, and codec filters.
+              Manage Premiumize streaming, color themes, API keys, Groq AI filtering, resolution preferences, and codec filters.
             </p>
           </div>
 
@@ -307,6 +348,66 @@ const SettingsPage = () => {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Premiumize.me API Card */}
+          <div className="settingsCard">
+            <div className="cardHeader">
+              <h2><FiCloudLightning style={{ marginRight: 8 }} /> Premiumize.me Streaming API Key</h2>
+              <span className={`badge ${hasPremiumizeCustom ? "custom" : "default"}`}>
+                {hasPremiumizeCustom ? "Premiumize Stream Active" : "Key Required to Play Streams"}
+              </span>
+            </div>
+
+            <p className="description">
+              Required to instantly stream magnet torrent links directly inside the BubbaFlix video player without downloading.
+            </p>
+
+            <form onSubmit={handleSavePremiumize} className="tokenForm">
+              <div className="inputGroup">
+                <label htmlFor="premiumizeKey">PREMIUMIZE_API_KEY</label>
+                <div className="inputWrapper">
+                  <input
+                    id="premiumizeKey"
+                    type={showPremiumizeKey ? "text" : "password"}
+                    value={premiumizeKey}
+                    onChange={(e) => setPremiumizeKey(e.target.value)}
+                    placeholder="Enter your Premiumize.me API key..."
+                  />
+                  <button
+                    type="button"
+                    className="toggleVisibility"
+                    onClick={() => setShowPremiumizeKey(!showPremiumizeKey)}
+                    title={showPremiumizeKey ? "Hide Key" : "Show Key"}
+                  >
+                    {showPremiumizeKey ? <FiEyeOff /> : <FiEye />}
+                  </button>
+                </div>
+              </div>
+
+              {premiumizeStatus && (
+                <div className={`statusBanner ${premiumizeStatus.type}`}>
+                  {premiumizeStatus.type === "success" && <FiCheckCircle />}
+                  {premiumizeStatus.type === "error" && <FiXCircle />}
+                  <span>{premiumizeStatus.text}</span>
+                </div>
+              )}
+
+              <div className="buttonGroup">
+                <button type="submit" className="saveBtn" disabled={testingPremiumize}>
+                  <FiSave /> {testingPremiumize ? "Verifying..." : "Save Premiumize Key"}
+                </button>
+                {hasPremiumizeCustom && (
+                  <button
+                    type="button"
+                    className="clearBtn"
+                    onClick={handleClearPremiumize}
+                  >
+                    Clear Key
+                  </button>
+                )}
+              </div>
+            </form>
           </div>
 
           {/* Groq AI Key Card */}
@@ -574,6 +675,9 @@ const SettingsPage = () => {
           <div className="helpCard">
             <h3>How to get API Keys?</h3>
             <ol>
+              <li>
+                <strong>Premiumize.me Key</strong>: Log in at <a href="https://www.premiumize.me/" target="_blank" rel="noreferrer">Premiumize.me</a> &gt; Account &gt; API Key.
+              </li>
               <li>
                 <strong>TMDB API Token</strong>: Register at <a href="https://www.themoviedb.org/" target="_blank" rel="noreferrer">TMDB</a> &gt; Settings &gt; API &gt; API Read Access Token (v4).
               </li>

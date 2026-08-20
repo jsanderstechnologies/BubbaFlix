@@ -1,16 +1,24 @@
 /* eslint-disable react/prop-types */
 import { useState, useEffect } from "react";
 import { searchBitsearchMagnets } from "../../../utils/bitsearch";
+import { getDirectStreamUrl } from "../../../utils/premiumize";
 import ContentWrapper from "../../../components/content-wrapper";
 import Spinner from "../../../components/spinner";
-import { FiCopy, FiCheck, FiChevronDown, FiChevronUp, FiExternalLink } from "react-icons/fi";
+import VideoPlayerModal from "../../../components/video-player-modal";
+import { FiPlay, FiChevronDown, FiChevronUp, FiAlertCircle } from "react-icons/fi";
 import "./index.scss";
 
 const MagnetSection = ({ title, year, seasonNum, episodeNum, compact = false }) => {
   const [magnets, setMagnets] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [copiedIndex, setCopiedIndex] = useState(null);
+
+  // Streaming state
+  const [playingIndex, setPlayingIndex] = useState(null);
+  const [streamError, setStreamError] = useState(null);
+  const [showPlayer, setShowPlayer] = useState(false);
+  const [activeVideoUrl, setActiveVideoUrl] = useState("");
+  const [activeFilename, setActiveFilename] = useState("");
 
   useEffect(() => {
     if (title) {
@@ -25,12 +33,25 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, compact = false }) 
     setMagnets(results || []);
   };
 
-  const handleCopyMagnet = (magnet, index) => {
-    navigator.clipboard.writeText(magnet);
-    setCopiedIndex(index);
-    setTimeout(() => {
-      setCopiedIndex(null);
-    }, 2000);
+  const handlePlayStream = async (item, index) => {
+    setPlayingIndex(index);
+    setStreamError(null);
+
+    const { streamUrl, filename, error } = await getDirectStreamUrl(item.magnet);
+
+    setPlayingIndex(null);
+
+    if (error) {
+      setStreamError({ index, text: error });
+      setTimeout(() => setStreamError(null), 6000);
+      return;
+    }
+
+    if (streamUrl) {
+      setActiveVideoUrl(streamUrl);
+      setActiveFilename(filename || item.title);
+      setShowPlayer(true);
+    }
   };
 
   if (!loading && magnets.length === 0) {
@@ -70,26 +91,24 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, compact = false }) 
                       <span className="metaBadge seeds">🌱 {item.seeders} Seeds</span>
                       <span className="metaBadge leeches">🩸 {item.leechers} Leeches</span>
                     </div>
+                    {streamError && streamError.index === index && (
+                      <div className="streamErrorNotice">
+                        <FiAlertCircle /> <span>{streamError.text}</span>
+                      </div>
+                    )}
                   </div>
+
                   <div className="itemActions">
                     <button
-                      className={`actionBtn copy ${copiedIndex === index ? "copied" : ""}`}
-                      onClick={() => handleCopyMagnet(item.magnet, index)}
-                      title="Copy Magnet Link"
+                      className={`actionBtn play ${playingIndex === index ? "loading" : ""}`}
+                      onClick={() => handlePlayStream(item, index)}
+                      disabled={playingIndex === index}
+                      tabIndex="0"
+                      title="Stream Video via Premiumize"
                     >
-                      {copiedIndex === index ? <FiCheck /> : <FiCopy />}
-                      <span>{copiedIndex === index ? "Copied!" : "Copy"}</span>
+                      <FiPlay />
+                      <span>{playingIndex === index ? "Connecting..." : "Play Stream"}</span>
                     </button>
-                    <a
-                      href={item.magnet}
-                      className="actionBtn open"
-                      title="Open in Torrent Client"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      <FiExternalLink />
-                      <span>Open</span>
-                    </a>
                   </div>
                 </div>
               ))}
@@ -97,6 +116,15 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, compact = false }) 
           )}
         </div>
       )}
+
+      {/* Video Player Modal */}
+      <VideoPlayerModal
+        show={showPlayer}
+        setShow={setShowPlayer}
+        videoUrl={activeVideoUrl}
+        title={title}
+        filename={activeFilename}
+      />
     </div>
   );
 

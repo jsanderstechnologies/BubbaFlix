@@ -6,6 +6,12 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
+      '/api/premiumize': {
+        target: 'https://www.premiumize.me',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/premiumize/, '/api'),
+      },
       '/api/bitsearch': {
         target: 'https://bitsearch.to',
         changeOrigin: true,

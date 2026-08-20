@@ -46,7 +46,7 @@
         }
 
         .countBadge {
-          background: linear-gradient(98.37deg, #f89e00 0.99%, #da2f68 100%);
+          background: var(--gradient);
           color: white;
           font-size: 12px;
           font-weight: 600;
@@ -70,37 +70,6 @@
       padding: 20px 24px;
       border-top: 1px solid rgba(255, 255, 255, 0.08);
 
-      .apiKeyNotice {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        background-color: rgba(255, 152, 0, 0.1);
-        border: 1px solid rgba(255, 152, 0, 0.3);
-        color: #ffb74d;
-        padding: 10px 16px;
-        border-radius: 8px;
-        font-size: 13px;
-        margin-bottom: 20px;
-
-        .noticeIcon {
-          font-size: 16px;
-          flex-shrink: 0;
-        }
-
-        .settingsLink {
-          color: white;
-          text-decoration: underline;
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          font-weight: 600;
-
-          &:hover {
-            color: var(--pink);
-          }
-        }
-      }
-
       .loadingContainer {
         display: flex;
         flex-direction: column;
@@ -116,20 +85,6 @@
         text-align: center;
         color: rgba(255, 255, 255, 0.6);
         font-size: 14px;
-
-        .retryBtn {
-          margin-top: 10px;
-          background-color: rgba(255, 255, 255, 0.1);
-          color: white;
-          border: none;
-          padding: 6px 16px;
-          border-radius: 6px;
-          cursor: pointer;
-
-          &:hover {
-            background-color: rgba(255, 255, 255, 0.2);
-          }
-        }
       }
 
       .magnetList {
@@ -191,6 +146,15 @@
                 }
               }
             }
+
+            .streamErrorNotice {
+              display: flex;
+              align-items: center;
+              gap: 6px;
+              font-size: 12px;
+              color: #f44336;
+              margin-top: 4px;
+            }
           }
 
           .itemActions {
@@ -203,36 +167,26 @@
               display: flex;
               align-items: center;
               gap: 6px;
-              padding: 8px 14px;
-              border-radius: 6px;
+              padding: 8px 16px;
+              border-radius: 8px;
               font-size: 13px;
-              font-weight: 500;
+              font-weight: 600;
               cursor: pointer;
               border: none;
               text-decoration: none;
               transition: all 0.2s ease;
 
-              &.copy {
-                background-color: rgba(255, 255, 255, 0.1);
-                color: white;
-
-                &:hover {
-                  background-color: rgba(255, 255, 255, 0.2);
-                }
-
-                &.copied {
-                  background-color: rgba(76, 175, 80, 0.2);
-                  color: #81c784;
-                  border: 1px solid rgba(76, 175, 80, 0.4);
-                }
-              }
-
-              &.open {
-                background: linear-gradient(98.37deg, #f89e00 0.99%, #da2f68 100%);
+              &.play {
+                background: var(--gradient);
                 color: white;
 
                 &:hover {
                   opacity: 0.9;
+                }
+
+                &.loading {
+                  opacity: 0.6;
+                  cursor: wait;
                 }
               }
             }
