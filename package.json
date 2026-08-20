@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint src --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "server": "node server/transcoder.js"
+    "server": "node server/transcoder.cjs"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^1.9.1",
