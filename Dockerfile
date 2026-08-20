@@ -3,6 +3,10 @@ FROM node:18-alpine AS build
 
 WORKDIR /app
 
+# Optional build argument for TMDB key override
+ARG VITE_APP_TMDB_KEY
+ENV VITE_APP_TMDB_KEY=$VITE_APP_TMDB_KEY
+
 # Copy package files and install dependencies
 COPY package*.json ./
 RUN npm install
