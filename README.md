@@ -6,16 +6,20 @@
 
 BubbaFlix is a modern, high-performance movie and TV show streaming discovery app built with **React 18**, **Redux Toolkit**, **React Router v6**, **Vite**, **Express**, and integrated with **TMDB (The Movie Database)**, **Bitsearch**, **Premiumize.me**, **Groq AI**, and **SIMKL**.
 
-BubbaFlix features **Android TV & Smart TV D-Pad Spatial Navigation with Horizontal Boundary Locks**, **Device-Aware Stream Filtering**, **Centralized Backend Server Settings Storage**, **SIMKL Watch Status Synchronization**, **Client-Side TV Screen Zoom (50%–140%)**, and automatic **English-only Live-Action Filtering (No Anime/Animation)**.
+BubbaFlix features **Android TV & Smart TV D-Pad Spatial Navigation with Horizontal Boundary Locks**, **Direct Native Stream Handoff (No Transcoding)**, **Centralized Backend Server Settings Storage**, **SIMKL Watch Status Synchronization**, **Client-Side TV Screen Zoom (50%–140%)**, and automatic **English-only Live-Action Filtering (No Anime/Animation)**.
 
 ---
 
 ## 🌟 Key Features
 
+### 🍿 Direct Native Stream Handoff (Zero Transcoding Overhead)
+- **Direct Premiumize Media Handoff**: Clicking "Play Stream" resolves and hands off the direct, un-transcoded original media stream URL (`stream_link` / `location`) directly to native device players or the full-screen player modal.
+- **Zero Transcode Latency**: Completely eliminates backend transcoding overhead—video and audio streams play with zero buffering or server CPU load across all Smart TV and web client devices.
+
 ### 📺 Smart TV & Remote Control Spatial Navigation
 - **Native Smart TV Remote D-Pad Navigation**: Fully compatible with Android TV, Google TV, Firestick, Apple TV, LG webOS, Samsung Tizen, and TV browser D-Pad remotes (`Arrow Keys`, `OK / Select (KeyCodes 13, 23, 66)`, `Back (KeyCodes 4, 27, 10009, 461)`).
 - **Universal 3D "Bring Forward" Focus Effect**: All focusable elements (cards, buttons, inputs, navigation links) elevate forward (`transform: scale(1.14) translateY(-6px)`) with dynamic depth drop-shadows and vibrant active theme glows (`var(--pink)`).
-- **Strict Horizontal Boundary Locking**: Left and Right D-Pad arrow keys are locked within the active horizontal row/carousel container (`vertical diff <= 100px`), preventing focus from jumping into the Hero section or header bar unless the user explicitly presses **Up Arrow**.
+- **Strict Horizontal Boundary Locking**: Left and Right D-Pad arrow keys are locked within the active horizontal row/carousel container (`vertical diff <= 80px`), preventing focus from jumping into the Hero section or header bar unless the user explicitly presses **Up Arrow**.
 - **Auto-Centering Horizontal Carousels**: Smoothly scrolls horizontal poster rows to center the focused poster card automatically.
 - **Virtual Keyboard Lock on D-Pad Focus**: Input search bars stay locked (`readOnly`) when focused via remote control, opening OS virtual keyboards ONLY when explicitly selected.
 

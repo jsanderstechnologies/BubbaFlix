@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { FiArrowLeft } from "react-icons/fi";
 import "./index.scss";
 
-const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, transcodeUrl }) => {
+const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl }) => {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   const backBtnRef = useRef(null);
@@ -11,7 +11,7 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, transcodeUrl }) => 
 
   useEffect(() => {
     if (show) {
-      const targetUrl = transcodeUrl || rawUrl || videoUrl || "";
+      const targetUrl = rawUrl || videoUrl || "";
       setCurrentUrl(targetUrl);
 
       // Immediately focus video element or container for TV remote control
@@ -41,7 +41,7 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, transcodeUrl }) => 
         }
       }
     }
-  }, [show, videoUrl, rawUrl, transcodeUrl]);
+  }, [show, videoUrl, rawUrl]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {

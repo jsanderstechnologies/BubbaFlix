@@ -20,7 +20,6 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
   const [showPlayer, setShowPlayer] = useState(false);
   const [activeVideoUrl, setActiveVideoUrl] = useState("");
   const [activeRawUrl, setActiveRawUrl] = useState("");
-  const [activeTranscodeUrl, setActiveTranscodeUrl] = useState("");
   const [activeFilename, setActiveFilename] = useState("");
 
   useEffect(() => {
@@ -40,7 +39,7 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
     setPlayingIndex(index);
     setStreamError(null);
 
-    const { streamUrl, rawUrl, transcodeUrl, filename, error } = await getDirectStreamUrl(item.magnet);
+    const { streamUrl, rawUrl, filename, error } = await getDirectStreamUrl(item.magnet);
 
     setPlayingIndex(null);
 
@@ -50,10 +49,11 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
       return;
     }
 
-    if (streamUrl) {
-      setActiveVideoUrl(streamUrl);
-      setActiveRawUrl(rawUrl || streamUrl);
-      setActiveTranscodeUrl(transcodeUrl || "");
+    const targetStreamUrl = streamUrl || rawUrl;
+
+    if (targetStreamUrl) {
+      setActiveVideoUrl(targetStreamUrl);
+      setActiveRawUrl(targetStreamUrl);
       setActiveFilename(filename || item.title);
       setShowPlayer(true);
 
@@ -158,7 +158,6 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
         setShow={setShowPlayer}
         videoUrl={activeVideoUrl}
         rawUrl={activeRawUrl}
-        transcodeUrl={activeTranscodeUrl}
         title={title}
         filename={activeFilename}
       />

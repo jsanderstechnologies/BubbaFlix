@@ -68,17 +68,17 @@ export const getDirectStreamUrl = async (magnetLink) => {
   if (!apiKey) {
     return {
       streamUrl: null,
-      transcodeUrl: null,
+      rawUrl: null,
       error: "No Premiumize API Key configured on backend server or in settings.",
     };
   }
 
   if (!magnetLink) {
-    return { streamUrl: null, transcodeUrl: null, error: "Invalid stream magnet link." };
+    return { streamUrl: null, rawUrl: null, error: "Invalid stream magnet link." };
   }
 
   try {
-    console.log("[Premiumize API] Requesting direct stream for magnet...");
+    console.log("[Premiumize API] Requesting direct stream URL for magnet...");
     const baseUrl = getServerUrl();
     const response = await axios.post(
       `${baseUrl}/api/premiumize/transfer/directdl`,
@@ -95,8 +95,7 @@ export const getDirectStreamUrl = async (magnetLink) => {
     if (response.data?.status === "success") {
       const data = response.data;
 
-      let rawUrl = data.stream_link || data.location || null;
-      let transcodeUrl = data.transcode_link || null;
+      let directStreamLink = data.stream_link || data.link || data.location || null;
       let filename = data.filename || "Video Stream";
       let filesize = data.filesize || 0;
 
@@ -110,35 +109,33 @@ export const getDirectStreamUrl = async (magnetLink) => {
             path.endsWith(".avi") ||
             path.endsWith(".mov") ||
             path.endsWith(".webm") ||
-            path.endsWith(".m4v")
+            path.endsWith(".m4v") ||
+            path.endsWith(".ts")
           );
         });
 
         if (videoFiles.length > 0) {
           videoFiles.sort((a, b) => (b.size || 0) - (a.size || 0));
           const bestFile = videoFiles[0];
-          rawUrl = bestFile.stream_link || bestFile.link || rawUrl;
-          transcodeUrl = bestFile.transcode_link || transcodeUrl;
+          directStreamLink = bestFile.stream_link || bestFile.link || directStreamLink;
           filename = bestFile.path || bestFile.filename || filename;
           filesize = bestFile.size || filesize;
         }
       }
 
-      if (!rawUrl && !transcodeUrl) {
+      if (!directStreamLink) {
         return {
           streamUrl: null,
-          transcodeUrl: null,
+          rawUrl: null,
           error: "Torrent cached on Premiumize, but no playable video files were found.",
         };
       }
 
-      // Default to transcodeUrl if available, otherwise fallback to rawUrl
-      const primaryUrl = transcodeUrl || rawUrl;
+      console.log(`[Premiumize Direct Stream] Handing off direct stream URL: ${directStreamLink}`);
 
       return {
-        streamUrl: primaryUrl,
-        rawUrl: rawUrl,
-        transcodeUrl: transcodeUrl,
+        streamUrl: directStreamLink,
+        rawUrl: directStreamLink,
         filename,
         filesize,
         error: null,
@@ -146,7 +143,7 @@ export const getDirectStreamUrl = async (magnetLink) => {
     } else {
       return {
         streamUrl: null,
-        transcodeUrl: null,
+        rawUrl: null,
         error: response.data?.message || "Torrent is not yet cached or failed on Premiumize.",
       };
     }
@@ -154,7 +151,7 @@ export const getDirectStreamUrl = async (magnetLink) => {
     console.error("[Premiumize API Error]:", err.message);
     return {
       streamUrl: null,
-      transcodeUrl: null,
+      rawUrl: null,
       error: err.response?.data?.message || err.message || "Unable to reach Premiumize server.",
     };
   }

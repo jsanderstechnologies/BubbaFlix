@@ -7,13 +7,14 @@ This guide provides technical specifications, API endpoints, device-aware stream
 ## 📋 Table of Contents
 
 1. [Backend Server Architecture](#-backend-server-architecture)
-2. [Device-Aware Stream Filtering (Smart TV vs. Web Browser)](#-device-aware-stream-filtering-smart-tv-vs-web-browser)
-3. [Docker, Portainer, and CasaOS Environment Variables](#-docker-portainer-and-casaos-environment-variables)
-4. [Resolving Torrent Magnets to Stream URLs](#-resolving-torrent-magnets-to-stream-urls)
-5. [Centralized Server Settings API (`/api/settings`)](#-centralized-server-settings-api-apisettings)
-6. [SIMKL Watch Status Synchronization API](#-simkl-watch-status-synchronization-api)
-7. [Smart TV D-Pad Remote Control KeyCode Reference & Boundary Lock](#-smart-tv-d-pad-remote-control-keycode-reference--boundary-lock)
-8. [Native Video Player Code Examples](#-native-video-player-code-examples)
+2. [Direct Native Stream Handoff (No Transcoding)](#-direct-native-stream-handoff-no-transcoding)
+3. [Device-Aware Stream Filtering (Smart TV vs. Web Browser)](#-device-aware-stream-filtering-smart-tv-vs-web-browser)
+4. [Docker, Portainer, and CasaOS Environment Variables](#-docker-portainer-and-casaos-environment-variables)
+5. [Resolving Torrent Magnets to Stream URLs](#-resolving-torrent-magnets-to-stream-urls)
+6. [Centralized Server Settings API (`/api/settings`)](#-centralized-server-settings-api-apisettings)
+7. [SIMKL Watch Status Synchronization API](#-simkl-watch-status-synchronization-api)
+8. [Smart TV D-Pad Remote Control KeyCode Reference & Boundary Lock](#-smart-tv-d-pad-remote-control-keycode-reference--boundary-lock)
+9. [Native Video Player Code Examples](#-native-video-player-code-examples)
 
 ---
 
@@ -23,6 +24,12 @@ The BubbaFlix backend server runs on Express.js (default port: `3000` or custom 
 
 1. **Centralized Settings Storage**: Persists shared API keys and configuration across devices in `/app/server/settings.json`.
 2. **SIMKL Sync Proxy**: Proxies watch history tracking calls to SIMKL API.
+
+---
+
+## 🍿 Direct Native Stream Handoff (No Transcoding)
+
+BubbaFlix hands off direct, un-transcoded original media stream URLs (`stream_link` / `location`) from Premiumize straight to native device players and full-screen video player modals, bypassing all server transcoding and eliminating buffering latency.
 
 ---
 
@@ -115,8 +122,8 @@ Native Android TV, Google TV, Firestick, Apple TV, and Smart TV remote keycodes 
 | :--- | :--- | :--- | :--- |
 | **D-Pad Up** | `ArrowUp` | `19` / `38` | Spatial navigation up (Transitions between rows, Hero section, and Header) |
 | **D-Pad Down** | `ArrowDown` | `20` / `40` | Spatial navigation down (Transitions to lower rows) |
-| **D-Pad Left** | `ArrowLeft` | `21` / `37` | Spatial navigation left (Locked to same-row items, `vertical diff <= 100px`) |
-| **D-Pad Right** | `ArrowRight` | `22` / `39` | Spatial navigation right (Locked to same-row items, `vertical diff <= 100px`) |
+| **D-Pad Left** | `ArrowLeft` | `21` / `37` | Spatial navigation left (Locked to same-row items, `vertical diff <= 80px`) |
+| **D-Pad Right** | `ArrowRight` | `22` / `39` | Spatial navigation right (Locked to same-row items, `vertical diff <= 80px`) |
 | **Center / OK / Select** | `Enter` / `Select` | `13` / `23` / `66` | Launch poster, play stream, toggle play/pause |
 | **Back Button** | `Escape` / `Back` | `4` / `27` / `10009` / `461` | Close video player or return to previous page |
 
