@@ -33,7 +33,7 @@ export const getSavedZoom = () => {
 export const applyZoom = (scalePercent) => {
   if (typeof window === "undefined") return;
 
-  const validScale = Math.min(150, Math.max(75, scalePercent || 100));
+  const validScale = Math.min(140, Math.max(50, scalePercent || 100));
   localStorage.setItem("tv_zoom_scale", validScale.toString());
 
   const ratio = validScale / 100;

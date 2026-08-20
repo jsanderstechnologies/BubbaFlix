@@ -127,7 +127,7 @@ const SettingsPage = () => {
   };
 
   const handleZoomChange = (newLevel) => {
-    const validLevel = Math.min(150, Math.max(75, newLevel));
+    const validLevel = Math.min(140, Math.max(50, newLevel));
     setZoomLevel(validLevel);
     applyZoom(validLevel);
   };
@@ -436,8 +436,8 @@ const SettingsPage = () => {
                   <button
                     type="button"
                     className="zoomBtn"
-                    onClick={() => handleZoomChange(Math.max(75, zoomLevel - 5))}
-                    disabled={zoomLevel <= 75}
+                    onClick={() => handleZoomChange(Math.max(50, zoomLevel - 5))}
+                    disabled={zoomLevel <= 50}
                     tabIndex="0"
                   >
                     <FiMinus /> Zoom Out (-5%)
@@ -456,8 +456,8 @@ const SettingsPage = () => {
                   <button
                     type="button"
                     className="zoomBtn"
-                    onClick={() => handleZoomChange(Math.min(150, zoomLevel + 5))}
-                    disabled={zoomLevel >= 150}
+                    onClick={() => handleZoomChange(Math.min(140, zoomLevel + 5))}
+                    disabled={zoomLevel >= 140}
                     tabIndex="0"
                   >
                     <FiPlus /> Zoom In (+5%)
@@ -465,7 +465,7 @@ const SettingsPage = () => {
                 </div>
 
                 <div className="presetButtons">
-                  {[80, 90, 100, 110, 120, 130, 140].map((scale) => (
+                  {[50, 65, 80, 90, 100, 110, 120, 130, 140].map((scale) => (
                     <button
                       key={scale}
                       type="button"
