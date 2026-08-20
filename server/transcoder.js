@@ -21,18 +21,19 @@ app.get("/api/transcode", (req, res) => {
   }
 
   console.log(`====================================================`);
-  console.log(`[FFmpeg Transcoder Engine] [REQUEST] Incoming transcode request`);
+  console.log(`[FFmpeg Transcoder Engine] [REQUEST] Incoming transcode stream request`);
   console.log(`[FFmpeg Transcoder Engine] [TARGET URL] ${videoUrl}`);
 
-  // Set HTTP headers for MP4 video streaming
+  // Set HTTP headers for fragmented MP4 video streaming
   res.setHeader("Content-Type", "video/mp4");
   res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Expires", "0");
+  res.setHeader("Transfer-Encoding", "chunked");
 
   // Spawn FFmpeg process for real-time MP4 streaming with H.264 video and AAC stereo audio
   const ffmpegArgs = [
-    "-re",
+    "-headers", "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\r\n",
     "-i", videoUrl,
     "-c:v", "libx264",
     "-preset", "ultrafast",
@@ -44,7 +45,7 @@ app.get("/api/transcode", (req, res) => {
     "-b:a", "192k",
     "-ac", "2",
     "-f", "mp4",
-    "-movflags", "frag_keyframe+empty_moov",
+    "-movflags", "frag_keyframe+empty_moov+default_base_moof",
     "pipe:1"
   ];
 
