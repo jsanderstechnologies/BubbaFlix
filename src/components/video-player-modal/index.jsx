@@ -1,17 +1,16 @@
 /* eslint-disable react/prop-types */
 import { useState, useEffect, useRef } from "react";
-import { FiX, FiPlay } from "react-icons/fi";
+import { FiArrowLeft } from "react-icons/fi";
 import "./index.scss";
 
 const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, transcodeUrl, title, filename }) => {
   const videoRef = useRef(null);
+  const containerRef = useRef(null);
   const [currentUrl, setCurrentUrl] = useState("");
-  const [isTranscoding, setIsTranscoding] = useState(false);
 
   const getAutoStreamUrl = () => {
     // 1. If cloud transcode is ready, use cloud H.264+AAC web stream
     if (transcodeUrl) {
-      setIsTranscoding(false);
       return transcodeUrl;
     }
 
@@ -19,7 +18,7 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, transcodeUrl, title
     if (!source) return "";
 
     const name = (filename || title || source).toLowerCase();
-    // 2. Automatically detect if file requires FFmpeg backend transcoding (MKV, x265, HEVC, AC3, DTS, 5.1 surround sound)
+    // 2. Automatically detect if file requires FFmpeg backend transcoding
     const needsFmpeg =
       name.endsWith(".mkv") ||
       name.endsWith(".avi") ||
@@ -34,11 +33,9 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, transcodeUrl, title
 
     if (needsFmpeg) {
       console.log("[Video Player] Auto-enabling FFmpeg Realtime Transcoder for incompatible format:", name);
-      setIsTranscoding(true);
       return `/api/transcode?url=${encodeURIComponent(source)}`;
     }
 
-    setIsTranscoding(false);
     return source;
   };
 
@@ -46,6 +43,23 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, transcodeUrl, title
     if (show) {
       const targetUrl = getAutoStreamUrl();
       setCurrentUrl(targetUrl);
+
+      // Attempt native browser fullscreen if supported
+      try {
+        if (containerRef.current && containerRef.current.requestFullscreen) {
+          containerRef.current.requestFullscreen().catch(() => {});
+        }
+      } catch (e) {
+        // Ignore browser fullscreen restriction policies
+      }
+    } else {
+      if (document.fullscreenElement) {
+        try {
+          document.exitFullscreen().catch(() => {});
+        } catch (e) {
+          // Ignore exit fullscreen errors
+        }
+      }
     }
   }, [show, videoUrl, rawUrl, transcodeUrl, filename, title]);
 
@@ -88,7 +102,6 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, transcodeUrl, title
     const source = rawUrl || videoUrl;
     if (source && !currentUrl.includes("/api/transcode")) {
       console.warn("[Video Player] Native browser decode failed. Automatically switching to FFmpeg Transcoder...");
-      setIsTranscoding(true);
       setCurrentUrl(`/api/transcode?url=${encodeURIComponent(source)}`);
     }
   };
@@ -100,21 +113,18 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, transcodeUrl, title
   if (!show) return null;
 
   return (
-    <div className={`videoPlayerModal ${show ? "visible" : ""}`}>
-      <div className="backdrop" onClick={hidePopup}></div>
+    <div ref={containerRef} className={`videoPlayerModal ${show ? "visible" : ""}`}>
       <div className="playerWindow">
-        <div className="windowHeader">
-          <div className="headerInfo">
-            <FiPlay className="playIcon" />
-            <span className="streamTitle">{title || filename || "Live Video Stream"}</span>
-          </div>
-
-          <div className="headerActions">
-            <button className="closeBtn" onClick={hidePopup} tabIndex="0" title="Close Player">
-              <FiX />
-            </button>
-          </div>
-        </div>
+        {/* Upper Left Back Arrow Button */}
+        <button
+          className="backBtn"
+          onClick={hidePopup}
+          tabIndex="0"
+          title="Exit Player"
+        >
+          <FiArrowLeft className="backIcon" />
+          <span className="backText">Back</span>
+        </button>
 
         <div className="videoWrapper">
           {currentUrl ? (
