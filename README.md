@@ -1,39 +1,105 @@
-# BubbaFlix - Movie/TV Show Streaming App
+# BubbaFlix 🎬 - Movie & TV Show Streaming App
 
-BubbaFlix is a modern movie and TV show streaming app built using React, React Redux, and React Router Dom, and with the use of TMDB API. This app provides users with a seamless experience to discover and enjoy their favorite movies and TV shows. With features like lazy-loading, infinite scrolling, and custom hooks, BubbaFlix offers a user-friendly fully responsive interface that works well on all devices.
+BubbaFlix is a modern, high-performance movie and TV show streaming discovery app built with **React 18**, **Redux Toolkit**, **React Router v6**, **Vite**, and integrated with the **TMDB (The Movie Database) API**.
 
-## Features
+BubbaFlix features automatic content filtering for **English-only live-action movies and TV shows (no anime/animation)**, multi-stage **Docker containerization**, automated **GitHub Actions CI/CD**, and **PWA / App Store Container Manifest** support.
 
--   Browse and search for a wide range of movies and TV shows.
--   Stream content seamlessly with the built-in video player.
--   Lazy-loading for optimized performance and faster page loads.
--   Infinite scrolling for smooth content exploration.
--   Fully responsive design for a great viewing experience on all devices.
--   Utilizes custom hooks for efficient state management and code organization.
--   Utilizes TMDB API for list of movies and TV shows.
+---
 
-## Technologies Used
+## 🌟 Key Features
 
--   React
--   React Redux
--   React Router Dom
--   Axios (for API requests)
--   SASS/SCSS Modules (for styling)
--   Lazy Loading (React Suspense and React.lazy)
--   Infinite Scrolling
--   Custom Hooks
--   TMDB API
+- 🔍 **Browse & Search**: Explore trending, popular, top-rated movies and TV shows with instant search.
+- 🍿 **English-Only & No Anime Filter**: Automatic server & client-side filtering enforcing English language content and excluding all animation / anime titles.
+- ⚡ **Optimized Performance**: Built with Vite, lazy-loading image components, and infinite scrolling.
+- 🎬 **Video Trailer Modal**: Watch official movie & show trailers powered by React Player.
+- 🐳 **Docker Ready**: Multi-stage production Docker build served via lightweight Nginx with SPA routing support.
+- 🤖 **GitHub Actions CI/CD**: Automatic Docker image builds pushed to GitHub Container Registry (`ghcr.io`).
+- 📱 **PWA & Container App Store Manifest**: Includes `manifest.json` for homelab app managers (Portainer, Cosmos, CasaOS, Unraid) and PWA desktop/mobile installation.
+- 📱 **Fully Responsive**: Sleek dark UI optimized for desktop, tablets, mobile, and TV browsers.
 
-### Note:
+---
 
--   The end points for the API call throughout the allication is taken from the TMDB api documentation.
+## 🛠️ Built With
 
-## Contributing
+- **Frontend**: [React 18](https://react.dev/), [React Router Dom v6](https://reactrouter.com/), [Redux Toolkit](https://redux-toolkit.js.org/)
+- **Build Tool**: [Vite](https://vitejs.dev/)
+- **Styling**: SASS / SCSS Modules
+- **HTTP Client**: Axios
+- **API**: [TMDB (The Movie Database) API](https://www.themoviedb.org/)
+- **Containerization & Hosting**: Docker, Nginx, GitHub Container Registry (GHCR)
 
-Contributions are welcome! If you find any issues or have suggestions for improvements, please feel free to create a pull request.
+---
 
-1. Fork the repository.
-2. Create a new branch: `git checkout -b feature/your-feature-name`
-3. Make your changes and commit them: `git commit -m "Add some feature"`
-4. Push to the branch: `git push origin feature/your-feature-name`
-5. Open a pull request describing your changes.
+## 🚀 Quick Start (Local Development)
+
+### Prerequisites
+- Node.js (v18+)
+- npm
+
+### Installation & Setup
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/jsanderstechnologies/BubbaFlix.git
+   cd BubbaFlix
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   npm install
+   ```
+
+3. **Configure Environment Variables**:
+   Ensure a `.env` file exists in the root directory with your TMDB Read Access Token:
+   ```env
+   VITE_APP_TMDB_KEY =your_tmdb_read_access_token
+   ```
+
+4. **Run Development Server**:
+   ```bash
+   npm run dev
+   ```
+   Open `http://localhost:5173` in your browser.
+
+5. **Build for Production**:
+   ```bash
+   npm run build
+   ```
+
+---
+
+## 🐳 Docker Deployment
+
+### Option 1: Docker Compose (Recommended)
+
+Run BubbaFlix with a single command:
+```bash
+docker compose up --build -d
+```
+Access the application at **`http://localhost:3000`**.
+
+To stop the container:
+```bash
+docker compose down
+```
+
+### Option 2: Pull & Run from GitHub Container Registry (GHCR)
+
+```bash
+docker run -d -p 3000:80 --name bubbaflix ghcr.io/jsanderstechnologies/bubbaflix:latest
+```
+
+### Option 3: Build & Run directly from GitHub URL
+
+```bash
+docker build -t bubbaflix https://github.com/jsanderstechnologies/BubbaFlix.git#master
+docker run -d -p 3000:80 --name bubbaflix bubbaflix
+```
+
+---
+
+## 📄 License & Contributing
+
+Contributions are welcome! Feel free to open issues or submit pull requests to improve BubbaFlix.
+
+Made with ❤️ by [jsanderstechnologies](https://github.com/jsanderstechnologies).
