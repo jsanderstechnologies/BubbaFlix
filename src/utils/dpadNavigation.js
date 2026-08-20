@@ -75,7 +75,7 @@ export const initDpadNavigation = () => {
     if (!activeEl || !focusables.includes(activeEl)) {
       e.preventDefault();
       focusables[0].focus();
-      focusables[0].scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+      focusables[0].scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
       return;
     }
 
@@ -97,7 +97,7 @@ export const initDpadNavigation = () => {
     if (bestCandidate) {
       e.preventDefault();
       bestCandidate.focus();
-      bestCandidate.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+      bestCandidate.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
     }
   };
 
