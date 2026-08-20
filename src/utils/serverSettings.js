@@ -1,5 +1,6 @@
 import axios from "axios";
 import { applyTheme } from "./theme";
+import { fetchUserSimklHistory } from "./simkl";
 
 export const fetchServerSettings = async () => {
   try {
@@ -27,6 +28,12 @@ export const fetchServerSettings = async () => {
       }
 
       console.log("[Server Settings Sync] Successfully pulled backend server settings.");
+
+      // Sync SIMKL account watch history if SIMKL Client ID is configured
+      if (s.simklClientId) {
+        fetchUserSimklHistory();
+      }
+
       return s;
     }
   } catch (err) {
