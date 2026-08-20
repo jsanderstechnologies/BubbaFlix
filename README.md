@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="public/logo.svg" alt="BubbaFlix Logo" width="240" />
+</p>
+
 # BubbaFlix 🎬 - Movie & TV Show Streaming App
 
 BubbaFlix is a modern, high-performance movie and TV show streaming discovery app built with **React 18**, **Redux Toolkit**, **React Router v6**, **Vite**, and integrated with the **TMDB (The Movie Database) API**.
