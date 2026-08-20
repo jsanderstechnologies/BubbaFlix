@@ -3,7 +3,8 @@ const fs = require("fs");
 const path = require("path");
 
 const app = express();
-const PORT = process.env.TRANSCODER_PORT || 5000;
+// Internal Node server port inside Docker container (always 5000 for Nginx proxy)
+const PORT = 5000;
 const SETTINGS_FILE = path.join(__dirname, "settings.json");
 
 app.use(express.json());
@@ -37,6 +38,11 @@ const getEnvDefaultSettings = () => {
 const loadServerSettings = () => {
   const envDefaults = getEnvDefaultSettings();
   try {
+    const dir = path.dirname(SETTINGS_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
     if (fs.existsSync(SETTINGS_FILE)) {
       const data = fs.readFileSync(SETTINGS_FILE, "utf8");
       const loaded = JSON.parse(data);
@@ -62,6 +68,10 @@ const loadServerSettings = () => {
 // Save settings to disk
 const saveServerSettings = (settingsData) => {
   try {
+    const dir = path.dirname(SETTINGS_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
     fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settingsData, null, 2), "utf8");
     console.log("[Backend Settings Storage] Updated global settings.json on server disk.");
     return true;
