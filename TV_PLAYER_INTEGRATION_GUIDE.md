@@ -29,20 +29,16 @@ The BubbaFlix backend server runs on Express.js and FFmpeg (default port: `3000`
 
 ## 🐳 Docker, Portainer, and CasaOS Environment Variables
 
-You can define default API keys and system settings via environment variables in `docker-compose.yml`, Portainer Stacks, or CasaOS app settings:
+You can define default API keys via environment variables in `docker-compose.yml`, Portainer Stacks, or CasaOS app settings:
 
 | Variable Name | Purpose | Example |
 | :--- | :--- | :--- |
-| `THEME` | Application UI Theme | `dark-red` |
 | `SIMKL_CLIENT_ID` | SIMKL API Client ID | `abcdef123456` |
 | `SIMKL_ACCESS_TOKEN` | SIMKL User Access Token | `token_xyz` |
 | `PREMIUMIZE_API_KEY` | Premiumize.me API Key | `prem_key_123` |
 | `GROQ_API_KEY` | Groq AI Stream Filter API Key | `gsk_...` |
 | `TMDB_READ_ACCESS_TOKEN` | TMDB v4 Read Access Token | `eyJhbGci...` |
 | `BITSEARCH_API_KEY` | Bitsearch API Key | `bit_key_123` |
-| `STREAM_RESOLUTIONS` | Allowed stream resolutions | `2160p,1080p,720p,480p` |
-| `STREAM_CODECS` | Allowed stream codecs | `x265,x264,av1,xvid` |
-| `STREAM_EXCLUDE_LOW_QUALITY` | Exclude CAM / HDTS videos | `true` |
 
 All settings persist across container restarts and redeployments using the Docker volume mapping: `bubbaflix-data:/app/server`.
 

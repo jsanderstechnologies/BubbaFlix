@@ -58,20 +58,16 @@ BubbaFlix features **Android TV & Smart TV D-Pad Spatial Navigation**, real-time
 
 ## ⚙️ Docker / Portainer / CasaOS Environment Variables
 
-You can pre-configure device API settings directly in `docker-compose.yml`, Portainer Stacks, or CasaOS container settings:
+Pre-configure your API credentials directly in `docker-compose.yml`, Portainer Stacks, or CasaOS container settings:
 
 | Environment Variable | Description | Default Value |
 | :--- | :--- | :--- |
-| `THEME` | Default UI Theme (`dark-red`, `dark-purple`, `cyberpunk-teal`, `dark-gold`, `slate-blue`) | `dark-red` |
 | `SIMKL_CLIENT_ID` | SIMKL API Client ID | `""` |
 | `SIMKL_ACCESS_TOKEN` | SIMKL User Access Token | `""` |
 | `PREMIUMIZE_API_KEY` | Premiumize.me API Key | `""` |
 | `GROQ_API_KEY` | Groq AI Stream Filter API Key | `""` |
 | `TMDB_READ_ACCESS_TOKEN` | TMDB v4 Read Access Token | Built-in fallback |
 | `BITSEARCH_API_KEY` | Bitsearch API Key | `""` |
-| `STREAM_RESOLUTIONS` | Allowed stream resolutions | `2160p,1080p,720p,480p` |
-| `STREAM_CODECS` | Allowed stream codecs | `x265,x264,av1,xvid` |
-| `STREAM_EXCLUDE_LOW_QUALITY` | Exclude CAM / HDTS videos | `true` |
 
 ---
 
@@ -163,7 +159,6 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - THEME=dark-red
       - SIMKL_CLIENT_ID=your_simkl_client_id
       - SIMKL_ACCESS_TOKEN=your_simkl_access_token
       - PREMIUMIZE_API_KEY=your_premiumize_api_key

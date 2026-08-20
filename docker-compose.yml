@@ -14,16 +14,12 @@ services:
       - "${PORT:-3000}:3000"
     environment:
       - NODE_ENV=production
-      - THEME=${THEME:-dark-red}
       - SIMKL_CLIENT_ID=${SIMKL_CLIENT_ID:-}
       - SIMKL_ACCESS_TOKEN=${SIMKL_ACCESS_TOKEN:-}
       - PREMIUMIZE_API_KEY=${PREMIUMIZE_API_KEY:-}
       - GROQ_API_KEY=${GROQ_API_KEY:-}
       - TMDB_READ_ACCESS_TOKEN=${TMDB_READ_ACCESS_TOKEN:-}
       - BITSEARCH_API_KEY=${BITSEARCH_API_KEY:-}
-      - STREAM_RESOLUTIONS=${STREAM_RESOLUTIONS:-2160p,1080p,720p,480p}
-      - STREAM_CODECS=${STREAM_CODECS:-x265,x264,av1,xvid}
-      - STREAM_EXCLUDE_LOW_QUALITY=${STREAM_EXCLUDE_LOW_QUALITY:-true}
     volumes:
       - bubbaflix-data:/app/server
     restart: unless-stopped
