@@ -2,13 +2,14 @@
 
 BubbaFlix is a modern, high-performance movie and TV show streaming discovery app built with **React 18**, **Redux Toolkit**, **React Router v6**, **Vite**, and integrated with the **TMDB (The Movie Database) API**.
 
-BubbaFlix features automatic content filtering for **English-only live-action movies and TV shows (no anime/animation)**, multi-stage **Docker containerization**, automated **GitHub Actions CI/CD**, and **PWA / App Store Container Manifest** support.
+BubbaFlix features automatic content filtering for **English-only live-action movies and TV shows (no anime/animation)**, in-app **API Settings Page**, multi-stage **Docker containerization**, automated **GitHub Actions CI/CD**, and **PWA / App Store Container Manifest** support.
 
 ---
 
 ## 🌟 Key Features
 
 - 🔍 **Browse & Search**: Explore trending, popular, top-rated movies and TV shows with instant search.
+- ⚙️ **In-App API Key Settings**: Dedicated Settings page (`/settings`) to view, save, test, and manage your TMDB v4 Read Access Token (`VITE_APP_TMDB_KEY`) without needing to rebuild or restart.
 - 🍿 **English-Only & No Anime Filter**: Automatic server & client-side filtering enforcing English language content and excluding all animation / anime titles.
 - ⚡ **Optimized Performance**: Built with Vite, lazy-loading image components, and infinite scrolling.
 - 🎬 **Video Trailer Modal**: Watch official movie & show trailers powered by React Player.
@@ -27,6 +28,18 @@ BubbaFlix features automatic content filtering for **English-only live-action mo
 - **HTTP Client**: Axios
 - **API**: [TMDB (The Movie Database) API](https://www.themoviedb.org/)
 - **Containerization & Hosting**: Docker, Nginx, GitHub Container Registry (GHCR)
+
+---
+
+## ⚙️ In-App API Key Configuration
+
+BubbaFlix includes an in-app **Settings Page** accessible via the gear icon in the navigation header or by navigating to `/settings`.
+
+### Features:
+- **Save Custom Key**: Store your TMDB Read Access Token directly in browser `localStorage`.
+- **Test Connection**: Run instant connection tests to verify whether your token is valid and active.
+- **Show / Hide Key Toggle**: Easily inspect or mask your secret API key.
+- **Reset to Default**: Instantly revert back to the default `.env` token with one click.
 
 ---
 
@@ -50,7 +63,7 @@ BubbaFlix features automatic content filtering for **English-only live-action mo
    ```
 
 3. **Configure Environment Variables**:
-   Ensure a `.env` file exists in the root directory with your TMDB Read Access Token:
+   Ensure a `.env` file exists in the root directory with your default TMDB Read Access Token:
    ```env
    VITE_APP_TMDB_KEY =your_tmdb_read_access_token
    ```
