@@ -12,7 +12,7 @@ This guide provides technical specifications, API endpoints, device-aware stream
 4. [Resolving Torrent Magnets to Stream URLs](#-resolving-torrent-magnets-to-stream-urls)
 5. [Centralized Server Settings API (`/api/settings`)](#-centralized-server-settings-api-apisettings)
 6. [SIMKL Watch Status Synchronization API](#-simkl-watch-status-synchronization-api)
-7. [Smart TV D-Pad Remote Control KeyCode Reference](#-smart-tv-d-pad-remote-control-keycode-reference)
+7. [Smart TV D-Pad Remote Control KeyCode Reference & Boundary Lock](#-smart-tv-d-pad-remote-control-keycode-reference--boundary-lock)
 8. [Native Video Player Code Examples](#-native-video-player-code-examples)
 
 ---
@@ -107,16 +107,16 @@ To keep watch status in sync when a native player starts or finishes video playb
 
 ---
 
-## 🎮 Smart TV D-Pad Remote Control KeyCode Reference
+## 🎮 Smart TV D-Pad Remote Control KeyCode Reference & Boundary Lock
 
 Native Android TV, Google TV, Firestick, Apple TV, and Smart TV remote keycodes supported across BubbaFlix:
 
 | Action / Button | Key Name | KeyCode | Description |
 | :--- | :--- | :--- | :--- |
-| **D-Pad Up** | `ArrowUp` | `19` / `38` | Spatial navigation up |
-| **D-Pad Down** | `ArrowDown` | `20` / `40` | Spatial navigation down |
-| **D-Pad Left** | `ArrowLeft` | `21` / `37` | Spatial navigation left / Seek -10s in player |
-| **D-Pad Right** | `ArrowRight` | `22` / `39` | Spatial navigation right / Seek +10s in player |
+| **D-Pad Up** | `ArrowUp` | `19` / `38` | Spatial navigation up (Transitions between rows, Hero section, and Header) |
+| **D-Pad Down** | `ArrowDown` | `20` / `40` | Spatial navigation down (Transitions to lower rows) |
+| **D-Pad Left** | `ArrowLeft` | `21` / `37` | Spatial navigation left (Locked to same-row items, `vertical diff <= 100px`) |
+| **D-Pad Right** | `ArrowRight` | `22` / `39` | Spatial navigation right (Locked to same-row items, `vertical diff <= 100px`) |
 | **Center / OK / Select** | `Enter` / `Select` | `13` / `23` / `66` | Launch poster, play stream, toggle play/pause |
 | **Back Button** | `Escape` / `Back` | `4` / `27` / `10009` / `461` | Close video player or return to previous page |
 

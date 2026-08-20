@@ -6,21 +6,22 @@
 
 BubbaFlix is a modern, high-performance movie and TV show streaming discovery app built with **React 18**, **Redux Toolkit**, **React Router v6**, **Vite**, **Express**, and integrated with **TMDB (The Movie Database)**, **Bitsearch**, **Premiumize.me**, **Groq AI**, and **SIMKL**.
 
-BubbaFlix features **Android TV & Smart TV D-Pad Spatial Navigation**, **Smart TV Hardware-Codec & Device-Aware Stream Filtering**, **Centralized Backend Server Settings Storage**, **SIMKL Watch Status Synchronization**, **Client-Side TV Screen Zoom (50%–140%)**, and automatic **English-only Live-Action Filtering (No Anime/Animation)**.
+BubbaFlix features **Android TV & Smart TV D-Pad Spatial Navigation with Horizontal Boundary Locks**, **Device-Aware Stream Filtering**, **Centralized Backend Server Settings Storage**, **SIMKL Watch Status Synchronization**, **Client-Side TV Screen Zoom (50%–140%)**, and automatic **English-only Live-Action Filtering (No Anime/Animation)**.
 
 ---
 
 ## 🌟 Key Features
 
+### 📺 Smart TV & Remote Control Spatial Navigation
+- **Native Smart TV Remote D-Pad Navigation**: Fully compatible with Android TV, Google TV, Firestick, Apple TV, LG webOS, Samsung Tizen, and TV browser D-Pad remotes (`Arrow Keys`, `OK / Select (KeyCodes 13, 23, 66)`, `Back (KeyCodes 4, 27, 10009, 461)`).
+- **Universal 3D "Bring Forward" Focus Effect**: All focusable elements (cards, buttons, inputs, navigation links) elevate forward (`transform: scale(1.14) translateY(-6px)`) with dynamic depth drop-shadows and vibrant active theme glows (`var(--pink)`).
+- **Strict Horizontal Boundary Locking**: Left and Right D-Pad arrow keys are locked within the active horizontal row/carousel container (`vertical diff <= 100px`), preventing focus from jumping into the Hero section or header bar unless the user explicitly presses **Up Arrow**.
+- **Auto-Centering Horizontal Carousels**: Smoothly scrolls horizontal poster rows to center the focused poster card automatically.
+- **Virtual Keyboard Lock on D-Pad Focus**: Input search bars stay locked (`readOnly`) when focused via remote control, opening OS virtual keyboards ONLY when explicitly selected.
+
 ### 🍿 Device-Aware Stream Filtering (Smart TV vs. Web Browser)
 - **Smart TV Native Hardware Codec Support**: When running on Android TV, Google TV, Firestick, Apple TV, webOS, Tizen, or Nvidia Shield, BubbaFlix returns ALL available streams (4K x265, HEVC, MKV, DTS, AC3, 5.1/7.1 audio), allowing TV hardware decoders to handle full-quality playback.
 - **Desktop & Mobile Web Compatibility**: Standard web browsers automatically filter stream results to return natively playable x264/MP4 streams for direct HTML5 browser playback.
-
-### 📺 Smart TV & Remote Control Spatial Navigation
-- **Native Smart TV Remote D-Pad Navigation**: Fully compatible with Android TV, Google TV, Firestick, Apple TV, LG webOS, Samsung Tizen, and TV browser D-Pad remotes (`Arrow Keys`, `OK / Select (KeyCodes 13, 23, 66)`, `Back (KeyCodes 4, 27, 10009, 461)`).
-- **3D "Bring Forward" Elevation Focus Effect**: Cards elevate forward (`transform: scale(1.14) translateY(-6px)`) with dynamic depth drop-shadows and active theme glows (`var(--pink)`).
-- **Auto-Centering Horizontal Carousels**: Smoothly scrolls horizontal poster rows to center the focused poster card automatically.
-- **Virtual Keyboard Lock on D-Pad Focus**: Input search bars stay locked (`readOnly`) when focused via remote control, opening OS virtual keyboards ONLY when explicitly selected.
 
 ### 🌐 Centralized Backend Server Settings Storage (`/api/settings`)
 - **Backend Disk & Docker Persistence**: Settings persist in `/app/server/settings.json` on the server and sync across all connected client devices:

@@ -49,12 +49,17 @@ const getDistance = (rect1, rect2, direction) => {
   if (direction === "ArrowLeft" && dx >= -5) return Infinity;
   if (direction === "ArrowRight" && dx <= 5) return Infinity;
 
-  // Weight perpendicular distance higher to prefer straight-line navigation
-  if (direction === "ArrowUp" || direction === "ArrowDown") {
-    return Math.abs(dy) + Math.abs(dx) * 2;
-  } else {
-    return Math.abs(dx) + Math.abs(dy) * 2;
+  // Restrict Left / Right arrow navigation to elements on the same horizontal row (vertical diff <= 100px)
+  // This prevents Left/Right arrow keys at carousel edges from jumping into the Hero section or header bar
+  if (direction === "ArrowLeft" || direction === "ArrowRight") {
+    if (Math.abs(dy) > 100) {
+      return Infinity; // Block vertical jumps on horizontal arrow presses!
+    }
+    return Math.abs(dx) + Math.abs(dy) * 4;
   }
+
+  // Weight horizontal distance heavily for Up / Down navigation to keep vertical movement predictable
+  return Math.abs(dy) + Math.abs(dx) * 2;
 };
 
 export const initDpadNavigation = () => {
