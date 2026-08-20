@@ -1,24 +1,18 @@
 /* eslint-disable react/prop-types */
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
-import { searchBitsearchMagnets, getBitsearchApiKey } from "../../../utils/bitsearch";
+import { searchBitsearchMagnets } from "../../../utils/bitsearch";
 import ContentWrapper from "../../../components/content-wrapper";
 import Spinner from "../../../components/spinner";
-import { FiDownload, FiCopy, FiCheck, FiChevronDown, FiChevronUp, FiAlertCircle, FiSettings, FiExternalLink } from "react-icons/fi";
+import { FiCopy, FiCheck, FiChevronDown, FiChevronUp, FiExternalLink } from "react-icons/fi";
 import "./index.scss";
 
 const MagnetSection = ({ title, year }) => {
   const [magnets, setMagnets] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [isOpen, setIsOpen] = useState(true);
   const [copiedIndex, setCopiedIndex] = useState(null);
-  const [hasApiKey, setHasApiKey] = useState(false);
 
   useEffect(() => {
-    const key = getBitsearchApiKey();
-    setHasApiKey(!!key);
-
     if (title) {
       fetchMagnets();
     }
@@ -26,14 +20,9 @@ const MagnetSection = ({ title, year }) => {
 
   const fetchMagnets = async () => {
     setLoading(true);
-    setError(null);
-    const { results, error: apiErr } = await searchBitsearchMagnets(title, year);
+    const { results } = await searchBitsearchMagnets(title, year);
     setLoading(false);
-    if (apiErr) {
-      setError(apiErr);
-    } else {
-      setMagnets(results);
-    }
+    setMagnets(results || []);
   };
 
   const handleCopyMagnet = (magnet, index) => {
@@ -44,6 +33,10 @@ const MagnetSection = ({ title, year }) => {
     }, 2000);
   };
 
+  if (!loading && magnets.length === 0) {
+    return null;
+  }
+
   return (
     <div className="magnetSection">
       <ContentWrapper>
@@ -51,7 +44,7 @@ const MagnetSection = ({ title, year }) => {
           <div className="sectionHeader" onClick={() => setIsOpen(!isOpen)}>
             <div className="headerLeft">
               <span className="icon">🧲</span>
-              <span className="sectionTitle">Torrent Magnet Links (Bitsearch)</span>
+              <span className="sectionTitle">Torrent Magnet Links</span>
               {magnets.length > 0 && (
                 <span className="countBadge">{magnets.length} Available</span>
               )}
@@ -63,40 +56,11 @@ const MagnetSection = ({ title, year }) => {
 
           {isOpen && (
             <div className="sectionBody">
-              {!hasApiKey && (
-                <div className="apiKeyNotice">
-                  <FiAlertCircle className="noticeIcon" />
-                  <span>
-                    No Bitsearch API Key configured. Results use public search. For higher rate limits, add your key in{" "}
-                    <Link to="/settings" className="settingsLink">
-                      <FiSettings /> Settings
-                    </Link>.
-                  </span>
-                </div>
-              )}
-
-              {loading && (
+              {loading ? (
                 <div className="loadingContainer">
                   <Spinner />
-                  <p>Searching Bitsearch for &quot;{title} {year || ""}&quot;...</p>
                 </div>
-              )}
-
-              {error && (
-                <div className="errorContainer">
-                  <FiAlertCircle />
-                  <span>{error}</span>
-                  <button onClick={fetchMagnets} className="retryBtn">Retry</button>
-                </div>
-              )}
-
-              {!loading && !error && magnets.length === 0 && (
-                <div className="emptyContainer">
-                  <p>No torrent magnet links found for &quot;{title}&quot;.</p>
-                </div>
-              )}
-
-              {!loading && !error && magnets.length > 0 && (
+              ) : (
                 <div className="magnetList">
                   {magnets.map((item, index) => (
                     <div key={index} className="magnetItem">
