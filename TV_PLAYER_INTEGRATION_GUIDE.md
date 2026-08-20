@@ -1,13 +1,13 @@
 # BubbaFlix 📺 - Smart TV & Native Player Integration Guide
 
-This guide provides technical specifications, API endpoints, web-compatible stream resolution logic, environment variable configuration for Docker/Portainer/CasaOS, and remote control KeyCode mappings for developers building or integrating native TV client applications (Android TV, Google TV, Firestick, Apple TV, LG webOS, Samsung Tizen, VLC, ExoPlayer, MX Player, etc.) with the **BubbaFlix Backend Engine**.
+This guide provides technical specifications, API endpoints, device-aware stream resolution logic, environment variable configuration for Docker/Portainer/CasaOS, and remote control KeyCode mappings for developers building or integrating native TV client applications (Android TV, Google TV, Firestick, Apple TV, LG webOS, Samsung Tizen, VLC, ExoPlayer, MX Player, etc.) with the **BubbaFlix Backend Engine**.
 
 ---
 
 ## 📋 Table of Contents
 
 1. [Backend Server Architecture](#-backend-server-architecture)
-2. [Web-Compatible Stream Filtering](#-web-compatible-stream-filtering)
+2. [Device-Aware Stream Filtering (Smart TV vs. Web Browser)](#-device-aware-stream-filtering-smart-tv-vs-web-browser)
 3. [Docker, Portainer, and CasaOS Environment Variables](#-docker-portainer-and-casaos-environment-variables)
 4. [Resolving Torrent Magnets to Stream URLs](#-resolving-torrent-magnets-to-stream-urls)
 5. [Centralized Server Settings API (`/api/settings`)](#-centralized-server-settings-api-apisettings)
@@ -26,18 +26,21 @@ The BubbaFlix backend server runs on Express.js (default port: `3000` or custom 
 
 ---
 
-## 🍿 Web-Compatible Stream Filtering
+## 🍿 Device-Aware Stream Filtering (Smart TV vs. Web Browser)
 
-BubbaFlix pre-filters all magnet stream results (`src/utils/bitsearch.js`) to return ONLY natively playable x264/H.264 MP4 streams with AAC audio, ensuring direct playback in HTML5 web players and Smart TV browsers without needing backend transcoding.
+BubbaFlix detects device hardware capability (`isTvDevice()`) in `src/utils/bitsearch.js`:
 
-### Web Format Filtering Rules
+- **Smart TV Devices (Android TV, Firestick, Apple TV, webOS, Tizen, Shield)**: Returns **ALL available streams** (4K x265, HEVC, MKV, DTS, AC3, 5.1/7.1 audio), allowing native TV hardware decoders (ExoPlayer, VLC, AVPlayer) to decode full-quality streams natively.
+- **Desktop & Mobile Web Browsers**: Pre-filters stream results to return natively playable x264/MP4 streams with AAC audio for direct HTML5 browser playback.
 
-| Format Type | Status | Action |
+### Device Filtering Rules
+
+| Format Type | Smart TV Devices | Desktop & Mobile Web Browsers |
 | :--- | :--- | :--- |
-| **MP4 / x264 / H.264 / AAC** | Supported | Included in Available Streams |
-| **MKV (`.mkv`) / AVI (`.avi`)** | Excluded | Filtered out from stream results |
-| **x265 / HEVC / H.265 / AV1 / XviD** | Excluded | Filtered out from stream results |
-| **DTS / AC3 / EAC3 / TrueHD / Atmos / 5.1 / 7.1** | Excluded | Filtered out from stream results |
+| **MP4 / x264 / H.264 / AAC** | Included | Included |
+| **MKV (`.mkv`) / AVI (`.avi`)** | Included | Excluded |
+| **x265 / HEVC / H.265 / AV1 / XviD** | Included | Excluded |
+| **DTS / AC3 / EAC3 / TrueHD / Atmos / 5.1 / 7.1** | Included | Excluded |
 
 ---
 

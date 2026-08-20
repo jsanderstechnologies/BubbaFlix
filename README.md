@@ -6,15 +6,15 @@
 
 BubbaFlix is a modern, high-performance movie and TV show streaming discovery app built with **React 18**, **Redux Toolkit**, **React Router v6**, **Vite**, **Express**, and integrated with **TMDB (The Movie Database)**, **Bitsearch**, **Premiumize.me**, **Groq AI**, and **SIMKL**.
 
-BubbaFlix features **Android TV & Smart TV D-Pad Spatial Navigation**, **Native Web Player Stream Filtering (x264/MP4)**, **Centralized Backend Server Settings Storage**, **SIMKL Watch Status Synchronization**, **Client-Side TV Screen Zoom (50%–140%)**, and automatic **English-only Live-Action Filtering (No Anime/Animation)**.
+BubbaFlix features **Android TV & Smart TV D-Pad Spatial Navigation**, **Smart TV Hardware-Codec & Device-Aware Stream Filtering**, **Centralized Backend Server Settings Storage**, **SIMKL Watch Status Synchronization**, **Client-Side TV Screen Zoom (50%–140%)**, and automatic **English-only Live-Action Filtering (No Anime/Animation)**.
 
 ---
 
 ## 🌟 Key Features
 
-### 🍿 Native Web Player Stream Filtering
-- **Automatic Web Compatibility Filtering**: Stream search results (`src/utils/bitsearch.js`) are pre-filtered to return ONLY natively playable x264/H.264 MP4 streams with AAC audio.
-- **Direct Web Playback**: Eliminates backend FFmpeg transcoding CPU overhead and buffering—every stream listed in "Available Streams" plays instantly in HTML5 web players across desktop, mobile, and Smart TV browsers.
+### 🍿 Device-Aware Stream Filtering (Smart TV vs. Web Browser)
+- **Smart TV Native Hardware Codec Support**: When running on Android TV, Google TV, Firestick, Apple TV, webOS, Tizen, or Nvidia Shield, BubbaFlix returns ALL available streams (4K x265, HEVC, MKV, DTS, AC3, 5.1/7.1 audio), allowing TV hardware decoders to handle full-quality playback.
+- **Desktop & Mobile Web Compatibility**: Standard web browsers automatically filter stream results to return natively playable x264/MP4 streams for direct HTML5 browser playback.
 
 ### 📺 Smart TV & Remote Control Spatial Navigation
 - **Native Smart TV Remote D-Pad Navigation**: Fully compatible with Android TV, Google TV, Firestick, Apple TV, LG webOS, Samsung Tizen, and TV browser D-Pad remotes (`Arrow Keys`, `OK / Select (KeyCodes 13, 23, 66)`, `Back (KeyCodes 4, 27, 10009, 461)`).

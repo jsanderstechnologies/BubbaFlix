@@ -1,5 +1,6 @@
 import axios from "axios";
 import { filterWithGroqAI } from "./groqFilter";
+import { isTvDevice } from "./zoom";
 
 export const getBitsearchApiKey = () => {
   if (typeof window !== "undefined") {
@@ -90,6 +91,7 @@ const filterByPreferences = (results) => {
   if (!results || results.length === 0) return [];
 
   const { resolutions, excludeLowQuality } = getStreamPreferences();
+  const isTv = isTvDevice();
 
   // 1. Filter out Adult content & standalone audio/music files
   let pool = results.filter((item) => !isAdultOrAudioFile(item.title));
@@ -97,10 +99,13 @@ const filterByPreferences = (results) => {
     return [];
   }
 
-  // 2. Filter out Web-incompatible formats (MKV, x265, HEVC, DTS, AC3, 5.1/7.1)
-  const webPool = pool.filter((item) => isWebCompatibleStream(item.title));
-  if (webPool.length > 0) {
-    pool = webPool;
+  // 2. If NOT on a TV device (standard web browser/mobile), filter out web-incompatible formats.
+  // Smart TV devices (Android TV, Firestick, Apple TV, webOS, Tizen) have native hardware decoders for MKV, x265, DTS, AC3, 5.1/7.1
+  if (!isTv) {
+    const webPool = pool.filter((item) => isWebCompatibleStream(item.title));
+    if (webPool.length > 0) {
+      pool = webPool;
+    }
   }
 
   // 3. Filter out CAM, HDCAM, Telesync, HDTS, TC videos if excludeLowQuality is true
