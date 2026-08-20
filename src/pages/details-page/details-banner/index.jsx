@@ -89,9 +89,19 @@ const DetailsBanner = ({ video, crew }) => {
 									/>
 									<div
 										className="playbtn"
+										tabIndex="0"
+										role="button"
 										onClick={() => {
 											setShow(true);
 											if (video?.key) setVideoId(video.key);
+										}}
+										onKeyDown={(e) => {
+											const code = e.keyCode;
+											if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+												e.preventDefault();
+												setShow(true);
+												if (video?.key) setVideoId(video.key);
+											}
 										}}
 									>
 										<PlayIcon />

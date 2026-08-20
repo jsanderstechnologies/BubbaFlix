@@ -76,14 +76,26 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
 
   const content = (
     <div className={`sectionCard ${compact ? "compact" : ""}`}>
-      <div className="sectionHeader" onClick={() => setIsOpen(!isOpen)}>
+      <div
+        className="sectionHeader"
+        tabIndex="0"
+        role="button"
+        onClick={() => setIsOpen(!isOpen)}
+        onKeyDown={(e) => {
+          const code = e.keyCode;
+          if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+            e.preventDefault();
+            setIsOpen(!isOpen);
+          }
+        }}
+      >
         <div className="headerLeft">
           <span className="sectionTitle">Available Streams</span>
           {magnets.length > 0 && (
             <span className="countBadge">{magnets.length} Available</span>
           )}
         </div>
-        <button className="toggleBtn">
+        <button className="toggleBtn" tabIndex="-1">
           {isOpen ? <FiChevronUp /> : <FiChevronDown />}
         </button>
       </div>
@@ -118,6 +130,13 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
                     <button
                       className={`actionBtn play ${playingIndex === index ? "loading" : ""}`}
                       onClick={() => handlePlayStream(item, index)}
+                      onKeyDown={(e) => {
+                        const code = e.keyCode;
+                        if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+                          e.preventDefault();
+                          handlePlayStream(item, index);
+                        }
+                      }}
                       disabled={playingIndex === index}
                       tabIndex="0"
                       title="Stream Video via Premiumize"
