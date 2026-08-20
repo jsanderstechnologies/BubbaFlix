@@ -18,6 +18,12 @@ export default defineConfig({
         secure: false,
         rewrite: (path) => path.replace(/^\/api\/torrent/, '/q.php'),
       },
+      '/api/groq': {
+        target: 'https://api.groq.com',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/groq/, '/openai/v1'),
+      },
     },
   },
 })
