@@ -52,6 +52,17 @@
         position: relative;
         max-width: 800px;
         margin: 0 auto;
+        .hero-logo {
+            height: 90px;
+            max-width: 90%;
+            margin-bottom: 15px;
+            object-fit: contain;
+            filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.6));
+            @include md {
+                height: 140px;
+                margin-bottom: 20px;
+            }
+        }
         .title{
             font-size: 50px;
             font-weight: 700;
