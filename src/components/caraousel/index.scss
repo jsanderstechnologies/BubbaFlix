@@ -88,22 +88,23 @@
 	.carouselItems {
 		display: flex;
 		gap: 10px;
-		overflow-y: hidden;
+		overflow-y: visible;
 		margin-right: -20px;
 		margin-left: -20px;
-		padding: 0 20px;
+		padding: 15px 20px;
 		@include md {
 			gap: 15px;
-			overflow: hidden;
+			overflow-x: auto;
+			overflow-y: visible;
 			margin: 0;
-			padding: 0;
+			padding: 15px 5px;
 		}
 		.carouselItem {
 			width: calc(33.333% - 8px);
 			cursor: pointer;
 			border-radius: 12px;
 			padding: 4px;
-			transition: transform 0.2s ease, box-shadow 0.2s ease, outline 0.2s ease;
+			transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.25s ease;
 			flex-shrink: 0;
 
 			@include sm {
@@ -122,13 +123,13 @@
 				width: calc(12.5% - 16px);
 			}
 
+			/* 3D "Bring Forward" Elevation Focus Effect */
 			&:focus,
 			&:focus-visible {
-				outline: 3px solid var(--pink) !important;
-				outline-offset: 4px !important;
-				box-shadow: 0 0 20px var(--pink) !important;
-				transform: scale(1.05);
-				z-index: 10;
+				outline: none !important;
+				transform: scale(1.14) translateY(-6px) translateZ(0);
+				box-shadow: 0 16px 32px rgba(0, 0, 0, 0.8), 0 0 20px var(--pink) !important;
+				z-index: 50;
 			}
 			.posterBlock {
 				position: relative;
