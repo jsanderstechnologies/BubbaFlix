@@ -9,7 +9,7 @@ import "./index.scss";
 const MagnetSection = ({ title, year }) => {
   const [magnets, setMagnets] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState(null);
 
   useEffect(() => {
