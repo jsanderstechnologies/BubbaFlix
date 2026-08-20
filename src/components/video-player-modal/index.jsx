@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import { useState, useEffect, useRef } from "react";
 import { FiArrowLeft } from "react-icons/fi";
+import { getServerUrl } from "../../utils/serverSettings";
 import "./index.scss";
 
 const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, transcodeUrl, title, filename }) => {
@@ -9,6 +10,8 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, transcodeUrl, title
   const [currentUrl, setCurrentUrl] = useState("");
 
   const getAutoStreamUrl = () => {
+    const serverBase = getServerUrl();
+
     // 1. If cloud transcode is ready, use cloud H.264+AAC web stream
     if (transcodeUrl) {
       return transcodeUrl;
@@ -33,7 +36,7 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, transcodeUrl, title
 
     if (needsFmpeg) {
       console.log("[Video Player] Auto-enabling FFmpeg Realtime Transcoder for incompatible format:", name);
-      return `/api/transcode?url=${encodeURIComponent(source)}`;
+      return `${serverBase}/api/transcode?url=${encodeURIComponent(source)}`;
     }
 
     return source;
@@ -100,9 +103,10 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, transcodeUrl, title
 
   const handleVideoError = () => {
     const source = rawUrl || videoUrl;
+    const serverBase = getServerUrl();
     if (source && !currentUrl.includes("/api/transcode")) {
       console.warn("[Video Player] Native browser decode failed. Automatically switching to FFmpeg Transcoder...");
-      setCurrentUrl(`/api/transcode?url=${encodeURIComponent(source)}`);
+      setCurrentUrl(`${serverBase}/api/transcode?url=${encodeURIComponent(source)}`);
     }
   };
 

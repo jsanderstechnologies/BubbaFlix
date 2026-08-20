@@ -2,13 +2,36 @@ import axios from "axios";
 import { applyTheme } from "./theme";
 import { fetchUserSimklHistory } from "./simkl";
 
+export const getServerUrl = () => {
+  if (typeof window === "undefined") return "";
+  const saved = localStorage.getItem("bubbaflix_server_url");
+  if (saved && saved.trim().length > 0) {
+    let url = saved.trim();
+    if (url.endsWith("/")) url = url.slice(0, -1);
+    return url;
+  }
+  return "";
+};
+
+export const saveServerUrl = (url) => {
+  if (typeof window === "undefined") return;
+  if (!url || url.trim().length === 0) {
+    localStorage.removeItem("bubbaflix_server_url");
+  } else {
+    let clean = url.trim();
+    if (clean.endsWith("/")) clean = clean.slice(0, -1);
+    localStorage.setItem("bubbaflix_server_url", clean);
+  }
+};
+
 export const fetchServerSettings = async () => {
   try {
-    const res = await axios.get("/api/settings", { timeout: 6000 });
+    const baseUrl = getServerUrl();
+    const res = await axios.get(`${baseUrl}/api/settings`, { timeout: 6000 });
     if (res.data?.status === "success" && res.data.settings) {
       const s = res.data.settings;
 
-      // Sync settings to client cache (except zoom which remains per-device!)
+      // Sync settings to client cache (except zoom & server URL which remain per-device!)
       if (s.theme) {
         localStorage.setItem("bubbaflix_theme", s.theme);
         applyTheme(s.theme);
@@ -44,8 +67,9 @@ export const fetchServerSettings = async () => {
 
 export const updateServerSettings = async (settingsPartial) => {
   try {
+    const baseUrl = getServerUrl();
     console.log("[Server Settings Sync] Pushing updated settings to backend server:", settingsPartial);
-    const res = await axios.post("/api/settings", settingsPartial, { timeout: 6000 });
+    const res = await axios.post(`${baseUrl}/api/settings`, settingsPartial, { timeout: 6000 });
     if (res.data?.status === "success") {
       return { success: true, settings: res.data.settings };
     }
@@ -53,4 +77,17 @@ export const updateServerSettings = async (settingsPartial) => {
     console.error("[Server Settings Sync Error]: Failed to push settings to server.", err.message);
   }
   return { success: false };
+};
+
+export const testBackendServerHealth = async (customServerUrl) => {
+  const targetBase = customServerUrl !== undefined ? customServerUrl.trim().replace(/\/$/, "") : getServerUrl();
+  try {
+    const res = await axios.get(`${targetBase}/api/transcode/health`, { timeout: 5000 });
+    if (res.data?.status === "ok") {
+      return { success: true, message: `Backend Server Connected! (${res.data.service || "BubbaFlix Engine"})` };
+    }
+    return { success: false, message: "Server responded, but health status failed." };
+  } catch (err) {
+    return { success: false, message: err.response?.data?.message || err.message || "Failed to connect to backend server." };
+  }
 };

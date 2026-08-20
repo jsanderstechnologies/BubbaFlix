@@ -7,7 +7,7 @@ import { getGroqApiKey } from "../../utils/groqFilter";
 import { getPremiumizeApiKey, testPremiumizeAccount } from "../../utils/premiumize";
 import { getSimklConfig, testSimklConnection } from "../../utils/simkl";
 import { isTvDevice, getSavedZoom, applyZoom } from "../../utils/zoom";
-import { updateServerSettings, fetchServerSettings } from "../../utils/serverSettings";
+import { updateServerSettings, fetchServerSettings, getServerUrl, saveServerUrl, testBackendServerHealth } from "../../utils/serverSettings";
 import { getApiConfiguration } from "../../store/homeSlice";
 import { THEMES, getSavedTheme, applyTheme } from "../../utils/theme";
 import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning, FiCheckSquare, FiTv, FiPlus, FiMinus, FiServer, FiInfo } from "react-icons/fi";
@@ -34,6 +34,12 @@ const SettingsPage = () => {
   // TV Zoom & Device State (Per-device client side only)
   const [isTv, setIsTv] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(100);
+
+  // Backend Server Address State (Per-device client side only)
+  const [serverUrlState, setServerUrlState] = useState("");
+  const [serverStatus, setServerStatus] = useState(null);
+  const [testingServer, setTestingServer] = useState(false);
+  const [hasCustomServer, setHasCustomServer] = useState(false);
 
   // TMDB Key State
   const [token, setToken] = useState("");
@@ -78,10 +84,14 @@ const SettingsPage = () => {
   const dispatch = useDispatch();
 
   const loadAllSettings = async () => {
-    // 1. Per-device Zoom
+    // 1. Per-device Zoom & Server Address
     const tvDetected = isTvDevice();
     setIsTv(tvDetected);
     setZoomLevel(getSavedZoom());
+
+    const currentServer = getServerUrl();
+    setServerUrlState(currentServer);
+    setHasCustomServer(!!currentServer);
 
     // 2. Pull Centralized Backend Settings
     await fetchServerSettings();
@@ -134,6 +144,33 @@ const SettingsPage = () => {
     const validLevel = Math.min(140, Math.max(50, newLevel));
     setZoomLevel(validLevel);
     applyZoom(validLevel);
+  };
+
+  const handleSaveServerUrl = async (e) => {
+    e.preventDefault();
+    const cleanUrl = serverUrlState.trim();
+    saveServerUrl(cleanUrl);
+    setHasCustomServer(!!cleanUrl);
+
+    setTestingServer(true);
+    const testRes = await testBackendServerHealth(cleanUrl);
+    setTestingServer(false);
+
+    if (testRes.success) {
+      setServerStatus({ type: "success", text: testRes.message });
+    } else {
+      setServerStatus({ type: "error", text: testRes.message });
+    }
+
+    await loadAllSettings();
+  };
+
+  const handleClearServerUrl = async () => {
+    saveServerUrl("");
+    setServerUrlState("");
+    setHasCustomServer(false);
+    setServerStatus({ type: "info", text: "Server address reset to default relative host." });
+    await loadAllSettings();
   };
 
   const refreshConfig = async () => {
@@ -363,16 +400,16 @@ const SettingsPage = () => {
         <div className="settingsContainer">
           <div className="settingsHeader">
             <h1 className="title">
-              {isTv ? <FiTv className="icon" /> : <FiKey className="icon" />} {isTv ? "TV Display & SIMKL Settings" : "API & System Settings"}
+              {isTv ? <FiTv className="icon" /> : <FiKey className="icon" />} {isTv ? "TV Display & Server Settings" : "API & System Settings"}
             </h1>
             <p className="subtitle">
               {isTv
-                ? "Adjust screen zoom scale for this TV device and manage your SIMKL watch history tracking credentials."
+                ? "Adjust screen zoom scale for this TV device, set your backend server address, and manage SIMKL watch history tracking credentials."
                 : "Centralized backend server configuration for SIMKL watch status tracking, Premiumize streaming, color themes, API keys, and stream filters."}
             </p>
           </div>
 
-          {/* TV & Streaming Device Screen Zoom Card (Always Available) */}
+          {/* TV & Streaming Device Screen Zoom Card (Available on All Devices) */}
           <div className="settingsCard">
             <div className="cardHeader">
               <h2><FiTv style={{ marginRight: 8 }} /> TV Screen Zoom & Display Scale</h2>
@@ -437,6 +474,58 @@ const SettingsPage = () => {
                 ))}
               </div>
             </div>
+          </div>
+
+          {/* Backend Server Host & Address Card (Available on All Devices) */}
+          <div className="settingsCard">
+            <div className="cardHeader">
+              <h2><FiServer style={{ marginRight: 8 }} /> Backend Server Address</h2>
+              <span className={`badge ${hasCustomServer ? "custom" : "default"}`}>
+                {hasCustomServer ? "Custom Host Active" : "Default Relative Host"}
+              </span>
+            </div>
+
+            <p className="description">
+              Specify a custom BubbaFlix backend server IP or URL for FFmpeg video transcoding and central settings storage (saved independently on each device).
+            </p>
+
+            <form onSubmit={handleSaveServerUrl} className="tokenForm">
+              <div className="inputGroup">
+                <label htmlFor="serverUrl">BACKEND_SERVER_URL</label>
+                <div className="inputWrapper">
+                  <input
+                    id="serverUrl"
+                    type="text"
+                    value={serverUrlState}
+                    onChange={(e) => setServerUrlState(e.target.value)}
+                    placeholder="e.g. http://192.168.10.10:3000 (or leave empty for default)"
+                  />
+                </div>
+              </div>
+
+              {serverStatus && (
+                <div className={`statusBanner ${serverStatus.type}`}>
+                  {serverStatus.type === "success" && <FiCheckCircle />}
+                  {serverStatus.type === "error" && <FiXCircle />}
+                  <span>{serverStatus.text}</span>
+                </div>
+              )}
+
+              <div className="buttonGroup">
+                <button type="submit" className="saveBtn" disabled={testingServer}>
+                  <FiSave /> {testingServer ? "Connecting..." : "Save Server Address"}
+                </button>
+                {hasCustomServer && (
+                  <button
+                    type="button"
+                    className="clearBtn"
+                    onClick={handleClearServerUrl}
+                  >
+                    Reset to Default
+                  </button>
+                )}
+              </div>
+            </form>
           </div>
 
           {/* SIMKL Watch Tracker Card (Available on All Devices) */}
