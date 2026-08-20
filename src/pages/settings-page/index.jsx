@@ -5,9 +5,10 @@ import { fetchDataFromAPI, getActiveTmdbToken } from "../../utils/api";
 import { getBitsearchApiKey } from "../../utils/bitsearch";
 import { getGroqApiKey } from "../../utils/groqFilter";
 import { getPremiumizeApiKey, testPremiumizeAccount } from "../../utils/premiumize";
+import { getSimklConfig, testSimklConnection } from "../../utils/simkl";
 import { getApiConfiguration } from "../../store/homeSlice";
 import { THEMES, getSavedTheme, applyTheme } from "../../utils/theme";
-import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning } from "react-icons/fi";
+import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning, FiCheckSquare } from "react-icons/fi";
 import "./index.scss";
 
 const ALL_RESOLUTIONS = [
@@ -41,6 +42,14 @@ const SettingsPage = () => {
   const [premiumizeStatus, setPremiumizeStatus] = useState(null);
   const [hasPremiumizeCustom, setHasPremiumizeCustom] = useState(false);
   const [testingPremiumize, setTestingPremiumize] = useState(false);
+
+  // SIMKL State
+  const [simklClientId, setSimklClientId] = useState("");
+  const [simklToken, setSimklToken] = useState("");
+  const [showSimklToken, setShowSimklToken] = useState(false);
+  const [simklStatus, setSimklStatus] = useState(null);
+  const [hasSimklCustom, setHasSimklCustom] = useState(false);
+  const [testingSimkl, setTestingSimkl] = useState(false);
 
   // Bitsearch Key State
   const [bitsearchKey, setBitsearchKey] = useState("");
@@ -77,6 +86,12 @@ const SettingsPage = () => {
     const savedPrem = getPremiumizeApiKey();
     setPremiumizeKey(savedPrem || "");
     setHasPremiumizeCustom(!!savedPrem);
+
+    // SIMKL
+    const { clientId, userToken } = getSimklConfig();
+    setSimklClientId(clientId || "");
+    setSimklToken(userToken || "");
+    setHasSimklCustom(!!clientId);
 
     // Bitsearch
     const savedBitsearch = getBitsearchApiKey();
@@ -173,6 +188,38 @@ const SettingsPage = () => {
     setPremiumizeKey("");
     setHasPremiumizeCustom(false);
     setPremiumizeStatus({ type: "info", text: "Premiumize API Key cleared." });
+  };
+
+  const handleSaveSimkl = async (e) => {
+    e.preventDefault();
+    const cleanId = simklClientId.trim();
+    const cleanToken = simklToken.trim();
+    if (!cleanId) {
+      setSimklStatus({ type: "error", text: "SIMKL Client ID cannot be empty." });
+      return;
+    }
+    localStorage.setItem("simkl_client_id", cleanId);
+    localStorage.setItem("simkl_access_token", cleanToken);
+    setHasSimklCustom(true);
+
+    setTestingSimkl(true);
+    const testRes = await testSimklConnection(cleanId, cleanToken);
+    setTestingSimkl(false);
+
+    if (testRes.success) {
+      setSimklStatus({ type: "success", text: testRes.message });
+    } else {
+      setSimklStatus({ type: "error", text: testRes.message });
+    }
+  };
+
+  const handleClearSimkl = () => {
+    localStorage.removeItem("simkl_client_id");
+    localStorage.removeItem("simkl_access_token");
+    setSimklClientId("");
+    setSimklToken("");
+    setHasSimklCustom(false);
+    setSimklStatus({ type: "info", text: "SIMKL credentials cleared." });
   };
 
   const handleSaveBitsearch = (e) => {
@@ -285,7 +332,7 @@ const SettingsPage = () => {
               <FiKey className="icon" /> API & System Settings
             </h1>
             <p className="subtitle">
-              Manage Premiumize streaming, color themes, API keys, Groq AI filtering, resolution preferences, and codec filters.
+              Manage SIMKL watch status tracking, Premiumize streaming, color themes, API keys, Groq AI filtering, and resolution filters.
             </p>
           </div>
 
@@ -348,6 +395,79 @@ const SettingsPage = () => {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* SIMKL Watch Tracker Card */}
+          <div className="settingsCard">
+            <div className="cardHeader">
+              <h2><FiCheckSquare style={{ marginRight: 8 }} /> SIMKL Watch Status Tracker</h2>
+              <span className={`badge ${hasSimklCustom ? "custom" : "default"}`}>
+                {hasSimklCustom ? "SIMKL Sync Active" : "SIMKL ID Required"}
+              </span>
+            </div>
+
+            <p className="description">
+              Sync watched movies and TV episode playback history automatically with your SIMKL watchlist.
+            </p>
+
+            <form onSubmit={handleSaveSimkl} className="tokenForm">
+              <div className="inputGroup">
+                <label htmlFor="simklClientId">SIMKL_CLIENT_ID</label>
+                <div className="inputWrapper">
+                  <input
+                    id="simklClientId"
+                    type="text"
+                    value={simklClientId}
+                    onChange={(e) => setSimklClientId(e.target.value)}
+                    placeholder="Enter your SIMKL API Client ID..."
+                  />
+                </div>
+              </div>
+
+              <div className="inputGroup" style={{ marginTop: 12 }}>
+                <label htmlFor="simklToken">SIMKL_USER_ACCESS_TOKEN (Optional)</label>
+                <div className="inputWrapper">
+                  <input
+                    id="simklToken"
+                    type={showSimklToken ? "text" : "password"}
+                    value={simklToken}
+                    onChange={(e) => setSimklToken(e.target.value)}
+                    placeholder="Enter your SIMKL User Access Token..."
+                  />
+                  <button
+                    type="button"
+                    className="toggleVisibility"
+                    onClick={() => setShowSimklToken(!showSimklToken)}
+                    title={showSimklToken ? "Hide Token" : "Show Token"}
+                  >
+                    {showSimklToken ? <FiEyeOff /> : <FiEye />}
+                  </button>
+                </div>
+              </div>
+
+              {simklStatus && (
+                <div className={`statusBanner ${simklStatus.type}`}>
+                  {simklStatus.type === "success" && <FiCheckCircle />}
+                  {simklStatus.type === "error" && <FiXCircle />}
+                  <span>{simklStatus.text}</span>
+                </div>
+              )}
+
+              <div className="buttonGroup">
+                <button type="submit" className="saveBtn" disabled={testingSimkl}>
+                  <FiSave /> {testingSimkl ? "Verifying..." : "Save SIMKL Config"}
+                </button>
+                {hasSimklCustom && (
+                  <button
+                    type="button"
+                    className="clearBtn"
+                    onClick={handleClearSimkl}
+                  >
+                    Clear Credentials
+                  </button>
+                )}
+              </div>
+            </form>
           </div>
 
           {/* Premiumize.me API Card */}
@@ -675,6 +795,9 @@ const SettingsPage = () => {
           <div className="helpCard">
             <h3>How to get API Keys?</h3>
             <ol>
+              <li>
+                <strong>SIMKL Client ID</strong>: Register at <a href="https://simkl.com/settings/developer/" target="_blank" rel="noreferrer">simkl.com/settings/developer/</a> &gt; Create App.
+              </li>
               <li>
                 <strong>Premiumize.me Key</strong>: Log in at <a href="https://www.premiumize.me/" target="_blank" rel="noreferrer">Premiumize.me</a> &gt; Account &gt; API Key.
               </li>

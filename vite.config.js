@@ -6,6 +6,12 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
+      '/api/simkl': {
+        target: 'https://api.simkl.com',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/simkl/, ''),
+      },
       '/api/premiumize': {
         target: 'https://www.premiumize.me',
         changeOrigin: true,

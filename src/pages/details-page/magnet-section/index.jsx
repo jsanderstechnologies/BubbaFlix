@@ -2,13 +2,14 @@
 import { useState, useEffect } from "react";
 import { searchBitsearchMagnets } from "../../../utils/bitsearch";
 import { getDirectStreamUrl } from "../../../utils/premiumize";
+import { markAsWatchedOnSimkl } from "../../../utils/simkl";
 import ContentWrapper from "../../../components/content-wrapper";
 import Spinner from "../../../components/spinner";
 import VideoPlayerModal from "../../../components/video-player-modal";
 import { FiPlay, FiChevronDown, FiChevronUp, FiAlertCircle } from "react-icons/fi";
 import "./index.scss";
 
-const MagnetSection = ({ title, year, seasonNum, episodeNum, compact = false }) => {
+const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, compact = false }) => {
   const [magnets, setMagnets] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -51,6 +52,17 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, compact = false }) 
       setActiveVideoUrl(streamUrl);
       setActiveFilename(filename || item.title);
       setShowPlayer(true);
+
+      // Auto-sync SIMKL watch history
+      if (tmdbId || title) {
+        markAsWatchedOnSimkl({
+          tmdbId,
+          title,
+          mediaType: mediaType || (seasonNum !== undefined ? "tv" : "movie"),
+          seasonNum,
+          episodeNum,
+        });
+      }
     }
   };
 

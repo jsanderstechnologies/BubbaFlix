@@ -85,7 +85,6 @@ const SeasonsSection = ({ tvId, seasons, showTitle }) => {
                 ? dayjs(ep.air_date).format("MMM D, YYYY")
                 : "Air Date N/A";
 
-              // Check if episode has already been released (air_date is on or before today)
               const isReleased = ep.air_date
                 ? !dayjs(ep.air_date).isAfter(today, "day")
                 : false;
@@ -122,13 +121,15 @@ const SeasonsSection = ({ tvId, seasons, showTitle }) => {
                     </div>
                   </div>
 
-                  {/* Episode-Level Available Streams Dropdown (Only for Released Episodes) */}
+                  {/* Episode-Level Available Streams Dropdown */}
                   <div className="episodeStreams">
                     {isReleased ? (
                       <MagnetSection
                         title={showTitle}
                         seasonNum={selectedSeasonNumber}
                         episodeNum={ep.episode_number}
+                        tmdbId={tvId}
+                        mediaType="tv"
                         compact={true}
                       />
                     ) : (

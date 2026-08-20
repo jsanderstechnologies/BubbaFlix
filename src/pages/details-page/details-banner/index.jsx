@@ -3,32 +3,30 @@ import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import dayjs from "dayjs";
-
-import "./index.scss";
-
-import ContentWrapper from "../../../components/content-wrapper";
 import useFetch from "../../../hooks/useFetch";
-import PosterFallback from "../../../assets/no-poster.png";
+import ContentWrapper from "../../../components/content-wrapper";
 import CircleRating from "../../../components/circle-rating";
 import Img from "../../../components/lazy-load";
-import { PlayIcon } from "../../../components/play-btn";
+import PosterFallback from "../../../assets/no-poster.png";
 import VideoModal from "../../../components/video-modal";
+import { PlayIcon } from "../../../components/play-btn";
+import { updateWatchlistStatusSimkl } from "../../../utils/simkl";
+import "./index.scss";
 
 const DetailsBanner = ({ video, crew }) => {
 	const [show, setShow] = useState(false);
 	const [videoId, setVideoId] = useState(null);
 
+	const [simklStatus, setSimklStatus] = useState("");
+
 	const { mediaType, id } = useParams();
-	const { data, loading } = useFetch(`/${mediaType}/${id}}`);
+	const { data, loading } = useFetch(`/${mediaType}/${id}`);
 
 	const { url } = useSelector((state) => state.home);
 
-	const director = crew?.filter((item) => item.job === "Director");
+	const director = crew?.filter((f) => f.job === "Director");
 	const writer = crew?.filter(
-		(item) =>
-			item.job === "Screenplay" ||
-			item.job === "Story" ||
-			item.job === "Writer"
+		(f) => f.job === "Screenplay" || f.job === "Story" || f.job === "Writer"
 	);
 
 	const toHoursAndMinutes = (totalMinutes) => {
@@ -37,53 +35,84 @@ const DetailsBanner = ({ video, crew }) => {
 		return `${hours}h${minutes > 0 ? ` ${minutes}m` : ""}`;
 	};
 
+	const handleSimklChange = async (newStatus) => {
+		setSimklStatus(newStatus);
+		if (!newStatus) return;
+		await updateWatchlistStatusSimkl({
+			tmdbId: id,
+			title: data?.title || data?.name,
+			mediaType,
+			status: newStatus,
+		});
+	};
+
 	return (
 		<div className="detailsBanner">
 			{!loading ? (
 				<div>
-					<div className="backdrop-img">
-						<Img src={(url?.backdrop || "https://image.tmdb.org/t/p/original") + data?.backdrop_path} />
-					</div>
+					{!!data && (
+						<div className="backdrop-img">
+							<Img src={(url?.backdrop || "https://image.tmdb.org/t/p/original") + data?.backdrop_path} />
+						</div>
+					)}
 					<div className="opacity-layer"></div>
 					<ContentWrapper>
 						<div className="content">
 							<div className="left">
 								{data?.poster_path ? (
 									<Img
-										classname="posterImg"
-										src={(url?.poster || "https://image.tmdb.org/t/p/original") + data?.poster_path}
+										className="posterImg"
+										src={(url?.poster || "https://image.tmdb.org/t/p/original") + data.poster_path}
 									/>
 								) : (
 									<Img
-										classname="posterImg"
+										className="posterImg"
 										src={PosterFallback}
 									/>
 								)}
 							</div>
 							<div className="right">
-								<div className="title">{`${
-									data?.name || data?.title
-								} (${dayjs(data?.release_date).format(
-									"YYYY"
-								)})`}</div>
+								<div className="title">
+									{`${data?.name || data?.title} (${dayjs(
+										data?.release_date || data?.first_air_date
+									).format("YYYY")})`}
+								</div>
 
-								<div className="subtitle">{data?.tagline}</div>
+								<div className="subtitle">
+									{data?.tagline}
+								</div>
 
 								<div className="row">
 									<CircleRating
-										rating={data?.vote_average.toFixed(1)}
+										rating={data?.vote_average?.toFixed(1)}
 									/>
 									<div
 										className="playbtn"
 										onClick={() => {
 											setShow(true);
-											setVideoId(video.key);
+											if (video?.key) setVideoId(video.key);
 										}}
 									>
 										<PlayIcon />
 										<span className="text">
 											Watch Trailer
 										</span>
+									</div>
+
+									{/* SIMKL Watch Status Selector */}
+									<div className="simklPicker">
+										<select
+											className="simklSelect"
+											value={simklStatus}
+											onChange={(e) => handleSimklChange(e.target.value)}
+										>
+											<option value="">+ SIMKL Watch Status</option>
+											<option value="plantowatch">Plan to Watch</option>
+											<option value="watching">Watching</option>
+											<option value="completed">Completed / Watched</option>
+											<option value="hold">On Hold</option>
+											<option value="dropped">Dropped</option>
+										</select>
 									</div>
 								</div>
 

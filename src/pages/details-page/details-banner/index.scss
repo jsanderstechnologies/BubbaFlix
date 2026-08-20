@@ -159,8 +159,36 @@
 			.row {
 				display: flex;
 				align-items: center;
+				flex-wrap: wrap;
 				gap: 25px;
 				margin-bottom: 25px;
+			}
+
+			.simklPicker {
+				margin-left: auto;
+
+				.simklSelect {
+					height: 42px;
+					background-color: var(--black2);
+					color: white;
+					border: 1px solid rgba(255, 255, 255, 0.2);
+					border-radius: 8px;
+					padding: 0 14px;
+					font-size: 13px;
+					font-weight: 600;
+					outline: none;
+					cursor: pointer;
+					transition: border-color 0.2s ease;
+
+					&:focus {
+						border-color: var(--pink);
+					}
+
+					option {
+						background-color: var(--black2);
+						color: white;
+					}
+				}
 			}
 
 			.info {
