@@ -49,10 +49,10 @@ const getDistance = (rect1, rect2, direction) => {
   if (direction === "ArrowLeft" && dx >= -5) return Infinity;
   if (direction === "ArrowRight" && dx <= 5) return Infinity;
 
-  // Restrict Left / Right arrow navigation to elements on the same horizontal row (vertical diff <= 100px)
+  // Restrict Left / Right arrow navigation to elements on the same horizontal row (vertical diff <= 80px)
   // This prevents Left/Right arrow keys at carousel edges from jumping into the Hero section or header bar
   if (direction === "ArrowLeft" || direction === "ArrowRight") {
-    if (Math.abs(dy) > 100) {
+    if (Math.abs(dy) > 80) {
       return Infinity; // Block vertical jumps on horizontal arrow presses!
     }
     return Math.abs(dx) + Math.abs(dy) * 4;
@@ -146,6 +146,19 @@ export const initDpadNavigation = () => {
       }
     }
 
+    // ALWAYS block browser native spatial navigation on horizontal (Left/Right) arrow key presses!
+    if (direction === "ArrowLeft" || direction === "ArrowRight") {
+      e.preventDefault();
+      if (bestCandidate) {
+        focusAndScroll(bestCandidate);
+      } else {
+        // At farthest item: keep focus clamped strictly on current active item
+        focusAndScroll(activeEl);
+      }
+      return;
+    }
+
+    // For Up & Down D-Pad Arrow keys:
     if (bestCandidate) {
       e.preventDefault();
       focusAndScroll(bestCandidate);
