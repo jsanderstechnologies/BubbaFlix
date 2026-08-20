@@ -10,7 +10,7 @@ import { isTvDevice, getSavedZoom, applyZoom } from "../../utils/zoom";
 import { updateServerSettings, fetchServerSettings } from "../../utils/serverSettings";
 import { getApiConfiguration } from "../../store/homeSlice";
 import { THEMES, getSavedTheme, applyTheme } from "../../utils/theme";
-import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning, FiCheckSquare, FiTv, FiPlus, FiMinus, FiServer } from "react-icons/fi";
+import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning, FiCheckSquare, FiTv, FiPlus, FiMinus, FiServer, FiShield } from "react-icons/fi";
 import "./index.scss";
 
 const ALL_RESOLUTIONS = [
@@ -79,11 +79,12 @@ const SettingsPage = () => {
 
   const loadAllSettings = async () => {
     // 1. Per-device Zoom
-    setIsTv(isTvDevice());
+    const tvDetected = isTvDevice();
+    setIsTv(tvDetected);
     setZoomLevel(getSavedZoom());
 
     // 2. Pull Centralized Backend Settings
-    const serverData = await fetchServerSettings();
+    await fetchServerSettings();
 
     // 3. Populate state
     const currentTheme = getSavedTheme();
@@ -362,561 +363,566 @@ const SettingsPage = () => {
         <div className="settingsContainer">
           <div className="settingsHeader">
             <h1 className="title">
-              <FiKey className="icon" /> API & System Settings
+              {isTv ? <FiTv className="icon" /> : <FiKey className="icon" />} {isTv ? "TV Display Settings" : "API & System Settings"}
             </h1>
             <p className="subtitle">
-              Centralized backend server configuration for SIMKL watch status tracking, Premiumize streaming, color themes, API keys, and stream filters.
+              {isTv
+                ? "Adjust screen zoom and display scale for this TV device. Global API keys and server configuration are managed centrally on the backend."
+                : "Centralized backend server configuration for SIMKL watch status tracking, Premiumize streaming, color themes, API keys, and stream filters."}
             </p>
           </div>
 
-          {/* Color Theme Selector Card */}
+          {/* TV & Streaming Device Screen Zoom Card (Always Available & Primary on TV) */}
           <div className="settingsCard">
             <div className="cardHeader">
-              <h2><FiSun style={{ marginRight: 8 }} /> Application Color Theme</h2>
-              <span className="badge custom">
-                <FiServer style={{ marginRight: 4 }} /> Server Synced
+              <h2><FiTv style={{ marginRight: 8 }} /> TV Screen Zoom & Display Scale</h2>
+              <span className="badge default">
+                Per-Device Local Setting
               </span>
             </div>
 
             <p className="description">
-              Select your preferred color theme for BubbaFlix, including Dark Red (Netflix Style). Synced across all client devices.
+              Customize the UI scale and zoom level for 10ft TV viewing on Android TV, Google TV, Firestick, Apple TV, or Smart TV devices (saved independently on each device).
             </p>
 
-            <div className="themeGrid">
-              {THEMES.map((theme) => (
-                <div
-                  key={theme.id}
-                  className={`themeCard ${activeTheme === theme.id ? "active" : ""}`}
-                  onClick={() => handleSelectTheme(theme.id)}
-                >
-                  <div
-                    className="themePreview"
-                    style={{
-                      background: theme.bg,
-                      borderColor: activeTheme === theme.id ? theme.primary : "rgba(255,255,255,0.1)",
-                    }}
-                  >
-                    <div
-                      className="previewHeader"
-                      style={{ background: theme.bg2 }}
-                    >
-                      <div
-                        className="previewBadge"
-                        style={{ background: theme.gradient }}
-                      />
-                    </div>
-                    <div className="previewBody">
-                      <div
-                        className="previewDot"
-                        style={{ background: theme.primary }}
-                      />
-                      <div
-                        className="previewDot"
-                        style={{ background: theme.secondary }}
-                      />
-                    </div>
-                  </div>
-                  <div className="themeInfo">
-                    <span className="themeName">{theme.name}</span>
-                    <span className="themeDesc">{theme.description}</span>
-                  </div>
-                  {activeTheme === theme.id && (
-                    <div className="activeCheck">
-                      <FiCheckCircle />
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* TV & Streaming Device Screen Zoom Card (Per-Device Local Setting) */}
-          {(isTv || true) && (
-            <div className="settingsCard">
-              <div className="cardHeader">
-                <h2><FiTv style={{ marginRight: 8 }} /> TV Screen Zoom & Display Scale</h2>
-                <span className="badge default">
-                  Per-Device Local Setting
-                </span>
+            <div className="zoomControls">
+              <div className="zoomDisplay">
+                <span className="zoomLabel">Current TV Zoom Scale:</span>
+                <span className="zoomValue">{zoomLevel}%</span>
               </div>
 
-              <p className="description">
-                Customize the UI scale and zoom level for 10ft TV viewing on Android TV, Google TV, Firestick, Apple TV, or Smart TV devices (saved independently on each device).
-              </p>
-
-              <div className="zoomControls">
-                <div className="zoomDisplay">
-                  <span className="zoomLabel">Current TV Zoom Scale:</span>
-                  <span className="zoomValue">{zoomLevel}%</span>
-                </div>
-
-                <div className="zoomButtons">
-                  <button
-                    type="button"
-                    className="zoomBtn"
-                    onClick={() => handleZoomChange(Math.max(50, zoomLevel - 5))}
-                    disabled={zoomLevel <= 50}
-                    tabIndex="0"
-                  >
-                    <FiMinus /> Zoom Out (-5%)
-                  </button>
-
-                  <button
-                    type="button"
-                    className="zoomBtn reset"
-                    onClick={() => handleZoomChange(100)}
-                    disabled={zoomLevel === 100}
-                    tabIndex="0"
-                  >
-                    Reset to 100%
-                  </button>
-
-                  <button
-                    type="button"
-                    className="zoomBtn"
-                    onClick={() => handleZoomChange(Math.min(140, zoomLevel + 5))}
-                    disabled={zoomLevel >= 140}
-                    tabIndex="0"
-                  >
-                    <FiPlus /> Zoom In (+5%)
-                  </button>
-                </div>
-
-                <div className="presetButtons">
-                  {[50, 65, 80, 90, 100, 110, 120, 130, 140].map((scale) => (
-                    <button
-                      key={scale}
-                      type="button"
-                      className={`presetBtn ${zoomLevel === scale ? "active" : ""}`}
-                      onClick={() => handleZoomChange(scale)}
-                      tabIndex="0"
-                    >
-                      {scale}%
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* SIMKL Watch Tracker Card */}
-          <div className="settingsCard">
-            <div className="cardHeader">
-              <h2><FiCheckSquare style={{ marginRight: 8 }} /> SIMKL Watch Status Tracker</h2>
-              <span className={`badge ${hasSimklCustom ? "custom" : "default"}`}>
-                <FiServer style={{ marginRight: 4 }} /> {hasSimklCustom ? "SIMKL Sync Active" : "SIMKL ID Required"}
-              </span>
-            </div>
-
-            <p className="description">
-              Sync watched movies and TV episode playback history automatically with your SIMKL watchlist across all devices.
-            </p>
-
-            <form onSubmit={handleSaveSimkl} className="tokenForm">
-              <div className="inputGroup">
-                <label htmlFor="simklClientId">SIMKL_CLIENT_ID</label>
-                <div className="inputWrapper">
-                  <input
-                    id="simklClientId"
-                    type="text"
-                    value={simklClientId}
-                    onChange={(e) => setSimklClientId(e.target.value)}
-                    placeholder="Enter your SIMKL API Client ID..."
-                  />
-                </div>
-              </div>
-
-              <div className="inputGroup" style={{ marginTop: 12 }}>
-                <label htmlFor="simklToken">SIMKL_USER_ACCESS_TOKEN (Optional)</label>
-                <div className="inputWrapper">
-                  <input
-                    id="simklToken"
-                    type={showSimklToken ? "text" : "password"}
-                    value={simklToken}
-                    onChange={(e) => setSimklToken(e.target.value)}
-                    placeholder="Enter your SIMKL User Access Token..."
-                  />
-                  <button
-                    type="button"
-                    className="toggleVisibility"
-                    onClick={() => setShowSimklToken(!showSimklToken)}
-                    title={showSimklToken ? "Hide Token" : "Show Token"}
-                  >
-                    {showSimklToken ? <FiEyeOff /> : <FiEye />}
-                  </button>
-                </div>
-              </div>
-
-              {simklStatus && (
-                <div className={`statusBanner ${simklStatus.type}`}>
-                  {simklStatus.type === "success" && <FiCheckCircle />}
-                  {simklStatus.type === "error" && <FiXCircle />}
-                  <span>{simklStatus.text}</span>
-                </div>
-              )}
-
-              <div className="buttonGroup">
-                <button type="submit" className="saveBtn" disabled={testingSimkl}>
-                  <FiSave /> {testingSimkl ? "Verifying..." : "Save SIMKL Config"}
-                </button>
-                {hasSimklCustom && (
-                  <button
-                    type="button"
-                    className="clearBtn"
-                    onClick={handleClearSimkl}
-                  >
-                    Clear Credentials
-                  </button>
-                )}
-              </div>
-            </form>
-          </div>
-
-          {/* Premiumize.me API Card */}
-          <div className="settingsCard">
-            <div className="cardHeader">
-              <h2><FiCloudLightning style={{ marginRight: 8 }} /> Premiumize.me Streaming API Key</h2>
-              <span className={`badge ${hasPremiumizeCustom ? "custom" : "default"}`}>
-                <FiServer style={{ marginRight: 4 }} /> {hasPremiumizeCustom ? "Premiumize Stream Active" : "Key Required to Play Streams"}
-              </span>
-            </div>
-
-            <p className="description">
-              Required to instantly stream magnet torrent links directly inside the BubbaFlix video player without downloading.
-            </p>
-
-            <form onSubmit={handleSavePremiumize} className="tokenForm">
-              <div className="inputGroup">
-                <label htmlFor="premiumizeKey">PREMIUMIZE_API_KEY</label>
-                <div className="inputWrapper">
-                  <input
-                    id="premiumizeKey"
-                    type={showPremiumizeKey ? "text" : "password"}
-                    value={premiumizeKey}
-                    onChange={(e) => setPremiumizeKey(e.target.value)}
-                    placeholder="Enter your Premiumize.me API key..."
-                  />
-                  <button
-                    type="button"
-                    className="toggleVisibility"
-                    onClick={() => setShowPremiumizeKey(!showPremiumizeKey)}
-                    title={showPremiumizeKey ? "Hide Key" : "Show Key"}
-                  >
-                    {showPremiumizeKey ? <FiEyeOff /> : <FiEye />}
-                  </button>
-                </div>
-              </div>
-
-              {premiumizeStatus && (
-                <div className={`statusBanner ${premiumizeStatus.type}`}>
-                  {premiumizeStatus.type === "success" && <FiCheckCircle />}
-                  {premiumizeStatus.type === "error" && <FiXCircle />}
-                  <span>{premiumizeStatus.text}</span>
-                </div>
-              )}
-
-              <div className="buttonGroup">
-                <button type="submit" className="saveBtn" disabled={testingPremiumize}>
-                  <FiSave /> {testingPremiumize ? "Verifying..." : "Save Premiumize Key"}
-                </button>
-                {hasPremiumizeCustom && (
-                  <button
-                    type="button"
-                    className="clearBtn"
-                    onClick={handleClearPremiumize}
-                  >
-                    Clear Key
-                  </button>
-                )}
-              </div>
-            </form>
-          </div>
-
-          {/* Groq AI Key Card */}
-          <div className="settingsCard">
-            <div className="cardHeader">
-              <h2><FiCpu style={{ marginRight: 8 }} /> Groq AI Stream Filter Key</h2>
-              <span className={`badge ${hasGroqCustom ? "custom" : "default"}`}>
-                <FiServer style={{ marginRight: 4 }} /> {hasGroqCustom ? "Groq AI Active" : "Regex Filter Mode"}
-              </span>
-            </div>
-
-            <p className="description">
-              Used to intelligently classify stream titles using fast Llama 3 AI inference, filtering out adult content, music audio files, and unrelated software.
-            </p>
-
-            <form onSubmit={handleSaveGroq} className="tokenForm">
-              <div className="inputGroup">
-                <label htmlFor="groqKey">GROQ_API_KEY</label>
-                <div className="inputWrapper">
-                  <input
-                    id="groqKey"
-                    type={showGroqKey ? "text" : "password"}
-                    value={groqKey}
-                    onChange={(e) => setGroqKey(e.target.value)}
-                    placeholder="gsk_..."
-                  />
-                  <button
-                    type="button"
-                    className="toggleVisibility"
-                    onClick={() => setShowGroqKey(!showGroqKey)}
-                    title={showGroqKey ? "Hide Key" : "Show Key"}
-                  >
-                    {showGroqKey ? <FiEyeOff /> : <FiEye />}
-                  </button>
-                </div>
-              </div>
-
-              {groqStatus && (
-                <div className={`statusBanner ${groqStatus.type}`}>
-                  {groqStatus.type === "success" && <FiCheckCircle />}
-                  {groqStatus.type === "error" && <FiXCircle />}
-                  <span>{groqStatus.text}</span>
-                </div>
-              )}
-
-              <div className="buttonGroup">
-                <button type="submit" className="saveBtn">
-                  <FiSave /> Save Groq AI Key
-                </button>
-                {hasGroqCustom && (
-                  <button
-                    type="button"
-                    className="clearBtn"
-                    onClick={handleClearGroq}
-                  >
-                    Clear Key
-                  </button>
-                )}
-              </div>
-            </form>
-          </div>
-
-          {/* TMDB API Card */}
-          <div className="settingsCard">
-            <div className="cardHeader">
-              <h2>TMDB Read Access Token</h2>
-              <span className={`badge ${isCustom ? "custom" : "default"}`}>
-                <FiServer style={{ marginRight: 4 }} /> {isCustom ? "Custom Token Active" : "Default Token Active"}
-              </span>
-            </div>
-
-            <p className="description">
-              Used to fetch live movies, TV shows, backdrop banners, and poster images.
-            </p>
-
-            <form onSubmit={handleSaveTmdb} className="tokenForm">
-              <div className="inputGroup">
-                <label htmlFor="tmdbToken">VITE_APP_TMDB_KEY</label>
-                <div className="inputWrapper">
-                  <input
-                    id="tmdbToken"
-                    type={showToken ? "text" : "password"}
-                    value={token}
-                    onChange={(e) => setToken(e.target.value)}
-                    placeholder="eyJhbGciOiJIUzI1NiJ9..."
-                  />
-                  <button
-                    type="button"
-                    className="toggleVisibility"
-                    onClick={() => setShowToken(!showToken)}
-                    title={showToken ? "Hide Key" : "Show Key"}
-                  >
-                    {showToken ? <FiEyeOff /> : <FiEye />}
-                  </button>
-                </div>
-              </div>
-
-              {statusMessage && (
-                <div className={`statusBanner ${statusMessage.type}`}>
-                  {statusMessage.type === "success" && <FiCheckCircle />}
-                  {statusMessage.type === "error" && <FiXCircle />}
-                  <span>{statusMessage.text}</span>
-                </div>
-              )}
-
-              <div className="buttonGroup">
-                <button type="submit" className="saveBtn">
-                  <FiSave /> Save TMDB Key
-                </button>
+              <div className="zoomButtons">
                 <button
                   type="button"
-                  className="testBtn"
-                  onClick={handleTestConnection}
-                  disabled={testing}
+                  className="zoomBtn"
+                  onClick={() => handleZoomChange(Math.max(50, zoomLevel - 5))}
+                  disabled={zoomLevel <= 50}
+                  tabIndex="0"
                 >
-                  <FiRefreshCw className={testing ? "spinning" : ""} />
-                  {testing ? "Testing..." : "Test Connection"}
+                  <FiMinus /> Zoom Out (-5%)
                 </button>
-                {isCustom && (
-                  <button
-                    type="button"
-                    className="clearBtn"
-                    onClick={handleClearTmdb}
-                  >
-                    Reset to Default
-                  </button>
-                )}
+
+                <button
+                  type="button"
+                  className="zoomBtn reset"
+                  onClick={() => handleZoomChange(100)}
+                  disabled={zoomLevel === 100}
+                  tabIndex="0"
+                >
+                  Reset to 100%
+                </button>
+
+                <button
+                  type="button"
+                  className="zoomBtn"
+                  onClick={() => handleZoomChange(Math.min(140, zoomLevel + 5))}
+                  disabled={zoomLevel >= 140}
+                  tabIndex="0"
+                >
+                  <FiPlus /> Zoom In (+5%)
+                </button>
               </div>
-            </form>
+
+              <div className="presetButtons">
+                {[50, 65, 80, 90, 100, 110, 120, 130, 140].map((scale) => (
+                  <button
+                    key={scale}
+                    type="button"
+                    className={`presetBtn ${zoomLevel === scale ? "active" : ""}`}
+                    onClick={() => handleZoomChange(scale)}
+                    tabIndex="0"
+                  >
+                    {scale}%
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
-          {/* Bitsearch API Card */}
-          <div className="settingsCard">
-            <div className="cardHeader">
-              <h2>Bitsearch API Key</h2>
-              <span className={`badge ${hasBitsearchCustom ? "custom" : "default"}`}>
-                <FiServer style={{ marginRight: 4 }} /> {hasBitsearchCustom ? "API Key Configured" : "Public Mode Active"}
-              </span>
-            </div>
-
-            <p className="description">
-              Used on Movie & TV detail pages to search and fetch stream magnet links via Bitsearch API.
-            </p>
-
-            <form onSubmit={handleSaveBitsearch} className="tokenForm">
-              <div className="inputGroup">
-                <label htmlFor="bitsearchKey">BITSEARCH_API_KEY</label>
-                <div className="inputWrapper">
-                  <input
-                    id="bitsearchKey"
-                    type={showBitsearchKey ? "text" : "password"}
-                    value={bitsearchKey}
-                    onChange={(e) => setBitsearchKey(e.target.value)}
-                    placeholder="Enter your Bitsearch API key..."
-                  />
-                  <button
-                    type="button"
-                    className="toggleVisibility"
-                    onClick={() => setShowBitsearchKey(!showBitsearchKey)}
-                    title={showBitsearchKey ? "Hide Key" : "Show Key"}
-                  >
-                    {showBitsearchKey ? <FiEyeOff /> : <FiEye />}
-                  </button>
+          {/* Global Server Settings Cards (Hidden on TV Devices) */}
+          {!isTv && (
+            <>
+              {/* Color Theme Selector Card */}
+              <div className="settingsCard">
+                <div className="cardHeader">
+                  <h2><FiSun style={{ marginRight: 8 }} /> Application Color Theme</h2>
+                  <span className="badge custom">
+                    <FiServer style={{ marginRight: 4 }} /> Server Synced
+                  </span>
                 </div>
-              </div>
 
-              {bitsearchStatus && (
-                <div className={`statusBanner ${bitsearchStatus.type}`}>
-                  {bitsearchStatus.type === "success" && <FiCheckCircle />}
-                  {bitsearchStatus.type === "error" && <FiXCircle />}
-                  <span>{bitsearchStatus.text}</span>
-                </div>
-              )}
+                <p className="description">
+                  Select your preferred color theme for BubbaFlix, including Dark Red (Netflix Style). Synced across all client devices.
+                </p>
 
-              <div className="buttonGroup">
-                <button type="submit" className="saveBtn">
-                  <FiSave /> Save Bitsearch Key
-                </button>
-                {hasBitsearchCustom && (
-                  <button
-                    type="button"
-                    className="clearBtn"
-                    onClick={handleClearBitsearch}
-                  >
-                    Clear Key
-                  </button>
-                )}
-              </div>
-            </form>
-          </div>
-
-          {/* Stream Filter Preferences Card */}
-          <div className="settingsCard">
-            <div className="cardHeader">
-              <h2><FiSliders style={{ marginRight: 8 }} /> Stream Resolution & Codec Filters</h2>
-              <span className="badge custom">
-                <FiServer style={{ marginRight: 4 }} /> Server Synced
-              </span>
-            </div>
-
-            <p className="description">
-              Select which video resolutions, codecs, and release qualities to return when searching Available Streams. Synced across all client devices.
-            </p>
-
-            <form onSubmit={handleSaveStreamFilters} className="tokenForm">
-              <div className="filterGroup">
-                <label className="groupLabel">Allowed Resolutions</label>
-                <div className="checkboxGrid">
-                  {ALL_RESOLUTIONS.map((res) => (
-                    <label key={res.id} className="checkboxOption">
-                      <input
-                        type="checkbox"
-                        checked={selectedResolutions.includes(res.id)}
-                        onChange={() => handleToggleResolution(res.id)}
-                      />
-                      <span>{res.label}</span>
-                    </label>
+                <div className="themeGrid">
+                  {THEMES.map((theme) => (
+                    <div
+                      key={theme.id}
+                      className={`themeCard ${activeTheme === theme.id ? "active" : ""}`}
+                      onClick={() => handleSelectTheme(theme.id)}
+                    >
+                      <div
+                        className="themePreview"
+                        style={{
+                          background: theme.bg,
+                          borderColor: activeTheme === theme.id ? theme.primary : "rgba(255,255,255,0.1)",
+                        }}
+                      >
+                        <div
+                          className="previewHeader"
+                          style={{ background: theme.bg2 }}
+                        >
+                          <div
+                            className="previewBadge"
+                            style={{ background: theme.gradient }}
+                          />
+                        </div>
+                        <div className="previewBody">
+                          <div
+                            className="previewDot"
+                            style={{ background: theme.primary }}
+                          />
+                          <div
+                            className="previewDot"
+                            style={{ background: theme.secondary }}
+                          />
+                        </div>
+                      </div>
+                      <div className="themeInfo">
+                        <span className="themeName">{theme.name}</span>
+                        <span className="themeDesc">{theme.description}</span>
+                      </div>
+                      {activeTheme === theme.id && (
+                        <div className="activeCheck">
+                          <FiCheckCircle />
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </div>
               </div>
 
-              <div className="filterGroup">
-                <label className="groupLabel">Allowed Codecs</label>
-                <div className="checkboxGrid">
-                  {ALL_CODECS.map((codec) => (
-                    <label key={codec.id} className="checkboxOption">
+              {/* SIMKL Watch Tracker Card */}
+              <div className="settingsCard">
+                <div className="cardHeader">
+                  <h2><FiCheckSquare style={{ marginRight: 8 }} /> SIMKL Watch Status Tracker</h2>
+                  <span className={`badge ${hasSimklCustom ? "custom" : "default"}`}>
+                    <FiServer style={{ marginRight: 4 }} /> {hasSimklCustom ? "SIMKL Sync Active" : "SIMKL ID Required"}
+                  </span>
+                </div>
+
+                <p className="description">
+                  Sync watched movies and TV episode playback history automatically with your SIMKL watchlist across all devices.
+                </p>
+
+                <form onSubmit={handleSaveSimkl} className="tokenForm">
+                  <div className="inputGroup">
+                    <label htmlFor="simklClientId">SIMKL_CLIENT_ID</label>
+                    <div className="inputWrapper">
                       <input
-                        type="checkbox"
-                        checked={selectedCodecs.includes(codec.id)}
-                        onChange={() => handleToggleCodec(codec.id)}
+                        id="simklClientId"
+                        type="text"
+                        value={simklClientId}
+                        onChange={(e) => setSimklClientId(e.target.value)}
+                        placeholder="Enter your SIMKL API Client ID..."
                       />
-                      <span>{codec.label}</span>
-                    </label>
-                  ))}
-                </div>
+                    </div>
+                  </div>
+
+                  <div className="inputGroup" style={{ marginTop: 12 }}>
+                    <label htmlFor="simklToken">SIMKL_USER_ACCESS_TOKEN (Optional)</label>
+                    <div className="inputWrapper">
+                      <input
+                        id="simklToken"
+                        type={showSimklToken ? "text" : "password"}
+                        value={simklToken}
+                        onChange={(e) => setSimklToken(e.target.value)}
+                        placeholder="Enter your SIMKL User Access Token..."
+                      />
+                      <button
+                        type="button"
+                        className="toggleVisibility"
+                        onClick={() => setShowSimklToken(!showSimklToken)}
+                        title={showSimklToken ? "Hide Token" : "Show Token"}
+                      >
+                        {showSimklToken ? <FiEyeOff /> : <FiEye />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {simklStatus && (
+                    <div className={`statusBanner ${simklStatus.type}`}>
+                      {simklStatus.type === "success" && <FiCheckCircle />}
+                      {simklStatus.type === "error" && <FiXCircle />}
+                      <span>{simklStatus.text}</span>
+                    </div>
+                  )}
+
+                  <div className="buttonGroup">
+                    <button type="submit" className="saveBtn" disabled={testingSimkl}>
+                      <FiSave /> {testingSimkl ? "Verifying..." : "Save SIMKL Config"}
+                    </button>
+                    {hasSimklCustom && (
+                      <button
+                        type="button"
+                        className="clearBtn"
+                        onClick={handleClearSimkl}
+                      >
+                        Clear Credentials
+                      </button>
+                    )}
+                  </div>
+                </form>
               </div>
 
-              <div className="filterGroup">
-                <label className="groupLabel">Quality Exclusions</label>
-                <div className="checkboxGrid">
-                  <label className="checkboxOption">
-                    <input
-                      type="checkbox"
-                      checked={excludeLowQuality}
-                      onChange={(e) => setExcludeLowQuality(e.target.checked)}
-                    />
-                    <span>Exclude CAM, Telesync (HDTS), & TC Videos</span>
-                  </label>
+              {/* Premiumize.me API Card */}
+              <div className="settingsCard">
+                <div className="cardHeader">
+                  <h2><FiCloudLightning style={{ marginRight: 8 }} /> Premiumize.me Streaming API Key</h2>
+                  <span className={`badge ${hasPremiumizeCustom ? "custom" : "default"}`}>
+                    <FiServer style={{ marginRight: 4 }} /> {hasPremiumizeCustom ? "Premiumize Stream Active" : "Key Required to Play Streams"}
+                  </span>
                 </div>
+
+                <p className="description">
+                  Required to instantly stream magnet torrent links directly inside the BubbaFlix video player without downloading.
+                </p>
+
+                <form onSubmit={handleSavePremiumize} className="tokenForm">
+                  <div className="inputGroup">
+                    <label htmlFor="premiumizeKey">PREMIUMIZE_API_KEY</label>
+                    <div className="inputWrapper">
+                      <input
+                        id="premiumizeKey"
+                        type={showPremiumizeKey ? "text" : "password"}
+                        value={premiumizeKey}
+                        onChange={(e) => setPremiumizeKey(e.target.value)}
+                        placeholder="Enter your Premiumize.me API key..."
+                      />
+                      <button
+                        type="button"
+                        className="toggleVisibility"
+                        onClick={() => setShowPremiumizeKey(!showPremiumizeKey)}
+                        title={showPremiumizeKey ? "Hide Key" : "Show Key"}
+                      >
+                        {showPremiumizeKey ? <FiEyeOff /> : <FiEye />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {premiumizeStatus && (
+                    <div className={`statusBanner ${premiumizeStatus.type}`}>
+                      {premiumizeStatus.type === "success" && <FiCheckCircle />}
+                      {premiumizeStatus.type === "error" && <FiXCircle />}
+                      <span>{premiumizeStatus.text}</span>
+                    </div>
+                  )}
+
+                  <div className="buttonGroup">
+                    <button type="submit" className="saveBtn" disabled={testingPremiumize}>
+                      <FiSave /> {testingPremiumize ? "Verifying..." : "Save Premiumize Key"}
+                    </button>
+                    {hasPremiumizeCustom && (
+                      <button
+                        type="button"
+                        className="clearBtn"
+                        onClick={handleClearPremiumize}
+                      >
+                        Clear Key
+                      </button>
+                    )}
+                  </div>
+                </form>
               </div>
 
-              {filterStatus && (
-                <div className={`statusBanner ${filterStatus.type}`}>
-                  <FiCheckCircle />
-                  <span>{filterStatus.text}</span>
+              {/* Groq AI Key Card */}
+              <div className="settingsCard">
+                <div className="cardHeader">
+                  <h2><FiCpu style={{ marginRight: 8 }} /> Groq AI Stream Filter Key</h2>
+                  <span className={`badge ${hasGroqCustom ? "custom" : "default"}`}>
+                    <FiServer style={{ marginRight: 4 }} /> {hasGroqCustom ? "Groq AI Active" : "Regex Filter Mode"}
+                  </span>
                 </div>
-              )}
 
-              <div className="buttonGroup">
-                <button type="submit" className="saveBtn">
-                  <FiSave /> Save Stream Preferences
-                </button>
+                <p className="description">
+                  Used to intelligently classify stream titles using fast Llama 3 AI inference, filtering out adult content, music audio files, and unrelated software.
+                </p>
+
+                <form onSubmit={handleSaveGroq} className="tokenForm">
+                  <div className="inputGroup">
+                    <label htmlFor="groqKey">GROQ_API_KEY</label>
+                    <div className="inputWrapper">
+                      <input
+                        id="groqKey"
+                        type={showGroqKey ? "text" : "password"}
+                        value={groqKey}
+                        onChange={(e) => setGroqKey(e.target.value)}
+                        placeholder="gsk_..."
+                      />
+                      <button
+                        type="button"
+                        className="toggleVisibility"
+                        onClick={() => setShowGroqKey(!showGroqKey)}
+                        title={showGroqKey ? "Hide Key" : "Show Key"}
+                      >
+                        {showGroqKey ? <FiEyeOff /> : <FiEye />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {groqStatus && (
+                    <div className={`statusBanner ${groqStatus.type}`}>
+                      {groqStatus.type === "success" && <FiCheckCircle />}
+                      {groqStatus.type === "error" && <FiXCircle />}
+                      <span>{groqStatus.text}</span>
+                    </div>
+                  )}
+
+                  <div className="buttonGroup">
+                    <button type="submit" className="saveBtn">
+                      <FiSave /> Save Groq AI Key
+                    </button>
+                    {hasGroqCustom && (
+                      <button
+                        type="button"
+                        className="clearBtn"
+                        onClick={handleClearGroq}
+                      >
+                        Clear Key
+                      </button>
+                    )}
+                  </div>
+                </form>
               </div>
-            </form>
-          </div>
 
-          {/* Help Instructions */}
-          <div className="helpCard">
-            <h3>How to get API Keys?</h3>
-            <ol>
-              <li>
-                <strong>SIMKL Client ID</strong>: Register at <a href="https://simkl.com/settings/developer/" target="_blank" rel="noreferrer">simkl.com/settings/developer/</a> &gt; Create App.
-              </li>
-              <li>
-                <strong>Premiumize.me Key</strong>: Log in at <a href="https://www.premiumize.me/" target="_blank" rel="noreferrer">Premiumize.me</a> &gt; Account &gt; API Key.
-              </li>
-              <li>
-                <strong>TMDB API Token</strong>: Register at <a href="https://themoviedb.org/" target="_blank" rel="noreferrer">TMDB</a> &gt; Settings &gt; API &gt; API Read Access Token (v4).
-              </li>
-              <li>
-                <strong>Groq AI Key</strong>: Register at <a href="https://console.groq.com/" target="_blank" rel="noreferrer">console.groq.com</a> &gt; API Keys to get your free key.
-              </li>
-              <li>
-                <strong>Bitsearch API Key</strong>: Obtain your API key from <a href="https://bitsearch.to" target="_blank" rel="noreferrer">Bitsearch.to</a> to search torrent magnet links.
-              </li>
-            </ol>
-          </div>
+              {/* TMDB API Card */}
+              <div className="settingsCard">
+                <div className="cardHeader">
+                  <h2>TMDB Read Access Token</h2>
+                  <span className={`badge ${isCustom ? "custom" : "default"}`}>
+                    <FiServer style={{ marginRight: 4 }} /> {isCustom ? "Custom Token Active" : "Default Token Active"}
+                  </span>
+                </div>
+
+                <p className="description">
+                  Used to fetch live movies, TV shows, backdrop banners, and poster images.
+                </p>
+
+                <form onSubmit={handleSaveTmdb} className="tokenForm">
+                  <div className="inputGroup">
+                    <label htmlFor="tmdbToken">VITE_APP_TMDB_KEY</label>
+                    <div className="inputWrapper">
+                      <input
+                        id="tmdbToken"
+                        type={showToken ? "text" : "password"}
+                        value={token}
+                        onChange={(e) => setToken(e.target.value)}
+                        placeholder="eyJhbGciOiJIUzI1NiJ9..."
+                      />
+                      <button
+                        type="button"
+                        className="toggleVisibility"
+                        onClick={() => setShowToken(!showToken)}
+                        title={showToken ? "Hide Key" : "Show Key"}
+                      >
+                        {showToken ? <FiEyeOff /> : <FiEye />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {statusMessage && (
+                    <div className={`statusBanner ${statusMessage.type}`}>
+                      {statusMessage.type === "success" && <FiCheckCircle />}
+                      {statusMessage.type === "error" && <FiXCircle />}
+                      <span>{statusMessage.text}</span>
+                    </div>
+                  )}
+
+                  <div className="buttonGroup">
+                    <button type="submit" className="saveBtn">
+                      <FiSave /> Save TMDB Key
+                    </button>
+                    <button
+                      type="button"
+                      className="testBtn"
+                      onClick={handleTestConnection}
+                      disabled={testing}
+                    >
+                      <FiRefreshCw className={testing ? "spinning" : ""} />
+                      {testing ? "Testing..." : "Test Connection"}
+                    </button>
+                    {isCustom && (
+                      <button
+                        type="button"
+                        className="clearBtn"
+                        onClick={handleClearTmdb}
+                      >
+                        Reset to Default
+                      </button>
+                    )}
+                  </div>
+                </form>
+              </div>
+
+              {/* Bitsearch API Card */}
+              <div className="settingsCard">
+                <div className="cardHeader">
+                  <h2>Bitsearch API Key</h2>
+                  <span className={`badge ${hasBitsearchCustom ? "custom" : "default"}`}>
+                    <FiServer style={{ marginRight: 4 }} /> {hasBitsearchCustom ? "API Key Configured" : "Public Mode Active"}
+                  </span>
+                </div>
+
+                <p className="description">
+                  Used on Movie & TV detail pages to search and fetch stream magnet links via Bitsearch API.
+                </p>
+
+                <form onSubmit={handleSaveBitsearch} className="tokenForm">
+                  <div className="inputGroup">
+                    <label htmlFor="bitsearchKey">BITSEARCH_API_KEY</label>
+                    <div className="inputWrapper">
+                      <input
+                        id="bitsearchKey"
+                        type={showBitsearchKey ? "text" : "password"}
+                        value={bitsearchKey}
+                        onChange={(e) => setBitsearchKey(e.target.value)}
+                        placeholder="Enter your Bitsearch API key..."
+                      />
+                      <button
+                        type="button"
+                        className="toggleVisibility"
+                        onClick={() => setShowBitsearchKey(!showBitsearchKey)}
+                        title={showBitsearchKey ? "Hide Key" : "Show Key"}
+                      >
+                        {showBitsearchKey ? <FiEyeOff /> : <FiEye />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {bitsearchStatus && (
+                    <div className={`statusBanner ${bitsearchStatus.type}`}>
+                      {bitsearchStatus.type === "success" && <FiCheckCircle />}
+                      {bitsearchStatus.type === "error" && <FiXCircle />}
+                      <span>{bitsearchStatus.text}</span>
+                    </div>
+                  )}
+
+                  <div className="buttonGroup">
+                    <button type="submit" className="saveBtn">
+                      <FiSave /> Save Bitsearch Key
+                    </button>
+                    {hasBitsearchCustom && (
+                      <button
+                        type="button"
+                        className="clearBtn"
+                        onClick={handleClearBitsearch}
+                      >
+                        Clear Key
+                      </button>
+                    )}
+                  </div>
+                </form>
+              </div>
+
+              {/* Stream Filter Preferences Card */}
+              <div className="settingsCard">
+                <div className="cardHeader">
+                  <h2><FiSliders style={{ marginRight: 8 }} /> Stream Resolution & Codec Filters</h2>
+                  <span className="badge custom">
+                    <FiServer style={{ marginRight: 4 }} /> Server Synced
+                  </span>
+                </div>
+
+                <p className="description">
+                  Select which video resolutions, codecs, and release qualities to return when searching Available Streams. Synced across all client devices.
+                </p>
+
+                <form onSubmit={handleSaveStreamFilters} className="tokenForm">
+                  <div className="filterGroup">
+                    <label className="groupLabel">Allowed Resolutions</label>
+                    <div className="checkboxGrid">
+                      {ALL_RESOLUTIONS.map((res) => (
+                        <label key={res.id} className="checkboxOption">
+                          <input
+                            type="checkbox"
+                            checked={selectedResolutions.includes(res.id)}
+                            onChange={() => handleToggleResolution(res.id)}
+                          />
+                          <span>{res.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="filterGroup">
+                    <label className="groupLabel">Allowed Codecs</label>
+                    <div className="checkboxGrid">
+                      {ALL_CODECS.map((codec) => (
+                        <label key={codec.id} className="checkboxOption">
+                          <input
+                            type="checkbox"
+                            checked={selectedCodecs.includes(codec.id)}
+                            onChange={() => handleToggleCodec(codec.id)}
+                          />
+                          <span>{codec.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="filterGroup">
+                    <label className="groupLabel">Quality Exclusions</label>
+                    <div className="checkboxGrid">
+                      <label className="checkboxOption">
+                        <input
+                          type="checkbox"
+                          checked={excludeLowQuality}
+                          onChange={(e) => setExcludeLowQuality(e.target.checked)}
+                        />
+                        <span>Exclude CAM, Telesync (HDTS), & TC Videos</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {filterStatus && (
+                    <div className={`statusBanner ${filterStatus.type}`}>
+                      <FiCheckCircle />
+                      <span>{filterStatus.text}</span>
+                    </div>
+                  )}
+
+                  <div className="buttonGroup">
+                    <button type="submit" className="saveBtn">
+                      <FiSave /> Save Stream Preferences
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* Help Instructions */}
+              <div className="helpCard">
+                <h3>How to get API Keys?</h3>
+                <ol>
+                  <li>
+                    <strong>SIMKL Client ID</strong>: Register at <a href="https://simkl.com/settings/developer/" target="_blank" rel="noreferrer">simkl.com/settings/developer/</a> &gt; Create App.
+                  </li>
+                  <li>
+                    <strong>Premiumize.me Key</strong>: Log in at <a href="https://www.premiumize.me/" target="_blank" rel="noreferrer">Premiumize.me</a> &gt; Account &gt; API Key.
+                  </li>
+                  <li>
+                    <strong>TMDB API Token</strong>: Register at <a href="https://themoviedb.org/" target="_blank" rel="noreferrer">TMDB</a> &gt; Settings &gt; API &gt; API Read Access Token (v4).
+                  </li>
+                  <li>
+                    <strong>Groq AI Key</strong>: Register at <a href="https://console.groq.com/" target="_blank" rel="noreferrer">console.groq.com</a> &gt; API Keys to get your free key.
+                  </li>
+                  <li>
+                    <strong>Bitsearch API Key</strong>: Obtain your API key from <a href="https://bitsearch.to" target="_blank" rel="noreferrer">Bitsearch.to</a> to search torrent magnet links.
+                  </li>
+                </ol>
+              </div>
+            </>
+          )}
         </div>
       </ContentWrapper>
     </div>
