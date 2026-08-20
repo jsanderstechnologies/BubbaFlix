@@ -17,8 +17,18 @@ COPY . .
 # Build production bundle
 RUN npm run build
 
-# Stage 2: Serve application using lightweight Nginx
+# Stage 2: Serve application using Nginx + Node.js FFmpeg Transcoder Backend
 FROM nginx:alpine
+
+# Install FFmpeg and Node.js for real-time video/audio transcoding
+RUN apk add --no-cache ffmpeg nodejs npm
+
+WORKDIR /app
+
+# Copy server files and package.json for transcoder backend
+COPY package*.json ./
+COPY server ./server
+RUN npm install --only=production
 
 # Copy custom Nginx configuration for React Router single-page app
 COPY nginx.conf /etc/nginx/conf.d/default.conf
@@ -26,6 +36,7 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Copy static output files from build stage
 COPY --from=build /app/dist /usr/share/nginx/html
 
-EXPOSE 80
+EXPOSE 80 5000
 
-CMD ["nginx", "-g", "daemon off;"]
+# Start both Node FFmpeg transcoder server and Nginx web server
+CMD ["sh", "-c", "node server/transcoder.js & nginx -g 'daemon off;'"]

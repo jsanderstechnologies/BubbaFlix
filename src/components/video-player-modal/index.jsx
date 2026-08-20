@@ -61,6 +61,9 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, transcodeUrl, title
     setPlaybackError(false);
     if (newMode === "transcode" && transcodeUrl) {
       setCurrentUrl(transcodeUrl);
+    } else if (newMode === "ffmpeg") {
+      const source = rawUrl || videoUrl;
+      setCurrentUrl(`/api/transcode?url=${encodeURIComponent(source)}`);
     } else {
       setCurrentUrl(rawUrl || videoUrl);
     }
@@ -73,6 +76,9 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, transcodeUrl, title
     if (streamMode === "raw" && transcodeUrl) {
       console.log("[Video Player] Auto-switching to Web Transcoded AAC stream...");
       handleModeChange("transcode");
+    } else if (streamMode === "raw" && !transcodeUrl) {
+      console.log("[Video Player] Auto-switching to FFmpeg Backend Transcoder...");
+      handleModeChange("ffmpeg");
     }
   };
 
@@ -94,28 +100,29 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, transcodeUrl, title
 
           <div className="headerActions">
             {/* Stream Mode Dropdown Selector */}
-            {(rawUrl || transcodeUrl) && (
-              <div className="modeSelector">
-                <FiSettings className="selectorIcon" />
-                <select
-                  value={streamMode}
-                  onChange={(e) => handleModeChange(e.target.value)}
-                  className="modeSelect"
-                  tabIndex="0"
-                >
-                  {transcodeUrl && (
-                    <option value="transcode">
-                      🎬 Web Transcoded (H.264 + AAC Audio)
-                    </option>
-                  )}
-                  {rawUrl && (
-                    <option value="raw">
-                      ⚡ Original Raw Source
-                    </option>
-                  )}
-                </select>
-              </div>
-            )}
+            <div className="modeSelector">
+              <FiSettings className="selectorIcon" />
+              <select
+                value={streamMode}
+                onChange={(e) => handleModeChange(e.target.value)}
+                className="modeSelect"
+                tabIndex="0"
+              >
+                {transcodeUrl && (
+                  <option value="transcode">
+                    🎬 Cloud Web Transcoded (H.264 + AAC)
+                  </option>
+                )}
+                <option value="ffmpeg">
+                  ⚙️ FFmpeg Realtime Transcode
+                </option>
+                {rawUrl && (
+                  <option value="raw">
+                    ⚡ Original Raw Source
+                  </option>
+                )}
+              </select>
+            </div>
 
             {currentUrl && (
               <a
@@ -140,8 +147,10 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, transcodeUrl, title
           <FiVolume2 className="audioIcon" />
           <span>
             {streamMode === "transcode"
-              ? "Playing Web Transcoded Stream with universal AAC stereo audio (compatible with all browsers & Smart TVs)."
-              : "Playing Original Raw Stream. If you experience missing audio (AC3/DTS) or blank video (x265), switch to Web Transcoded mode above."}
+              ? "Playing Cloud Transcoded Stream with universal AAC stereo audio."
+              : streamMode === "ffmpeg"
+              ? "Playing FFmpeg Backend Realtime Transcode Stream (H.264 + AAC Stereo Audio)."
+              : "Playing Original Raw Stream. If audio (AC3/DTS) or video (x265) fails, select FFmpeg Realtime Transcode above."}
           </span>
         </div>
 
@@ -163,14 +172,12 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, transcodeUrl, title
             <div className="noStreamNotice">
               <FiAlertCircle className="errorIcon" />
               <p>Your browser cannot natively decode this raw video or audio format (e.g. x265 / AC3 5.1).</p>
-              {transcodeUrl && (
-                <button
-                  className="switchBtn"
-                  onClick={() => handleModeChange("transcode")}
-                >
-                  Switch to Web Transcoded Stream (AAC Audio)
-                </button>
-              )}
+              <button
+                className="switchBtn"
+                onClick={() => handleModeChange("ffmpeg")}
+              >
+                Start FFmpeg Realtime Transcode (H.264 + AAC Audio)
+              </button>
             </div>
           )}
         </div>
