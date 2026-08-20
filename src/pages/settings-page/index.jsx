@@ -6,9 +6,10 @@ import { getBitsearchApiKey } from "../../utils/bitsearch";
 import { getGroqApiKey } from "../../utils/groqFilter";
 import { getPremiumizeApiKey, testPremiumizeAccount } from "../../utils/premiumize";
 import { getSimklConfig, testSimklConnection } from "../../utils/simkl";
+import { isTvDevice, getSavedZoom, applyZoom } from "../../utils/zoom";
 import { getApiConfiguration } from "../../store/homeSlice";
 import { THEMES, getSavedTheme, applyTheme } from "../../utils/theme";
-import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning, FiCheckSquare } from "react-icons/fi";
+import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning, FiCheckSquare, FiTv, FiPlus, FiMinus } from "react-icons/fi";
 import "./index.scss";
 
 const ALL_RESOLUTIONS = [
@@ -28,6 +29,10 @@ const ALL_CODECS = [
 const SettingsPage = () => {
   // Theme State
   const [activeTheme, setActiveTheme] = useState("dark-red");
+
+  // TV Zoom & Device State
+  const [isTv, setIsTv] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(100);
 
   // TMDB Key State
   const [token, setToken] = useState("");
@@ -76,6 +81,10 @@ const SettingsPage = () => {
     const currentTheme = getSavedTheme();
     setActiveTheme(currentTheme);
 
+    // TV & Zoom Detection
+    setIsTv(isTvDevice());
+    setZoomLevel(getSavedZoom());
+
     // TMDB
     const savedToken = localStorage.getItem("tmdb_token");
     const active = getActiveTmdbToken();
@@ -115,6 +124,12 @@ const SettingsPage = () => {
   const handleSelectTheme = (themeId) => {
     setActiveTheme(themeId);
     applyTheme(themeId);
+  };
+
+  const handleZoomChange = (newLevel) => {
+    const validLevel = Math.min(150, Math.max(75, newLevel));
+    setZoomLevel(validLevel);
+    applyZoom(validLevel);
   };
 
   const refreshConfig = async () => {
@@ -332,7 +347,7 @@ const SettingsPage = () => {
               <FiKey className="icon" /> API & System Settings
             </h1>
             <p className="subtitle">
-              Manage SIMKL watch status tracking, Premiumize streaming, color themes, API keys, Groq AI filtering, and resolution filters.
+              Manage SIMKL watch status tracking, Premiumize streaming, color themes, TV screen zoom levels, API keys, and resolution filters.
             </p>
           </div>
 
@@ -396,6 +411,75 @@ const SettingsPage = () => {
               ))}
             </div>
           </div>
+
+          {/* TV & Streaming Device Screen Zoom Card */}
+          {(isTv || true) && (
+            <div className="settingsCard">
+              <div className="cardHeader">
+                <h2><FiTv style={{ marginRight: 8 }} /> TV Screen Zoom & Display Scale</h2>
+                <span className={`badge ${isTv ? "custom" : "default"}`}>
+                  {isTv ? "TV Device Detected" : "Client Side Saved"}
+                </span>
+              </div>
+
+              <p className="description">
+                Customize the UI scale and zoom level for 10ft TV viewing on Android TV, Google TV, Firestick, Apple TV, or Smart TV devices.
+              </p>
+
+              <div className="zoomControls">
+                <div className="zoomDisplay">
+                  <span className="zoomLabel">Current TV Zoom Scale:</span>
+                  <span className="zoomValue">{zoomLevel}%</span>
+                </div>
+
+                <div className="zoomButtons">
+                  <button
+                    type="button"
+                    className="zoomBtn"
+                    onClick={() => handleZoomChange(Math.max(75, zoomLevel - 5))}
+                    disabled={zoomLevel <= 75}
+                    tabIndex="0"
+                  >
+                    <FiMinus /> Zoom Out (-5%)
+                  </button>
+
+                  <button
+                    type="button"
+                    className="zoomBtn reset"
+                    onClick={() => handleZoomChange(100)}
+                    disabled={zoomLevel === 100}
+                    tabIndex="0"
+                  >
+                    Reset to 100%
+                  </button>
+
+                  <button
+                    type="button"
+                    className="zoomBtn"
+                    onClick={() => handleZoomChange(Math.min(150, zoomLevel + 5))}
+                    disabled={zoomLevel >= 150}
+                    tabIndex="0"
+                  >
+                    <FiPlus /> Zoom In (+5%)
+                  </button>
+                </div>
+
+                <div className="presetButtons">
+                  {[80, 90, 100, 110, 120, 130, 140].map((scale) => (
+                    <button
+                      key={scale}
+                      type="button"
+                      className={`presetBtn ${zoomLevel === scale ? "active" : ""}`}
+                      onClick={() => handleZoomChange(scale)}
+                      tabIndex="0"
+                    >
+                      {scale}%
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* SIMKL Watch Tracker Card */}
           <div className="settingsCard">
@@ -802,7 +886,7 @@ const SettingsPage = () => {
                 <strong>Premiumize.me Key</strong>: Log in at <a href="https://www.premiumize.me/" target="_blank" rel="noreferrer">Premiumize.me</a> &gt; Account &gt; API Key.
               </li>
               <li>
-                <strong>TMDB API Token</strong>: Register at <a href="https://www.themoviedb.org/" target="_blank" rel="noreferrer">TMDB</a> &gt; Settings &gt; API &gt; API Read Access Token (v4).
+                <strong>TMDB API Token</strong>: Register at <a href="https://themoviedb.org/" target="_blank" rel="noreferrer">TMDB</a> &gt; Settings &gt; API &gt; API Read Access Token (v4).
               </li>
               <li>
                 <strong>Groq AI Key</strong>: Register at <a href="https://console.groq.com/" target="_blank" rel="noreferrer">console.groq.com</a> &gt; API Keys to get your free key.

@@ -16,6 +16,7 @@ import Footer from "./components/footer";
 import { getSavedTheme, applyTheme } from "./utils/theme";
 import { initDpadNavigation } from "./utils/dpadNavigation";
 import { fetchUserSimklHistory } from "./utils/simkl";
+import { getSavedZoom, applyZoom } from "./utils/zoom";
 
 const App = () => {
 	const dispatch = useDispatch();
@@ -24,6 +25,7 @@ const App = () => {
 	useEffect(() => {
 		const currentTheme = getSavedTheme();
 		applyTheme(currentTheme);
+		applyZoom(getSavedZoom());
 		fetchApiConfig();
 		fetchUserSimklHistory();
 		const cleanupDpad = initDpadNavigation();

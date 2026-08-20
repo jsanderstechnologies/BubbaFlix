@@ -354,6 +354,96 @@
           }
         }
       }
+
+      .zoomControls {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        margin-top: 15px;
+
+        .zoomDisplay {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+
+          .zoomLabel {
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.8);
+          }
+
+          .zoomValue {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--pink);
+          }
+        }
+
+        .zoomButtons {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 12px;
+
+          .zoomBtn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 16px;
+            background-color: var(--black2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+
+            &:hover,
+            &:focus {
+              border-color: var(--pink);
+              background-color: var(--black3);
+            }
+
+            &.reset {
+              background-color: rgba(255, 255, 255, 0.1);
+            }
+
+            &:disabled {
+              opacity: 0.4;
+              cursor: not-allowed;
+            }
+          }
+        }
+
+        .presetButtons {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+
+          .presetBtn {
+            padding: 8px 14px;
+            background-color: var(--black2);
+            color: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+
+            &.active {
+              background: var(--gradient);
+              color: white;
+              border-color: transparent;
+            }
+
+            &:hover,
+            &:focus {
+              color: white;
+              border-color: var(--pink);
+            }
+          }
+        }
+      }
     }
   }
 
