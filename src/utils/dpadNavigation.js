@@ -12,6 +12,7 @@ const FOCUSABLE_SELECTOR = [
   ".menuItem",
   ".headerIconBtn",
   ".movieCard",
+  ".carouselItem",
   ".themeCard",
   ".tabItem",
 ].join(", ");
@@ -99,11 +100,29 @@ export const initDpadNavigation = () => {
       if (direction === "ArrowRight" && activeEl.selectionEnd !== activeEl.value.length) return;
     }
 
+    // Function to safely focus & scroll candidate element into view
+    const focusAndScroll = (el) => {
+      el.focus();
+
+      // If item is inside a horizontal carousel container, scroll container to keep item centered
+      const parentCarousel = el.closest(".carouselItems");
+      if (parentCarousel) {
+        const itemLeft = el.offsetLeft;
+        const itemWidth = el.offsetWidth;
+        const containerWidth = parentCarousel.offsetWidth;
+        parentCarousel.scrollTo({
+          left: itemLeft - containerWidth / 2 + itemWidth / 2,
+          behavior: "smooth",
+        });
+      } else {
+        el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+      }
+    };
+
     // If no valid active element, focus the first available item
     if (!activeEl || activeEl === document.body || !focusables.includes(activeEl)) {
       e.preventDefault();
-      focusables[0].focus();
-      focusables[0].scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+      focusAndScroll(focusables[0]);
       return;
     }
 
@@ -124,8 +143,7 @@ export const initDpadNavigation = () => {
 
     if (bestCandidate) {
       e.preventDefault();
-      bestCandidate.focus();
-      bestCandidate.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+      focusAndScroll(bestCandidate);
     }
   };
 

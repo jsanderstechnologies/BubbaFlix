@@ -21,9 +21,8 @@ const Carousel = ({ data, loading, endpoint, title }) => {
 	const navigate = useNavigate();
 
 	const navigation = (direction) => {
-		console.log(direction);
 		const container = carouselContainer.current;
-		console.log(container);
+		if (!container) return;
 
 		const scrollAmount =
 			direction === "left"
@@ -54,11 +53,25 @@ const Carousel = ({ data, loading, endpoint, title }) => {
 				{title && <div className="carouselTitle">{title}</div>}
 				<BsFillArrowLeftCircleFill
 					className="carouselLeftNav arrow"
+					tabIndex="0"
 					onClick={() => navigation("left")}
+					onKeyDown={(e) => {
+						const code = e.keyCode;
+						if (e.key === "Enter" || code === 13 || code === 23 || code === 66) {
+							navigation("left");
+						}
+					}}
 				/>
 				<BsFillArrowRightCircleFill
 					className="carouselRightNav arrow"
+					tabIndex="0"
 					onClick={() => navigation("right")}
+					onKeyDown={(e) => {
+						const code = e.keyCode;
+						if (e.key === "Enter" || code === 13 || code === 23 || code === 66) {
+							navigation("right");
+						}
+					}}
 				/>
 				{!loading ? (
 					<div className="carouselItems" ref={carouselContainer}>
@@ -71,6 +84,8 @@ const Carousel = ({ data, loading, endpoint, title }) => {
 								<div
 									key={item.id}
 									className="carouselItem"
+									tabIndex="0"
+									role="button"
 									onClick={() =>
 										navigate(
 											`/${item.media_type || endpoint}/${
@@ -78,11 +93,22 @@ const Carousel = ({ data, loading, endpoint, title }) => {
 											}`
 										)
 									}
+									onKeyDown={(e) => {
+										const code = e.keyCode;
+										if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+											e.preventDefault();
+											navigate(
+												`/${item.media_type || endpoint}/${
+													item.id
+												}`
+											);
+										}
+									}}
 								>
 									<div className="posterBlock">
 										<Img src={posterUrl} />
 										<CircleRating
-											rating={item.vote_average.toFixed(
+											rating={Number(item.vote_average || 0).toFixed(
 												1
 											)}
 										/>

@@ -29,9 +29,11 @@ const MovieCard = ({ data, fromSearch, mediaType }) => {
 		<div
 			className="movieCard"
 			tabIndex="0"
+			role="button"
 			onClick={handleSelect}
 			onKeyDown={(e) => {
-				if (e.key === "Enter" || e.key === " ") {
+				const code = e.keyCode;
+				if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
 					e.preventDefault();
 					handleSelect();
 				}

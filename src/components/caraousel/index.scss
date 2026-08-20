@@ -92,6 +92,9 @@
 		.carouselItem {
 			width: 125px;
 			cursor: pointer;
+			border-radius: 12px;
+			padding: 4px;
+			transition: transform 0.2s ease, box-shadow 0.2s ease, outline 0.2s ease;
 			@include md {
 				width: calc(25% - 15px);
 			}
@@ -99,6 +102,15 @@
 				width: calc(20% - 16px);
 			}
 			flex-shrink: 0;
+
+			&:focus,
+			&:focus-visible {
+				outline: 3px solid var(--pink) !important;
+				outline-offset: 4px !important;
+				box-shadow: 0 0 20px var(--pink) !important;
+				transform: scale(1.05);
+				z-index: 10;
+			}
 			.posterBlock {
 				position: relative;
 				width: 100%;
