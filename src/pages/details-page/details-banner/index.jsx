@@ -12,13 +12,11 @@ import VideoModal from "../../../components/video-modal";
 import WatchCheckmark from "../../../components/watch-checkmark";
 import MagnetSection from "../magnet-section";
 import { PlayIcon } from "../../../components/play-btn";
-import { updateWatchlistStatusSimkl } from "../../../utils/simkl";
 import "./index.scss";
 
 const DetailsBanner = ({ video, crew }) => {
 	const [show, setShow] = useState(false);
 	const [videoId, setVideoId] = useState(null);
-	const [simklStatus, setSimklStatus] = useState("");
 
 	const { mediaType, id } = useParams();
 	const { data, loading } = useFetch(`/${mediaType}/${id}`);
@@ -34,17 +32,6 @@ const DetailsBanner = ({ video, crew }) => {
 		const hours = Math.floor(totalMinutes / 60);
 		const minutes = totalMinutes % 60;
 		return `${hours}h${minutes > 0 ? ` ${minutes}m` : ""}`;
-	};
-
-	const handleSimklChange = async (newStatus) => {
-		setSimklStatus(newStatus);
-		if (!newStatus) return;
-		await updateWatchlistStatusSimkl({
-			tmdbId: id,
-			title: data?.title || data?.name,
-			mediaType,
-			status: newStatus,
-		});
 	};
 
 	return (
@@ -118,22 +105,6 @@ const DetailsBanner = ({ video, crew }) => {
 										label="Watched"
 										size="lg"
 									/>
-
-									{/* SIMKL Watch Status Selector */}
-									<div className="simklPicker">
-										<select
-											className="simklSelect"
-											value={simklStatus}
-											onChange={(e) => handleSimklChange(e.target.value)}
-										>
-											<option value="">+ SIMKL List</option>
-											<option value="plantowatch">Plan to Watch</option>
-											<option value="watching">Watching</option>
-											<option value="completed">Completed</option>
-											<option value="hold">On Hold</option>
-											<option value="dropped">Dropped</option>
-										</select>
-									</div>
 								</div>
 
 								{/* Stream Dropbox Section - Positioned directly above Overview for Movies */}
