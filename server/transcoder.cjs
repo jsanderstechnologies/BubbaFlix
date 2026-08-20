@@ -29,7 +29,6 @@ app.get("/api/transcode", (req, res) => {
   res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Expires", "0");
-  res.setHeader("Transfer-Encoding", "chunked");
 
   // Spawn FFmpeg process for real-time MP4 streaming with H.264 video and AAC stereo audio
   const ffmpegArgs = [
@@ -50,7 +49,17 @@ app.get("/api/transcode", (req, res) => {
   ];
 
   console.log(`[FFmpeg Transcoder Engine] [SPAWN] Executing: ffmpeg ${ffmpegArgs.join(" ")}`);
-  const ffmpegProcess = spawn("ffmpeg", ffmpegArgs);
+  let ffmpegProcess;
+
+  try {
+    ffmpegProcess = spawn("ffmpeg", ffmpegArgs);
+  } catch (err) {
+    console.error(`[FFmpeg Transcoder Engine] [SPAWN ERROR] Failed to spawn FFmpeg: ${err.message}`);
+    if (!res.headersSent) {
+      return res.status(500).json({ error: "Failed to spawn FFmpeg process." });
+    }
+    return;
+  }
 
   // Pipe FFmpeg stdout directly to HTTP response stream
   ffmpegProcess.stdout.pipe(res);
@@ -62,21 +71,32 @@ app.get("/api/transcode", (req, res) => {
   });
 
   ffmpegProcess.on("error", (err) => {
-    console.error(`[FFmpeg Transcoder Engine] [ERROR] Process failed to start: ${err.message}`);
+    console.error(`[FFmpeg Transcoder Engine] [ERROR] Process error: ${err.message}`);
     if (!res.headersSent) {
-      res.status(500).json({ error: "FFmpeg transcoding failed to start." });
+      try {
+        res.status(500).json({ error: "FFmpeg transcoding failed." });
+      } catch (e) {}
     }
   });
 
   ffmpegProcess.on("close", (code) => {
     console.log(`[FFmpeg Transcoder Engine] [EXIT] Process terminated with code: ${code}`);
     console.log(`====================================================`);
+    if (!res.writableEnded) {
+      try {
+        res.end();
+      } catch (e) {}
+    }
   });
 
   // Kill FFmpeg process immediately if user closes player or disconnects stream
   req.on("close", () => {
     console.log(`[FFmpeg Transcoder Engine] [DISCONNECT] Client closed player. Killing FFmpeg process...`);
-    ffmpegProcess.kill("SIGKILL");
+    if (ffmpegProcess && !ffmpegProcess.killed) {
+      try {
+        ffmpegProcess.kill("SIGKILL");
+      } catch (e) {}
+    }
   });
 });
 
