@@ -10,6 +10,7 @@ import Img from "../../../components/lazy-load";
 import PosterFallback from "../../../assets/no-poster.png";
 import VideoModal from "../../../components/video-modal";
 import WatchCheckmark from "../../../components/watch-checkmark";
+import MagnetSection from "../magnet-section";
 import { PlayIcon } from "../../../components/play-btn";
 import { updateWatchlistStatusSimkl } from "../../../utils/simkl";
 import "./index.scss";
@@ -17,7 +18,6 @@ import "./index.scss";
 const DetailsBanner = ({ video, crew }) => {
 	const [show, setShow] = useState(false);
 	const [videoId, setVideoId] = useState(null);
-
 	const [simklStatus, setSimklStatus] = useState("");
 
 	const { mediaType, id } = useParams();
@@ -135,6 +135,19 @@ const DetailsBanner = ({ video, crew }) => {
 										</select>
 									</div>
 								</div>
+
+								{/* Stream Dropbox Section - Positioned directly above Overview for Movies */}
+								{mediaType === "movie" && (
+									<div className="movieStreamWrapper" style={{ margin: "20px 0" }}>
+										<MagnetSection
+											title={data?.title || data?.name}
+											year={dayjs(data?.release_date || data?.first_air_date).format("YYYY")}
+											tmdbId={id}
+											mediaType={mediaType}
+											compact={true}
+										/>
+									</div>
+								)}
 
 								<div className="overview">
 									<div className="heading">Overview</div>
