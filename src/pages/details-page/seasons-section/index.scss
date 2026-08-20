@@ -41,37 +41,49 @@
       }
     }
 
-    .seasonPicker {
+    .seasonControls {
       display: flex;
-      align-items: center;
+      flex-direction: column;
       gap: 12px;
 
-      label {
-        font-size: 14px;
-        font-weight: 600;
-        color: rgba(255, 255, 255, 0.8);
-        white-space: nowrap;
+      @include md {
+        flex-direction: row;
+        align-items: center;
+        gap: 16px;
       }
 
-      .seasonSelect {
-        height: 44px;
-        background-color: var(--black2);
-        color: white;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 8px;
-        padding: 0 16px;
-        font-size: 14px;
-        font-weight: 600;
-        outline: none;
-        cursor: pointer;
+      .seasonPicker {
+        display: flex;
+        align-items: center;
+        gap: 12px;
 
-        &:focus {
-          border-color: var(--pink);
+        label {
+          font-size: 14px;
+          font-weight: 600;
+          color: rgba(255, 255, 255, 0.8);
+          white-space: nowrap;
         }
 
-        option {
+        .seasonSelect {
+          height: 44px;
           background-color: var(--black2);
           color: white;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 8px;
+          padding: 0 16px;
+          font-size: 14px;
+          font-weight: 600;
+          outline: none;
+          cursor: pointer;
+
+          &:focus {
+            border-color: var(--pink);
+          }
+
+          option {
+            background-color: var(--black2);
+            color: white;
+          }
         }
       }
     }
@@ -143,6 +155,7 @@
           .epHeader {
             display: flex;
             align-items: center;
+            flex-wrap: wrap;
             gap: 12px;
 
             .epBadge {

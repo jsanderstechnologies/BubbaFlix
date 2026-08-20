@@ -15,6 +15,7 @@ import Footer from "./components/footer";
 
 import { getSavedTheme, applyTheme } from "./utils/theme";
 import { initDpadNavigation } from "./utils/dpadNavigation";
+import { fetchUserSimklHistory } from "./utils/simkl";
 
 const App = () => {
 	const dispatch = useDispatch();
@@ -24,6 +25,7 @@ const App = () => {
 		const currentTheme = getSavedTheme();
 		applyTheme(currentTheme);
 		fetchApiConfig();
+		fetchUserSimklHistory();
 		const cleanupDpad = initDpadNavigation();
 		return () => {
 			if (cleanupDpad) cleanupDpad();

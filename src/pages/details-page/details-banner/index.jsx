@@ -9,6 +9,7 @@ import CircleRating from "../../../components/circle-rating";
 import Img from "../../../components/lazy-load";
 import PosterFallback from "../../../assets/no-poster.png";
 import VideoModal from "../../../components/video-modal";
+import WatchCheckmark from "../../../components/watch-checkmark";
 import { PlayIcon } from "../../../components/play-btn";
 import { updateWatchlistStatusSimkl } from "../../../utils/simkl";
 import "./index.scss";
@@ -99,6 +100,15 @@ const DetailsBanner = ({ video, crew }) => {
 										</span>
 									</div>
 
+									{/* Watch Checkmark Button */}
+									<WatchCheckmark
+										tmdbId={id}
+										title={data?.title || data?.name}
+										mediaType={mediaType}
+										label="Watched"
+										size="lg"
+									/>
+
 									{/* SIMKL Watch Status Selector */}
 									<div className="simklPicker">
 										<select
@@ -106,10 +116,10 @@ const DetailsBanner = ({ video, crew }) => {
 											value={simklStatus}
 											onChange={(e) => handleSimklChange(e.target.value)}
 										>
-											<option value="">+ SIMKL Watch Status</option>
+											<option value="">+ SIMKL List</option>
 											<option value="plantowatch">Plan to Watch</option>
 											<option value="watching">Watching</option>
-											<option value="completed">Completed / Watched</option>
+											<option value="completed">Completed</option>
 											<option value="hold">On Hold</option>
 											<option value="dropped">Dropped</option>
 										</select>

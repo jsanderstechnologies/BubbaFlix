@@ -49,6 +49,15 @@
 				height: 50px;
 			}
 		}
+		.cardCheckmark {
+			position: absolute;
+			top: 8px;
+			right: 8px;
+			z-index: 5;
+			background-color: rgba(0, 0, 0, 0.6);
+			backdrop-filter: blur(4px);
+			border-radius: 20px;
+		}
 		.genres {
 			display: none;
 			position: relative;
@@ -79,7 +88,7 @@
 	}
 	&:hover {
 		.posterBlock {
-			opacity: 0.5;
+			opacity: 0.85;
 		}
 	}
 }

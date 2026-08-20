@@ -6,6 +6,7 @@ import MagnetSection from "../magnet-section";
 import Img from "../../../components/lazy-load";
 import PosterFallback from "../../../assets/no-poster.png";
 import Spinner from "../../../components/spinner";
+import WatchCheckmark from "../../../components/watch-checkmark";
 import { useSelector } from "react-redux";
 import dayjs from "dayjs";
 import { FiTv, FiCalendar, FiClock } from "react-icons/fi";
@@ -49,24 +50,36 @@ const SeasonsSection = ({ tvId, seasons, showTitle }) => {
             </p>
           </div>
 
-          <div className="seasonPicker">
-            <label htmlFor="seasonSelect">Select Season:</label>
-            <select
-              id="seasonSelect"
-              className="seasonSelect"
-              tabIndex="0"
-              value={selectedSeasonNumber}
-              onChange={(e) => setSelectedSeasonNumber(Number(e.target.value))}
-            >
-              {validSeasons.map((s) => {
-                const year = s.air_date ? s.air_date.substring(0, 4) : "N/A";
-                return (
-                  <option key={s.id || s.season_number} value={s.season_number}>
-                    Season {s.season_number} ({year}) — {s.episode_count || 0} Episodes
-                  </option>
-                );
-              })}
-            </select>
+          <div className="seasonControls">
+            <div className="seasonPicker">
+              <label htmlFor="seasonSelect">Select Season:</label>
+              <select
+                id="seasonSelect"
+                className="seasonSelect"
+                tabIndex="0"
+                value={selectedSeasonNumber}
+                onChange={(e) => setSelectedSeasonNumber(Number(e.target.value))}
+              >
+                {validSeasons.map((s) => {
+                  const year = s.air_date ? s.air_date.substring(0, 4) : "N/A";
+                  return (
+                    <option key={s.id || s.season_number} value={s.season_number}>
+                      Season {s.season_number} ({year}) — {s.episode_count || 0} Episodes
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
+            {/* Season Level Watched Checkmark */}
+            <WatchCheckmark
+              tmdbId={tvId}
+              title={showTitle}
+              mediaType="tv"
+              seasonNum={selectedSeasonNumber}
+              label={`Mark Season ${selectedSeasonNumber} Watched`}
+              size="md"
+            />
           </div>
         </div>
 
@@ -102,6 +115,17 @@ const SeasonsSection = ({ tvId, seasons, showTitle }) => {
                           E{ep.episode_number}
                         </span>
                         <h3 className="epTitle">{ep.name}</h3>
+
+                        {/* Episode Level Watched Checkmark */}
+                        <WatchCheckmark
+                          tmdbId={tvId}
+                          title={showTitle}
+                          mediaType="tv"
+                          seasonNum={selectedSeasonNumber}
+                          episodeNum={ep.episode_number}
+                          label="Watched"
+                          size="sm"
+                        />
                       </div>
 
                       <div className="epMeta">
