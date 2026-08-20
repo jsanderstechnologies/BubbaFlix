@@ -50,14 +50,114 @@ export const isWebCompatibleStream = (titleStr) => {
   if (!titleStr) return false;
   const t = titleStr.toLowerCase();
 
-  // Incompatible containers, video codecs, and multi-channel surround audio codecs for native HTML5 web players
-  const incompatibleKeywords = [
-    ".mkv", ".avi", "x265", "h265", "h.265", "hevc", "av1", "xvid", "divx",
-    "dts", "dts-hd", "dts-x", "ac3", "eac3", "truehd", "atmos", "5.1", "7.1"
+  // Incompatible video containers & codecs for native HTML5 web players
+  const incompatibleVideo = [
+    ".mkv", ".avi", "x265", "h265", "h.265", "hevc", "av1", "xvid", "divx"
   ];
 
-  const isIncompatible = incompatibleKeywords.some((word) => t.includes(word));
-  return !isIncompatible;
+  // Incompatible audio codecs & multi-channel surround sound tags for native HTML5 web players
+  const incompatibleAudio = [
+    "dts", "dts-hd", "dtshd", "dts-x", "dtsx", "ac3", "eac3", "ddp", "dd+",
+    "dd5.1", "ddp5.1", "ddp7.1", "truehd", "atmos", "5.1", "7.1", "6ch", "8ch",
+    "aac5.1", "flac"
+  ];
+
+  const hasBadVideo = incompatibleVideo.some((w) => t.includes(w));
+  if (hasBadVideo) return false;
+
+  const hasBadAudio = incompatibleAudio.some((w) => {
+    const regex = new RegExp(`\\b${w.replace(".", "\\.")}\\b`, "i");
+    return regex.test(t) || t.includes(`.${w}.`) || t.includes(`-${w}-`) || t.includes(` ${w} `) || t.includes(`${w}-`);
+  });
+
+  if (hasBadAudio) return false;
+
+  return true;
+};
+
+const normalizeText = (str) => {
+  if (!str) return "";
+  return str
+    .toLowerCase()
+    .replace(/[\._\-\:\,\(\)\[\]\{\}\']/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+};
+
+export const isExactTitleMatch = (streamTitle, targetTitle, targetYear, seasonNum, episodeNum) => {
+  if (!streamTitle || !targetTitle) return false;
+
+  const normStream = normalizeText(streamTitle);
+  const normTarget = normalizeText(targetTitle);
+
+  // 1. For TV Episodes: Require exact season & episode number matching
+  if (seasonNum !== undefined && episodeNum !== undefined) {
+    const sPad = String(seasonNum).padStart(2, "0");
+    const ePad = String(episodeNum).padStart(2, "0");
+
+    const epRegexes = [
+      new RegExp(`\\bs${seasonNum}e${episodeNum}\\b`, "i"),
+      new RegExp(`\\bs${sPad}e${ePad}\\b`, "i"),
+      new RegExp(`\\b${seasonNum}x${episodeNum}\\b`, "i"),
+      new RegExp(`\\b${seasonNum}x${ePad}\\b`, "i"),
+    ];
+
+    const hasEpMatch = epRegexes.some((rgx) => rgx.test(streamTitle));
+    if (!hasEpMatch) return false;
+
+    // Verify title prefix matches target title
+    const epMatchIndex = streamTitle.search(/s\d+e\d+|\d+x\d+/i);
+    const titlePrefix = epMatchIndex > 0 ? normalizeText(streamTitle.slice(0, epMatchIndex)) : normStream;
+
+    // Check if prefix contains target title or starts with target title
+    if (!titlePrefix.includes(normTarget) && !normStream.startsWith(normTarget)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  // 2. For Movies
+  const yearMatch = streamTitle.match(/\b(19\d{2}|20\d{2})\b/);
+  let streamMovieName = normStream;
+  let streamYear = null;
+
+  if (yearMatch) {
+    streamYear = Number(yearMatch[1]);
+    const yearIdx = normStream.indexOf(yearMatch[1]);
+    if (yearIdx > 0) {
+      streamMovieName = normStream.slice(0, yearIdx).trim();
+    }
+  } else {
+    const tagMatch = normStream.match(/\b(2160p|1080p|720p|480p|webrip|web-dl|bluray|hdtv|x264|x265)\b/);
+    if (tagMatch && tagMatch.index > 0) {
+      streamMovieName = normStream.slice(0, tagMatch.index).trim();
+    }
+  }
+
+  // Verify target year if provided
+  if (targetYear && streamYear) {
+    const targetYrNum = Number(targetYear);
+    if (!isNaN(targetYrNum) && Math.abs(streamYear - targetYrNum) > 1) {
+      return false;
+    }
+  }
+
+  // Exact movie title or clean prefix match (rejecting sequels/spin-offs)
+  if (streamMovieName === normTarget) {
+    return true;
+  }
+
+  if (streamMovieName.startsWith(normTarget)) {
+    const remainder = streamMovieName.slice(normTarget.length).trim();
+    if (remainder.length > 0 && !["the", "movie", "complete"].includes(remainder)) {
+      return false;
+    }
+  } else if (!normStream.includes(normTarget)) {
+    return false;
+  }
+
+  return true;
 };
 
 export const isLowQualityCamOrTS = (titleStr) => {
@@ -87,7 +187,7 @@ const detectResolution = (titleStr) => {
   return "1080p";
 };
 
-const filterByPreferences = (results) => {
+const filterByPreferences = (results, targetTitle, targetYear, seasonNum, episodeNum) => {
   if (!results || results.length === 0) return [];
 
   const { resolutions, excludeLowQuality } = getStreamPreferences();
@@ -99,8 +199,17 @@ const filterByPreferences = (results) => {
     return [];
   }
 
-  // 2. If NOT on a TV device (standard web browser/mobile), filter out web-incompatible formats.
-  // Smart TV devices (Android TV, Firestick, Apple TV, webOS, Tizen) have native hardware decoders for MKV, x265, DTS, AC3, 5.1/7.1
+  // 2. Strict Title & Episode / Movie Year Match Filter
+  if (targetTitle) {
+    const titleMatchedPool = pool.filter((item) =>
+      isExactTitleMatch(item.title, targetTitle, targetYear, seasonNum, episodeNum)
+    );
+    if (titleMatchedPool.length > 0) {
+      pool = titleMatchedPool;
+    }
+  }
+
+  // 3. Web Player Audio & Video Compatibility Filter (for non-TV desktop/mobile browsers)
   if (!isTv) {
     const webPool = pool.filter((item) => isWebCompatibleStream(item.title));
     if (webPool.length > 0) {
@@ -108,7 +217,7 @@ const filterByPreferences = (results) => {
     }
   }
 
-  // 3. Filter out CAM, HDCAM, Telesync, HDTS, TC videos if excludeLowQuality is true
+  // 4. Filter out CAM, HDCAM, Telesync, HDTS, TC videos if excludeLowQuality is true
   if (excludeLowQuality) {
     const cleanPool = pool.filter((item) => !isLowQualityCamOrTS(item.title));
     if (cleanPool.length > 0) {
@@ -116,7 +225,7 @@ const filterByPreferences = (results) => {
     }
   }
 
-  // 4. Filter by user resolution selections
+  // 5. Filter by user resolution selections
   const resActive = resolutions && resolutions.length > 0 && resolutions.length < 4;
   if (!resActive) {
     return pool;
@@ -144,7 +253,7 @@ const formatSize = (bytes) => {
 };
 
 // Search helper function
-const fetchMagnetResults = async (searchQuery) => {
+const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNum, episodeNum) => {
   const apiKey = getBitsearchApiKey();
 
   // 1. Try Nginx proxied torrent API (/api/torrent?q=...)
@@ -163,7 +272,7 @@ const fetchMagnetResults = async (searchQuery) => {
       }));
 
       if (results.length > 0) {
-        return filterByPreferences(results);
+        return filterByPreferences(results, targetTitle, targetYear, seasonNum, episodeNum);
       }
     }
   } catch (err) {
@@ -202,7 +311,7 @@ const fetchMagnetResults = async (searchQuery) => {
         });
 
       if (results.length > 0) {
-        return filterByPreferences(results);
+        return filterByPreferences(results, targetTitle, targetYear, seasonNum, episodeNum);
       }
     }
   } catch (err) {
@@ -223,7 +332,7 @@ const fetchMagnetResults = async (searchQuery) => {
         seeders: Number(item.seeders || 0),
         leechers: Number(item.leechers || 0),
       }));
-      return filterByPreferences(results);
+      return filterByPreferences(results, targetTitle, targetYear, seasonNum, episodeNum);
     }
   } catch (err) {
     console.warn("[Torrent API Direct] Error:", err.message);
@@ -243,12 +352,12 @@ export const searchBitsearchMagnets = async (title, year, seasonNum, episodeNum)
     const ePad = String(episodeNum).padStart(2, "0");
 
     const epQuery1 = `${title} S${sPad}E${ePad}`;
-    const res1 = await fetchMagnetResults(epQuery1);
+    const res1 = await fetchMagnetResults(epQuery1, title, year, seasonNum, episodeNum);
     if (res1 && res1.length > 0) rawResults = res1;
 
     if (rawResults.length === 0) {
       const epQuery2 = `${title} S${seasonNum}E${episodeNum}`;
-      const res2 = await fetchMagnetResults(epQuery2);
+      const res2 = await fetchMagnetResults(epQuery2, title, year, seasonNum, episodeNum);
       if (res2 && res2.length > 0) rawResults = res2;
     }
   } else {
@@ -256,7 +365,7 @@ export const searchBitsearchMagnets = async (title, year, seasonNum, episodeNum)
     const currentYear = new Date().getFullYear();
     const yearNum = Number(year);
     if (year && !isNaN(yearNum) && yearNum <= currentYear) {
-      const resultsWithYear = await fetchMagnetResults(`${title} ${year}`);
+      const resultsWithYear = await fetchMagnetResults(`${title} ${year}`, title, year, seasonNum, episodeNum);
       if (resultsWithYear && resultsWithYear.length > 0) {
         rawResults = resultsWithYear;
       }
@@ -264,7 +373,7 @@ export const searchBitsearchMagnets = async (title, year, seasonNum, episodeNum)
 
     // 3. Fallback: Search title alone
     if (rawResults.length === 0) {
-      const resultsTitleOnly = await fetchMagnetResults(title);
+      const resultsTitleOnly = await fetchMagnetResults(title, title, year, seasonNum, episodeNum);
       if (resultsTitleOnly && resultsTitleOnly.length > 0) {
         rawResults = resultsTitleOnly;
       }
