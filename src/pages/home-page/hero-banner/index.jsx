@@ -10,6 +10,7 @@ import ContentWrapper from "../../../components/content-wrapper";
 const HeroBanner = () => {
 	const [backgroundImg, setBackgroundImg] = useState("");
 	const [query, setQuery] = useState("");
+	const [isReadOnly, setIsReadOnly] = useState(true);
 	const navigate = useNavigate();
 	const { url } = useSelector((state) => state.home);
 
@@ -61,8 +62,21 @@ const HeroBanner = () => {
 							tabIndex="0"
 							placeholder="Search for movies or tv shows.."
 							value={query}
+							readOnly={isReadOnly}
 							onChange={(e) => setQuery(e.target.value)}
-							onKeyDown={searchQuery}
+							onClick={() => setIsReadOnly(false)}
+							onBlur={() => setIsReadOnly(true)}
+							onKeyDown={(e) => {
+								const code = e.keyCode;
+								if (e.key === "Enter" || code === 13 || code === 23 || code === 66) {
+									if (isReadOnly) {
+										e.preventDefault();
+										setIsReadOnly(false);
+									} else {
+										searchQuery(e);
+									}
+								}
+							}}
 						/>
 						<button
 							tabIndex="0"
