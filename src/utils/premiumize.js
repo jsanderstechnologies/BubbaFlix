@@ -1,4 +1,5 @@
 import axios from "axios";
+import { fetchServerSettings, getServerUrl } from "./serverSettings";
 
 export const getPremiumizeApiKey = () => {
   if (typeof window !== "undefined") {
@@ -9,11 +10,21 @@ export const getPremiumizeApiKey = () => {
 };
 
 export const testPremiumizeAccount = async (apiKey) => {
-  const key = apiKey || getPremiumizeApiKey();
+  let key = apiKey || getPremiumizeApiKey();
+
+  if (!key) {
+    const serverSettings = await fetchServerSettings();
+    if (serverSettings?.premiumizeKey) {
+      key = serverSettings.premiumizeKey;
+      localStorage.setItem("premiumize_api_key", key);
+    }
+  }
+
   if (!key) return { success: false, message: "No Premiumize API Key provided." };
 
   try {
-    const response = await axios.get(`/api/premiumize/account/info`, {
+    const baseUrl = getServerUrl();
+    const response = await axios.get(`${baseUrl}/api/premiumize/account/info`, {
       params: { apikey: key },
       timeout: 8000,
     });
@@ -42,12 +53,23 @@ export const testPremiumizeAccount = async (apiKey) => {
 };
 
 export const getDirectStreamUrl = async (magnetLink) => {
-  const apiKey = getPremiumizeApiKey();
+  let apiKey = getPremiumizeApiKey();
+
+  // Automatic fallback: Pull backend server settings if key is missing locally
+  if (!apiKey) {
+    console.log("[Premiumize API] Local key missing. Fetching backend server settings...");
+    const serverSettings = await fetchServerSettings();
+    if (serverSettings?.premiumizeKey) {
+      apiKey = serverSettings.premiumizeKey;
+      localStorage.setItem("premiumize_api_key", apiKey);
+    }
+  }
+
   if (!apiKey) {
     return {
       streamUrl: null,
       transcodeUrl: null,
-      error: "No Premiumize API Key configured. Please add your Premiumize API Key in Settings.",
+      error: "No Premiumize API Key configured on backend server or in settings.",
     };
   }
 
@@ -57,8 +79,9 @@ export const getDirectStreamUrl = async (magnetLink) => {
 
   try {
     console.log("[Premiumize API] Requesting direct stream for magnet...");
+    const baseUrl = getServerUrl();
     const response = await axios.post(
-      `/api/premiumize/transfer/directdl`,
+      `${baseUrl}/api/premiumize/transfer/directdl`,
       null,
       {
         params: {

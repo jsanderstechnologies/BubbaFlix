@@ -1,4 +1,5 @@
 import axios from "axios";
+import { fetchServerSettings, getServerUrl } from "./serverSettings";
 
 export const getGroqApiKey = () => {
   if (typeof window !== "undefined") {
@@ -9,7 +10,15 @@ export const getGroqApiKey = () => {
 };
 
 export const filterWithGroqAI = async (results, expectedTitle) => {
-  const apiKey = getGroqApiKey();
+  let apiKey = getGroqApiKey();
+  if (!apiKey) {
+    const serverSettings = await fetchServerSettings();
+    if (serverSettings?.groqKey) {
+      apiKey = serverSettings.groqKey;
+      localStorage.setItem("groq_api_key", apiKey);
+    }
+  }
+
   if (!apiKey || !Array.isArray(results) || results.length === 0) {
     return results;
   }
@@ -29,9 +38,10 @@ ${titlesList}
 Respond ONLY with a JSON array of matching line numbers, like: [1, 3, 5]`;
 
   try {
-    console.log(`[Groq AI Proxy] Classifying ${results.length} streams via Nginx container...`);
+    const baseUrl = getServerUrl();
+    console.log(`[Groq AI Proxy] Classifying ${results.length} streams via backend server...`);
     const response = await axios.post(
-      "/api/groq/chat/completions",
+      `${baseUrl}/api/groq/chat/completions`,
       {
         model: "llama3-8b-8192",
         messages: [{ role: "user", content: prompt }],

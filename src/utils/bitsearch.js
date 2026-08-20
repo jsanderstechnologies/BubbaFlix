@@ -1,6 +1,7 @@
 import axios from "axios";
 import { filterWithGroqAI } from "./groqFilter";
 import { isTvDevice } from "./zoom";
+import { fetchServerSettings, getServerUrl } from "./serverSettings";
 
 export const getBitsearchApiKey = () => {
   if (typeof window !== "undefined") {
@@ -254,11 +255,20 @@ const formatSize = (bytes) => {
 
 // Search helper function
 const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNum, episodeNum) => {
-  const apiKey = getBitsearchApiKey();
+  let apiKey = getBitsearchApiKey();
+  if (!apiKey) {
+    const serverSettings = await fetchServerSettings();
+    if (serverSettings?.bitsearchKey) {
+      apiKey = serverSettings.bitsearchKey;
+      localStorage.setItem("bitsearch_api_key", apiKey);
+    }
+  }
+
+  const baseUrl = getServerUrl();
 
   // 1. Try Nginx proxied torrent API (/api/torrent?q=...)
   try {
-    const proxyUrl = `/api/torrent?q=${encodeURIComponent(searchQuery)}`;
+    const proxyUrl = `${baseUrl}/api/torrent?q=${encodeURIComponent(searchQuery)}`;
     console.log(`[Torrent API] Fetching magnet links via proxy: ${proxyUrl}`);
     const response = await axios.get(proxyUrl, { timeout: 8000 });
 
@@ -287,7 +297,7 @@ const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNu
       headers["Authorization"] = `Bearer ${apiKey}`;
     }
 
-    const bitsearchUrl = `/api/bitsearch/v1/search?q=${encodeURIComponent(searchQuery)}&limit=25`;
+    const bitsearchUrl = `${baseUrl}/api/bitsearch/v1/search?q=${encodeURIComponent(searchQuery)}&limit=25`;
     console.log(`[Bitsearch API] Fetching via proxy: ${bitsearchUrl}`);
     const response = await axios.get(bitsearchUrl, { headers, timeout: 8000 });
 
