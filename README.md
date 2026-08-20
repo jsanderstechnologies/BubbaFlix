@@ -2,49 +2,70 @@
   <img src="public/logo.svg" alt="BubbaFlix Logo" width="240" />
 </p>
 
-# BubbaFlix 🎬 - Movie & TV Show Streaming App
+# BubbaFlix 🎬 - Movie & TV Show Streaming & Discovery App
 
-BubbaFlix is a modern, high-performance movie and TV show streaming discovery app built with **React 18**, **Redux Toolkit**, **React Router v6**, **Vite**, and integrated with the **TMDB (The Movie Database) API**.
+BubbaFlix is a modern, high-performance movie and TV show streaming discovery app built with **React 18**, **Redux Toolkit**, **React Router v6**, **Vite**, **Express**, **FFmpeg**, and integrated with **TMDB (The Movie Database)**, **Bitsearch**, **Premiumize.me**, **Groq AI**, and **SIMKL**.
 
-BubbaFlix features automatic content filtering for **English-only live-action movies and TV shows (no anime/animation)**, in-app **API Settings Page**, multi-stage **Docker containerization**, automated **GitHub Actions CI/CD**, and **PWA / App Store Container Manifest** support.
+BubbaFlix features **Android TV & Smart TV D-Pad Spatial Navigation**, real-time **FFmpeg Backend Video Transcoding**, **Centralized Backend Server Settings Storage**, **SIMKL Watch Status Synchronization**, **Client-Side TV Screen Zoom (50%–140%)**, and automatic **English-only Live-Action Filtering (No Anime/Animation)**.
 
 ---
 
 ## 🌟 Key Features
 
-- 🧲 **Torrent Magnet Links**: Search and view live torrent magnet links on any movie or TV show detail page powered by Bitsearch API. Includes file size, seeders, leechers, one-click magnet link copying, and direct torrent client opening.
-- ⚙️ **In-App API Key Settings**: Dedicated Settings page (`/settings`) to view, save, test, and manage your TMDB v4 Read Access Token (`VITE_APP_TMDB_KEY`) and Bitsearch API Key (`BITSEARCH_API_KEY`) without needing to rebuild or restart.
-- 🍿 **English-Only & No Anime Filter**: Automatic server & client-side filtering enforcing English language content and excluding all animation / anime titles.
-- ⚡ **Optimized Performance**: Built with Vite, lazy-loading image components, and infinite scrolling.
-- 🎬 **Video Trailer Modal**: Watch official movie & show trailers powered by React Player.
-- 🐳 **Docker Ready**: Multi-stage production Docker build served via lightweight Nginx with SPA routing support.
-- 🚢 **Portainer Compatible**: Full deployment support via Portainer Stacks, Repository deployment, and GHCR images.
-- 🤖 **GitHub Actions CI/CD**: Automatic Docker image builds pushed to GitHub Container Registry (`ghcr.io`).
-- 📱 **PWA & Container App Store Manifest**: Includes `manifest.json` for homelab app managers (Portainer, Cosmos, CasaOS, Unraid) and PWA desktop/mobile installation.
-- 📱 **Fully Responsive**: Sleek dark UI optimized for desktop, tablets, mobile, and TV browsers.
+### 📺 Smart TV & Remote Control Spatial Navigation
+- **Native Smart TV Remote D-Pad Navigation**: Fully compatible with Android TV, Google TV, Firestick, Apple TV, LG webOS, Samsung Tizen, and TV browser D-Pad remotes (`Arrow Keys`, `OK / Select (KeyCodes 13, 23, 66)`, `Back (KeyCodes 4, 27, 10009, 461)`).
+- **3D "Bring Forward" Elevation Focus Effect**: Cards elevate forward (`transform: scale(1.14) translateY(-6px)`) with dynamic depth drop-shadows and active theme glows (`var(--pink)`).
+- **Auto-Centering Horizontal Carousels**: Smoothly scrolls horizontal poster rows to center the focused poster card automatically.
+- **Virtual Keyboard Lock on D-Pad Focus**: Input search bars stay locked (`readOnly`) when focused via remote control, opening OS virtual keyboards ONLY when explicitly selected.
+
+### 🍿 Real-Time FFmpeg Video & Audio Transcoding
+- **On-the-Fly FFmpeg Transcoding**: Backend engine (`server/transcoder.cjs`) automatically transcodes incompatible video formats (`.mkv`, `.avi`, x265 / HEVC, DTS, AC3, EAC3 5.1/7.1) into web-compatible H.264 + AAC stereo streams in real-time.
+- **Portainer Output Logging**: All FFmpeg transcoding functions, FPS stats, and bitrate metrics log directly to Portainer and Docker container logs.
+- **Full-Screen Video Player Modal**: In-app player with back navigation button, keyboard shortcuts, and Smart TV remote playback controls.
+
+### 🌐 Centralized Backend Server Settings Storage (`/api/settings`)
+- **Backend Disk Persistence**: Settings persist in `/app/server/settings.json` on the server and sync across all connected client devices:
+  - **Color Themes**: Dark Red (Netflix Style), Dark Purple, Cyberpunk Teal, Dark Gold, Slate Blue.
+  - **SIMKL Credentials**: Client ID & User Access Token.
+  - **Premiumize.me API Key**: For instant torrent streaming.
+  - **Groq AI Key**: Fast Llama 3 AI stream title classification.
+  - **TMDB Read Access Token**: Movie & TV metadata fallback.
+  - **Bitsearch API Key**: Torrent magnet searching.
+  - **Stream Filters**: Allowed resolutions (4K, 1080p, 720p, 480p), codecs (x265, x264, AV1, XviD), and CAM/HDTS exclusions.
+- **Per-Device Local Settings**:
+  - **TV Screen Zoom Scale**: 50% to 140% UI scale saved independently per device.
+  - **Backend Server Address**: Custom server IP/URL per device (e.g. `http://192.168.10.10:3000`).
+
+### 🎬 SIMKL Watch Status Tracking
+- **Cross-Device Watch Status**: Single-click checkmark tracking for movies, TV series, seasons, and episodes automatically pushed and pulled from SIMKL account watch history.
+
+### 📐 Dynamic Adaptive Responsive Poster Grid
+- **Screen-Adaptive Layout**: Automatically fits **3 posters per row on mobile**, **4 on small tablets**, **5 on tablets**, **6 on desktop**, and **7–8 posters per row on 10ft TV screens**.
 
 ---
 
 ## 🛠️ Built With
 
 - **Frontend**: [React 18](https://react.dev/), [React Router Dom v6](https://reactrouter.com/), [Redux Toolkit](https://redux-toolkit.js.org/)
+- **Backend & Transcoder**: Node.js, Express.js, FFmpeg
 - **Build Tool**: [Vite](https://vitejs.dev/)
-- **Styling**: SASS / SCSS Modules
+- **Styling**: SASS / SCSS Modules with CSS Variable Themes
 - **HTTP Client**: Axios
-- **APIs**: [TMDB (The Movie Database) API](https://www.themoviedb.org/), Bitsearch API
-- **Containerization & Hosting**: Docker, Nginx, GitHub Container Registry (GHCR)
+- **APIs**: TMDB API, Bitsearch API, Premiumize.me API, Groq AI API, SIMKL API
+- **Containerization & Hosting**: Docker (Alpine + FFmpeg), Nginx, GitHub Container Registry (GHCR)
 
 ---
 
-## ⚙️ In-App API Key Configuration
+## ⚙️ In-App Settings & API Configuration
 
-BubbaFlix includes an in-app **Settings Page** accessible via the gear icon in the navigation header or by navigating to `/settings`.
+Navigate to `/settings` or click the gear icon in the header:
 
-### Features:
-- **TMDB Read Access Token**: Store custom TMDB token in browser `localStorage`, test connection live, or reset to default.
-- **Bitsearch API Key**: Save your Bitsearch API Key to search and fetch torrent magnet links on detail pages.
-- **Show / Hide Key Toggle**: Easily inspect or mask your secret API keys.
-- **Reset to Default**: Instantly revert back to default configuration with one click.
+1. **TV Screen Zoom & Display Scale**: Adjust UI zoom scale from **50% to 140%** (saved locally per device).
+2. **Backend Server Address**: Specify a custom backend server host URL (e.g., `http://192.168.10.10:3000`).
+3. **SIMKL Watch Status Tracker**: Enter your `SIMKL_CLIENT_ID` and optional `SIMKL_USER_ACCESS_TOKEN` with inline developer registration links.
+4. **Color Themes**: Select preferred theme (Dark Red, Dark Purple, Cyberpunk Teal, Dark Gold, Slate Blue).
+5. **API Keys**: Configure Premiumize.me, Groq AI, TMDB, and Bitsearch keys with live connection testing.
+6. **Stream Filters**: Filter stream search results by resolution, codec, and release quality.
 
 ---
 
@@ -53,6 +74,7 @@ BubbaFlix includes an in-app **Settings Page** accessible via the gear icon in t
 ### Prerequisites
 - Node.js (v18+)
 - npm
+- FFmpeg (for local transcoding testing)
 
 ### Installation & Setup
 
@@ -68,9 +90,14 @@ BubbaFlix includes an in-app **Settings Page** accessible via the gear icon in t
    ```
 
 3. **Configure Environment Variables**:
-   Ensure a `.env` file exists in the root directory with your default TMDB Read Access Token:
+   Create a `.env` file in the root directory:
    ```env
-   VITE_APP_TMDB_KEY =your_tmdb_read_access_token
+   VITE_APP_TMDB_KEY=your_tmdb_read_access_token
+   VITE_PREMIUMIZE_API_KEY=your_premiumize_api_key
+   VITE_SIMKL_CLIENT_ID=your_simkl_client_id
+   VITE_SIMKL_ACCESS_TOKEN=your_simkl_access_token
+   VITE_BITSEARCH_API_KEY=your_bitsearch_api_key
+   VITE_GROQ_API_KEY=your_groq_api_key
    ```
 
 4. **Run Development Server**:
@@ -90,13 +117,18 @@ BubbaFlix includes an in-app **Settings Page** accessible via the gear icon in t
 
 ### Option 1: Docker Compose (Recommended)
 
-Run BubbaFlix with a single command:
+Run BubbaFlix containerized with full FFmpeg support and Nginx reverse proxy:
 ```bash
 docker compose up --build -d
 ```
 Access the application at **`http://localhost:3000`**.
 
-To stop the container:
+To view transcode & container logs:
+```bash
+docker compose logs -f
+```
+
+To stop the stack:
 ```bash
 docker compose down
 ```
@@ -106,54 +138,33 @@ docker compose down
 ### Option 2: Deploying via Portainer 🚢
 
 #### Method A: Portainer Stack (Direct GitHub Repository - Recommended)
-1. Open your **Portainer** dashboard.
-2. Go to **Stacks** > **+ Add stack**.
-3. Name your stack (e.g., `bubbaflix`).
-4. Under **Build method**, select **Repository**:
+1. Open **Portainer** > **Stacks** > **+ Add stack**.
+2. Name stack: `bubbaflix`.
+3. Under **Build method**, select **Repository**:
    - **Repository URL**: `https://github.com/jsanderstechnologies/BubbaFlix`
    - **Repository reference**: `refs/heads/master`
    - **Compose path**: `docker-compose.yml`
-5. Click **Deploy the stack**.
-6. Access BubbaFlix at **`http://<your-server-ip>:3000`**.
+4. Click **Deploy the stack**.
+5. Access BubbaFlix at **`http://<your-server-ip>:3000`**.
 
 #### Method B: Portainer Stack (Web Editor)
-1. In Portainer, go to **Stacks** > **+ Add stack**.
-2. Select **Web editor** and paste:
-   ```yaml
-   version: '3.8'
-   services:
-     bubbaflix:
-       image: ghcr.io/jsanderstechnologies/bubbaflix:latest
-       container_name: bubbaflix-app
-       ports:
-         - "3000:80"
-       restart: unless-stopped
-   ```
-3. Click **Deploy the stack**.
-
-#### Method C: Portainer Container (Pre-built Image)
-1. Go to **Containers** > **+ Add container**.
-2. Set Name: `bubbaflix`.
-3. Set Image: `ghcr.io/jsanderstechnologies/bubbaflix:latest`.
-4. Under **Port mapping**, click **+ publish a new network port**:
-   - Host: `3000` | Container: `80`
-5. Click **Deploy the container**.
+```yaml
+version: '3.8'
+services:
+  bubbaflix:
+    image: ghcr.io/jsanderstechnologies/bubbaflix:latest
+    container_name: bubbaflix-app
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+```
 
 ---
 
 ### Option 3: Pull & Run from GitHub Container Registry (GHCR)
 
 ```bash
-docker run -d -p 3000:80 --name bubbaflix ghcr.io/jsanderstechnologies/bubbaflix:latest
-```
-
----
-
-### Option 4: Build & Run directly from GitHub URL
-
-```bash
-docker build -t bubbaflix https://github.com/jsanderstechnologies/BubbaFlix.git#master
-docker run -d -p 3000:80 --name bubbaflix bubbaflix
+docker run -d -p 3000:3000 --name bubbaflix ghcr.io/jsanderstechnologies/bubbaflix:latest
 ```
 
 ---
