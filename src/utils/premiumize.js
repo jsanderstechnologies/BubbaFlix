@@ -2,9 +2,10 @@ import axios from "axios";
 
 export const getPremiumizeApiKey = () => {
   if (typeof window !== "undefined") {
-    return localStorage.getItem("premiumize_api_key") || "";
+    const saved = localStorage.getItem("premiumize_api_key");
+    if (saved) return saved;
   }
-  return "";
+  return import.meta.env.VITE_PREMIUMIZE_API_KEY || "";
 };
 
 export const testPremiumizeAccount = async (apiKey) => {
@@ -108,7 +109,7 @@ export const getDirectStreamUrl = async (magnetLink) => {
         };
       }
 
-      // Default to transcodeUrl if available (guarantees x264 video + AAC audio browser compatibility!), otherwise fallback to rawUrl
+      // Default to transcodeUrl if available, otherwise fallback to rawUrl
       const primaryUrl = transcodeUrl || rawUrl;
 
       return {

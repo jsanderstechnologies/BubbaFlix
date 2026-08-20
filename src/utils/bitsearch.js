@@ -3,9 +3,10 @@ import { filterWithGroqAI } from "./groqFilter";
 
 export const getBitsearchApiKey = () => {
   if (typeof window !== "undefined") {
-    return localStorage.getItem("bitsearch_api_key") || "";
+    const saved = localStorage.getItem("bitsearch_api_key");
+    if (saved) return saved;
   }
-  return "";
+  return import.meta.env.VITE_BITSEARCH_API_KEY || "";
 };
 
 export const getStreamPreferences = () => {
