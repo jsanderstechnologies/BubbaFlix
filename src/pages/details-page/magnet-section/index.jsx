@@ -11,7 +11,7 @@ const MagnetSection = ({ title, year }) => {
   const [magnets, setMagnets] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
   const [copiedIndex, setCopiedIndex] = useState(null);
   const [hasApiKey, setHasApiKey] = useState(false);
 
