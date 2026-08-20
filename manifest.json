@@ -6,7 +6,7 @@
   "description": "Modern movie and TV show streaming application built with React and TMDB integration.",
   "author": "jsanderstechnologies",
   "repository": "https://github.com/jsanderstechnologies/BubbaFlix",
-  "icon": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/public/movix-logo.png",
+  "icon": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/public/logo.svg",
   "category": "Media",
   "docker": {
     "image": "ghcr.io/jsanderstechnologies/bubbaflix:latest",

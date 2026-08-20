@@ -29,9 +29,13 @@
 	}
 	.logo {
 		cursor: pointer;
+		display: flex;
+		align-items: center;
 		img {
-			height: 250px;
-			margin-top: 2rem;
+			height: 40px;
+			max-height: 45px;
+			margin-top: 0;
+			object-fit: contain;
 		}
 	}
 	.menuItems {

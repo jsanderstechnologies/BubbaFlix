@@ -3,9 +3,9 @@
   "name": "BubbaFlix - Movie & TV Show Streaming App",
   "icons": [
     {
-      "src": "/movix-logo.png",
-      "sizes": "512x512",
-      "type": "image/png"
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
     }
   ],
   "start_url": "/",
