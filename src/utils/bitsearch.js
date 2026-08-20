@@ -1,4 +1,5 @@
 import axios from "axios";
+import { filterWithGroqAI } from "./groqFilter";
 
 export const getBitsearchApiKey = () => {
   if (typeof window !== "undefined") {
@@ -23,6 +24,27 @@ export const getStreamPreferences = () => {
     codecs: savedCodecs ? JSON.parse(savedCodecs) : ["x265", "x264", "av1", "xvid"],
     excludeLowQuality: savedExcludeLow !== null ? JSON.parse(savedExcludeLow) : true,
   };
+};
+
+export const isAdultOrAudioFile = (titleStr) => {
+  if (!titleStr) return false;
+  const t = titleStr.toLowerCase();
+
+  const adultKeywords = [
+    "xxx", "porn", "hentai", "erotica", "adult", "brazzers", "bangbros",
+    "naughtyamerica", "sweethearts", "fetish", "onlyfans", "s3xus", "gala3xy",
+    "vr.inception", "jav", "uncensored", "x-rated", "playboy", "penthouse"
+  ];
+
+  const audioKeywords = [
+    "soundtrack", "discography", "flac", "320kbps", "mp3", "aac 256",
+    "audiobook", "album", "vinyl", "lossless", "24bit-44.1khz", "24bit-96khz"
+  ];
+
+  const hasAdult = adultKeywords.some((word) => t.includes(word));
+  const hasAudio = audioKeywords.some((word) => t.includes(word));
+
+  return hasAdult || hasAudio;
 };
 
 export const isLowQualityCamOrTS = (titleStr) => {
@@ -66,14 +88,22 @@ const filterByPreferences = (results) => {
 
   const { resolutions, codecs, excludeLowQuality } = getStreamPreferences();
 
-  let pool = results;
+  // 1. Filter out Adult content & standalone audio/music files
+  let pool = results.filter((item) => !isAdultOrAudioFile(item.title));
+  if (pool.length === 0 && results.length > 0) {
+    // If everything was adult/audio, keep empty
+    return [];
+  }
+
+  // 2. Filter out CAM, HDCAM, Telesync, HDTS, TC videos if excludeLowQuality is true
   if (excludeLowQuality) {
-    const cleanPool = results.filter((item) => !isLowQualityCamOrTS(item.title));
+    const cleanPool = pool.filter((item) => !isLowQualityCamOrTS(item.title));
     if (cleanPool.length > 0) {
       pool = cleanPool;
     }
   }
 
+  // 3. Filter by user resolution and codec selections
   const resActive = resolutions && resolutions.length > 0 && resolutions.length < 4;
   const codecActive = codecs && codecs.length > 0 && codecs.length < 4;
 
@@ -199,6 +229,8 @@ const fetchMagnetResults = async (searchQuery) => {
 export const searchBitsearchMagnets = async (title, year, seasonNum, episodeNum) => {
   if (!title) return { results: [], error: "No title provided" };
 
+  let rawResults = [];
+
   // 1. If season and episode numbers are provided for a TV Episode:
   if (seasonNum !== undefined && episodeNum !== undefined) {
     const sPad = String(seasonNum).padStart(2, "0");
@@ -206,28 +238,38 @@ export const searchBitsearchMagnets = async (title, year, seasonNum, episodeNum)
 
     const epQuery1 = `${title} S${sPad}E${ePad}`;
     const res1 = await fetchMagnetResults(epQuery1);
-    if (res1 && res1.length > 0) return { results: res1, error: null };
+    if (res1 && res1.length > 0) rawResults = res1;
 
-    const epQuery2 = `${title} S${seasonNum}E${episodeNum}`;
-    const res2 = await fetchMagnetResults(epQuery2);
-    if (res2 && res2.length > 0) return { results: res2, error: null };
-  }
+    if (rawResults.length === 0) {
+      const epQuery2 = `${title} S${seasonNum}E${episodeNum}`;
+      const res2 = await fetchMagnetResults(epQuery2);
+      if (res2 && res2.length > 0) rawResults = res2;
+    }
+  } else {
+    // 2. Movie search with year
+    const currentYear = new Date().getFullYear();
+    const yearNum = Number(year);
+    if (year && !isNaN(yearNum) && yearNum <= currentYear) {
+      const resultsWithYear = await fetchMagnetResults(`${title} ${year}`);
+      if (resultsWithYear && resultsWithYear.length > 0) {
+        rawResults = resultsWithYear;
+      }
+    }
 
-  // 2. Movie search with year
-  const currentYear = new Date().getFullYear();
-  const yearNum = Number(year);
-  if (year && !isNaN(yearNum) && yearNum <= currentYear) {
-    const resultsWithYear = await fetchMagnetResults(`${title} ${year}`);
-    if (resultsWithYear && resultsWithYear.length > 0) {
-      return { results: resultsWithYear, error: null };
+    // 3. Fallback: Search title alone
+    if (rawResults.length === 0) {
+      const resultsTitleOnly = await fetchMagnetResults(title);
+      if (resultsTitleOnly && resultsTitleOnly.length > 0) {
+        rawResults = resultsTitleOnly;
+      }
     }
   }
 
-  // 3. Fallback: Search title alone
-  const resultsTitleOnly = await fetchMagnetResults(title);
-  if (resultsTitleOnly && resultsTitleOnly.length > 0) {
-    return { results: resultsTitleOnly, error: null };
+  if (rawResults.length === 0) {
+    return { results: [], error: null };
   }
 
-  return { results: [], error: null };
+  // 4. If Groq AI is configured, run AI stream classification filter
+  const finalResults = await filterWithGroqAI(rawResults, title);
+  return { results: finalResults, error: null };
 };

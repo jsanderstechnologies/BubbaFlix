@@ -3,9 +3,10 @@ import { useDispatch } from "react-redux";
 import ContentWrapper from "../../components/content-wrapper";
 import { fetchDataFromAPI, getActiveTmdbToken } from "../../utils/api";
 import { getBitsearchApiKey } from "../../utils/bitsearch";
+import { getGroqApiKey } from "../../utils/groqFilter";
 import { getApiConfiguration } from "../../store/homeSlice";
 import { THEMES, getSavedTheme, applyTheme } from "../../utils/theme";
-import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun } from "react-icons/fi";
+import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu } from "react-icons/fi";
 import "./index.scss";
 
 const ALL_RESOLUTIONS = [
@@ -39,6 +40,12 @@ const SettingsPage = () => {
   const [bitsearchStatus, setBitsearchStatus] = useState(null);
   const [hasBitsearchCustom, setHasBitsearchCustom] = useState(false);
 
+  // Groq AI Key State
+  const [groqKey, setGroqKey] = useState("");
+  const [showGroqKey, setShowGroqKey] = useState(false);
+  const [groqStatus, setGroqStatus] = useState(null);
+  const [hasGroqCustom, setHasGroqCustom] = useState(false);
+
   // Stream Resolution & Codec Filter State
   const [selectedResolutions, setSelectedResolutions] = useState(["2160p", "1080p", "720p", "480p"]);
   const [selectedCodecs, setSelectedCodecs] = useState(["x265", "x264", "av1", "xvid"]);
@@ -62,6 +69,11 @@ const SettingsPage = () => {
     const savedBitsearch = getBitsearchApiKey();
     setBitsearchKey(savedBitsearch || "");
     setHasBitsearchCustom(!!savedBitsearch);
+
+    // Groq AI
+    const savedGroq = getGroqApiKey();
+    setGroqKey(savedGroq || "");
+    setHasGroqCustom(!!savedGroq);
 
     // Stream Filters
     const savedRes = localStorage.getItem("stream_resolutions");
@@ -147,6 +159,31 @@ const SettingsPage = () => {
     });
   };
 
+  const handleSaveGroq = (e) => {
+    e.preventDefault();
+    const cleanKey = groqKey.trim();
+    if (!cleanKey) {
+      setGroqStatus({ type: "error", text: "Groq API Key cannot be empty." });
+      return;
+    }
+    localStorage.setItem("groq_api_key", cleanKey);
+    setHasGroqCustom(true);
+    setGroqStatus({
+      type: "success",
+      text: "Groq AI Key saved successfully! AI stream filtering is active.",
+    });
+  };
+
+  const handleClearGroq = () => {
+    localStorage.removeItem("groq_api_key");
+    setGroqKey("");
+    setHasGroqCustom(false);
+    setGroqStatus({
+      type: "info",
+      text: "Groq API Key cleared.",
+    });
+  };
+
   const handleToggleResolution = (resId) => {
     setSelectedResolutions((prev) =>
       prev.includes(resId) ? prev.filter((id) => id !== resId) : [...prev, resId]
@@ -207,7 +244,7 @@ const SettingsPage = () => {
               <FiKey className="icon" /> API & System Settings
             </h1>
             <p className="subtitle">
-              Manage color themes, API keys, resolution preferences, and codec filters.
+              Manage color themes, API keys, Groq AI filtering, resolution preferences, and codec filters.
             </p>
           </div>
 
@@ -270,6 +307,66 @@ const SettingsPage = () => {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Groq AI Key Card */}
+          <div className="settingsCard">
+            <div className="cardHeader">
+              <h2><FiCpu style={{ marginRight: 8 }} /> Groq AI Stream Filter Key</h2>
+              <span className={`badge ${hasGroqCustom ? "custom" : "default"}`}>
+                {hasGroqCustom ? "Groq AI Active" : "Regex Filter Mode"}
+              </span>
+            </div>
+
+            <p className="description">
+              Used to intelligently classify stream titles using fast Llama 3 AI inference, filtering out adult content, music audio files, and unrelated software.
+            </p>
+
+            <form onSubmit={handleSaveGroq} className="tokenForm">
+              <div className="inputGroup">
+                <label htmlFor="groqKey">GROQ_API_KEY</label>
+                <div className="inputWrapper">
+                  <input
+                    id="groqKey"
+                    type={showGroqKey ? "text" : "password"}
+                    value={groqKey}
+                    onChange={(e) => setGroqKey(e.target.value)}
+                    placeholder="gsk_..."
+                  />
+                  <button
+                    type="button"
+                    className="toggleVisibility"
+                    onClick={() => setShowGroqKey(!showGroqKey)}
+                    title={showGroqKey ? "Hide Key" : "Show Key"}
+                  >
+                    {showGroqKey ? <FiEyeOff /> : <FiEye />}
+                  </button>
+                </div>
+              </div>
+
+              {groqStatus && (
+                <div className={`statusBanner ${groqStatus.type}`}>
+                  {groqStatus.type === "success" && <FiCheckCircle />}
+                  {groqStatus.type === "error" && <FiXCircle />}
+                  <span>{groqStatus.text}</span>
+                </div>
+              )}
+
+              <div className="buttonGroup">
+                <button type="submit" className="saveBtn">
+                  <FiSave /> Save Groq AI Key
+                </button>
+                {hasGroqCustom && (
+                  <button
+                    type="button"
+                    className="clearBtn"
+                    onClick={handleClearGroq}
+                  >
+                    Clear Key
+                  </button>
+                )}
+              </div>
+            </form>
           </div>
 
           {/* TMDB API Card */}
@@ -479,6 +576,9 @@ const SettingsPage = () => {
             <ol>
               <li>
                 <strong>TMDB API Token</strong>: Register at <a href="https://www.themoviedb.org/" target="_blank" rel="noreferrer">TMDB</a> &gt; Settings &gt; API &gt; API Read Access Token (v4).
+              </li>
+              <li>
+                <strong>Groq AI Key</strong>: Register at <a href="https://console.groq.com/" target="_blank" rel="noreferrer">console.groq.com</a> &gt; API Keys to get your free key.
               </li>
               <li>
                 <strong>Bitsearch API Key</strong>: Obtain your API key from <a href="https://bitsearch.to" target="_blank" rel="noreferrer">Bitsearch.to</a> to search torrent magnet links.
