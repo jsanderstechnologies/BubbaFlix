@@ -10,14 +10,14 @@
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
 
-  --black: #04152d;
-  --black2: #041226;
-  --black3: #020c1b;
+  --black: #141414;
+  --black2: #080808;
+  --black3: #1f1f1f;
   --black-lighter: #1c4b91;
   --black-light: #173d77;
-  --pink: #da2f68;
-  --orange: #f89e00;
-  --gradient: linear-gradient(98.37deg, #f89e00 0.99%, #da2f68 100%);
+  --pink: #e50914;
+  --orange: #b81d24;
+  --gradient: linear-gradient(98.37deg, #e50914 0.99%, #b81d24 100%);
 }
 
 * {
@@ -34,24 +34,43 @@ body {
   display: none;
 }
 
-/* D-Pad / Smart TV Remote Focus Ring & Highlighting */
+/* D-Pad / Smart TV Remote Focus Ring & Highlighting (Matches Active Theme) */
 :focus,
 :focus-visible {
   outline: 3px solid var(--pink) !important;
   outline-offset: 3px !important;
-  box-shadow: 0 0 20px var(--pink) !important;
+  box-shadow: 0 0 20px var(--pink), 0 0 5px var(--pink) !important;
   border-radius: 8px;
   z-index: 50 !important;
 }
 
 .movieCard:focus,
 .movieCard:focus-visible {
+  outline: 3px solid var(--pink) !important;
+  outline-offset: 4px !important;
+  box-shadow: 0 0 25px var(--pink) !important;
   transform: scale(1.06);
-  transition: transform 0.2s ease, outline 0.2s ease;
+  transition: transform 0.2s ease, outline 0.2s ease, box-shadow 0.2s ease;
+
   .posterBlock {
     border-radius: 12px;
     overflow: hidden;
   }
+
+  .title {
+    color: var(--pink) !important;
+  }
+}
+
+button:focus,
+button:focus-visible,
+a:focus,
+a:focus-visible,
+input:focus,
+input:focus-visible {
+  outline: 3px solid var(--pink) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 15px var(--pink) !important;
 }
 
 .skeleton {
