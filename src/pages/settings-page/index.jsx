@@ -4,8 +4,22 @@ import ContentWrapper from "../../components/content-wrapper";
 import { fetchDataFromAPI, getActiveTmdbToken } from "../../utils/api";
 import { getBitsearchApiKey } from "../../utils/bitsearch";
 import { getApiConfiguration } from "../../store/homeSlice";
-import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff } from "react-icons/fi";
+import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders } from "react-icons/fi";
 import "./index.scss";
+
+const ALL_RESOLUTIONS = [
+  { id: "2160p", label: "4K / 2160p (UHD)" },
+  { id: "1080p", label: "1080p (Full HD)" },
+  { id: "720p", label: "720p (HD)" },
+  { id: "480p", label: "480p / SD" },
+];
+
+const ALL_CODECS = [
+  { id: "x265", label: "x265 / HEVC" },
+  { id: "x264", label: "x264 / H.264" },
+  { id: "av1", label: "AV1" },
+  { id: "xvid", label: "XviD / DivX" },
+];
 
 const SettingsPage = () => {
   // TMDB Key State
@@ -21,6 +35,11 @@ const SettingsPage = () => {
   const [bitsearchStatus, setBitsearchStatus] = useState(null);
   const [hasBitsearchCustom, setHasBitsearchCustom] = useState(false);
 
+  // Stream Resolution & Codec Filter State
+  const [selectedResolutions, setSelectedResolutions] = useState(["2160p", "1080p", "720p", "480p"]);
+  const [selectedCodecs, setSelectedCodecs] = useState(["x265", "x264", "av1", "xvid"]);
+  const [filterStatus, setFilterStatus] = useState(null);
+
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -34,6 +53,12 @@ const SettingsPage = () => {
     const savedBitsearch = getBitsearchApiKey();
     setBitsearchKey(savedBitsearch || "");
     setHasBitsearchCustom(!!savedBitsearch);
+
+    // Stream Filters
+    const savedRes = localStorage.getItem("stream_resolutions");
+    const savedCodecs = localStorage.getItem("stream_codecs");
+    if (savedRes) setSelectedResolutions(JSON.parse(savedRes));
+    if (savedCodecs) setSelectedCodecs(JSON.parse(savedCodecs));
   }, []);
 
   const refreshConfig = async () => {
@@ -92,7 +117,7 @@ const SettingsPage = () => {
     setHasBitsearchCustom(true);
     setBitsearchStatus({
       type: "success",
-      text: "Bitsearch API Key saved successfully! Magnet link searches will use your API Key.",
+      text: "Bitsearch API Key saved successfully!",
     });
   };
 
@@ -102,7 +127,29 @@ const SettingsPage = () => {
     setHasBitsearchCustom(false);
     setBitsearchStatus({
       type: "info",
-      text: "Bitsearch API Key cleared. Public search fallback will be used.",
+      text: "Bitsearch API Key cleared.",
+    });
+  };
+
+  const handleToggleResolution = (resId) => {
+    setSelectedResolutions((prev) =>
+      prev.includes(resId) ? prev.filter((id) => id !== resId) : [...prev, resId]
+    );
+  };
+
+  const handleToggleCodec = (codecId) => {
+    setSelectedCodecs((prev) =>
+      prev.includes(codecId) ? prev.filter((id) => id !== codecId) : [...prev, codecId]
+    );
+  };
+
+  const handleSaveStreamFilters = (e) => {
+    e.preventDefault();
+    localStorage.setItem("stream_resolutions", JSON.stringify(selectedResolutions));
+    localStorage.setItem("stream_codecs", JSON.stringify(selectedCodecs));
+    setFilterStatus({
+      type: "success",
+      text: "Stream resolution and codec preferences saved successfully!",
     });
   };
 
@@ -143,7 +190,7 @@ const SettingsPage = () => {
               <FiKey className="icon" /> API & System Settings
             </h1>
             <p className="subtitle">
-              Manage your TMDB (The Movie Database) and Bitsearch API Access Keys.
+              Manage your TMDB & Bitsearch API keys, resolution preferences, and codec filters.
             </p>
           </div>
 
@@ -219,14 +266,14 @@ const SettingsPage = () => {
           {/* Bitsearch API Card */}
           <div className="settingsCard">
             <div className="cardHeader">
-              <h2>Bitsearch API Key 🧲</h2>
+              <h2>Bitsearch API Key</h2>
               <span className={`badge ${hasBitsearchCustom ? "custom" : "default"}`}>
                 {hasBitsearchCustom ? "API Key Configured" : "Public Mode Active"}
               </span>
             </div>
 
             <p className="description">
-              Used on Movie & TV detail pages to search and fetch torrent magnet links via Bitsearch API.
+              Used on Movie & TV detail pages to search and fetch stream magnet links via Bitsearch API.
             </p>
 
             <form onSubmit={handleSaveBitsearch} className="tokenForm">
@@ -272,6 +319,64 @@ const SettingsPage = () => {
                     Clear Key
                   </button>
                 )}
+              </div>
+            </form>
+          </div>
+
+          {/* Stream Filter Preferences Card */}
+          <div className="settingsCard">
+            <div className="cardHeader">
+              <h2><FiSliders style={{ marginRight: 8 }} /> Stream Resolution & Codec Filters</h2>
+            </div>
+
+            <p className="description">
+              Select which video resolutions and audio/video codecs to return when searching Available Streams.
+            </p>
+
+            <form onSubmit={handleSaveStreamFilters} className="tokenForm">
+              <div className="filterGroup">
+                <label className="groupLabel">Allowed Resolutions</label>
+                <div className="checkboxGrid">
+                  {ALL_RESOLUTIONS.map((res) => (
+                    <label key={res.id} className="checkboxOption">
+                      <input
+                        type="checkbox"
+                        checked={selectedResolutions.includes(res.id)}
+                        onChange={() => handleToggleResolution(res.id)}
+                      />
+                      <span>{res.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="filterGroup">
+                <label className="groupLabel">Allowed Codecs</label>
+                <div className="checkboxGrid">
+                  {ALL_CODECS.map((codec) => (
+                    <label key={codec.id} className="checkboxOption">
+                      <input
+                        type="checkbox"
+                        checked={selectedCodecs.includes(codec.id)}
+                        onChange={() => handleToggleCodec(codec.id)}
+                      />
+                      <span>{codec.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {filterStatus && (
+                <div className={`statusBanner ${filterStatus.type}`}>
+                  <FiCheckCircle />
+                  <span>{filterStatus.text}</span>
+                </div>
+              )}
+
+              <div className="buttonGroup">
+                <button type="submit" className="saveBtn">
+                  <FiSave /> Save Stream Preferences
+                </button>
               </div>
             </form>
           </div>

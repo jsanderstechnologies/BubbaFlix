@@ -7,6 +7,62 @@ export const getBitsearchApiKey = () => {
   return "";
 };
 
+export const getStreamPreferences = () => {
+  if (typeof window === "undefined") {
+    return { resolutions: ["2160p", "1080p", "720p", "480p"], codecs: ["x265", "x264", "av1", "xvid"] };
+  }
+  const savedRes = localStorage.getItem("stream_resolutions");
+  const savedCodecs = localStorage.getItem("stream_codecs");
+  return {
+    resolutions: savedRes ? JSON.parse(savedRes) : ["2160p", "1080p", "720p", "480p"],
+    codecs: savedCodecs ? JSON.parse(savedCodecs) : ["x265", "x264", "av1", "xvid"],
+  };
+};
+
+const detectResolution = (titleStr) => {
+  const t = titleStr.toLowerCase();
+  if (t.includes("2160p") || t.includes("4k") || t.includes("uhd")) return "2160p";
+  if (t.includes("1080p") || t.includes("fhd") || t.includes("fullhd")) return "1080p";
+  if (t.includes("720p") || t.includes("hd")) return "720p";
+  if (t.includes("480p") || t.includes("576p") || t.includes("sd") || t.includes("dvd") || t.includes("xvid")) return "480p";
+  return "1080p";
+};
+
+const detectCodec = (titleStr) => {
+  const t = titleStr.toLowerCase();
+  if (t.includes("x265") || t.includes("h265") || t.includes("h.265") || t.includes("hevc")) return "x265";
+  if (t.includes("x264") || t.includes("h264") || t.includes("h.264") || t.includes("avc")) return "x264";
+  if (t.includes("av1")) return "av1";
+  if (t.includes("xvid") || t.includes("divx")) return "xvid";
+  return "x264";
+};
+
+const filterByPreferences = (results) => {
+  const { resolutions, codecs } = getStreamPreferences();
+
+  if (!results || results.length === 0) return [];
+
+  // If user selected all or empty, return unfiltered results
+  const resActive = resolutions && resolutions.length > 0 && resolutions.length < 4;
+  const codecActive = codecs && codecs.length > 0 && codecs.length < 4;
+
+  if (!resActive && !codecActive) {
+    return results;
+  }
+
+  const filtered = results.filter((item) => {
+    const res = detectResolution(item.title);
+    const cod = detectCodec(item.title);
+
+    const resMatch = !resActive || resolutions.includes(res);
+    const codMatch = !codecActive || codecs.includes(cod);
+
+    return resMatch && codMatch;
+  });
+
+  return filtered.length > 0 ? filtered : results;
+};
+
 const formatSize = (bytes) => {
   if (!bytes) return "N/A";
   if (typeof bytes === "string" && (bytes.includes("GB") || bytes.includes("MB") || bytes.includes("KB"))) {
@@ -25,7 +81,6 @@ const fetchMagnetResults = async (searchQuery) => {
   const apiKey = getBitsearchApiKey();
 
   // 1. Try Nginx/Vite proxied torrent API (/api/torrent?q=...)
-  // Bypasses CORS and logs requests directly in Portainer!
   try {
     const proxyUrl = `/api/torrent?q=${encodeURIComponent(searchQuery)}`;
     console.log(`[Torrent API] Fetching magnet links via proxy: ${proxyUrl}`);
@@ -41,7 +96,7 @@ const fetchMagnetResults = async (searchQuery) => {
       }));
 
       if (results.length > 0) {
-        return results;
+        return filterByPreferences(results);
       }
     }
   } catch (err) {
@@ -80,7 +135,7 @@ const fetchMagnetResults = async (searchQuery) => {
         });
 
       if (results.length > 0) {
-        return results;
+        return filterByPreferences(results);
       }
     }
   } catch (err) {
@@ -94,13 +149,14 @@ const fetchMagnetResults = async (searchQuery) => {
     const response = await axios.get(directUrl, { timeout: 8000 });
 
     if (Array.isArray(response.data) && response.data.length > 0 && response.data[0].id !== "0") {
-      return response.data.map((item) => ({
+      const results = response.data.map((item) => ({
         title: item.name,
         magnet: `magnet:?xt=urn:btih:${item.info_hash}&dn=${encodeURIComponent(item.name)}&tr=udp://tracker.opentrackr.org:1337/announce`,
         size: formatSize(item.size),
         seeders: Number(item.seeders || 0),
         leechers: Number(item.leechers || 0),
       }));
+      return filterByPreferences(results);
     }
   } catch (err) {
     console.warn("[Torrent API Direct] Error:", err.message);

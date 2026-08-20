@@ -43,8 +43,7 @@ const MagnetSection = ({ title, year }) => {
         <div className="sectionCard">
           <div className="sectionHeader" onClick={() => setIsOpen(!isOpen)}>
             <div className="headerLeft">
-              <span className="icon">🧲</span>
-              <span className="sectionTitle">Torrent Magnet Links</span>
+              <span className="sectionTitle">Available Streams</span>
               {magnets.length > 0 && (
                 <span className="countBadge">{magnets.length} Available</span>
               )}

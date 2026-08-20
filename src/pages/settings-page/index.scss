@@ -54,6 +54,8 @@
       h2 {
         font-size: 20px;
         font-weight: 600;
+        display: flex;
+        align-items: center;
       }
 
       .badge {
@@ -134,6 +136,48 @@
 
             &:hover {
               color: white;
+            }
+          }
+        }
+      }
+
+      .filterGroup {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+
+        .groupLabel {
+          font-size: 14px;
+          font-weight: 600;
+          color: rgba(255, 255, 255, 0.9);
+        }
+
+        .checkboxGrid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+          gap: 12px;
+
+          .checkboxOption {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background-color: var(--black2);
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.85);
+
+            input[type="checkbox"] {
+              accent-color: var(--pink);
+              width: 16px;
+              height: 16px;
+              cursor: pointer;
+            }
+
+            &:hover {
+              border-color: var(--pink);
             }
           }
         }
