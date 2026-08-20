@@ -1,6 +1,6 @@
-# CyberFlix - Movie/TV Show Streaming App
+# BubbaFlix - Movie/TV Show Streaming App
 
-CyberFlix is a modern movie and TV show streaming app built using React, React Redux, and React Router Dom, and with the use of TMDB API. This app provides users with a seamless experience to discover and enjoy their favorite movies and TV shows. With features like lazy-loading, infinite scrolling, and custom hooks, CyberFlix offers a user-friendly fully responsive interface that works well on all devices.
+BubbaFlix is a modern movie and TV show streaming app built using React, React Redux, and React Router Dom, and with the use of TMDB API. This app provides users with a seamless experience to discover and enjoy their favorite movies and TV shows. With features like lazy-loading, infinite scrolling, and custom hooks, BubbaFlix offers a user-friendly fully responsive interface that works well on all devices.
 
 ## Features
 
