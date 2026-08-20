@@ -1,0 +1,24 @@
+{
+  "name": "BubbaFlix",
+  "id": "bubbaflix",
+  "version": "1.0.0",
+  "title": "BubbaFlix Streaming App",
+  "description": "Modern movie and TV show streaming application built with React and TMDB integration.",
+  "author": "jsanderstechnologies",
+  "repository": "https://github.com/jsanderstechnologies/BubbaFlix",
+  "icon": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/public/movix-logo.png",
+  "category": "Media",
+  "docker": {
+    "image": "ghcr.io/jsanderstechnologies/bubbaflix:latest",
+    "dockerfile": "Dockerfile",
+    "context": ".",
+    "restart": "unless-stopped",
+    "ports": [
+      {
+        "host": 3000,
+        "container": 80,
+        "label": "Web Interface"
+      }
+    ]
+  }
+}
