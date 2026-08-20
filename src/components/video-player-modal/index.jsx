@@ -1,25 +1,53 @@
 /* eslint-disable react/prop-types */
 import { useState, useEffect, useRef } from "react";
-import { FiX, FiPlay, FiDownload, FiSettings, FiVolume2, FiAlertCircle } from "react-icons/fi";
+import { FiX, FiPlay } from "react-icons/fi";
 import "./index.scss";
 
 const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, transcodeUrl, title, filename }) => {
   const videoRef = useRef(null);
-  const [currentUrl, setCurrentUrl] = useState(videoUrl);
-  const [streamMode, setStreamMode] = useState("transcode");
-  const [playbackError, setPlaybackError] = useState(false);
+  const [currentUrl, setCurrentUrl] = useState("");
+  const [isTranscoding, setIsTranscoding] = useState(false);
+
+  const getAutoStreamUrl = () => {
+    // 1. If cloud transcode is ready, use cloud H.264+AAC web stream
+    if (transcodeUrl) {
+      setIsTranscoding(false);
+      return transcodeUrl;
+    }
+
+    const source = rawUrl || videoUrl;
+    if (!source) return "";
+
+    const name = (filename || title || source).toLowerCase();
+    // 2. Automatically detect if file requires FFmpeg backend transcoding (MKV, x265, HEVC, AC3, DTS, 5.1 surround sound)
+    const needsFmpeg =
+      name.endsWith(".mkv") ||
+      name.endsWith(".avi") ||
+      name.includes("x265") ||
+      name.includes("hevc") ||
+      name.includes("h265") ||
+      name.includes("dts") ||
+      name.includes("ac3") ||
+      name.includes("eac3") ||
+      name.includes("5.1") ||
+      name.includes("7.1");
+
+    if (needsFmpeg) {
+      console.log("[Video Player] Auto-enabling FFmpeg Realtime Transcoder for incompatible format:", name);
+      setIsTranscoding(true);
+      return `/api/transcode?url=${encodeURIComponent(source)}`;
+    }
+
+    setIsTranscoding(false);
+    return source;
+  };
 
   useEffect(() => {
-    // Prefer web transcoded stream if available for 100% browser & audio compatibility
-    if (transcodeUrl) {
-      setCurrentUrl(transcodeUrl);
-      setStreamMode("transcode");
-    } else {
-      setCurrentUrl(rawUrl || videoUrl);
-      setStreamMode("raw");
+    if (show) {
+      const targetUrl = getAutoStreamUrl();
+      setCurrentUrl(targetUrl);
     }
-    setPlaybackError(false);
-  }, [show, videoUrl, rawUrl, transcodeUrl]);
+  }, [show, videoUrl, rawUrl, transcodeUrl, filename, title]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -56,29 +84,12 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, transcodeUrl, title
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [show, setShow]);
 
-  const handleModeChange = (newMode) => {
-    setStreamMode(newMode);
-    setPlaybackError(false);
-    if (newMode === "transcode" && transcodeUrl) {
-      setCurrentUrl(transcodeUrl);
-    } else if (newMode === "ffmpeg") {
-      const source = rawUrl || videoUrl;
-      setCurrentUrl(`/api/transcode?url=${encodeURIComponent(source)}`);
-    } else {
-      setCurrentUrl(rawUrl || videoUrl);
-    }
-  };
-
   const handleVideoError = () => {
-    console.warn("[Video Player] Native browser video decode error for current URL:", currentUrl);
-    setPlaybackError(true);
-    // If raw failed and transcode is available, switch automatically
-    if (streamMode === "raw" && transcodeUrl) {
-      console.log("[Video Player] Auto-switching to Web Transcoded AAC stream...");
-      handleModeChange("transcode");
-    } else if (streamMode === "raw" && !transcodeUrl) {
-      console.log("[Video Player] Auto-switching to FFmpeg Backend Transcoder...");
-      handleModeChange("ffmpeg");
+    const source = rawUrl || videoUrl;
+    if (source && !currentUrl.includes("/api/transcode")) {
+      console.warn("[Video Player] Native browser decode failed. Automatically switching to FFmpeg Transcoder...");
+      setIsTranscoding(true);
+      setCurrentUrl(`/api/transcode?url=${encodeURIComponent(source)}`);
     }
   };
 
@@ -99,63 +110,14 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, transcodeUrl, title
           </div>
 
           <div className="headerActions">
-            {/* Stream Mode Dropdown Selector */}
-            <div className="modeSelector">
-              <FiSettings className="selectorIcon" />
-              <select
-                value={streamMode}
-                onChange={(e) => handleModeChange(e.target.value)}
-                className="modeSelect"
-                tabIndex="0"
-              >
-                {transcodeUrl && (
-                  <option value="transcode">
-                    🎬 Cloud Web Transcoded (H.264 + AAC)
-                  </option>
-                )}
-                <option value="ffmpeg">
-                  ⚙️ FFmpeg Realtime Transcode
-                </option>
-                {rawUrl && (
-                  <option value="raw">
-                    ⚡ Original Raw Source
-                  </option>
-                )}
-              </select>
-            </div>
-
-            {currentUrl && (
-              <a
-                href={currentUrl}
-                download
-                className="downloadBtn"
-                target="_blank"
-                rel="noreferrer"
-                title="Download Video File"
-              >
-                <FiDownload /> <span>Download</span>
-              </a>
-            )}
             <button className="closeBtn" onClick={hidePopup} tabIndex="0" title="Close Player">
               <FiX />
             </button>
           </div>
         </div>
 
-        {/* Audio / Video Compatibility Notice Bar */}
-        <div className="compatibilityBar">
-          <FiVolume2 className="audioIcon" />
-          <span>
-            {streamMode === "transcode"
-              ? "Playing Cloud Transcoded Stream with universal AAC stereo audio."
-              : streamMode === "ffmpeg"
-              ? "Playing FFmpeg Backend Realtime Transcode Stream (H.264 + AAC Stereo Audio)."
-              : "Playing Original Raw Stream. If audio (AC3/DTS) or video (x265) fails, select FFmpeg Realtime Transcode above."}
-          </span>
-        </div>
-
         <div className="videoWrapper">
-          {currentUrl && !playbackError ? (
+          {currentUrl ? (
             <video
               ref={videoRef}
               key={currentUrl}
@@ -170,14 +132,7 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, transcodeUrl, title
             </video>
           ) : (
             <div className="noStreamNotice">
-              <FiAlertCircle className="errorIcon" />
-              <p>Your browser cannot natively decode this raw video or audio format (e.g. x265 / AC3 5.1).</p>
-              <button
-                className="switchBtn"
-                onClick={() => handleModeChange("ffmpeg")}
-              >
-                Start FFmpeg Realtime Transcode (H.264 + AAC Audio)
-              </button>
+              <p>Unable to load video stream URL.</p>
             </div>
           )}
         </div>
