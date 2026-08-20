@@ -24,7 +24,7 @@ BubbaFlix features **Android TV & Smart TV D-Pad Spatial Navigation**, real-time
 - **Full-Screen Video Player Modal**: In-app player with back navigation button, keyboard shortcuts, and Smart TV remote playback controls.
 
 ### 🌐 Centralized Backend Server Settings Storage (`/api/settings`)
-- **Backend Disk Persistence**: Settings persist in `/app/server/settings.json` on the server and sync across all connected client devices:
+- **Backend Disk & Docker Persistence**: Settings persist in `/app/server/settings.json` on the server and sync across all connected client devices:
   - **Color Themes**: Dark Red (Netflix Style), Dark Purple, Cyberpunk Teal, Dark Gold, Slate Blue.
   - **SIMKL Credentials**: Client ID & User Access Token.
   - **Premiumize.me API Key**: For instant torrent streaming.
@@ -56,16 +56,22 @@ BubbaFlix features **Android TV & Smart TV D-Pad Spatial Navigation**, real-time
 
 ---
 
-## ⚙️ In-App Settings & API Configuration
+## ⚙️ Docker / Portainer / CasaOS Environment Variables
 
-Navigate to `/settings` or click the gear icon in the header:
+You can pre-configure device API settings directly in `docker-compose.yml`, Portainer Stacks, or CasaOS container settings:
 
-1. **TV Screen Zoom & Display Scale**: Adjust UI zoom scale from **50% to 140%** (saved locally per device).
-2. **Backend Server Address**: Specify a custom backend server host URL (e.g., `http://192.168.10.10:3000`).
-3. **SIMKL Watch Status Tracker**: Enter your `SIMKL_CLIENT_ID` and optional `SIMKL_USER_ACCESS_TOKEN` with inline developer registration links.
-4. **Color Themes**: Select preferred theme (Dark Red, Dark Purple, Cyberpunk Teal, Dark Gold, Slate Blue).
-5. **API Keys**: Configure Premiumize.me, Groq AI, TMDB, and Bitsearch keys with live connection testing.
-6. **Stream Filters**: Filter stream search results by resolution, codec, and release quality.
+| Environment Variable | Description | Default Value |
+| :--- | :--- | :--- |
+| `THEME` | Default UI Theme (`dark-red`, `dark-purple`, `cyberpunk-teal`, `dark-gold`, `slate-blue`) | `dark-red` |
+| `SIMKL_CLIENT_ID` | SIMKL API Client ID | `""` |
+| `SIMKL_ACCESS_TOKEN` | SIMKL User Access Token | `""` |
+| `PREMIUMIZE_API_KEY` | Premiumize.me API Key | `""` |
+| `GROQ_API_KEY` | Groq AI Stream Filter API Key | `""` |
+| `TMDB_READ_ACCESS_TOKEN` | TMDB v4 Read Access Token | Built-in fallback |
+| `BITSEARCH_API_KEY` | Bitsearch API Key | `""` |
+| `STREAM_RESOLUTIONS` | Allowed stream resolutions | `2160p,1080p,720p,480p` |
+| `STREAM_CODECS` | Allowed stream codecs | `x265,x264,av1,xvid` |
+| `STREAM_EXCLUDE_LOW_QUALITY` | Exclude CAM / HDTS videos | `true` |
 
 ---
 
@@ -93,11 +99,11 @@ Navigate to `/settings` or click the gear icon in the header:
    Create a `.env` file in the root directory:
    ```env
    VITE_APP_TMDB_KEY=your_tmdb_read_access_token
-   VITE_PREMIUMIZE_API_KEY=your_premiumize_api_key
-   VITE_SIMKL_CLIENT_ID=your_simkl_client_id
-   VITE_SIMKL_ACCESS_TOKEN=your_simkl_access_token
-   VITE_BITSEARCH_API_KEY=your_bitsearch_api_key
-   VITE_GROQ_API_KEY=your_groq_api_key
+   PREMIUMIZE_API_KEY=your_premiumize_api_key
+   SIMKL_CLIENT_ID=your_simkl_client_id
+   SIMKL_ACCESS_TOKEN=your_simkl_access_token
+   BITSEARCH_API_KEY=your_bitsearch_api_key
+   GROQ_API_KEY=your_groq_api_key
    ```
 
 4. **Run Development Server**:
@@ -135,7 +141,7 @@ docker compose down
 
 ---
 
-### Option 2: Deploying via Portainer 🚢
+### Option 2: Deploying via Portainer 🚢 & CasaOS
 
 #### Method A: Portainer Stack (Direct GitHub Repository - Recommended)
 1. Open **Portainer** > **Stacks** > **+ Add stack**.
@@ -147,7 +153,7 @@ docker compose down
 4. Click **Deploy the stack**.
 5. Access BubbaFlix at **`http://<your-server-ip>:3000`**.
 
-#### Method B: Portainer Stack (Web Editor)
+#### Method B: Portainer / CasaOS Stack (Web Editor)
 ```yaml
 version: '3.8'
 services:
@@ -156,7 +162,19 @@ services:
     container_name: bubbaflix-app
     ports:
       - "3000:3000"
+    environment:
+      - THEME=dark-red
+      - SIMKL_CLIENT_ID=your_simkl_client_id
+      - SIMKL_ACCESS_TOKEN=your_simkl_access_token
+      - PREMIUMIZE_API_KEY=your_premiumize_api_key
+      - GROQ_API_KEY=your_groq_api_key
+      - BITSEARCH_API_KEY=your_bitsearch_api_key
+    volumes:
+      - bubbaflix-data:/app/server
     restart: unless-stopped
+
+volumes:
+  bubbaflix-data:
 ```
 
 ---
@@ -164,7 +182,7 @@ services:
 ### Option 3: Pull & Run from GitHub Container Registry (GHCR)
 
 ```bash
-docker run -d -p 3000:3000 --name bubbaflix ghcr.io/jsanderstechnologies/bubbaflix:latest
+docker run -d -p 3000:3000 -v bubbaflix-data:/app/server -e PREMIUMIZE_API_KEY="your_key" --name bubbaflix ghcr.io/jsanderstechnologies/bubbaflix:latest
 ```
 
 ---

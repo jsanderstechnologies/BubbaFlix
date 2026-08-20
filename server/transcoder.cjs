@@ -11,35 +11,57 @@ app.use(express.json());
 
 const DEFAULT_TMDB_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmYjM3ODM3YzJiMDlkNzEyMDIwMDIxZjc0NGI5ZTQwNyIsInN1YiI6IjY0NjNlNzE5ZTNmYTJmMDEyNDQ3ODk1NCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.3Y0VloCdPlprLy-OMZQmqtZd4_Ti9GDfHo4SZXh3erU";
 
-// Default centralized backend server settings schema
-const DEFAULT_SETTINGS = {
-  theme: "dark-red",
-  simklClientId: "",
-  simklToken: "",
-  premiumizeKey: "",
-  groqKey: "",
-  tmdbToken: DEFAULT_TMDB_KEY,
-  bitsearchKey: "",
-  stream_resolutions: ["2160p", "1080p", "720p", "480p"],
-  stream_codecs: ["x265", "x264", "av1", "xvid"],
-  stream_exclude_low_quality: true,
+// Load environment variables for default server settings (for Docker, Portainer, CasaOS deployments)
+const getEnvDefaultSettings = () => {
+  const defaultTmdb = process.env.TMDB_READ_ACCESS_TOKEN || process.env.VITE_APP_TMDB_KEY || process.env.TMDB_TOKEN || DEFAULT_TMDB_KEY;
+  const defaultResolutions = process.env.STREAM_RESOLUTIONS
+    ? process.env.STREAM_RESOLUTIONS.split(",").map((s) => s.trim())
+    : ["2160p", "1080p", "720p", "480p"];
+  const defaultCodecs = process.env.STREAM_CODECS
+    ? process.env.STREAM_CODECS.split(",").map((s) => s.trim())
+    : ["x265", "x264", "av1", "xvid"];
+  const defaultExcludeLow = process.env.STREAM_EXCLUDE_LOW_QUALITY !== undefined
+    ? process.env.STREAM_EXCLUDE_LOW_QUALITY.toLowerCase() === "true"
+    : true;
+
+  return {
+    theme: process.env.THEME || process.env.DEFAULT_THEME || "dark-red",
+    simklClientId: process.env.SIMKL_CLIENT_ID || "",
+    simklToken: process.env.SIMKL_ACCESS_TOKEN || process.env.SIMKL_USER_TOKEN || "",
+    premiumizeKey: process.env.PREMIUMIZE_API_KEY || "",
+    groqKey: process.env.GROQ_API_KEY || "",
+    tmdbToken: defaultTmdb,
+    bitsearchKey: process.env.BITSEARCH_API_KEY || "",
+    stream_resolutions: defaultResolutions,
+    stream_codecs: defaultCodecs,
+    stream_exclude_low_quality: defaultExcludeLow,
+  };
 };
 
-// Load settings from disk
+// Load settings from disk merged with environment variable defaults
 const loadServerSettings = () => {
+  const envDefaults = getEnvDefaultSettings();
   try {
     if (fs.existsSync(SETTINGS_FILE)) {
       const data = fs.readFileSync(SETTINGS_FILE, "utf8");
       const loaded = JSON.parse(data);
-      if (!loaded.tmdbToken || loaded.tmdbToken.trim() === "") {
-        loaded.tmdbToken = DEFAULT_TMDB_KEY;
-      }
-      return { ...DEFAULT_SETTINGS, ...loaded };
+
+      const merged = { ...envDefaults, ...loaded };
+
+      // Apply environment variable overrides if local fields are empty
+      if (!merged.simklClientId && envDefaults.simklClientId) merged.simklClientId = envDefaults.simklClientId;
+      if (!merged.simklToken && envDefaults.simklToken) merged.simklToken = envDefaults.simklToken;
+      if (!merged.premiumizeKey && envDefaults.premiumizeKey) merged.premiumizeKey = envDefaults.premiumizeKey;
+      if (!merged.groqKey && envDefaults.groqKey) merged.groqKey = envDefaults.groqKey;
+      if (!merged.bitsearchKey && envDefaults.bitsearchKey) merged.bitsearchKey = envDefaults.bitsearchKey;
+      if (!merged.tmdbToken || merged.tmdbToken.trim() === "") merged.tmdbToken = envDefaults.tmdbToken;
+
+      return merged;
     }
   } catch (err) {
     console.error("[Backend Settings Storage Error]: Failed to read settings.json", err.message);
   }
-  return { ...DEFAULT_SETTINGS };
+  return { ...envDefaults };
 };
 
 // Save settings to disk
@@ -179,6 +201,8 @@ process.on("unhandledRejection", (reason) => {
 
 const server = app.listen(PORT, "0.0.0.0", () => {
   console.log(`[BubbaFlix Backend Engine] Server listening on 0.0.0.0:${PORT}`);
+  // Initialize and write settings.json on boot
+  loadServerSettings();
 });
 
 server.on("error", (err) => {
