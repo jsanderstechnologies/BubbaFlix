@@ -9,12 +9,17 @@ import Img from "../lazy-load";
 import CircleRating from "../circle-rating";
 import PosterFallback from "../../assets/no-poster.png";
 
+const DEFAULT_IMAGE_BASE = "https://image.tmdb.org/t/p/original";
+
 const MovieCard = ({ data, fromSearch, mediaType }) => {
 	const { url } = useSelector((state) => state.home);
 	const navigate = useNavigate();
+	
+	const posterBase = url?.poster || DEFAULT_IMAGE_BASE;
 	const posterUrl = data.poster_path
-		? url.poster + data.poster_path
+		? posterBase + data.poster_path
 		: PosterFallback;
+
 	return (
 		<div
 			className="movieCard"
@@ -24,16 +29,16 @@ const MovieCard = ({ data, fromSearch, mediaType }) => {
 		>
 			<div className="posterBlock">
 				<Img className="posterImg" src={posterUrl} />
-				{!fromSearch && (
+				{!fromSearch && data.vote_average !== undefined && (
 					<React.Fragment>
-						<CircleRating rating={data.vote_average.toFixed(1)} />
+						<CircleRating rating={Number(data.vote_average).toFixed(1)} />
 					</React.Fragment>
 				)}
 			</div>
 			<div className="textBlock">
 				<span className="title">{data.title || data.name}</span>
 				<span className="date">
-					{dayjs(data.release_date).format("MMM D, YYYY")}
+					{dayjs(data.release_date || data.first_air_date).format("MMM D, YYYY")}
 				</span>
 			</div>
 		</div>

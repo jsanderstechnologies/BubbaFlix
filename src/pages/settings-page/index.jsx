@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
+import { useDispatch } from "react-redux";
 import ContentWrapper from "../../components/content-wrapper";
 import { fetchDataFromAPI, getActiveTmdbToken } from "../../utils/api";
+import { getApiConfiguration } from "../../store/homeSlice";
 import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff } from "react-icons/fi";
 import "./index.scss";
 
@@ -10,6 +12,7 @@ const SettingsPage = () => {
   const [statusMessage, setStatusMessage] = useState(null); // { type: 'success' | 'error' | 'info', text: string }
   const [testing, setTesting] = useState(false);
   const [isCustom, setIsCustom] = useState(false);
+  const dispatch = useDispatch();
 
   useEffect(() => {
     const savedToken = localStorage.getItem("tmdb_token");
@@ -18,7 +21,24 @@ const SettingsPage = () => {
     setIsCustom(!!savedToken);
   }, []);
 
-  const handleSave = (e) => {
+  const refreshConfig = async () => {
+    try {
+      const res = await fetchDataFromAPI("/configuration");
+      if (res && res.images && res.images.secure_base_url) {
+        dispatch(
+          getApiConfiguration({
+            backdrop: res.images.secure_base_url + "original",
+            profile: res.images.secure_base_url + "original",
+            poster: res.images.secure_base_url + "original",
+          })
+        );
+      }
+    } catch (e) {
+      console.error("Error refreshing configuration:", e);
+    }
+  };
+
+  const handleSave = async (e) => {
     e.preventDefault();
     const cleanToken = token.trim();
     if (!cleanToken) {
@@ -27,17 +47,19 @@ const SettingsPage = () => {
     }
     localStorage.setItem("tmdb_token", cleanToken);
     setIsCustom(true);
+    await refreshConfig();
     setStatusMessage({
       type: "success",
-      text: "TMDB Access Token saved successfully! It will be used for all API requests.",
+      text: "TMDB Access Token saved and image configuration updated successfully!",
     });
   };
 
-  const handleClear = () => {
+  const handleClear = async () => {
     localStorage.removeItem("tmdb_token");
     const defaultToken = import.meta.env.VITE_APP_TMDB_KEY || "";
     setToken(defaultToken);
     setIsCustom(false);
+    await refreshConfig();
     setStatusMessage({
       type: "info",
       text: "Custom token cleared. Reverted to default application token.",
@@ -50,9 +72,10 @@ const SettingsPage = () => {
     try {
       const res = await fetchDataFromAPI("/configuration");
       if (res && res.images) {
+        await refreshConfig();
         setStatusMessage({
           type: "success",
-          text: "Connection test successful! Your TMDB API key is valid and working.",
+          text: "Connection test successful! Your TMDB API key is valid and posters are ready to load.",
         });
       } else {
         setStatusMessage({
@@ -93,7 +116,7 @@ const SettingsPage = () => {
             </div>
 
             <p className="description">
-              BubbaFlix uses the TMDB v4 Read Access Token (Bearer Token) to fetch live movies, TV shows, and media assets.
+              BubbaFlix uses the TMDB v4 Read Access Token (Bearer Token) to fetch live movies, TV shows, and poster assets.
             </p>
 
             <form onSubmit={handleSave} className="tokenForm">

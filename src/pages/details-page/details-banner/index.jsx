@@ -42,7 +42,7 @@ const DetailsBanner = ({ video, crew }) => {
 			{!loading ? (
 				<div>
 					<div className="backdrop-img">
-						<Img src={url.backdrop + data?.backdrop_path} />
+						<Img src={(url?.backdrop || "https://image.tmdb.org/t/p/original") + data?.backdrop_path} />
 					</div>
 					<div className="opacity-layer"></div>
 					<ContentWrapper>
@@ -51,7 +51,7 @@ const DetailsBanner = ({ video, crew }) => {
 								{data?.poster_path ? (
 									<Img
 										classname="posterImg"
-										src={url.backdrop + data?.poster_path}
+										src={(url?.poster || "https://image.tmdb.org/t/p/original") + data?.poster_path}
 									/>
 								) : (
 									<Img
