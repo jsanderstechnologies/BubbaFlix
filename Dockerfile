@@ -1,4 +1,4 @@
-# Stage 1: Build the Vite React application & install dependencies
+# Stage 1: Build the Vite React application
 FROM node:18-alpine AS build
 
 WORKDIR /app
@@ -20,16 +20,17 @@ RUN npm run build
 # Stage 2: Serve application using Nginx + Node.js FFmpeg Transcoder Backend
 FROM nginx:alpine
 
-# Install FFmpeg and Node.js for real-time video/audio transcoding
+# Install FFmpeg, Node.js, and npm for real-time video/audio transcoding
 RUN apk add --no-cache ffmpeg nodejs npm
 
 WORKDIR /app
 
-# Copy package files, server files, start script, and node_modules from build stage
+# Copy server package files and install production dependencies directly in Alpine runtime
 COPY package*.json ./
 COPY server ./server
 COPY start.sh ./start.sh
-COPY --from=build /app/node_modules ./node_modules
+
+RUN npm install --production
 
 # Ensure start.sh script is executable
 RUN chmod +x ./start.sh
