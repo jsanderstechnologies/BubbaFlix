@@ -33,7 +33,7 @@ app.get("/api/transcode", (req, res) => {
 
   // Spawn FFmpeg process for real-time MP4 streaming with H.264 video and AAC stereo audio
   const ffmpegArgs = [
-    "-headers", "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\r\n",
+    "-user_agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "-i", videoUrl,
     "-c:v", "libx264",
     "-preset", "ultrafast",

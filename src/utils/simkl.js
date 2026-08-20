@@ -1,12 +1,15 @@
 import axios from "axios";
 
 export const getSimklConfig = () => {
-  if (typeof window === "undefined") {
-    return { clientId: "", userToken: "" };
+  let clientId = "";
+  let userToken = "";
+  if (typeof window !== "undefined") {
+    clientId = localStorage.getItem("simkl_client_id") || "";
+    userToken = localStorage.getItem("simkl_access_token") || "";
   }
   return {
-    clientId: localStorage.getItem("simkl_client_id") || "",
-    userToken: localStorage.getItem("simkl_access_token") || "",
+    clientId: clientId || import.meta.env.VITE_SIMKL_CLIENT_ID || "",
+    userToken: userToken || import.meta.env.VITE_SIMKL_ACCESS_TOKEN || "",
   };
 };
 
@@ -57,16 +60,14 @@ export const isSimklWatched = ({ tmdbId, mediaType, seasonNum, episodeNum }) => 
 
 export const fetchUserSimklHistory = async () => {
   const { clientId, userToken } = getSimklConfig();
-  if (!clientId) return getSimklWatchCache();
+  if (!clientId || !userToken) return getSimklWatchCache();
 
   const cache = getSimklWatchCache();
   const headers = {
     "simkl-api-key": clientId,
     "Content-Type": "application/json",
+    "Authorization": `Bearer ${userToken}`,
   };
-  if (userToken) {
-    headers["Authorization"] = `Bearer ${userToken}`;
-  }
 
   try {
     // 1. Fetch movies history
@@ -103,7 +104,11 @@ export const fetchUserSimklHistory = async () => {
 
     saveSimklWatchCache(cache);
   } catch (err) {
-    console.warn("[Simkl History Sync Warning]:", err.message);
+    if (err.response?.status === 401) {
+      console.warn("[Simkl API] User Access Token required or expired for SIMKL account sync.");
+    } else {
+      console.warn("[Simkl History Sync Warning]:", err.message);
+    }
   }
 
   return cache;
@@ -130,8 +135,8 @@ export const toggleSimklWatched = async ({ tmdbId, title, mediaType, seasonNum, 
 
   saveSimklWatchCache(cache);
 
-  if (!clientId) {
-    console.log("[Simkl] Toggled locally. Add Simkl Client ID in Settings for account sync.");
+  if (!clientId || !userToken) {
+    console.log("[Simkl] Toggled locally. Add SIMKL User Access Token in Settings for account sync.");
     return !currentlyWatched;
   }
 
@@ -139,10 +144,8 @@ export const toggleSimklWatched = async ({ tmdbId, title, mediaType, seasonNum, 
   const headers = {
     "simkl-api-key": clientId,
     "Content-Type": "application/json",
+    "Authorization": `Bearer ${userToken}`,
   };
-  if (userToken) {
-    headers["Authorization"] = `Bearer ${userToken}`;
-  }
 
   const payload = {};
 
@@ -179,16 +182,14 @@ export const markAsWatchedOnSimkl = async ({ tmdbId, title, mediaType, seasonNum
 
 export const updateWatchlistStatusSimkl = async ({ tmdbId, title, mediaType, status }) => {
   const { clientId, userToken } = getSimklConfig();
-  if (!clientId) return false;
+  if (!clientId || !userToken) return false;
 
   try {
     const headers = {
       "simkl-api-key": clientId,
       "Content-Type": "application/json",
+      "Authorization": `Bearer ${userToken}`,
     };
-    if (userToken) {
-      headers["Authorization"] = `Bearer ${userToken}`;
-    }
 
     const item = {
       title,
