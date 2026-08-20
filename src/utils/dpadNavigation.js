@@ -1,5 +1,5 @@
 // D-Pad / Smart TV Remote Spatial Navigation Engine for BubbaFlix
-// Compatible with Fire TV, Android TV, Apple TV, LG webOS, Samsung Tizen, and D-Pad remote controls.
+// Compatible with Android TV, Fire TV, Apple TV, LG webOS, Samsung Tizen, and D-Pad remote controls.
 
 const FOCUSABLE_SELECTOR = [
   "a[href]",
@@ -18,6 +18,19 @@ const getFocusableElements = () => {
   return Array.from(document.querySelectorAll(FOCUSABLE_SELECTOR)).filter(
     (el) => el.offsetWidth > 0 && el.offsetHeight > 0 && getComputedStyle(el).visibility !== "hidden"
   );
+};
+
+const getDirectionFromEvent = (e) => {
+  const key = e.key;
+  const code = e.keyCode;
+
+  // Standard Keyboard & Android TV D-Pad KeyCodes
+  if (key === "ArrowUp" || code === 38 || code === 19) return "ArrowUp";
+  if (key === "ArrowDown" || code === 40 || code === 20) return "ArrowDown";
+  if (key === "ArrowLeft" || code === 37 || code === 21) return "ArrowLeft";
+  if (key === "ArrowRight" || code === 39 || code === 22) return "ArrowRight";
+
+  return null;
 };
 
 const getDistance = (rect1, rect2, direction) => {
@@ -46,9 +59,10 @@ export const initDpadNavigation = () => {
 
   const handleKeyDown = (e) => {
     const key = e.key || e.keyCode;
+    const code = e.keyCode;
 
-    // Handle Smart TV Back Button (Escape = 27, Samsung = 10009, LG = 461)
-    if (key === "Escape" || key === "Back" || key === 27 || key === 10009 || key === 461) {
+    // Handle Smart TV Back Button (Escape = 27, Samsung = 10009, LG = 461, Android Back = 4)
+    if (key === "Escape" || key === "Back" || code === 27 || code === 10009 || code === 461 || code === 4) {
       if (window.location.pathname !== "/") {
         e.preventDefault();
         window.history.back();
@@ -56,9 +70,21 @@ export const initDpadNavigation = () => {
       }
     }
 
-    // D-Pad Navigation Keys
-    const isArrow = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(key);
-    if (!isArrow) return;
+    // Android TV Center / OK / Select button simulation on focused non-buttons
+    if (key === "Select" || code === 23 || code === 66) {
+      const active = document.activeElement;
+      if (active && active !== document.body) {
+        if (active.tagName !== "BUTTON" && active.tagName !== "A" && active.tagName !== "INPUT" && active.tagName !== "SELECT") {
+          e.preventDefault();
+          active.click();
+          return;
+        }
+      }
+    }
+
+    // D-Pad Navigation Direction
+    const direction = getDirectionFromEvent(e);
+    if (!direction) return;
 
     const focusables = getFocusableElements();
     if (focusables.length === 0) return;
@@ -67,12 +93,12 @@ export const initDpadNavigation = () => {
 
     // If active element is an input and user presses left/right inside text, don't hijack unless empty
     if (activeEl && activeEl.tagName === "INPUT") {
-      if (key === "ArrowLeft" && activeEl.selectionStart !== 0) return;
-      if (key === "ArrowRight" && activeEl.selectionEnd !== activeEl.value.length) return;
+      if (direction === "ArrowLeft" && activeEl.selectionStart !== 0) return;
+      if (direction === "ArrowRight" && activeEl.selectionEnd !== activeEl.value.length) return;
     }
 
     // If no valid active element, focus the first available item
-    if (!activeEl || !focusables.includes(activeEl)) {
+    if (!activeEl || activeEl === document.body || !focusables.includes(activeEl)) {
       e.preventDefault();
       focusables[0].focus();
       focusables[0].scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
@@ -86,7 +112,7 @@ export const initDpadNavigation = () => {
     for (const candidate of focusables) {
       if (candidate === activeEl) continue;
       const candRect = candidate.getBoundingClientRect();
-      const dist = getDistance(activeRect, candRect, key);
+      const dist = getDistance(activeRect, candRect, direction);
 
       if (dist < minDistance) {
         minDistance = dist;

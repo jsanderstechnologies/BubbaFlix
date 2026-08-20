@@ -14,7 +14,6 @@ const HeroBanner = () => {
 	const { url } = useSelector((state) => state.home);
 
 	const { data, loading } = useFetch("/movie/upcoming");
-	console.log("data", data);
 
 	useEffect(() => {
 		if (data?.results?.length > 0) {
@@ -26,13 +25,18 @@ const HeroBanner = () => {
 		}
 	}, [data, url.backdrop]);
 
-	const searchQuery = (e) => {
-		if (e.key === "Enter" && query.length > 0) {
-			navigate(`search/${query}`);
+	const handleSearch = () => {
+		if (query.trim().length > 0) {
+			navigate(`search/${query.trim()}`);
 		}
 	};
 
-	console.log("in hero", backgroundImg);
+	const searchQuery = (e) => {
+		const code = e.keyCode;
+		if ((e.key === "Enter" || code === 13 || code === 23 || code === 66) && query.trim().length > 0) {
+			handleSearch();
+		}
+	};
 
 	return (
 		<div className="hero-banner">
@@ -54,11 +58,22 @@ const HeroBanner = () => {
 					<div className="search-input-section">
 						<input
 							type="text"
+							tabIndex="0"
 							placeholder="Search for movies or tv shows.."
+							value={query}
 							onChange={(e) => setQuery(e.target.value)}
-							onKeyUp={searchQuery}
+							onKeyDown={searchQuery}
 						/>
-						<button onClick={() => navigate(`search/${query}`)}>
+						<button
+							tabIndex="0"
+							onClick={handleSearch}
+							onKeyDown={(e) => {
+								const code = e.keyCode;
+								if (e.key === "Enter" || code === 13 || code === 23 || code === 66) {
+									handleSearch();
+								}
+							}}
+						>
 							Search
 						</button>
 					</div>
