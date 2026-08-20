@@ -10,7 +10,7 @@ import { isTvDevice, getSavedZoom, applyZoom } from "../../utils/zoom";
 import { updateServerSettings, fetchServerSettings } from "../../utils/serverSettings";
 import { getApiConfiguration } from "../../store/homeSlice";
 import { THEMES, getSavedTheme, applyTheme } from "../../utils/theme";
-import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning, FiCheckSquare, FiTv, FiPlus, FiMinus, FiServer, FiShield } from "react-icons/fi";
+import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning, FiCheckSquare, FiTv, FiPlus, FiMinus, FiServer, FiInfo } from "react-icons/fi";
 import "./index.scss";
 
 const ALL_RESOLUTIONS = [
@@ -363,16 +363,16 @@ const SettingsPage = () => {
         <div className="settingsContainer">
           <div className="settingsHeader">
             <h1 className="title">
-              {isTv ? <FiTv className="icon" /> : <FiKey className="icon" />} {isTv ? "TV Display Settings" : "API & System Settings"}
+              {isTv ? <FiTv className="icon" /> : <FiKey className="icon" />} {isTv ? "TV Display & SIMKL Settings" : "API & System Settings"}
             </h1>
             <p className="subtitle">
               {isTv
-                ? "Adjust screen zoom and display scale for this TV device. Global API keys and server configuration are managed centrally on the backend."
+                ? "Adjust screen zoom scale for this TV device and manage your SIMKL watch history tracking credentials."
                 : "Centralized backend server configuration for SIMKL watch status tracking, Premiumize streaming, color themes, API keys, and stream filters."}
             </p>
           </div>
 
-          {/* TV & Streaming Device Screen Zoom Card (Always Available & Primary on TV) */}
+          {/* TV & Streaming Device Screen Zoom Card (Always Available) */}
           <div className="settingsCard">
             <div className="cardHeader">
               <h2><FiTv style={{ marginRight: 8 }} /> TV Screen Zoom & Display Scale</h2>
@@ -439,7 +439,85 @@ const SettingsPage = () => {
             </div>
           </div>
 
-          {/* Global Server Settings Cards (Hidden on TV Devices) */}
+          {/* SIMKL Watch Tracker Card (Available on All Devices) */}
+          <div className="settingsCard">
+            <div className="cardHeader">
+              <h2><FiCheckSquare style={{ marginRight: 8 }} /> SIMKL Watch Status Tracker</h2>
+              <span className={`badge ${hasSimklCustom ? "custom" : "default"}`}>
+                <FiServer style={{ marginRight: 4 }} /> {hasSimklCustom ? "SIMKL Sync Active" : "SIMKL ID Required"}
+              </span>
+            </div>
+
+            <p className="description">
+              Sync watched movies and TV episode playback history automatically with your SIMKL watchlist across all devices.
+            </p>
+
+            <div className="apiInstruction">
+              <FiInfo style={{ marginRight: 6, verticalAlign: "middle" }} />
+              <strong>How to get key:</strong> Register at <a href="https://simkl.com/settings/developer/" target="_blank" rel="noreferrer">simkl.com/settings/developer/</a> &gt; Create App.
+            </div>
+
+            <form onSubmit={handleSaveSimkl} className="tokenForm" style={{ marginTop: 15 }}>
+              <div className="inputGroup">
+                <label htmlFor="simklClientId">SIMKL_CLIENT_ID</label>
+                <div className="inputWrapper">
+                  <input
+                    id="simklClientId"
+                    type="text"
+                    value={simklClientId}
+                    onChange={(e) => setSimklClientId(e.target.value)}
+                    placeholder="Enter your SIMKL API Client ID..."
+                  />
+                </div>
+              </div>
+
+              <div className="inputGroup" style={{ marginTop: 12 }}>
+                <label htmlFor="simklToken">SIMKL_USER_ACCESS_TOKEN (Optional)</label>
+                <div className="inputWrapper">
+                  <input
+                    id="simklToken"
+                    type={showSimklToken ? "text" : "password"}
+                    value={simklToken}
+                    onChange={(e) => setSimklToken(e.target.value)}
+                    placeholder="Enter your SIMKL User Access Token..."
+                  />
+                  <button
+                    type="button"
+                    className="toggleVisibility"
+                    onClick={() => setShowSimklToken(!showSimklToken)}
+                    title={showSimklToken ? "Hide Token" : "Show Token"}
+                  >
+                    {showSimklToken ? <FiEyeOff /> : <FiEye />}
+                  </button>
+                </div>
+              </div>
+
+              {simklStatus && (
+                <div className={`statusBanner ${simklStatus.type}`}>
+                  {simklStatus.type === "success" && <FiCheckCircle />}
+                  {simklStatus.type === "error" && <FiXCircle />}
+                  <span>{simklStatus.text}</span>
+                </div>
+              )}
+
+              <div className="buttonGroup">
+                <button type="submit" className="saveBtn" disabled={testingSimkl}>
+                  <FiSave /> {testingSimkl ? "Verifying..." : "Save SIMKL Config"}
+                </button>
+                {hasSimklCustom && (
+                  <button
+                    type="button"
+                    className="clearBtn"
+                    onClick={handleClearSimkl}
+                  >
+                    Clear Credentials
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+
+          {/* Additional Global Server API Cards (Hidden on TV Devices) */}
           {!isTv && (
             <>
               {/* Color Theme Selector Card */}
@@ -503,79 +581,6 @@ const SettingsPage = () => {
                 </div>
               </div>
 
-              {/* SIMKL Watch Tracker Card */}
-              <div className="settingsCard">
-                <div className="cardHeader">
-                  <h2><FiCheckSquare style={{ marginRight: 8 }} /> SIMKL Watch Status Tracker</h2>
-                  <span className={`badge ${hasSimklCustom ? "custom" : "default"}`}>
-                    <FiServer style={{ marginRight: 4 }} /> {hasSimklCustom ? "SIMKL Sync Active" : "SIMKL ID Required"}
-                  </span>
-                </div>
-
-                <p className="description">
-                  Sync watched movies and TV episode playback history automatically with your SIMKL watchlist across all devices.
-                </p>
-
-                <form onSubmit={handleSaveSimkl} className="tokenForm">
-                  <div className="inputGroup">
-                    <label htmlFor="simklClientId">SIMKL_CLIENT_ID</label>
-                    <div className="inputWrapper">
-                      <input
-                        id="simklClientId"
-                        type="text"
-                        value={simklClientId}
-                        onChange={(e) => setSimklClientId(e.target.value)}
-                        placeholder="Enter your SIMKL API Client ID..."
-                      />
-                    </div>
-                  </div>
-
-                  <div className="inputGroup" style={{ marginTop: 12 }}>
-                    <label htmlFor="simklToken">SIMKL_USER_ACCESS_TOKEN (Optional)</label>
-                    <div className="inputWrapper">
-                      <input
-                        id="simklToken"
-                        type={showSimklToken ? "text" : "password"}
-                        value={simklToken}
-                        onChange={(e) => setSimklToken(e.target.value)}
-                        placeholder="Enter your SIMKL User Access Token..."
-                      />
-                      <button
-                        type="button"
-                        className="toggleVisibility"
-                        onClick={() => setShowSimklToken(!showSimklToken)}
-                        title={showSimklToken ? "Hide Token" : "Show Token"}
-                      >
-                        {showSimklToken ? <FiEyeOff /> : <FiEye />}
-                      </button>
-                    </div>
-                  </div>
-
-                  {simklStatus && (
-                    <div className={`statusBanner ${simklStatus.type}`}>
-                      {simklStatus.type === "success" && <FiCheckCircle />}
-                      {simklStatus.type === "error" && <FiXCircle />}
-                      <span>{simklStatus.text}</span>
-                    </div>
-                  )}
-
-                  <div className="buttonGroup">
-                    <button type="submit" className="saveBtn" disabled={testingSimkl}>
-                      <FiSave /> {testingSimkl ? "Verifying..." : "Save SIMKL Config"}
-                    </button>
-                    {hasSimklCustom && (
-                      <button
-                        type="button"
-                        className="clearBtn"
-                        onClick={handleClearSimkl}
-                      >
-                        Clear Credentials
-                      </button>
-                    )}
-                  </div>
-                </form>
-              </div>
-
               {/* Premiumize.me API Card */}
               <div className="settingsCard">
                 <div className="cardHeader">
@@ -589,7 +594,12 @@ const SettingsPage = () => {
                   Required to instantly stream magnet torrent links directly inside the BubbaFlix video player without downloading.
                 </p>
 
-                <form onSubmit={handleSavePremiumize} className="tokenForm">
+                <div className="apiInstruction">
+                  <FiInfo style={{ marginRight: 6, verticalAlign: "middle" }} />
+                  <strong>How to get key:</strong> Log in at <a href="https://www.premiumize.me/" target="_blank" rel="noreferrer">Premiumize.me</a> &gt; Account &gt; API Key.
+                </div>
+
+                <form onSubmit={handleSavePremiumize} className="tokenForm" style={{ marginTop: 15 }}>
                   <div className="inputGroup">
                     <label htmlFor="premiumizeKey">PREMIUMIZE_API_KEY</label>
                     <div className="inputWrapper">
@@ -649,7 +659,12 @@ const SettingsPage = () => {
                   Used to intelligently classify stream titles using fast Llama 3 AI inference, filtering out adult content, music audio files, and unrelated software.
                 </p>
 
-                <form onSubmit={handleSaveGroq} className="tokenForm">
+                <div className="apiInstruction">
+                  <FiInfo style={{ marginRight: 6, verticalAlign: "middle" }} />
+                  <strong>How to get key:</strong> Register at <a href="https://console.groq.com/" target="_blank" rel="noreferrer">console.groq.com</a> &gt; API Keys to get your free key.
+                </div>
+
+                <form onSubmit={handleSaveGroq} className="tokenForm" style={{ marginTop: 15 }}>
                   <div className="inputGroup">
                     <label htmlFor="groqKey">GROQ_API_KEY</label>
                     <div className="inputWrapper">
@@ -709,7 +724,12 @@ const SettingsPage = () => {
                   Used to fetch live movies, TV shows, backdrop banners, and poster images.
                 </p>
 
-                <form onSubmit={handleSaveTmdb} className="tokenForm">
+                <div className="apiInstruction">
+                  <FiInfo style={{ marginRight: 6, verticalAlign: "middle" }} />
+                  <strong>How to get key:</strong> Register at <a href="https://themoviedb.org/" target="_blank" rel="noreferrer">themoviedb.org</a> &gt; Settings &gt; API &gt; API Read Access Token (v4).
+                </div>
+
+                <form onSubmit={handleSaveTmdb} className="tokenForm" style={{ marginTop: 15 }}>
                   <div className="inputGroup">
                     <label htmlFor="tmdbToken">VITE_APP_TMDB_KEY</label>
                     <div className="inputWrapper">
@@ -778,7 +798,12 @@ const SettingsPage = () => {
                   Used on Movie & TV detail pages to search and fetch stream magnet links via Bitsearch API.
                 </p>
 
-                <form onSubmit={handleSaveBitsearch} className="tokenForm">
+                <div className="apiInstruction">
+                  <FiInfo style={{ marginRight: 6, verticalAlign: "middle" }} />
+                  <strong>How to get key:</strong> Obtain your API key from <a href="https://bitsearch.to" target="_blank" rel="noreferrer">Bitsearch.to</a> to search torrent magnet links.
+                </div>
+
+                <form onSubmit={handleSaveBitsearch} className="tokenForm" style={{ marginTop: 15 }}>
                   <div className="inputGroup">
                     <label htmlFor="bitsearchKey">BITSEARCH_API_KEY</label>
                     <div className="inputWrapper">
@@ -898,28 +923,6 @@ const SettingsPage = () => {
                     </button>
                   </div>
                 </form>
-              </div>
-
-              {/* Help Instructions */}
-              <div className="helpCard">
-                <h3>How to get API Keys?</h3>
-                <ol>
-                  <li>
-                    <strong>SIMKL Client ID</strong>: Register at <a href="https://simkl.com/settings/developer/" target="_blank" rel="noreferrer">simkl.com/settings/developer/</a> &gt; Create App.
-                  </li>
-                  <li>
-                    <strong>Premiumize.me Key</strong>: Log in at <a href="https://www.premiumize.me/" target="_blank" rel="noreferrer">Premiumize.me</a> &gt; Account &gt; API Key.
-                  </li>
-                  <li>
-                    <strong>TMDB API Token</strong>: Register at <a href="https://themoviedb.org/" target="_blank" rel="noreferrer">TMDB</a> &gt; Settings &gt; API &gt; API Read Access Token (v4).
-                  </li>
-                  <li>
-                    <strong>Groq AI Key</strong>: Register at <a href="https://console.groq.com/" target="_blank" rel="noreferrer">console.groq.com</a> &gt; API Keys to get your free key.
-                  </li>
-                  <li>
-                    <strong>Bitsearch API Key</strong>: Obtain your API key from <a href="https://bitsearch.to" target="_blank" rel="noreferrer">Bitsearch.to</a> to search torrent magnet links.
-                  </li>
-                </ol>
               </div>
             </>
           )}
