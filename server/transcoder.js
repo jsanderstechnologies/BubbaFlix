@@ -79,6 +79,6 @@ app.get("/api/transcode", (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`[BubbaFlix FFmpeg Transcoder Engine] Running on port ${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`[BubbaFlix FFmpeg Transcoder Engine] Server listening on 0.0.0.0:${PORT}`);
 });

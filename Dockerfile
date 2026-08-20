@@ -1,4 +1,4 @@
-# Stage 1: Build the Vite React application
+# Stage 1: Build the Vite React application & install dependencies
 FROM node:18-alpine AS build
 
 WORKDIR /app
@@ -7,7 +7,7 @@ WORKDIR /app
 ARG VITE_APP_TMDB_KEY
 ENV VITE_APP_TMDB_KEY=$VITE_APP_TMDB_KEY
 
-# Copy package files and install dependencies
+# Copy package files and install all dependencies
 COPY package*.json ./
 RUN npm install
 
@@ -25,10 +25,14 @@ RUN apk add --no-cache ffmpeg nodejs npm
 
 WORKDIR /app
 
-# Copy server files and package.json for transcoder backend
+# Copy package files, server files, start script, and node_modules from build stage
 COPY package*.json ./
 COPY server ./server
-RUN npm install --only=production
+COPY start.sh ./start.sh
+COPY --from=build /app/node_modules ./node_modules
+
+# Ensure start.sh script is executable
+RUN chmod +x ./start.sh
 
 # Copy custom Nginx configuration for React Router single-page app
 COPY nginx.conf /etc/nginx/conf.d/default.conf
@@ -38,5 +42,4 @@ COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 80 5000
 
-# Start both Node FFmpeg transcoder server and Nginx web server
-CMD ["sh", "-c", "node server/transcoder.js & nginx -g 'daemon off;'"]
+CMD ["/app/start.sh"]
