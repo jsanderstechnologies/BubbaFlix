@@ -4,7 +4,7 @@
 	position: fixed;
 	transform: translateY(0);
 	width: 100%;
-	height: 60px;
+	height: 64px;
 	z-index: 100;
 	display: flex;
 	align-items: center;
@@ -18,7 +18,7 @@
 		background: var(--black3);
 	}
 	&.hide {
-		transform: translateY(-60px);
+		transform: translateY(-64px);
 	}
 
 	.content-wrapper,
@@ -40,11 +40,12 @@
 		transition: transform 0.25s ease, filter 0.25s ease;
 
 		img {
-			height: 40px;
-			max-height: 40px;
+			height: 48px;
+			max-height: 48px;
 			width: auto;
-			max-width: 140px;
+			max-width: 175px;
 			object-fit: contain;
+			filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
 		}
 
 		&:focus,
@@ -68,7 +69,7 @@
 		}
 
 		.menuItem {
-			height: 60px;
+			height: 64px;
 			display: flex;
 			align-items: center;
 			margin: 0 10px;
@@ -134,7 +135,7 @@
 		.menuItems {
 			display: flex;
 			position: absolute;
-			top: 60px;
+			top: 64px;
 			left: 0;
 			background: var(--black3);
 			flex-direction: column;
@@ -160,16 +161,16 @@
 
 	.searchBar {
 		width: 100%;
-		height: 60px;
+		height: 64px;
 		background-color: white;
 		position: absolute;
-		top: 60px;
+		top: 64px;
 		animation: mobileMenu 0.3s ease forwards;
 
 		.searchInput {
 			display: flex;
 			align-items: center;
-			height: 40px;
+			height: 44px;
 			margin-top: 10px;
 			width: 100%;
 
@@ -197,7 +198,7 @@
 				padding: 0 15px;
 				font-size: 14px;
 				@include md {
-					height: 60px;
+					height: 64px;
 					font-size: 20px;
 					padding: 0 30px;
 				}

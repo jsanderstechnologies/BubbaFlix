@@ -53,14 +53,14 @@
         max-width: 800px;
         margin: 0 auto;
         .hero-logo {
-            height: 90px;
-            max-width: 90%;
-            margin-bottom: 15px;
+            height: 125px;
+            max-width: 95%;
+            margin-bottom: 20px;
             object-fit: contain;
-            filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.6));
+            filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.7));
             @include md {
-                height: 140px;
-                margin-bottom: 20px;
+                height: 190px;
+                margin-bottom: 25px;
             }
         }
         .title{
