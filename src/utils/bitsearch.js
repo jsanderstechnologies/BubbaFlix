@@ -280,7 +280,7 @@ const formatSize = (bytes) => {
   return num + " B";
 };
 
-// Search helper function aggregating PirateBay + Bitsearch torrent magnet sources
+// Multi-Source Magnet Aggregator: YTS + PirateBay + Bitsearch
 const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNum, episodeNum) => {
   let apiKey = getBitsearchApiKey();
   if (!apiKey) {
@@ -295,7 +295,77 @@ const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNu
   const rawPool = [];
   const seenHashes = new Set();
 
-  // 1. Fetch from PirateBay (apibay.org via Nginx proxy)
+  // 1. Fetch from YTS Movies API (yts.mx via Nginx proxy or direct fallback)
+  try {
+    const ytsUrl = `${baseUrl}/api/yts/list_movies.json?query_term=${encodeURIComponent(searchQuery)}&sort_by=seeds`;
+    console.log(`[YTS API Proxy] Fetching magnet links: ${ytsUrl}`);
+    const response = await axios.get(ytsUrl, { timeout: 8000 });
+
+    if (response.data?.status === "ok" && Array.isArray(response.data?.data?.movies)) {
+      response.data.data.movies.forEach((movie) => {
+        if (Array.isArray(movie.torrents)) {
+          movie.torrents.forEach((t) => {
+            if (t && t.hash && Number(t.seeds || 0) > 0) {
+              const hashLower = t.hash.toLowerCase();
+              if (!seenHashes.has(hashLower)) {
+                seenHashes.add(hashLower);
+                const streamTitle = `${movie.title} (${movie.year}) [${t.quality}] [${t.type ? t.type.toUpperCase() : "YTS"}] YTS`;
+                const magnet = `magnet:?xt=urn:btih:${t.hash}&dn=${encodeURIComponent(streamTitle)}&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.stealth.si:80/announce&tr=udp://tracker.torrent.eu.org:451/announce`;
+                rawPool.push({
+                  source: "YTS",
+                  title: streamTitle,
+                  magnet: magnet,
+                  size: formatSize(t.size_bytes || t.size),
+                  seeders: Number(t.seeds || 0),
+                  leechers: Number(t.peers || 0),
+                });
+              }
+            }
+          });
+        }
+      });
+    }
+  } catch (err) {
+    console.warn("[YTS API Proxy Warning]:", err.message);
+  }
+
+  // Direct YTS API Fallback if Nginx proxy fails
+  if (rawPool.length === 0) {
+    try {
+      const ytsDirectUrl = `https://yts.mx/api/v2/list_movies.json?query_term=${encodeURIComponent(searchQuery)}&sort_by=seeds`;
+      console.log(`[YTS API Direct] Fetching: ${ytsDirectUrl}`);
+      const response = await axios.get(ytsDirectUrl, { timeout: 8000 });
+
+      if (response.data?.status === "ok" && Array.isArray(response.data?.data?.movies)) {
+        response.data.data.movies.forEach((movie) => {
+          if (Array.isArray(movie.torrents)) {
+            movie.torrents.forEach((t) => {
+              if (t && t.hash && Number(t.seeds || 0) > 0) {
+                const hashLower = t.hash.toLowerCase();
+                if (!seenHashes.has(hashLower)) {
+                  seenHashes.add(hashLower);
+                  const streamTitle = `${movie.title} (${movie.year}) [${t.quality}] [${t.type ? t.type.toUpperCase() : "YTS"}] YTS`;
+                  const magnet = `magnet:?xt=urn:btih:${t.hash}&dn=${encodeURIComponent(streamTitle)}&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.stealth.si:80/announce`;
+                  rawPool.push({
+                    source: "YTS",
+                    title: streamTitle,
+                    magnet: magnet,
+                    size: formatSize(t.size_bytes || t.size),
+                    seeders: Number(t.seeds || 0),
+                    leechers: Number(t.peers || 0),
+                  });
+                }
+              }
+            });
+          }
+        });
+      }
+    } catch (err) {
+      console.warn("[YTS API Direct Warning]:", err.message);
+    }
+  }
+
+  // 2. Fetch from PirateBay (apibay.org via Nginx proxy)
   try {
     const pbUrl = `${baseUrl}/api/torrent?q=${encodeURIComponent(searchQuery)}`;
     console.log(`[PirateBay API Proxy] Fetching magnet links: ${pbUrl}`);
@@ -355,7 +425,7 @@ const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNu
     }
   }
 
-  // 2. Fetch from Bitsearch API
+  // 3. Fetch from Bitsearch API
   try {
     const headers = {};
     if (apiKey) {
