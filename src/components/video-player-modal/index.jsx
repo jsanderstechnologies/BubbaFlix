@@ -9,8 +9,10 @@ import {
   FiMaximize,
   FiMinimize,
   FiMessageSquare,
-  FiCheck
+  FiCheck,
+  FiActivity
 } from "react-icons/fi";
+import Hls from "hls.js";
 import { fetchDataFromAPI } from "../../utils/api";
 import { fetchOpenSubtitles, downloadAndConvertSubtitle } from "../../utils/subtitles";
 import "./index.scss";
@@ -18,6 +20,7 @@ import "./index.scss";
 const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, mediaType = "movie", seasonNum, episodeNum }) => {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
+  const hlsRef = useRef(null);
   const hideControlsTimeoutRef = useRef(null);
 
   // Element Refs for D-Pad Spatial Navigation
@@ -37,6 +40,8 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
   const [isPlaying, setIsPlaying] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [bufferedAheadSecs, setBufferedAheadSecs] = useState(0);
+  const [bufferedPercent, setBufferedPercent] = useState(0);
   const [controlsVisible, setControlsVisible] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -59,15 +64,15 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
       setControlsVisible(true);
       resetControlsTimeout();
 
+      // Setup HLS or Native Video Prebuffering
+      setupPlayerPrebuffering(targetUrl);
+
       // Initial focus on Main Play button for Smart TV remote control
       setTimeout(() => {
         if (mainPlayBtnRef.current) {
           mainPlayBtnRef.current.focus();
         } else if (backBtnRef.current) {
           backBtnRef.current.focus();
-        }
-        if (videoRef.current) {
-          videoRef.current.play().catch(() => {});
         }
       }, 150);
 
@@ -79,6 +84,10 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
       // Load Subtitles
       loadSubtitles();
     } else {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
       if (hideControlsTimeoutRef.current) {
         clearTimeout(hideControlsTimeoutRef.current);
       }
@@ -88,6 +97,64 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
       }
     }
   }, [show, videoUrl, rawUrl, tmdbId]);
+
+  const setupPlayerPrebuffering = (srcUrl) => {
+    if (!srcUrl) return;
+
+    // Clean up previous HLS instance
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+
+    const isHls = srcUrl.includes(".m3u8") || srcUrl.includes("m3u8");
+
+    if (isHls && Hls.isSupported()) {
+      console.log("[Video Prebuffering] Initializing HLS.js with 120s lookahead buffer.");
+      const hls = new Hls({
+        maxBufferLength: 120, // Prebuffer 120s (2 minutes) ahead of playhead
+        maxMaxBufferLength: 300, // Maximum buffer limit (5 minutes)
+        maxBufferSize: 128 * 1024 * 1024, // 128MB RAM buffer pool
+        enableWorker: true,
+        lowLatencyMode: false,
+      });
+      hls.loadSource(srcUrl);
+      if (videoRef.current) {
+        hls.attachMedia(videoRef.current);
+      }
+      hlsRef.current = hls;
+    } else if (videoRef.current) {
+      // Standard HTML5 video prebuffering
+      videoRef.current.preload = "auto";
+      videoRef.current.src = srcUrl;
+      videoRef.current.play().catch(() => {});
+    }
+  };
+
+  const updateBufferMetrics = () => {
+    if (!videoRef.current) return;
+    const v = videoRef.current;
+    const cur = v.currentTime || 0;
+    const dur = v.duration || 1;
+    setCurrentTime(cur);
+    setDuration(dur);
+
+    let endBuf = cur;
+    if (v.buffered && v.buffered.length > 0) {
+      for (let i = 0; i < v.buffered.length; i++) {
+        if (v.buffered.start(i) <= cur && v.buffered.end(i) >= cur) {
+          endBuf = v.buffered.end(i);
+          break;
+        }
+      }
+    }
+
+    const aheadSecs = Math.max(0, Math.round(endBuf - cur));
+    const percent = Math.min(100, Math.max(0, (endBuf / dur) * 100));
+
+    setBufferedAheadSecs(aheadSecs);
+    setBufferedPercent(percent);
+  };
 
   const loadTmdbLogo = async () => {
     try {
@@ -226,7 +293,7 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
 
       // 2. Subtitles Menu Navigation
       if (showSubMenu) {
-        const totalOptions = subtitles.length + 1; // "Off" option + subtitles
+        const totalOptions = subtitles.length + 1;
         if (e.key === "ArrowDown" || code === 40 || code === 20) {
           e.preventDefault();
           const nextIdx = (focusedSubIdx + 1) % totalOptions;
@@ -253,7 +320,7 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
         }
       }
 
-      // 3. Transport Row Horizontal Navigation (Rewind 30s <-> Rewind 10s <-> Play/Pause <-> FF 10s <-> FF 30s)
+      // 3. Transport Row Horizontal Navigation
       const transportOrder = [
         rewind30BtnRef.current,
         rewind10BtnRef.current,
@@ -289,7 +356,7 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
         }
       }
 
-      // 4. Header Navigation (Back button)
+      // 4. Header Navigation
       if (activeEl === backBtnRef.current) {
         if (e.key === "ArrowDown" || code === 40 || code === 20) {
           e.preventDefault();
@@ -322,7 +389,7 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
         }
       }
 
-      // 6. Footer Buttons Navigation (Subtitles <-> Fullscreen)
+      // 6. Footer Buttons Navigation
       if (activeEl === subtitlesBtnRef.current || activeEl === fullscreenBtnRef.current) {
         if (e.key === "ArrowUp" || code === 38 || code === 19) {
           e.preventDefault();
@@ -365,6 +432,16 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
     return `${mPad}:${sPad}`;
   };
 
+  const formatBufferText = (secs) => {
+    if (!secs || secs <= 0) return "Buffering...";
+    if (secs >= 60) {
+      const m = Math.floor(secs / 60);
+      const s = secs % 60;
+      return `${m}m ${s}s ahead`;
+    }
+    return `${secs}s ahead`;
+  };
+
   const hidePopup = () => {
     setShow(false);
   };
@@ -385,16 +462,12 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
             <video
               ref={videoRef}
               key={currentUrl}
-              src={currentUrl}
               autoPlay
+              preload="auto"
               playsInline
               className="videoElement"
-              onTimeUpdate={() => {
-                if (videoRef.current) {
-                  setCurrentTime(videoRef.current.currentTime);
-                  setDuration(videoRef.current.duration || 0);
-                }
-              }}
+              onTimeUpdate={updateBufferMetrics}
+              onProgress={updateBufferMetrics}
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
             >
@@ -448,6 +521,12 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
               ) : (
                 <span className="playerTitle">{title || "BubbaFlix Stream"}</span>
               )}
+            </div>
+
+            {/* Buffer Health Badge */}
+            <div className="bufferHealthBadge">
+              <FiActivity className="icon" />
+              <span>Prebuffered: {formatBufferText(bufferedAheadSecs)}</span>
             </div>
           </div>
 
@@ -543,21 +622,27 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
             </button>
           </div>
 
-          {/* Bottom Bar: Timeline Scrubber, Time Display, Subtitles, Fullscreen */}
+          {/* Bottom Bar: Timeline Scrubber with Buffer Track, Time Display, Subtitles, Fullscreen */}
           <div className="playerFooter">
             <div className="scrubberRow">
               <span className="timeDisplay">{formatTime(currentTime)}</span>
-              <input
-                ref={scrubberRef}
-                type="range"
-                min="0"
-                max={duration || 100}
-                step="0.1"
-                value={currentTime}
-                onChange={handleSeekChange}
-                className="timelineScrubber"
-                tabIndex="0"
-              />
+              <div className="scrubberWrapper">
+                <div
+                  className="bufferTrack"
+                  style={{ width: `${bufferedPercent}%` }}
+                />
+                <input
+                  ref={scrubberRef}
+                  type="range"
+                  min="0"
+                  max={duration || 100}
+                  step="0.1"
+                  value={currentTime}
+                  onChange={handleSeekChange}
+                  className="timelineScrubber"
+                  tabIndex="0"
+                />
+              </div>
               <span className="timeDisplay">{formatTime(duration)}</span>
             </div>
 

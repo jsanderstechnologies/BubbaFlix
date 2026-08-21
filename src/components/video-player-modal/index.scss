@@ -81,7 +81,7 @@
         pointer-events: auto;
       }
 
-      /* Upper Left Header Bar: Back Button & TMDB Title Logo */
+      /* Upper Left Header Bar: Back Button, TMDB Title Logo, Buffer Health Badge */
       .playerHeader {
         padding: 24px 32px;
         display: flex;
@@ -139,6 +139,25 @@
             font-weight: 600;
             color: white;
             text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+          }
+        }
+
+        .bufferHealthBadge {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: rgba(0, 0, 0, 0.5);
+          border: 1px solid rgba(129, 199, 132, 0.4);
+          color: #81c784;
+          padding: 6px 14px;
+          border-radius: 20px;
+          font-size: 12px;
+          font-weight: 600;
+          backdrop-filter: blur(8px);
+
+          .icon {
+            font-size: 14px;
+            color: #81c784;
           }
         }
       }
@@ -212,7 +231,7 @@
         }
       }
 
-      /* Bottom Footer Bar: Scrubber, Time, Subtitles, Fullscreen */
+      /* Bottom Footer Bar: Scrubber with Buffer Track, Time, Subtitles, Fullscreen */
       .playerFooter {
         padding: 24px 32px;
         display: flex;
@@ -232,19 +251,40 @@
             min-width: 65px;
           }
 
-          .timelineScrubber {
+          .scrubberWrapper {
+            position: relative;
             flex: 1;
-            height: 6px;
-            accent-color: var(--pink);
-            cursor: pointer;
-            border-radius: 3px;
-            background: rgba(255, 255, 255, 0.3);
-            outline: none;
+            height: 8px;
+            display: flex;
+            align-items: center;
 
-            &:focus,
-            &:focus-visible {
-              outline: 2px solid var(--pink);
-              box-shadow: 0 0 12px var(--pink);
+            .bufferTrack {
+              position: absolute;
+              top: 0;
+              left: 0;
+              height: 100%;
+              background: rgba(255, 255, 255, 0.4);
+              border-radius: 4px;
+              pointer-events: none;
+              transition: width 0.3s ease;
+            }
+
+            .timelineScrubber {
+              position: relative;
+              z-index: 2;
+              width: 100%;
+              height: 8px;
+              accent-color: var(--pink);
+              cursor: pointer;
+              border-radius: 4px;
+              background: rgba(255, 255, 255, 0.15);
+              outline: none;
+
+              &:focus,
+              &:focus-visible {
+                outline: 2px solid var(--pink);
+                box-shadow: 0 0 14px var(--pink);
+              }
             }
           }
         }
