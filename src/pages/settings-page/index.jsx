@@ -4,6 +4,7 @@ import ContentWrapper from "../../components/content-wrapper";
 import { fetchDataFromAPI, getActiveTmdbToken } from "../../utils/api";
 import { getAioStreamsUrl, saveAioStreamsUrl, testAioStreamsConnection, DEFAULT_AIOSTREAMS_URL } from "../../utils/aiostreams";
 import { getSimklConfig, testSimklConnection } from "../../utils/simkl";
+import { getGroqApiKey } from "../../utils/groqFilter";
 import { isTvDevice, getSavedZoom, applyZoom } from "../../utils/zoom";
 import { updateServerSettings, fetchServerSettings, getServerUrl, saveServerUrl, testBackendServerHealth } from "../../utils/serverSettings";
 import { getApiConfiguration } from "../../store/homeSlice";
@@ -75,7 +76,7 @@ const SettingsPage = () => {
     setHasCustomServer(!!currentServer);
 
     // 2. Pull Centralized Backend Settings
-    await fetchServerSettings();
+    const serverSettings = await fetchServerSettings();
 
     // 3. Populate state
     const currentTheme = getSavedTheme();
@@ -91,12 +92,13 @@ const SettingsPage = () => {
     setIsCustom(!!savedToken);
 
     const { clientId } = getSimklConfig();
-    setSimklClientId(clientId || "");
-    setHasSimklCustom(!!clientId);
+    setSimklClientId(clientId || serverSettings?.simklClientId || "");
+    setHasSimklCustom(!!(clientId || serverSettings?.simklClientId));
 
     const savedGroq = getGroqApiKey();
-    setGroqKey(savedGroq || "");
-    setHasGroqCustom(!!savedGroq);
+    const activeGroq = savedGroq || serverSettings?.groqKey || "";
+    setGroqKey(activeGroq);
+    setHasGroqCustom(!!activeGroq);
 
     const savedRes = localStorage.getItem("stream_resolutions");
     const savedExcludeLow = localStorage.getItem("stream_exclude_low_quality");

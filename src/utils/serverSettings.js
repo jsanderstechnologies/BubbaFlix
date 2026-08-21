@@ -41,7 +41,9 @@ export const fetchServerSettings = async () => {
         saveAioStreamsUrl(s.aiostreams_url);
       }
       if (s.simklClientId) localStorage.setItem("simkl_client_id", s.simklClientId);
-      if (s.groqKey) localStorage.setItem("groq_api_key", s.groqKey);
+      if (s.groqKey && s.groqKey.trim().length > 0) {
+        localStorage.setItem("groq_api_key", s.groqKey.trim());
+      }
       if (s.tmdbToken && s.tmdbToken.trim().length > 0) {
         localStorage.setItem("tmdb_token", s.tmdbToken.trim());
       }

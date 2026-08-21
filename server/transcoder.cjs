@@ -12,6 +12,9 @@ const DEFAULT_TMDB_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmYjM3ODM3YzJiMDlkNzEyM
 // Load environment variables for default server settings
 const getEnvDefaultSettings = () => {
   const defaultTmdb = process.env.TMDB_READ_ACCESS_TOKEN || process.env.VITE_APP_TMDB_KEY || process.env.TMDB_TOKEN || DEFAULT_TMDB_KEY;
+  const defaultGroq = process.env.GROQ_API_KEY || process.env.GROQ_KEY || process.env.VITE_GROQ_API_KEY || "";
+  const defaultSimkl = process.env.SIMKL_CLIENT_ID || process.env.VITE_SIMKL_CLIENT_ID || "";
+  const defaultAio = process.env.AIOSTREAMS_URL || process.env.VITE_AIOSTREAMS_URL || "https://aiostreams.elfhosted.com/";
   const defaultResolutions = process.env.STREAM_RESOLUTIONS
     ? process.env.STREAM_RESOLUTIONS.split(",").map((s) => s.trim())
     : ["2160p", "1080p", "720p", "480p"];
@@ -21,9 +24,9 @@ const getEnvDefaultSettings = () => {
 
   return {
     theme: process.env.THEME || process.env.DEFAULT_THEME || "dark-red",
-    aiostreams_url: process.env.AIOSTREAMS_URL || "https://aiostreams.elfhosted.com/",
-    simklClientId: process.env.SIMKL_CLIENT_ID || "",
-    groqKey: process.env.GROQ_API_KEY || "",
+    aiostreams_url: defaultAio,
+    simklClientId: defaultSimkl,
+    groqKey: defaultGroq,
     tmdbToken: defaultTmdb,
     stream_resolutions: defaultResolutions,
     stream_exclude_low_quality: defaultExcludeLow,
@@ -44,10 +47,19 @@ const loadServerSettings = () => {
       const loaded = JSON.parse(data);
       const merged = { ...envDefaults, ...loaded };
 
-      if (!merged.aiostreams_url && envDefaults.aiostreams_url) merged.aiostreams_url = envDefaults.aiostreams_url;
-      if (!merged.simklClientId && envDefaults.simklClientId) merged.simklClientId = envDefaults.simklClientId;
-      if (!merged.groqKey && envDefaults.groqKey) merged.groqKey = envDefaults.groqKey;
-      if (!merged.tmdbToken || merged.tmdbToken.trim() === "") merged.tmdbToken = envDefaults.tmdbToken;
+      // Ensure environment variables override empty disk settings
+      if ((!loaded.aiostreams_url || loaded.aiostreams_url === "https://aiostreams.elfhosted.com/") && envDefaults.aiostreams_url) {
+        merged.aiostreams_url = envDefaults.aiostreams_url;
+      }
+      if ((!loaded.simklClientId || loaded.simklClientId.trim() === "") && envDefaults.simklClientId) {
+        merged.simklClientId = envDefaults.simklClientId;
+      }
+      if ((!loaded.groqKey || loaded.groqKey.trim() === "") && envDefaults.groqKey) {
+        merged.groqKey = envDefaults.groqKey;
+      }
+      if ((!loaded.tmdbToken || loaded.tmdbToken.trim() === "") && envDefaults.tmdbToken) {
+        merged.tmdbToken = envDefaults.tmdbToken;
+      }
 
       return merged;
     }
@@ -114,8 +126,16 @@ const server = http.createServer((req, res) => {
     req.on("end", () => {
       try {
         const payload = body ? JSON.parse(body) : {};
+        const envDefaults = getEnvDefaultSettings();
         const currentSettings = loadServerSettings();
         const updatedSettings = { ...currentSettings, ...payload };
+
+        if (envDefaults.groqKey && (!updatedSettings.groqKey || updatedSettings.groqKey.trim() === "")) {
+          updatedSettings.groqKey = envDefaults.groqKey;
+        }
+        if (envDefaults.simklClientId && (!updatedSettings.simklClientId || updatedSettings.simklClientId.trim() === "")) {
+          updatedSettings.simklClientId = envDefaults.simklClientId;
+        }
         if (!updatedSettings.tmdbToken || updatedSettings.tmdbToken.trim() === "") {
           updatedSettings.tmdbToken = DEFAULT_TMDB_KEY;
         }
