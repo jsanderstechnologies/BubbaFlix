@@ -101,7 +101,6 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
   const setupPlayerPrebuffering = (srcUrl) => {
     if (!srcUrl) return;
 
-    // Clean up previous HLS instance
     if (hlsRef.current) {
       hlsRef.current.destroy();
       hlsRef.current = null;
@@ -112,9 +111,9 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
     if (isHls && Hls.isSupported()) {
       console.log("[Video Prebuffering] Initializing HLS.js with 120s lookahead buffer.");
       const hls = new Hls({
-        maxBufferLength: 120, // Prebuffer 120s (2 minutes) ahead of playhead
-        maxMaxBufferLength: 300, // Maximum buffer limit (5 minutes)
-        maxBufferSize: 128 * 1024 * 1024, // 128MB RAM buffer pool
+        maxBufferLength: 120,
+        maxMaxBufferLength: 300,
+        maxBufferSize: 128 * 1024 * 1024,
         enableWorker: true,
         lowLatencyMode: false,
       });
@@ -124,7 +123,6 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
       }
       hlsRef.current = hls;
     } else if (videoRef.current) {
-      // Standard HTML5 video prebuffering
       videoRef.current.preload = "auto";
       videoRef.current.src = srcUrl;
       videoRef.current.play().catch(() => {});
@@ -278,7 +276,7 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
       const code = e.keyCode;
       const activeEl = document.activeElement;
 
-      // 1. Back Button / Escape (KeyCodes: 27, 4, 10009, 461)
+      // 1. Back Button / Escape
       if (e.key === "Escape" || e.key === "Back" || code === 27 || code === 4 || code === 10009 || code === 461) {
         e.preventDefault();
         e.stopPropagation();
@@ -445,6 +443,8 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
   const hidePopup = () => {
     setShow(false);
   };
+
+  const playedPercent = duration > 0 ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
 
   if (!show) return null;
 
@@ -622,14 +622,19 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
             </button>
           </div>
 
-          {/* Bottom Bar: Timeline Scrubber with Buffer Track, Time Display, Subtitles, Fullscreen */}
+          {/* Bottom Bar: Multi-Layer Timeline Scrubber with Prebuffer Bar, Time Display, Subtitles, Fullscreen */}
           <div className="playerFooter">
             <div className="scrubberRow">
               <span className="timeDisplay">{formatTime(currentTime)}</span>
               <div className="scrubberWrapper">
+                <div className="trackBackground" />
                 <div
                   className="bufferTrack"
                   style={{ width: `${bufferedPercent}%` }}
+                />
+                <div
+                  className="playedTrack"
+                  style={{ width: `${playedPercent}%` }}
                 />
                 <input
                   ref={scrubberRef}
