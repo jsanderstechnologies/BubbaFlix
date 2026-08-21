@@ -26,23 +26,6 @@ export const getStreamPreferences = () => {
   };
 };
 
-export const detectAudioFormat = (titleStr) => {
-  if (!titleStr) return { type: "aac", label: "AAC / Stereo (Web & TV)", isWebAudio: true };
-  const t = titleStr.toLowerCase();
-
-  const surroundRegex = /\b(dts|dts-hd|dtshd|dts-x|dtsx|ac3|eac3|ddp|dd\+|dd5\.1|ddp5\.1|ddp7\.1|truehd|atmos|5\.1|7\.1|6ch|8ch|flac)\b/i;
-
-  if (surroundRegex.test(t) || t.includes("dts") || t.includes("ac3") || t.includes("eac3") || t.includes("ddp") || t.includes("5.1") || t.includes("7.1")) {
-    return { type: "surround", label: "5.1 Dolby / DTS (TV Only)", isWebAudio: false };
-  }
-
-  if (t.includes("aac") || t.includes("mp3") || t.includes("2.0") || t.includes("stereo")) {
-    return { type: "aac", label: "AAC / Stereo (Web & TV)", isWebAudio: true };
-  }
-
-  return { type: "aac", label: "AAC / Stereo", isWebAudio: true };
-};
-
 export const isAdultOrAudioFile = (titleStr) => {
   if (!titleStr) return false;
   const t = titleStr.toLowerCase();
@@ -325,7 +308,6 @@ const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNu
           size: formatSize(item.size),
           seeders: Number(item.seeders || 0),
           leechers: Number(item.leechers || 0),
-          audio: detectAudioFormat(item.name),
         }));
 
       if (results.length > 0) {
@@ -357,15 +339,13 @@ const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNu
           if ((!magnet || !magnet.startsWith("magnet:?")) && item.info_hash) {
             magnet = `magnet:?xt=urn:btih:${item.info_hash}&dn=${encodeURIComponent(item.title || item.name || searchQuery)}`;
           }
-          const itemTitle = item.title || item.name || searchQuery;
           return {
-            title: itemTitle,
+            title: item.title || item.name || searchQuery,
             magnet: magnet,
             size: formatSize(item.size || item.size_formatted || item.filesize),
             seeders: item.seeders !== undefined ? Number(item.seeders) : Number(item.seeds || 0),
             leechers: item.leechers !== undefined ? Number(item.leechers) : Number(item.leeches || 0),
             date: item.date || item.created_at || "",
-            audio: detectAudioFormat(itemTitle),
           };
         });
 
@@ -392,7 +372,6 @@ const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNu
           size: formatSize(item.size),
           seeders: Number(item.seeders || 0),
           leechers: Number(item.leechers || 0),
-          audio: detectAudioFormat(item.name),
         }));
       return filterByPreferences(results, targetTitle, targetYear, seasonNum, episodeNum);
     }
@@ -450,15 +429,8 @@ export const searchBitsearchMagnets = async (title, year, seasonNum, episodeNum)
     }
   }
 
-  // Sort results: On web browsers, prioritize AAC/Stereo streams first so audio always plays! On TVs, sort by seeders.
-  const isTv = isTvDevice();
-  uniqueResults.sort((a, b) => {
-    if (!isTv) {
-      if (a.audio?.isWebAudio && !b.audio?.isWebAudio) return -1;
-      if (!a.audio?.isWebAudio && b.audio?.isWebAudio) return 1;
-    }
-    return (b.seeders || 0) - (a.seeders || 0);
-  });
+  // Sort by seeders descending
+  uniqueResults.sort((a, b) => (b.seeders || 0) - (a.seeders || 0));
 
   // 4. If Groq AI is configured, run AI stream classification filter
   const finalResults = await filterWithGroqAI(uniqueResults, title);

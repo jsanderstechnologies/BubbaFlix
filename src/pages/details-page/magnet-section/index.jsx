@@ -118,11 +118,6 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
                       <span className="metaBadge size">📦 {item.size}</span>
                       <span className="metaBadge seeds">🌱 {item.seeders} Seeds</span>
                       <span className="metaBadge leeches">🩸 {item.leechers} Leeches</span>
-                      {item.audio && (
-                        <span className={`metaBadge audio ${item.audio.isWebAudio ? "aac" : "surround"}`}>
-                          🔊 {item.audio.label}
-                        </span>
-                      )}
                     </div>
                     {streamError && streamError.index === index && (
                       <div className="streamErrorNotice">
@@ -133,11 +128,21 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
 
                   <div className="itemActions">
                     <button
-                      className="actionBtn play"
+                      className={`actionBtn play ${playingIndex === index ? "loading" : ""}`}
                       onClick={() => handlePlayStream(item, index)}
+                      onKeyDown={(e) => {
+                        const code = e.keyCode;
+                        if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+                          e.preventDefault();
+                          handlePlayStream(item, index);
+                        }
+                      }}
                       disabled={playingIndex === index}
+                      tabIndex="0"
+                      title="Stream Video via Premiumize"
                     >
-                      <FiPlay /> {playingIndex === index ? "Resolving..." : "Play Stream"}
+                      <FiPlay />
+                      <span>{playingIndex === index ? "Connecting..." : "Play Stream"}</span>
                     </button>
                   </div>
                 </div>
@@ -147,22 +152,27 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
         </div>
       )}
 
-      {showPlayer && (
-        <VideoPlayerModal
-          videoUrl={activeVideoUrl}
-          rawUrl={activeRawUrl}
-          title={activeFilename}
-          onClose={() => setShowPlayer(false)}
-        />
-      )}
+      {/* Video Player Modal */}
+      <VideoPlayerModal
+        show={showPlayer}
+        setShow={setShowPlayer}
+        videoUrl={activeVideoUrl}
+        rawUrl={activeRawUrl}
+        title={title}
+        filename={activeFilename}
+      />
     </div>
   );
 
   if (compact) {
-    return content;
+    return <div className="magnetSection compact">{content}</div>;
   }
 
-  return <ContentWrapper>{content}</ContentWrapper>;
+  return (
+    <div className="magnetSection">
+      <ContentWrapper>{content}</ContentWrapper>
+    </div>
+  );
 };
 
 export default MagnetSection;
