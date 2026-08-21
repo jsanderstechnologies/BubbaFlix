@@ -280,7 +280,7 @@ const formatSize = (bytes) => {
   return num + " B";
 };
 
-// Search helper function
+// Search helper function aggregating PirateBay + Bitsearch torrent magnet sources
 const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNum, episodeNum) => {
   let apiKey = getBitsearchApiKey();
   if (!apiKey) {
@@ -292,33 +292,70 @@ const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNu
   }
 
   const baseUrl = getServerUrl();
+  const rawPool = [];
+  const seenHashes = new Set();
 
-  // 1. Try Nginx proxied torrent API (/api/torrent?q=...)
+  // 1. Fetch from PirateBay (apibay.org via Nginx proxy)
   try {
-    const proxyUrl = `${baseUrl}/api/torrent?q=${encodeURIComponent(searchQuery)}`;
-    console.log(`[Torrent API] Fetching magnet links via proxy: ${proxyUrl}`);
-    const response = await axios.get(proxyUrl, { timeout: 8000 });
+    const pbUrl = `${baseUrl}/api/torrent?q=${encodeURIComponent(searchQuery)}`;
+    console.log(`[PirateBay API Proxy] Fetching magnet links: ${pbUrl}`);
+    const response = await axios.get(pbUrl, { timeout: 8000 });
 
     if (Array.isArray(response.data) && response.data.length > 0 && response.data[0].id !== "0") {
-      const results = response.data
-        .filter((item) => item && item.info_hash && Number(item.seeders || 0) > 0)
-        .map((item) => ({
-          title: item.name,
-          magnet: `magnet:?xt=urn:btih:${item.info_hash}&dn=${encodeURIComponent(item.name)}&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.stealth.si:80/announce`,
-          size: formatSize(item.size),
-          seeders: Number(item.seeders || 0),
-          leechers: Number(item.leechers || 0),
-        }));
-
-      if (results.length > 0) {
-        return filterByPreferences(results, targetTitle, targetYear, seasonNum, episodeNum);
-      }
+      response.data.forEach((item) => {
+        if (item && item.info_hash && item.info_hash !== "0000000000000000000000000000000000000000") {
+          const hashLower = item.info_hash.toLowerCase();
+          if (!seenHashes.has(hashLower)) {
+            seenHashes.add(hashLower);
+            const magnet = `magnet:?xt=urn:btih:${item.info_hash}&dn=${encodeURIComponent(item.name)}&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.stealth.si:80/announce&tr=udp://tracker.torrent.eu.org:451/announce`;
+            rawPool.push({
+              source: "PirateBay",
+              title: item.name,
+              magnet: magnet,
+              size: formatSize(item.size),
+              seeders: Number(item.seeders || 0),
+              leechers: Number(item.leechers || 0),
+            });
+          }
+        }
+      });
     }
   } catch (err) {
-    console.warn("[Torrent API Proxy] Error:", err.message);
+    console.warn("[PirateBay API Proxy Warning]:", err.message);
   }
 
-  // 2. Try Bitsearch API (/api/bitsearch/v1/search?q=...)
+  // Direct PirateBay fallback if proxy returned no items
+  if (rawPool.length === 0) {
+    try {
+      const pbDirectUrl = `https://apibay.org/q.php?q=${encodeURIComponent(searchQuery)}`;
+      console.log(`[PirateBay API Direct] Fetching: ${pbDirectUrl}`);
+      const response = await axios.get(pbDirectUrl, { timeout: 8000 });
+
+      if (Array.isArray(response.data) && response.data.length > 0 && response.data[0].id !== "0") {
+        response.data.forEach((item) => {
+          if (item && item.info_hash && item.info_hash !== "0000000000000000000000000000000000000000") {
+            const hashLower = item.info_hash.toLowerCase();
+            if (!seenHashes.has(hashLower)) {
+              seenHashes.add(hashLower);
+              const magnet = `magnet:?xt=urn:btih:${item.info_hash}&dn=${encodeURIComponent(item.name)}&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.stealth.si:80/announce`;
+              rawPool.push({
+                source: "PirateBay",
+                title: item.name,
+                magnet: magnet,
+                size: formatSize(item.size),
+                seeders: Number(item.seeders || 0),
+                leechers: Number(item.leechers || 0),
+              });
+            }
+          }
+        });
+      }
+    } catch (err) {
+      console.warn("[PirateBay API Direct Warning]:", err.message);
+    }
+  }
+
+  // 2. Fetch from Bitsearch API
   try {
     const headers = {};
     if (apiKey) {
@@ -332,51 +369,43 @@ const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNu
 
     const rawResults = response.data?.results || response.data || [];
     if (Array.isArray(rawResults) && rawResults.length > 0) {
-      const results = rawResults
-        .filter((item) => item && (item.magnet || item.magnet_link || item.info_hash))
-        .map((item) => {
+      rawResults.forEach((item) => {
+        if (item) {
           let magnet = item.magnet || item.magnet_link;
-          if ((!magnet || !magnet.startsWith("magnet:?")) && item.info_hash) {
-            magnet = `magnet:?xt=urn:btih:${item.info_hash}&dn=${encodeURIComponent(item.title || item.name || searchQuery)}`;
+          let infoHash = item.info_hash;
+          if (!infoHash && magnet) {
+            const hashMatch = magnet.match(/btih:([a-fA-F0-9]{40})/i);
+            if (hashMatch) infoHash = hashMatch[1];
           }
-          return {
-            title: item.title || item.name || searchQuery,
-            magnet: magnet,
-            size: formatSize(item.size || item.size_formatted || item.filesize),
-            seeders: item.seeders !== undefined ? Number(item.seeders) : Number(item.seeds || 0),
-            leechers: item.leechers !== undefined ? Number(item.leechers) : Number(item.leeches || 0),
-            date: item.date || item.created_at || "",
-          };
-        });
 
-      if (results.length > 0) {
-        return filterByPreferences(results, targetTitle, targetYear, seasonNum, episodeNum);
-      }
+          if ((!magnet || !magnet.startsWith("magnet:?")) && infoHash) {
+            magnet = `magnet:?xt=urn:btih:${infoHash}&dn=${encodeURIComponent(item.title || item.name || searchQuery)}`;
+          }
+
+          const hashKey = infoHash ? infoHash.toLowerCase() : (magnet || "").toLowerCase();
+          if (magnet && !seenHashes.has(hashKey)) {
+            seenHashes.add(hashKey);
+            rawPool.push({
+              source: "Bitsearch",
+              title: item.title || item.name || searchQuery,
+              magnet: magnet,
+              size: formatSize(item.size || item.size_formatted || item.filesize),
+              seeders: item.seeders !== undefined ? Number(item.seeders) : Number(item.seeds || 0),
+              leechers: item.leechers !== undefined ? Number(item.leechers) : Number(item.leeches || 0),
+              date: item.date || item.created_at || "",
+            });
+          }
+        }
+      });
     }
   } catch (err) {
-    console.warn("[Bitsearch API] Error:", err.message);
+    console.warn("[Bitsearch API Warning]:", err.message);
   }
 
-  // 3. Fallback: Direct APIBay API
-  try {
-    const directUrl = `https://apibay.org/q.php?q=${encodeURIComponent(searchQuery)}`;
-    console.log(`[Torrent API Direct] Fetching: ${directUrl}`);
-    const response = await axios.get(directUrl, { timeout: 8000 });
-
-    if (Array.isArray(response.data) && response.data.length > 0 && response.data[0].id !== "0") {
-      const results = response.data
-        .filter((item) => item && item.info_hash && Number(item.seeders || 0) > 0)
-        .map((item) => ({
-          title: item.name,
-          magnet: `magnet:?xt=urn:btih:${item.info_hash}&dn=${encodeURIComponent(item.name)}&tr=udp://tracker.opentrackr.org:1337/announce`,
-          size: formatSize(item.size),
-          seeders: Number(item.seeders || 0),
-          leechers: Number(item.leechers || 0),
-        }));
-      return filterByPreferences(results, targetTitle, targetYear, seasonNum, episodeNum);
-    }
-  } catch (err) {
-    console.warn("[Torrent API Direct] Error:", err.message);
+  if (rawPool.length > 0) {
+    // Sort combined pool by seeders descending
+    rawPool.sort((a, b) => b.seeders - a.seeders);
+    return filterByPreferences(rawPool, targetTitle, targetYear, seasonNum, episodeNum);
   }
 
   return [];
