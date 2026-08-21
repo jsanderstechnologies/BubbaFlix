@@ -22,34 +22,47 @@ export const testPremiumizeAccount = async (apiKey) => {
 
   if (!key) return { success: false, message: "No Premiumize API Key provided." };
 
-  try {
-    const baseUrl = getServerUrl();
-    const response = await axios.get(`${baseUrl}/api/premiumize/account/info`, {
-      params: { apikey: key },
-      timeout: 8000,
-    });
+  const baseUrl = getServerUrl();
+  const testEndpoints = [
+    `${baseUrl}/api/premiumize/account/info`,
+    `https://www.premiumize.me/api/account/info`,
+  ];
 
-    if (response.data?.status === "success") {
-      const premiumDays = response.data.premium_until
-        ? Math.max(0, Math.ceil((response.data.premium_until - Date.now() / 1000) / 86400))
-        : 0;
-      return {
-        success: true,
-        message: `Account Connected! Premium Days Remaining: ${premiumDays}`,
-        data: response.data,
-      };
-    } else {
-      return {
-        success: false,
-        message: response.data?.message || "Invalid Premiumize API Key.",
-      };
+  let lastErrorMsg = "Invalid Premiumize API Key.";
+
+  for (const endpoint of testEndpoints) {
+    try {
+      console.log(`[Premiumize API Account Test] Connecting via: ${endpoint}`);
+      const response = await axios.get(endpoint, {
+        params: { apikey: key },
+        headers: {
+          Authorization: `Bearer ${key}`,
+        },
+        timeout: 8000,
+      });
+
+      if (response.data?.status === "success") {
+        const premiumDays = response.data.premium_until
+          ? Math.max(0, Math.ceil((response.data.premium_until - Date.now() / 1000) / 86400))
+          : 0;
+        return {
+          success: true,
+          message: `Account Connected! Premium Days Remaining: ${premiumDays}`,
+          data: response.data,
+        };
+      } else if (response.data?.message) {
+        lastErrorMsg = response.data.message;
+      }
+    } catch (err) {
+      lastErrorMsg = err.response?.data?.message || err.message || lastErrorMsg;
+      console.warn(`[Premiumize API Account Test Warning - ${endpoint}]:`, lastErrorMsg);
     }
-  } catch (err) {
-    return {
-      success: false,
-      message: err.response?.data?.message || err.message || "Failed to connect to Premiumize API.",
-    };
   }
+
+  return {
+    success: false,
+    message: lastErrorMsg === "Not logged in." ? "Invalid API Key or unauthorized on Premiumize. Please verify your Premiumize API Key." : lastErrorMsg,
+  };
 };
 
 // Premiumize Cache Check API: Checks which stream magnet links are instantly cached on Premiumize cloud servers
@@ -95,6 +108,7 @@ export const checkPremiumizeCache = async (results) => {
 
       try {
         const response = await axios.get(`${baseUrl}/api/premiumize/cache/check?${params.toString()}`, {
+          headers: { Authorization: `Bearer ${apiKey}` },
           timeout: 6000,
         });
 
@@ -165,6 +179,9 @@ export const getDirectStreamUrl = async (magnetLink) => {
         params: {
           apikey: apiKey,
           src: magnetLink,
+        },
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
         },
         timeout: 12000,
       }
