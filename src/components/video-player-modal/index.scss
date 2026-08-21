@@ -1,19 +1,20 @@
 @import "../../mixins.scss";
 
 .videoPlayerModal {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
+  background-color: #000000;
   z-index: 9999;
-  background-color: black;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.2s ease, visibility 0.2s ease;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  outline: none;
 
   &.visible {
     opacity: 1;
@@ -22,58 +23,14 @@
 
   .playerWindow {
     position: relative;
-    width: 100vw;
-    height: 100vh;
-    background-color: black;
-    display: flex;
-    flex-direction: column;
-    z-index: 10000;
-
-    .backBtn {
-      position: absolute;
-      top: 24px;
-      left: 24px;
-      z-index: 10010;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background-color: rgba(0, 0, 0, 0.65);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: white;
-      padding: 10px 18px;
-      border-radius: 30px;
-      cursor: pointer;
-      outline: none;
-      transition: all 0.2s ease;
-
-      .backIcon {
-        font-size: 20px;
-        color: var(--pink);
-      }
-
-      .backText {
-        font-size: 14px;
-        font-weight: 700;
-      }
-
-      &:hover,
-      &:focus {
-        background-color: var(--pink);
-        border-color: var(--pink);
-        transform: scale(1.05);
-
-        .backIcon {
-          color: white;
-        }
-      }
-    }
+    width: 100%;
+    height: 100%;
+    background: black;
+    overflow: hidden;
 
     .videoWrapper {
-      position: relative;
-      width: 100vw;
-      height: 100vh;
-      background-color: black;
+      width: 100%;
+      height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -83,17 +40,339 @@
         height: 100%;
         object-fit: contain;
         outline: none;
+
+        ::cue {
+          background: rgba(0, 0, 0, 0.75);
+          color: #ffffff;
+          font-family: inherit;
+          font-size: 22px;
+          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+        }
       }
 
       .noStreamNotice {
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 16px;
+      }
+    }
+
+    .controlsOverlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      background: linear-gradient(
+        180deg,
+        rgba(0, 0, 0, 0.85) 0%,
+        rgba(0, 0, 0, 0) 25%,
+        rgba(0, 0, 0, 0) 75%,
+        rgba(0, 0, 0, 0.9) 100%
+      );
+
+      &.visible {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      /* Upper Left Header Bar: Back Button & TMDB Title Logo */
+      .playerHeader {
+        padding: 24px 32px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+
+        .headerLeftGroup {
+          display: flex;
+          align-items: center;
+          gap: 20px;
+
+          .backBtn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(8px);
+
+            &:hover,
+            &:focus {
+              background: rgba(255, 255, 255, 0.15);
+              border-color: var(--pink);
+
+              .backIcon {
+                color: var(--pink);
+              }
+            }
+
+            .backIcon {
+              font-size: 18px;
+            }
+          }
+
+          .mediaLogo {
+            height: 48px;
+            max-width: 220px;
+            object-fit: contain;
+            filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.8));
+          }
+
+          .playerTitle {
+            font-size: 18px;
+            font-weight: 600;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+          }
+        }
+      }
+
+      /* Center Transport Controls (-30s, -10s, Play/Pause, +10s, +30s) */
+      .centerTransportControls {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 24px;
+
+        .transportBtn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          background: rgba(0, 0, 0, 0.5);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          color: white;
+          border-radius: 50%;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          backdrop-filter: blur(8px);
+
+          &.seek {
+            width: 54px;
+            height: 54px;
+            font-size: 22px;
+
+            .btnBadge {
+              position: absolute;
+              font-size: 10px;
+              font-weight: 700;
+              color: white;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+            }
+
+            &:hover,
+            &:focus {
+              background: rgba(255, 255, 255, 0.2);
+              border-color: var(--pink);
+              transform: scale(1.1);
+            }
+          }
+
+          &.mainPlay {
+            width: 72px;
+            height: 72px;
+            font-size: 32px;
+            background: var(--gradient);
+            border: none;
+            box-shadow: 0 4px 20px rgba(218, 47, 104, 0.5);
+
+            .playIcon {
+              margin-left: 3px;
+            }
+
+            &:hover,
+            &:focus {
+              transform: scale(1.12);
+              box-shadow: 0 6px 24px rgba(218, 47, 104, 0.7);
+            }
+          }
+        }
+      }
+
+      /* Bottom Footer Bar: Scrubber, Time, Subtitles, Fullscreen */
+      .playerFooter {
+        padding: 24px 32px;
         display: flex;
         flex-direction: column;
-        align-items: center;
         gap: 12px;
-        color: rgba(255, 255, 255, 0.8);
-        font-size: 14px;
-        text-align: center;
-        padding: 24px;
+
+        .scrubberRow {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+
+          .timeDisplay {
+            font-size: 13px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.85);
+            font-family: monospace;
+            min-width: 65px;
+          }
+
+          .timelineScrubber {
+            flex: 1;
+            height: 6px;
+            accent-color: var(--pink);
+            cursor: pointer;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.3);
+          }
+        }
+
+        .footerControlsRight {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 16px;
+
+          .subtitlesContainer {
+            position: relative;
+
+            .footerControlBtn {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              background: rgba(0, 0, 0, 0.5);
+              border: 1px solid rgba(255, 255, 255, 0.2);
+              color: white;
+              padding: 8px 16px;
+              border-radius: 8px;
+              cursor: pointer;
+              font-size: 14px;
+              font-weight: 500;
+              transition: all 0.2s ease;
+              backdrop-filter: blur(8px);
+
+              &.active {
+                background: rgba(218, 47, 104, 0.25);
+                border-color: var(--pink);
+                color: var(--pink);
+              }
+
+              &:hover,
+              &:focus {
+                background: rgba(255, 255, 255, 0.15);
+                border-color: var(--pink);
+              }
+            }
+
+            .subtitlesMenu {
+              position: absolute;
+              bottom: 100%;
+              right: 0;
+              margin-bottom: 12px;
+              width: 280px;
+              max-height: 260px;
+              background: rgba(18, 18, 18, 0.95);
+              border: 1px solid rgba(255, 255, 255, 0.15);
+              border-radius: 10px;
+              backdrop-filter: blur(12px);
+              overflow: hidden;
+              box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8);
+              display: flex;
+              flex-direction: column;
+
+              .menuHeader {
+                padding: 10px 14px;
+                background: rgba(255, 255, 255, 0.05);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                font-size: 12px;
+                font-weight: 700;
+                color: var(--pink);
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+              }
+
+              .menuList {
+                overflow-y: auto;
+                display: flex;
+                flex-direction: column;
+
+                .subOption {
+                  display: flex;
+                  align-items: center;
+                  gap: 8px;
+                  padding: 10px 14px;
+                  cursor: pointer;
+                  font-size: 13px;
+                  color: rgba(255, 255, 255, 0.85);
+                  transition: background-color 0.2s ease;
+
+                  &:hover {
+                    background-color: rgba(255, 255, 255, 0.1);
+                  }
+
+                  &.selected {
+                    color: var(--pink);
+                    font-weight: 600;
+                    background: rgba(218, 47, 104, 0.15);
+                  }
+
+                  .checkIcon {
+                    font-size: 14px;
+                    color: var(--pink);
+                  }
+
+                  .langLabel {
+                    font-weight: 600;
+                    color: #81c784;
+                    font-size: 11px;
+                  }
+
+                  .fileName {
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    font-size: 12px;
+                  }
+                }
+
+                .subLoadingNotice {
+                  padding: 14px;
+                  font-size: 12px;
+                  color: rgba(255, 255, 255, 0.6);
+                  text-align: center;
+                }
+              }
+            }
+          }
+
+          .footerControlBtn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(8px);
+
+            &:hover,
+            &:focus {
+              background: rgba(255, 255, 255, 0.15);
+              border-color: var(--pink);
+            }
+          }
+        }
       }
     }
   }

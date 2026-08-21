@@ -163,6 +163,11 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
           setShow={setShowPlayer}
           videoUrl={activeVideoUrl}
           rawUrl={activeVideoUrl}
+          title={activeFilename}
+          tmdbId={tmdbId}
+          mediaType={mediaType || (seasonNum !== undefined ? "tv" : "movie")}
+          seasonNum={seasonNum}
+          episodeNum={episodeNum}
         />
       </div>
     </div>
