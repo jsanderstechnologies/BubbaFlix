@@ -310,6 +310,15 @@ const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNu
 
       if (response.data?.status === "ok" && Array.isArray(response.data?.data?.movies)) {
         response.data.data.movies.forEach((movie) => {
+          // Verify YTS returned movie title matches target movie title (rejecting YTS random fallback movies!)
+          const titleToValidate = `${movie.title} ${movie.year || ""}`;
+          const isMatch = targetTitle ? isExactTitleMatch(titleToValidate, targetTitle, targetYear, seasonNum, episodeNum) : true;
+
+          if (!isMatch) {
+            console.log(`[YTS API Reject] Rejected YTS random fallback movie: "${movie.title} (${movie.year})" for target "${targetTitle}"`);
+            return;
+          }
+
           if (Array.isArray(movie.torrents)) {
             movie.torrents.forEach((t) => {
               if (t && t.hash && Number(t.seeds || 0) > 0) {
@@ -333,8 +342,8 @@ const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNu
         });
 
         if (rawPool.length > 0) {
-          console.log(`[YTS API Success] Retrieved ${rawPool.length} streams from YTS mirror: ${ytsUrl}`);
-          break; // Stop querying additional YTS mirrors once items are found
+          console.log(`[YTS API Success] Retrieved ${rawPool.length} verified streams from YTS mirror: ${ytsUrl}`);
+          break; // Stop querying additional YTS mirrors once matching items are found
         }
       }
     } catch (err) {
