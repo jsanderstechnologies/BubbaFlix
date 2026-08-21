@@ -1,6 +1,5 @@
 import axios from "axios";
 import { filterWithGroqAI } from "./groqFilter";
-import { isTvDevice } from "./zoom";
 import { fetchServerSettings, getServerUrl } from "./serverSettings";
 import { checkPremiumizeCache } from "./premiumize";
 
@@ -162,33 +161,16 @@ const filterByPreferences = (results, targetTitle, targetYear, seasonNum, episod
 
   const { resolutions, excludeLowQuality } = getStreamPreferences();
 
-  // 1. Strictly require valid Magnet URI (magnet:?xt=urn:btih:) & exclude dead streams (0 seeders)
+  // 1. Require valid Magnet URI (magnet:?xt=urn:btih:)
   let pool = results.filter((item) => {
     if (!item || !item.magnet || typeof item.magnet !== "string") {
       return false;
     }
-
     const cleanMagnet = item.magnet.trim().toLowerCase();
-    if (!cleanMagnet.startsWith("magnet:?xt=urn:btih:")) {
-      return false;
-    }
-
-    const seeds = Number(item.seeders);
-    if (isNaN(seeds) || seeds <= 0) {
-      return false;
-    }
-
-    return true;
+    return cleanMagnet.startsWith("magnet:?xt=urn:btih:");
   });
 
-  if (pool.length === 0) {
-    // If strict 0 seeder check filtered everything out, relax seeder check
-    pool = results.filter((item) => item && item.magnet && item.magnet.trim().toLowerCase().startsWith("magnet:?xt=urn:btih:"));
-  }
-
-  if (pool.length === 0) {
-    return [];
-  }
+  if (pool.length === 0) return [];
 
   // 2. Filter out Adult content & standalone audio/music files
   const cleanAdultPool = pool.filter((item) => !isAdultOrAudioFile(item.title));
@@ -241,7 +223,51 @@ const formatSize = (bytes) => {
   return num + " B";
 };
 
-// Stream Magnet Search Engine (SolidTorrents API + Bitsearch API)
+// Parse Bitsearch HTML web search results (keyless fallback provider)
+export const parseBitsearchHtml = (htmlStr) => {
+  if (!htmlStr || typeof htmlStr !== "string") return [];
+  const results = [];
+
+  const cardRegex = /<li[^>]*class="[^"]*search-result[^"]*"[\s\S]*?<\/li>/gi;
+  const cards = htmlStr.match(cardRegex) || [];
+
+  for (const card of cards) {
+    const magnetMatch = card.match(/href="(magnet:\?xt=urn:btih:[^"]+)"/i);
+    if (!magnetMatch) continue;
+
+    const magnet = magnetMatch[1];
+    const hashMatch = magnet.match(/btih:([a-fA-F0-9]{40})/i);
+    const infoHash = hashMatch ? hashMatch[1] : null;
+
+    const titleMatch = card.match(/<h5[^>]*class="[^"]*title[^"]*"[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/i);
+    let title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, "").trim() : "";
+
+    const sizeMatch = card.match(/class="[^\"]*size[^\"]*"[^>]*>([\s\S]*?)<\/div>/i);
+    let size = sizeMatch ? sizeMatch[1].replace(/<[^>]+>/g, "").trim() : "N/A";
+
+    const seedMatch = card.match(/class="[^\"]*stats[^\"]*"[\s\S]*?(\d+)\s*seeds/i) || card.match(/(\d+)\s*seeds/i);
+    const seeders = seedMatch ? Number(seedMatch[1]) : 1;
+
+    const leechMatch = card.match(/class="[^\"]*stats[^\"]*"[\s\S]*?(\d+)\s*leeches/i) || card.match(/(\d+)\s*leeches/i);
+    const leechers = leechMatch ? Number(leechMatch[1]) : 0;
+
+    if (magnet && title) {
+      results.push({
+        source: "Bitsearch Web",
+        title: title,
+        magnet: magnet,
+        info_hash: infoHash,
+        size: size,
+        seeders: seeders,
+        leechers: leechers,
+      });
+    }
+  }
+
+  return results;
+};
+
+// Stream Magnet Search Engine: Bitsearch Web Scraper + Bitsearch API + SolidTorrents API
 const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNum, episodeNum) => {
   let apiKey = getBitsearchApiKey();
   if (!apiKey) {
@@ -256,7 +282,36 @@ const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNu
   const rawPool = [];
   const seenHashes = new Set();
 
-  // 1. Fetch from Bitsearch API (Primary reliable provider)
+  // Provider 1: Keyless Bitsearch Web Search Scraper (via Nginx proxy & direct)
+  const bitsearchWebUrls = [
+    `${baseUrl}/api/bitsearch_web/search?q=${encodeURIComponent(searchQuery)}`,
+    `https://bitsearch.to/search?q=${encodeURIComponent(searchQuery)}`,
+  ];
+
+  for (const webUrl of bitsearchWebUrls) {
+    try {
+      console.log(`[Bitsearch Web Scraper] Fetching magnet links: ${webUrl}`);
+      const response = await axios.get(webUrl, { timeout: 8000 });
+      if (typeof response.data === "string" && response.data.includes("magnet:?")) {
+        const webResults = parseBitsearchHtml(response.data);
+        if (webResults.length > 0) {
+          webResults.forEach((item) => {
+            const hashKey = item.info_hash ? item.info_hash.toLowerCase() : item.magnet.toLowerCase();
+            if (!seenHashes.has(hashKey)) {
+              seenHashes.add(hashKey);
+              rawPool.push(item);
+            }
+          });
+          console.log(`[Bitsearch Web Success] Retrieved ${webResults.length} magnets from ${webUrl}`);
+          break;
+        }
+      }
+    } catch (webErr) {
+      console.warn(`[Bitsearch Web Scraper Warning - ${webUrl}]:`, webErr.message);
+    }
+  }
+
+  // Provider 2: Bitsearch API (if API Key provided)
   try {
     const headers = {};
     if (apiKey) {
@@ -304,7 +359,7 @@ const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNu
     console.warn("[Bitsearch API Warning]:", err.message);
   }
 
-  // 2. Fetch from SolidTorrents API (Secondary provider)
+  // Provider 3: SolidTorrents API
   const solidEndpoints = [
     `${baseUrl}/api/solidtorrents/search?q=${encodeURIComponent(searchQuery)}&category=video`,
     `https://solidtorrents.to/api/v1/search?q=${encodeURIComponent(searchQuery)}&category=video`,
