@@ -198,13 +198,36 @@ const filterByPreferences = (results, targetTitle, targetYear, seasonNum, episod
   const { resolutions, excludeLowQuality } = getStreamPreferences();
   const isTv = isTvDevice();
 
-  // 1. Filter out Adult content & standalone audio/music files
-  let pool = results.filter((item) => !isAdultOrAudioFile(item.title));
-  if (pool.length === 0 && results.length > 0) {
+  // 1. Strictly require valid Magnet URI (magnet:?xt=urn:btih:) & exclude dead streams (0 seeders)
+  let pool = results.filter((item) => {
+    if (!item || !item.magnet || typeof item.magnet !== "string") {
+      return false;
+    }
+
+    const cleanMagnet = item.magnet.trim().toLowerCase();
+    if (!cleanMagnet.startsWith("magnet:?xt=urn:btih:")) {
+      return false;
+    }
+
+    const seeds = Number(item.seeders);
+    if (isNaN(seeds) || seeds <= 0) {
+      return false;
+    }
+
+    return true;
+  });
+
+  if (pool.length === 0) {
     return [];
   }
 
-  // 2. Strict Title & Episode / Movie Year Match Filter
+  // 2. Filter out Adult content & standalone audio/music files
+  pool = pool.filter((item) => !isAdultOrAudioFile(item.title));
+  if (pool.length === 0) {
+    return [];
+  }
+
+  // 3. Strict Title & Episode / Movie Year Match Filter
   if (targetTitle) {
     const titleMatchedPool = pool.filter((item) =>
       isExactTitleMatch(item.title, targetTitle, targetYear, seasonNum, episodeNum)
@@ -214,7 +237,7 @@ const filterByPreferences = (results, targetTitle, targetYear, seasonNum, episod
     }
   }
 
-  // 3. Web Player Audio & Video Compatibility Filter (for non-TV desktop/mobile browsers)
+  // 4. Web Player Audio & Video Compatibility Filter (for non-TV desktop/mobile browsers)
   if (!isTv) {
     const webPool = pool.filter((item) => isWebCompatibleStream(item.title));
     if (webPool.length > 0) {
@@ -222,7 +245,7 @@ const filterByPreferences = (results, targetTitle, targetYear, seasonNum, episod
     }
   }
 
-  // 4. Filter out CAM, HDCAM, Telesync, HDTS, TC videos if excludeLowQuality is true
+  // 5. Filter out CAM, HDCAM, Telesync, HDTS, TC videos if excludeLowQuality is true
   if (excludeLowQuality) {
     const cleanPool = pool.filter((item) => !isLowQualityCamOrTS(item.title));
     if (cleanPool.length > 0) {
@@ -230,7 +253,7 @@ const filterByPreferences = (results, targetTitle, targetYear, seasonNum, episod
     }
   }
 
-  // 5. Filter by user resolution selections
+  // 6. Filter by user resolution selections
   const resActive = resolutions && resolutions.length > 0 && resolutions.length < 4;
   if (!resActive) {
     return pool;
@@ -277,13 +300,15 @@ const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNu
     const response = await axios.get(proxyUrl, { timeout: 8000 });
 
     if (Array.isArray(response.data) && response.data.length > 0 && response.data[0].id !== "0") {
-      const results = response.data.map((item) => ({
-        title: item.name,
-        magnet: `magnet:?xt=urn:btih:${item.info_hash}&dn=${encodeURIComponent(item.name)}&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.stealth.si:80/announce`,
-        size: formatSize(item.size),
-        seeders: Number(item.seeders || 0),
-        leechers: Number(item.leechers || 0),
-      }));
+      const results = response.data
+        .filter((item) => item && item.info_hash && Number(item.seeders || 0) > 0)
+        .map((item) => ({
+          title: item.name,
+          magnet: `magnet:?xt=urn:btih:${item.info_hash}&dn=${encodeURIComponent(item.name)}&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.stealth.si:80/announce`,
+          size: formatSize(item.size),
+          seeders: Number(item.seeders || 0),
+          leechers: Number(item.leechers || 0),
+        }));
 
       if (results.length > 0) {
         return filterByPreferences(results, targetTitle, targetYear, seasonNum, episodeNum);
@@ -308,10 +333,10 @@ const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNu
     const rawResults = response.data?.results || response.data || [];
     if (Array.isArray(rawResults) && rawResults.length > 0) {
       const results = rawResults
-        .filter((item) => item && (item.magnet || item.magnet_link || item.link || item.info_hash))
+        .filter((item) => item && (item.magnet || item.magnet_link || item.info_hash))
         .map((item) => {
-          let magnet = item.magnet || item.magnet_link || item.link;
-          if (!magnet && item.info_hash) {
+          let magnet = item.magnet || item.magnet_link;
+          if ((!magnet || !magnet.startsWith("magnet:?")) && item.info_hash) {
             magnet = `magnet:?xt=urn:btih:${item.info_hash}&dn=${encodeURIComponent(item.title || item.name || searchQuery)}`;
           }
           return {
@@ -339,13 +364,15 @@ const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNu
     const response = await axios.get(directUrl, { timeout: 8000 });
 
     if (Array.isArray(response.data) && response.data.length > 0 && response.data[0].id !== "0") {
-      const results = response.data.map((item) => ({
-        title: item.name,
-        magnet: `magnet:?xt=urn:btih:${item.info_hash}&dn=${encodeURIComponent(item.name)}&tr=udp://tracker.opentrackr.org:1337/announce`,
-        size: formatSize(item.size),
-        seeders: Number(item.seeders || 0),
-        leechers: Number(item.leechers || 0),
-      }));
+      const results = response.data
+        .filter((item) => item && item.info_hash && Number(item.seeders || 0) > 0)
+        .map((item) => ({
+          title: item.name,
+          magnet: `magnet:?xt=urn:btih:${item.info_hash}&dn=${encodeURIComponent(item.name)}&tr=udp://tracker.opentrackr.org:1337/announce`,
+          size: formatSize(item.size),
+          seeders: Number(item.seeders || 0),
+          leechers: Number(item.leechers || 0),
+        }));
       return filterByPreferences(results, targetTitle, targetYear, seasonNum, episodeNum);
     }
   } catch (err) {
