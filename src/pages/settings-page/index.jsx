@@ -475,7 +475,7 @@ const SettingsPage = () => {
                     type="text"
                     value={serverUrlState}
                     onChange={(e) => setServerUrlState(e.target.value)}
-                    placeholder="e.g. http://192.168.10.10:3000 (or leave empty for default)"
+                    placeholder="e.g. http://192.168.10.10:5150 (or leave empty for default)"
                   />
                 </div>
               </div>
@@ -584,6 +584,13 @@ const SettingsPage = () => {
                       key={theme.id}
                       className={`themeCard ${activeTheme === theme.id ? "active" : ""}`}
                       onClick={() => handleSelectTheme(theme.id)}
+                      tabIndex="0"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleSelectTheme(theme.id);
+                        }
+                      }}
                     >
                       <div
                         className="themePreview"
@@ -918,6 +925,13 @@ const SettingsPage = () => {
                           type="button"
                           className={`resOption ${selectedResolutions.includes(res.id) ? "selected" : ""}`}
                           onClick={() => handleToggleResolution(res.id)}
+                          tabIndex="0"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              handleToggleResolution(res.id);
+                            }
+                          }}
                         >
                           <span className="checkbox">
                             {selectedResolutions.includes(res.id) ? "✓" : ""}
@@ -933,6 +947,13 @@ const SettingsPage = () => {
                     <div
                       className={`qualityToggle ${excludeLowQuality ? "active" : ""}`}
                       onClick={() => setExcludeLowQuality(!excludeLowQuality)}
+                      tabIndex="0"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setExcludeLowQuality(!excludeLowQuality);
+                        }
+                      }}
                     >
                       <span className="toggleSwitch" />
                       <span className="toggleLabel">
