@@ -361,9 +361,26 @@ export const testSimklConnection = async (clientId, userToken) => {
       };
     } catch (err) {
       if (err.response?.status === 401) {
+        // Test if Client ID itself is valid
+        try {
+          const searchParams = getRequiredQueryParams(cId, { tmdb: "550" });
+          const testRes = await axios.get(`${baseUrl}/api/simkl/search/id?${searchParams}`, {
+            headers: { "simkl-api-key": cId, "User-Agent": USER_AGENT },
+            timeout: 5000,
+          });
+          if (testRes.status === 200) {
+            return {
+              success: false,
+              message: "SIMKL Client ID is valid, but the User Access Token was rejected (401). If you do not have an OAuth User Token, leave the User Access Token field empty (do not use Client Secret).",
+            };
+          }
+        } catch (e) {
+          // Fallthrough
+        }
+
         return {
           success: false,
-          message: "Invalid or expired SIMKL User Access Token. Please verify your token in SIMKL developer settings.",
+          message: "Invalid SIMKL User Access Token. Leave User Access Token empty if you only have a Client ID.",
         };
       }
       return {
@@ -377,7 +394,7 @@ export const testSimklConnection = async (clientId, userToken) => {
   try {
     const searchParams = getRequiredQueryParams(cId, { tmdb: "550" });
     const response = await axios.get(`${baseUrl}/api/simkl/search/id?${searchParams}`, {
-      headers,
+      headers: { "simkl-api-key": cId, "User-Agent": USER_AGENT },
       timeout: 8000,
     });
 

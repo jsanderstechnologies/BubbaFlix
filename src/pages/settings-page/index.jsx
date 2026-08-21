@@ -525,7 +525,11 @@ const SettingsPage = () => {
 
             <div className="apiInstruction">
               <FiInfo style={{ marginRight: 6, verticalAlign: "middle" }} />
-              <strong>How to get key:</strong> Register at <a href="https://simkl.com/settings/developer/" target="_blank" rel="noreferrer">simkl.com/settings/developer/</a> &gt; Create App.
+              <strong>How to get key:</strong> Register at <a href="https://simkl.com/settings/developer/" target="_blank" rel="noreferrer">simkl.com/settings/developer/</a> &gt; Create App to get your Client ID.
+              <br />
+              <span style={{ fontSize: "0.85em", opacity: 0.85, marginTop: 4, display: "block" }}>
+                * Note: Do NOT enter your Client Secret in the User Access Token field. If you do not have an OAuth User Access Token, leave the User Access Token field empty—Client ID alone will save and sync watch status.
+              </span>
             </div>
 
             <form onSubmit={handleSaveSimkl} className="tokenForm" style={{ marginTop: 15 }}>
@@ -550,7 +554,7 @@ const SettingsPage = () => {
                     type={showSimklToken ? "text" : "password"}
                     value={simklToken}
                     onChange={(e) => setSimklToken(e.target.value)}
-                    placeholder="Enter your SIMKL User Access Token..."
+                    placeholder="Leave empty if you only have Client ID..."
                   />
                   <button
                     type="button"
@@ -802,7 +806,7 @@ const SettingsPage = () => {
 
                 <form onSubmit={handleSaveTmdb} className="tokenForm" style={{ marginTop: 15 }}>
                   <div className="inputGroup">
-                    <label htmlFor="tmdbToken">VITE_APP_TMDB_KEY</label>
+                    <label htmlFor="tmdbToken">TMDB_READ_ACCESS_TOKEN</label>
                     <div className="inputWrapper">
                       <input
                         id="tmdbToken"
@@ -815,7 +819,7 @@ const SettingsPage = () => {
                         type="button"
                         className="toggleVisibility"
                         onClick={() => setShowToken(!showToken)}
-                        title={showToken ? "Hide Key" : "Show Key"}
+                        title={showToken ? "Hide Token" : "Show Token"}
                       >
                         {showToken ? <FiEyeOff /> : <FiEye />}
                       </button>
@@ -832,7 +836,7 @@ const SettingsPage = () => {
 
                   <div className="buttonGroup">
                     <button type="submit" className="saveBtn">
-                      <FiSave /> Save TMDB Key
+                      <FiSave /> Save TMDB Token
                     </button>
                     <button
                       type="button"
@@ -840,8 +844,8 @@ const SettingsPage = () => {
                       onClick={handleTestConnection}
                       disabled={testing}
                     >
-                      <FiRefreshCw className={testing ? "spinning" : ""} />
-                      {testing ? "Testing..." : "Test Connection"}
+                      <FiRefreshCw className={testing ? "spin" : ""} />
+                      {testing ? "Testing..." : "Test Token Connection"}
                     </button>
                     {isCustom && (
                       <button
@@ -849,7 +853,7 @@ const SettingsPage = () => {
                         className="clearBtn"
                         onClick={handleClearTmdb}
                       >
-                        Reset to Default
+                        Clear Token
                       </button>
                     )}
                   </div>
@@ -861,17 +865,17 @@ const SettingsPage = () => {
                 <div className="cardHeader">
                   <h2>Bitsearch API Key</h2>
                   <span className={`badge ${hasBitsearchCustom ? "custom" : "default"}`}>
-                    <FiServer style={{ marginRight: 4 }} /> {hasBitsearchCustom ? "API Key Configured" : "Public Mode Active"}
+                    <FiServer style={{ marginRight: 4 }} /> {hasBitsearchCustom ? "Bitsearch API Key Active" : "Public Mode Active"}
                   </span>
                 </div>
 
                 <p className="description">
-                  Used on Movie & TV detail pages to search and fetch stream magnet links via Bitsearch API.
+                  Used to search torrent magnet links. If left empty, public torrent engines are used.
                 </p>
 
                 <div className="apiInstruction">
                   <FiInfo style={{ marginRight: 6, verticalAlign: "middle" }} />
-                  <strong>How to get key:</strong> Obtain your API key from <a href="https://bitsearch.to" target="_blank" rel="noreferrer">Bitsearch.to</a> to search torrent magnet links.
+                  <strong>How to get key:</strong> Register at <a href="https://bitsearch.to/api" target="_blank" rel="noreferrer">bitsearch.to/api</a>.
                 </div>
 
                 <form onSubmit={handleSaveBitsearch} className="tokenForm" style={{ marginTop: 15 }}>
@@ -921,58 +925,63 @@ const SettingsPage = () => {
                 </form>
               </div>
 
-              {/* Stream Filter Preferences Card */}
+              {/* Stream Resolution & CAM Exclusion Settings Card */}
               <div className="settingsCard">
                 <div className="cardHeader">
-                  <h2><FiSliders style={{ marginRight: 8 }} /> Stream Resolution Filters</h2>
+                  <h2><FiSliders style={{ marginRight: 8 }} /> Stream Resolution & Quality Filters</h2>
                   <span className="badge custom">
                     <FiServer style={{ marginRight: 4 }} /> Server Synced
                   </span>
                 </div>
 
                 <p className="description">
-                  Select which video resolutions and release qualities to return when searching Available Streams. Synced across all client devices.
+                  Configure allowed resolutions and toggle CAM / HDTS low-quality release exclusions across all devices.
                 </p>
 
                 <form onSubmit={handleSaveStreamFilters} className="tokenForm">
-                  <div className="filterGroup">
-                    <label className="groupLabel">Allowed Resolutions</label>
-                    <div className="checkboxGrid">
+                  <div className="inputGroup">
+                    <label>ALLOWED_STREAM_RESOLUTIONS</label>
+                    <div className="resolutionGrid">
                       {ALL_RESOLUTIONS.map((res) => (
-                        <label key={res.id} className="checkboxOption">
-                          <input
-                            type="checkbox"
-                            checked={selectedResolutions.includes(res.id)}
-                            onChange={() => handleToggleResolution(res.id)}
-                          />
-                          <span>{res.label}</span>
-                        </label>
+                        <button
+                          key={res.id}
+                          type="button"
+                          className={`resOption ${selectedResolutions.includes(res.id) ? "selected" : ""}`}
+                          onClick={() => handleToggleResolution(res.id)}
+                        >
+                          <span className="checkbox">
+                            {selectedResolutions.includes(res.id) ? "✓" : ""}
+                          </span>
+                          <span className="resLabel">{res.label}</span>
+                        </button>
                       ))}
                     </div>
                   </div>
 
-                  <div className="filterGroup">
-                    <label className="groupLabel">Quality Exclusions</label>
-                    <div className="checkboxGrid">
-                      <label className="checkboxOption">
-                        <input
-                          type="checkbox"
-                          checked={excludeLowQuality}
-                          onChange={(e) => setExcludeLowQuality(e.target.checked)}
-                        />
-                        <span>Exclude CAM, Telesync (HDTS), & TC Videos</span>
-                      </label>
+                  <div className="inputGroup" style={{ marginTop: 20 }}>
+                    <label>EXCLUDE_LOW_QUALITY_CAM_HDTS</label>
+                    <div
+                      className={`qualityToggle ${excludeLowQuality ? "active" : ""}`}
+                      onClick={() => setExcludeLowQuality(!excludeLowQuality)}
+                    >
+                      <span className="toggleSwitch" />
+                      <span className="toggleLabel">
+                        {excludeLowQuality
+                          ? "Strictly Exclude CAM, HDCAM, Telesync, and HDTS Releases (Recommended)"
+                          : "Allow CAM and Low-Quality Releases"}
+                      </span>
                     </div>
                   </div>
 
                   {filterStatus && (
                     <div className={`statusBanner ${filterStatus.type}`}>
-                      <FiCheckCircle />
+                      {filterStatus.type === "success" && <FiCheckCircle />}
+                      {filterStatus.type === "error" && <FiXCircle />}
                       <span>{filterStatus.text}</span>
                     </div>
                   )}
 
-                  <div className="buttonGroup">
+                  <div className="buttonGroup" style={{ marginTop: 20 }}>
                     <button type="submit" className="saveBtn">
                       <FiSave /> Save Stream Preferences
                     </button>
