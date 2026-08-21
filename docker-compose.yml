@@ -2,9 +2,6 @@ version: '3.8'
 
 services:
   bubbaflix:
-    build:
-      context: .
-      dockerfile: Dockerfile
     image: ghcr.io/jsanderstechnologies/bubbaflix:latest
     container_name: bubbaflix
     restart: unless-stopped
