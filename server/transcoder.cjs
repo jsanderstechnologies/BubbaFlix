@@ -1,7 +1,6 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
-const url = require("url");
 
 // Internal Node settings server port inside Docker container (always 5000 for Nginx proxy)
 const PORT = 5000;
@@ -88,7 +87,8 @@ const sendJson = (res, statusCode, data) => {
 };
 
 const server = http.createServer((req, res) => {
-  const parsedUrl = url.parse(req.url, true);
+  // Use WHATWG URL API to resolve Node.js DEP0169 url.parse() deprecation warning
+  const parsedUrl = new URL(req.url, `http://${req.headers.host || "localhost"}`);
   const pathname = parsedUrl.pathname;
 
   if (req.method === "OPTIONS") {
