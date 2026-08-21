@@ -6,11 +6,18 @@
 
 BubbaFlix is a modern, high-performance movie and TV show streaming discovery app built with **React 18**, **Redux Toolkit**, **React Router v6**, **Vite**, **Express**, and integrated with **TMDB (The Movie Database)**, **Bitsearch**, **Premiumize.me**, **Groq AI**, and **SIMKL**.
 
-BubbaFlix features **Android TV & Smart TV D-Pad Spatial Navigation with Horizontal Boundary Locks**, **Direct Native Stream Handoff (No Transcoding)**, **Centralized Backend Server Settings Storage**, **SIMKL Watch Status Synchronization**, **Client-Side TV Screen Zoom (50%–140%)**, and automatic **English-only Live-Action Filtering (No Anime/Animation)**.
+BubbaFlix features **Android TV & Smart TV D-Pad Spatial Navigation with Horizontal Boundary Locks**, **Direct Native Stream Handoff (No Transcoding)**, **Official SIMKL API Rule Compliance & Activity Sync**, **Centralized Backend Server Settings Storage**, **Client-Side TV Screen Zoom (50%–140%)**, and automatic **English-only Live-Action Filtering (No Anime/Animation)**.
 
 ---
 
 ## 🌟 Key Features
+
+### 🎬 Official SIMKL API Compliance & Activity Delta Sync
+- **Official API Rules Compliant**: Fully compliant with SIMKL API rules (`client_id`, `app-name=BubbaFlix`, `app-version=1.0`, `User-Agent: BubbaFlix/1.0 (Smart TV Media App)`).
+- **Phase 2 Activity Check First**: Always queries `/sync/activities` first on startup/wake, skipping payload sync if activity dates match.
+- **Phase 2 Combined Delta Sync**: Uses `/sync/all-items/?date_from=SAVED_DATE` to fetch only updated items, protecting server bandwidth and client_id status.
+- **Phase 1 Sequential Initial Sync**: Performs initial watchlist downloads sequentially (`/sync/movies` -> `/sync/shows` -> `/sync/anime`) to eliminate CPU spikes.
+- **POST Rate Limiting**: Enforces a minimum 1000ms delay between consecutive `POST` updates (1 req/sec rate limit).
 
 ### 🍿 Direct Native Stream Handoff (Zero Transcoding Overhead)
 - **Direct Premiumize Media Handoff**: Clicking "Play Stream" resolves and hands off the direct, un-transcoded original media stream URL (`stream_link` / `location`) directly to native device players or the full-screen player modal.
@@ -40,18 +47,12 @@ BubbaFlix features **Android TV & Smart TV D-Pad Spatial Navigation with Horizon
   - **TV Screen Zoom Scale**: 50% to 140% UI scale saved independently per device.
   - **Backend Server Address**: Custom server IP/URL per device (e.g. `http://192.168.10.10:3000`).
 
-### 🎬 SIMKL Watch Status Tracking
-- **Cross-Device Watch Status**: Single-click checkmark tracking for movies, TV series, seasons, and episodes automatically pushed and pulled from SIMKL account watch history.
-
-### 📐 Dynamic Adaptive Responsive Poster Grid
-- **Screen-Adaptive Layout**: Automatically fits **3 posters per row on mobile**, **4 on small tablets**, **5 on tablets**, **6 on desktop**, and **7–8 posters per row on 10ft TV screens**.
-
 ---
 
 ## 🛠️ Built With
 
 - **Frontend**: [React 18](https://react.dev/), [React Router Dom v6](https://reactrouter.com/), [Redux Toolkit](https://redux-toolkit.js.org/)
-- **Backend & Settings Engine**: Node.js, Express.js
+- **Backend & Settings Engine**: Node.js (Pure Native HTTP Engine)
 - **Build Tool**: [Vite](https://vitejs.dev/)
 - **Styling**: SASS / SCSS Modules with CSS Variable Themes
 - **HTTP Client**: Axios
@@ -132,20 +133,6 @@ To stop the stack:
 ```bash
 docker compose down
 ```
-
----
-
-### Option 2: Deploying via Portainer 🚢 & CasaOS
-
-#### Method A: Portainer Stack (Direct GitHub Repository - Recommended)
-1. Open **Portainer** > **Stacks** > **+ Add stack**.
-2. Name stack: `bubbaflix`.
-3. Under **Build method**, select **Repository**:
-   - **Repository URL**: `https://github.com/jsanderstechnologies/BubbaFlix`
-   - **Repository reference**: `refs/heads/master`
-   - **Compose path**: `docker-compose.yml`
-4. Click **Deploy the stack**.
-5. Access BubbaFlix at **`http://<your-server-ip>:3000`**.
 
 ---
 
