@@ -9,7 +9,7 @@ const SETTINGS_FILE = path.join(__dirname, "settings.json");
 
 const DEFAULT_TMDB_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmYjM3ODM3YzJiMDlkNzEyMDIwMDIxZjc0NGI5ZTQwNyIsInN1YiI6IjY0NjNlNzE5ZTNmYTJmMDEyNDQ3ODk1NCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.3Y0VloCdPlprLy-OMZQmqtZd4_Ti9GDfHo4SZXh3erU";
 
-// Load environment variables for default server settings (for Docker, Portainer, CasaOS deployments)
+// Load environment variables for default server settings
 const getEnvDefaultSettings = () => {
   const defaultTmdb = process.env.TMDB_READ_ACCESS_TOKEN || process.env.VITE_APP_TMDB_KEY || process.env.TMDB_TOKEN || DEFAULT_TMDB_KEY;
   const defaultResolutions = process.env.STREAM_RESOLUTIONS
@@ -21,11 +21,10 @@ const getEnvDefaultSettings = () => {
 
   return {
     theme: process.env.THEME || process.env.DEFAULT_THEME || "dark-red",
+    aiostreams_url: process.env.AIOSTREAMS_URL || "https://aiostreams.elfhosted.com/",
     simklClientId: process.env.SIMKL_CLIENT_ID || "",
-    premiumizeKey: process.env.PREMIUMIZE_API_KEY || "",
     groqKey: process.env.GROQ_API_KEY || "",
     tmdbToken: defaultTmdb,
-    bitsearchKey: process.env.BITSEARCH_API_KEY || "",
     stream_resolutions: defaultResolutions,
     stream_exclude_low_quality: defaultExcludeLow,
   };
@@ -43,14 +42,11 @@ const loadServerSettings = () => {
     if (fs.existsSync(SETTINGS_FILE)) {
       const data = fs.readFileSync(SETTINGS_FILE, "utf8");
       const loaded = JSON.parse(data);
-
       const merged = { ...envDefaults, ...loaded };
 
-      // Apply environment variable overrides if local fields are empty
+      if (!merged.aiostreams_url && envDefaults.aiostreams_url) merged.aiostreams_url = envDefaults.aiostreams_url;
       if (!merged.simklClientId && envDefaults.simklClientId) merged.simklClientId = envDefaults.simklClientId;
-      if (!merged.premiumizeKey && envDefaults.premiumizeKey) merged.premiumizeKey = envDefaults.premiumizeKey;
       if (!merged.groqKey && envDefaults.groqKey) merged.groqKey = envDefaults.groqKey;
-      if (!merged.bitsearchKey && envDefaults.bitsearchKey) merged.bitsearchKey = envDefaults.bitsearchKey;
       if (!merged.tmdbToken || merged.tmdbToken.trim() === "") merged.tmdbToken = envDefaults.tmdbToken;
 
       return merged;

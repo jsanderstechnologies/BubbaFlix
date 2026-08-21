@@ -12,11 +12,10 @@ services:
       - "net.unraid.docker.icon=https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/public/icon.svg"
       - "com.docker.desktop.extension.icon=https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/public/icon.svg"
     environment:
+      - AIOSTREAMS_URL=${AIOSTREAMS_URL:-https://aiostreams.elfhosted.com/}
       - SIMKL_CLIENT_ID=${SIMKL_CLIENT_ID:-}
-      - PREMIUMIZE_API_KEY=${PREMIUMIZE_API_KEY:-}
       - GROQ_API_KEY=${GROQ_API_KEY:-}
       - TMDB_READ_ACCESS_TOKEN=${TMDB_READ_ACCESS_TOKEN:-}
-      - BITSEARCH_API_KEY=${BITSEARCH_API_KEY:-}
     volumes:
       - bubbaflix-data:/app/server
 

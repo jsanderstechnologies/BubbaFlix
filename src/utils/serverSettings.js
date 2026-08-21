@@ -1,6 +1,7 @@
 import axios from "axios";
 import { applyTheme } from "./theme";
 import { fetchUserSimklHistory } from "./simkl";
+import { saveAioStreamsUrl, DEFAULT_AIOSTREAMS_URL } from "./aiostreams";
 
 export const getServerUrl = () => {
   if (typeof window === "undefined") return "";
@@ -31,18 +32,19 @@ export const fetchServerSettings = async () => {
     if (res.data?.status === "success" && res.data.settings) {
       const s = res.data.settings;
 
-      // Sync settings to client cache (except zoom & server URL which remain per-device!)
+      // Sync settings to client cache
       if (s.theme) {
         localStorage.setItem("bubbaflix_theme", s.theme);
         applyTheme(s.theme);
       }
+      if (s.aiostreams_url) {
+        saveAioStreamsUrl(s.aiostreams_url);
+      }
       if (s.simklClientId) localStorage.setItem("simkl_client_id", s.simklClientId);
-      if (s.premiumizeKey) localStorage.setItem("premiumize_api_key", s.premiumizeKey);
       if (s.groqKey) localStorage.setItem("groq_api_key", s.groqKey);
       if (s.tmdbToken && s.tmdbToken.trim().length > 0) {
         localStorage.setItem("tmdb_token", s.tmdbToken.trim());
       }
-      if (s.bitsearchKey) localStorage.setItem("bitsearch_api_key", s.bitsearchKey);
       if (s.stream_resolutions) localStorage.setItem("stream_resolutions", JSON.stringify(s.stream_resolutions));
       if (s.stream_exclude_low_quality !== undefined) {
         localStorage.setItem("stream_exclude_low_quality", JSON.stringify(s.stream_exclude_low_quality));

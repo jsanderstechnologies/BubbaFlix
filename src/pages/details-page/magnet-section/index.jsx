@@ -1,76 +1,75 @@
 /* eslint-disable react/prop-types */
 import { useState, useEffect } from "react";
-import { searchBitsearchMagnets } from "../../../utils/bitsearch";
-import { getDirectStreamUrl } from "../../../utils/premiumize";
+import { fetchAioStreams, getAioStreamsUrl } from "../../../utils/aiostreams";
 import { markAsWatchedOnSimkl } from "../../../utils/simkl";
 import ContentWrapper from "../../../components/content-wrapper";
 import Spinner from "../../../components/spinner";
 import VideoPlayerModal from "../../../components/video-player-modal";
-import { FiPlay, FiChevronDown, FiChevronUp, FiAlertCircle } from "react-icons/fi";
+import { FiPlay, FiChevronDown, FiChevronUp, FiAlertCircle, FiSettings, FiExternalLink } from "react-icons/fi";
 import "./index.scss";
 
 const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, compact = false }) => {
-  const [magnets, setMagnets] = useState([]);
+  const [streams, setStreams] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [unconfigured, setUnconfigured] = useState(false);
+  const [noticeMessage, setNoticeMessage] = useState(null);
 
   // Streaming state
-  const [playingIndex, setPlayingIndex] = useState(null);
-  const [streamError, setStreamError] = useState(null);
   const [showPlayer, setShowPlayer] = useState(false);
   const [activeVideoUrl, setActiveVideoUrl] = useState("");
-  const [activeRawUrl, setActiveRawUrl] = useState("");
   const [activeFilename, setActiveFilename] = useState("");
 
   useEffect(() => {
-    if (title) {
-      fetchMagnets();
+    if (title || tmdbId) {
+      loadStreams();
     }
-  }, [title, year, seasonNum, episodeNum]);
+  }, [title, tmdbId, year, seasonNum, episodeNum]);
 
-  const fetchMagnets = async () => {
+  const loadStreams = async () => {
     setLoading(true);
-    const { results } = await searchBitsearchMagnets(title, year, seasonNum, episodeNum);
+    setUnconfigured(false);
+    setNoticeMessage(null);
+
+    const res = await fetchAioStreams({
+      tmdbId,
+      mediaType: mediaType || (seasonNum !== undefined ? "tv" : "movie"),
+      seasonNum,
+      episodeNum,
+    });
+
     setLoading(false);
-    setMagnets(results || []);
-  };
 
-  const handlePlayStream = async (item, index) => {
-    setPlayingIndex(index);
-    setStreamError(null);
-
-    const { streamUrl, rawUrl, filename, error } = await getDirectStreamUrl(item.magnet);
-
-    setPlayingIndex(null);
-
-    if (error) {
-      setStreamError({ index, text: error });
-      setTimeout(() => setStreamError(null), 6000);
+    if (res.unconfigured) {
+      setUnconfigured(true);
+      setNoticeMessage(res.message);
+      setStreams([]);
       return;
     }
 
-    const targetStreamUrl = streamUrl || rawUrl;
+    setStreams(res.streams || []);
+  };
 
-    if (targetStreamUrl) {
-      setActiveVideoUrl(targetStreamUrl);
-      setActiveRawUrl(targetStreamUrl);
-      setActiveFilename(filename || item.title);
-      setShowPlayer(true);
+  const handlePlayStream = (item) => {
+    if (!item.url) return;
 
-      // Auto-sync SIMKL watch history
-      if (tmdbId || title) {
-        markAsWatchedOnSimkl({
-          tmdbId,
-          title,
-          mediaType: mediaType || (seasonNum !== undefined ? "tv" : "movie"),
-          seasonNum,
-          episodeNum,
-        });
-      }
+    setActiveVideoUrl(item.url);
+    setActiveFilename(item.title || title);
+    setShowPlayer(true);
+
+    // Auto-sync SIMKL watch history
+    if (tmdbId || title) {
+      markAsWatchedOnSimkl({
+        tmdbId,
+        title,
+        mediaType: mediaType || (seasonNum !== undefined ? "tv" : "movie"),
+        seasonNum,
+        episodeNum,
+      });
     }
   };
 
-  if (!loading && magnets.length === 0) {
+  if (!loading && streams.length === 0 && !unconfigured) {
     return null;
   }
 
@@ -90,9 +89,12 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
         }}
       >
         <div className="headerLeft">
-          <span className="sectionTitle">Available Streams</span>
-          {magnets.length > 0 && (
-            <span className="countBadge">{magnets.length} Available</span>
+          <span className="sectionTitle">Available Streams (AIOStreams)</span>
+          {streams.length > 0 && (
+            <span className="countBadge">{streams.length} Streams</span>
+          )}
+          {unconfigured && (
+            <span className="countBadge warning">Setup Required</span>
           )}
         </div>
         <button className="toggleBtn" tabIndex="-1">
@@ -106,43 +108,43 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
             <div className="loadingContainer">
               <Spinner />
             </div>
+          ) : unconfigured ? (
+            <div className="unconfiguredNotice">
+              <FiAlertCircle className="icon" />
+              <div className="noticeText">
+                <h4>AIOStreams Configuration Required</h4>
+                <p>
+                  Configure your AIOStreams addon with your Premiumize account and torrent providers, then save your AIOStreams manifest URL in Settings.
+                </p>
+                <a
+                  href="https://aiostreams.elfhosted.com/stremio/configure"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="configBtn"
+                >
+                  <FiExternalLink /> Configure AIOStreams Addon
+                </a>
+              </div>
+            </div>
           ) : (
             <div className="magnetList">
-              {magnets.map((item, index) => (
+              {streams.map((item, index) => (
                 <div key={index} className="magnetItem">
                   <div className="itemInfo">
                     <span className="itemTitle" title={item.title}>
                       {item.title}
                     </span>
                     <div className="itemMeta">
-                      <span className="metaBadge size">📦 {item.size}</span>
-                      <span className="metaBadge seeds">🌱 {item.seeders} Seeds</span>
-                      <span className="metaBadge leeches">🩸 {item.leechers} Leeches</span>
+                      <span className="metaBadge provider">⚡ {item.name}</span>
                     </div>
-                    {streamError && streamError.index === index && (
-                      <div className="streamErrorNotice">
-                        <FiAlertCircle /> <span>{streamError.text}</span>
-                      </div>
-                    )}
                   </div>
 
                   <div className="itemActions">
                     <button
-                      className={`actionBtn play ${playingIndex === index ? "loading" : ""}`}
-                      onClick={() => handlePlayStream(item, index)}
-                      onKeyDown={(e) => {
-                        const code = e.keyCode;
-                        if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
-                          e.preventDefault();
-                          handlePlayStream(item, index);
-                        }
-                      }}
-                      disabled={playingIndex === index}
-                      tabIndex="0"
-                      title="Stream Video via Premiumize"
+                      className="actionBtn play"
+                      onClick={() => handlePlayStream(item)}
                     >
-                      <FiPlay />
-                      <span>{playingIndex === index ? "Connecting..." : "Play Stream"}</span>
+                      <FiPlay /> Play Stream
                     </button>
                   </div>
                 </div>
@@ -152,27 +154,22 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
         </div>
       )}
 
-      {/* Video Player Modal */}
-      <VideoPlayerModal
-        show={showPlayer}
-        setShow={setShowPlayer}
-        videoUrl={activeVideoUrl}
-        rawUrl={activeRawUrl}
-        title={title}
-        filename={activeFilename}
-      />
+      {showPlayer && (
+        <VideoPlayerModal
+          videoUrl={activeVideoUrl}
+          rawUrl={activeVideoUrl}
+          title={activeFilename}
+          onClose={() => setShowPlayer(false)}
+        />
+      )}
     </div>
   );
 
   if (compact) {
-    return <div className="magnetSection compact">{content}</div>;
+    return content;
   }
 
-  return (
-    <div className="magnetSection">
-      <ContentWrapper>{content}</ContentWrapper>
-    </div>
-  );
+  return <ContentWrapper>{content}</ContentWrapper>;
 };
 
 export default MagnetSection;

@@ -2,15 +2,13 @@ import { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import ContentWrapper from "../../components/content-wrapper";
 import { fetchDataFromAPI, getActiveTmdbToken } from "../../utils/api";
-import { getBitsearchApiKey } from "../../utils/bitsearch";
-import { getGroqApiKey } from "../../utils/groqFilter";
-import { getPremiumizeApiKey, testPremiumizeAccount } from "../../utils/premiumize";
+import { getAioStreamsUrl, saveAioStreamsUrl, testAioStreamsConnection, DEFAULT_AIOSTREAMS_URL } from "../../utils/aiostreams";
 import { getSimklConfig, testSimklConnection } from "../../utils/simkl";
 import { isTvDevice, getSavedZoom, applyZoom } from "../../utils/zoom";
 import { updateServerSettings, fetchServerSettings, getServerUrl, saveServerUrl, testBackendServerHealth } from "../../utils/serverSettings";
 import { getApiConfiguration } from "../../store/homeSlice";
 import { THEMES, getSavedTheme, applyTheme } from "../../utils/theme";
-import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning, FiCheckSquare, FiTv, FiPlus, FiMinus, FiServer, FiInfo } from "react-icons/fi";
+import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning, FiCheckSquare, FiTv, FiPlus, FiMinus, FiServer, FiInfo, FiExternalLink } from "react-icons/fi";
 import "./index.scss";
 
 const ALL_RESOLUTIONS = [
@@ -34,6 +32,12 @@ const SettingsPage = () => {
   const [testingServer, setTestingServer] = useState(false);
   const [hasCustomServer, setHasCustomServer] = useState(false);
 
+  // AIOStreams State
+  const [aioUrl, setAioUrl] = useState("");
+  const [aioStatus, setAioStatus] = useState(null);
+  const [testingAio, setTestingAio] = useState(false);
+  const [hasAioCustom, setHasAioCustom] = useState(false);
+
   // TMDB Key State
   const [token, setToken] = useState("");
   const [showToken, setShowToken] = useState(false);
@@ -41,24 +45,11 @@ const SettingsPage = () => {
   const [testing, setTesting] = useState(false);
   const [isCustom, setIsCustom] = useState(false);
 
-  // Premiumize Key State
-  const [premiumizeKey, setPremiumizeKey] = useState("");
-  const [showPremiumizeKey, setShowPremiumizeKey] = useState(false);
-  const [premiumizeStatus, setPremiumizeStatus] = useState(null);
-  const [hasPremiumizeCustom, setHasPremiumizeCustom] = useState(false);
-  const [testingPremiumize, setTestingPremiumize] = useState(false);
-
   // SIMKL State
   const [simklClientId, setSimklClientId] = useState("");
   const [simklStatus, setSimklStatus] = useState(null);
   const [hasSimklCustom, setHasSimklCustom] = useState(false);
   const [testingSimkl, setTestingSimkl] = useState(false);
-
-  // Bitsearch Key State
-  const [bitsearchKey, setBitsearchKey] = useState("");
-  const [showBitsearchKey, setShowBitsearchKey] = useState(false);
-  const [bitsearchStatus, setBitsearchStatus] = useState(null);
-  const [hasBitsearchCustom, setHasBitsearchCustom] = useState(false);
 
   // Groq AI Key State
   const [groqKey, setGroqKey] = useState("");
@@ -90,22 +81,18 @@ const SettingsPage = () => {
     const currentTheme = getSavedTheme();
     setActiveTheme(currentTheme);
 
+    const savedAio = getAioStreamsUrl();
+    setAioUrl(savedAio || DEFAULT_AIOSTREAMS_URL);
+    setHasAioCustom(!!savedAio && savedAio !== DEFAULT_AIOSTREAMS_URL);
+
     const savedToken = localStorage.getItem("tmdb_token");
     const active = getActiveTmdbToken();
     setToken(savedToken || active || "");
     setIsCustom(!!savedToken);
 
-    const savedPrem = getPremiumizeApiKey();
-    setPremiumizeKey(savedPrem || "");
-    setHasPremiumizeCustom(!!savedPrem);
-
     const { clientId } = getSimklConfig();
     setSimklClientId(clientId || "");
     setHasSimklCustom(!!clientId);
-
-    const savedBitsearch = getBitsearchApiKey();
-    setBitsearchKey(savedBitsearch || "");
-    setHasBitsearchCustom(!!savedBitsearch);
 
     const savedGroq = getGroqApiKey();
     setGroqKey(savedGroq || "");
@@ -160,6 +147,36 @@ const SettingsPage = () => {
     await loadAllSettings();
   };
 
+  const handleSaveAioUrl = async (e) => {
+    e.preventDefault();
+    const cleanUrl = aioUrl.trim();
+    if (!cleanUrl) {
+      setAioStatus({ type: "error", text: "AIOStreams URL cannot be empty." });
+      return;
+    }
+    saveAioStreamsUrl(cleanUrl);
+    setHasAioCustom(cleanUrl !== DEFAULT_AIOSTREAMS_URL);
+    await updateServerSettings({ aiostreams_url: cleanUrl });
+
+    setTestingAio(true);
+    const testRes = await testAioStreamsConnection(cleanUrl);
+    setTestingAio(false);
+
+    if (testRes.success) {
+      setAioStatus({ type: "success", text: `${testRes.message} (Synced to Backend)` });
+    } else {
+      setAioStatus({ type: "error", text: testRes.message });
+    }
+  };
+
+  const handleClearAioUrl = async () => {
+    saveAioStreamsUrl(DEFAULT_AIOSTREAMS_URL);
+    setAioUrl(DEFAULT_AIOSTREAMS_URL);
+    setHasAioCustom(false);
+    await updateServerSettings({ aiostreams_url: DEFAULT_AIOSTREAMS_URL });
+    setAioStatus({ type: "info", text: "AIOStreams URL reset to default." });
+  };
+
   const refreshConfig = async () => {
     try {
       const res = await fetchDataFromAPI("/configuration");
@@ -207,36 +224,6 @@ const SettingsPage = () => {
     });
   };
 
-  const handleSavePremiumize = async (e) => {
-    e.preventDefault();
-    const cleanKey = premiumizeKey.trim();
-    if (!cleanKey) {
-      setPremiumizeStatus({ type: "error", text: "Premiumize API Key cannot be empty." });
-      return;
-    }
-    localStorage.setItem("premiumize_api_key", cleanKey);
-    setHasPremiumizeCustom(true);
-    await updateServerSettings({ premiumizeKey: cleanKey });
-
-    setTestingPremiumize(true);
-    const testRes = await testPremiumizeAccount(cleanKey);
-    setTestingPremiumize(false);
-
-    if (testRes.success) {
-      setPremiumizeStatus({ type: "success", text: `${testRes.message} (Synced to Backend)` });
-    } else {
-      setPremiumizeStatus({ type: "error", text: testRes.message });
-    }
-  };
-
-  const handleClearPremiumize = async () => {
-    localStorage.removeItem("premiumize_api_key");
-    setPremiumizeKey("");
-    setHasPremiumizeCustom(false);
-    await updateServerSettings({ premiumizeKey: "" });
-    setPremiumizeStatus({ type: "info", text: "Premiumize API Key cleared on server." });
-  };
-
   const handleSaveSimkl = async (e) => {
     e.preventDefault();
     const cleanId = simklClientId.trim();
@@ -267,33 +254,6 @@ const SettingsPage = () => {
     setHasSimklCustom(false);
     await updateServerSettings({ simklClientId: "" });
     setSimklStatus({ type: "info", text: "SIMKL credentials cleared on server." });
-  };
-
-  const handleSaveBitsearch = async (e) => {
-    e.preventDefault();
-    const cleanKey = bitsearchKey.trim();
-    if (!cleanKey) {
-      setBitsearchStatus({ type: "error", text: "Bitsearch API Key cannot be empty." });
-      return;
-    }
-    localStorage.setItem("bitsearch_api_key", cleanKey);
-    setHasBitsearchCustom(true);
-    await updateServerSettings({ bitsearchKey: cleanKey });
-    setBitsearchStatus({
-      type: "success",
-      text: "Bitsearch API Key saved & synced to backend server!",
-    });
-  };
-
-  const handleClearBitsearch = async () => {
-    localStorage.removeItem("bitsearch_api_key");
-    setBitsearchKey("");
-    setHasBitsearchCustom(false);
-    await updateServerSettings({ bitsearchKey: "" });
-    setBitsearchStatus({
-      type: "info",
-      text: "Bitsearch API Key cleared on server.",
-    });
   };
 
   const handleSaveGroq = async (e) => {
@@ -381,30 +341,25 @@ const SettingsPage = () => {
             </h1>
             <p className="subtitle">
               {isTv
-                ? "Adjust screen zoom scale for this TV device, set your backend server address, and manage SIMKL watch history tracking credentials."
-                : "Centralized backend server configuration for SIMKL watch status tracking, Premiumize streaming, color themes, API keys, and stream resolution filters."}
+                ? "Adjust screen zoom scale for this TV device, set your backend server address, and manage AIOStreams & SIMKL watch history credentials."
+                : "Centralized backend server configuration for AIOStreams streaming, SIMKL watch tracking, color themes, and stream resolution filters."}
             </p>
           </div>
 
-          {/* TV & Streaming Device Screen Zoom Card (Available on All Devices) */}
+          {/* TV & Streaming Device Screen Zoom Card */}
           <div className="settingsCard">
             <div className="cardHeader">
               <h2><FiTv style={{ marginRight: 8 }} /> TV Screen Zoom & Display Scale</h2>
-              <span className="badge default">
-                Per-Device Local Setting
-              </span>
+              <span className="badge default">Per-Device Local Setting</span>
             </div>
-
             <p className="description">
               Customize the UI scale and zoom level for 10ft TV viewing on Android TV, Google TV, Firestick, Apple TV, or Smart TV devices (saved independently on each device).
             </p>
-
             <div className="zoomControls">
               <div className="zoomDisplay">
                 <span className="zoomLabel">Current TV Zoom Scale:</span>
                 <span className="zoomValue">{zoomLevel}%</span>
               </div>
-
               <div className="zoomButtons">
                 <button
                   type="button"
@@ -415,7 +370,6 @@ const SettingsPage = () => {
                 >
                   <FiMinus /> Zoom Out (-5%)
                 </button>
-
                 <button
                   type="button"
                   className="zoomBtn reset"
@@ -425,7 +379,6 @@ const SettingsPage = () => {
                 >
                   Reset to 100%
                 </button>
-
                 <button
                   type="button"
                   className="zoomBtn"
@@ -436,7 +389,6 @@ const SettingsPage = () => {
                   <FiPlus /> Zoom In (+5%)
                 </button>
               </div>
-
               <div className="presetButtons">
                 {[50, 65, 80, 90, 100, 110, 120, 130, 140].map((scale) => (
                   <button
@@ -453,7 +405,64 @@ const SettingsPage = () => {
             </div>
           </div>
 
-          {/* Backend Server Host & Address Card (Available on All Devices) */}
+          {/* AIOStreams Streaming Addon Card */}
+          <div className="settingsCard">
+            <div className="cardHeader">
+              <h2><FiCloudLightning style={{ marginRight: 8 }} /> AIOStreams Streaming Addon URL</h2>
+              <span className={`badge ${hasAioCustom ? "custom" : "default"}`}>
+                <FiServer style={{ marginRight: 4 }} /> {hasAioCustom ? "Custom AIOStreams Active" : "ElfHosted Default Active"}
+              </span>
+            </div>
+
+            <p className="description">
+              BubbaFlix uses AIOStreams (ElfHosted) to fetch torrents and resolve direct Premiumize streams without local client resolving.
+            </p>
+
+            <div className="apiInstruction">
+              <FiInfo style={{ marginRight: 6, verticalAlign: "middle" }} />
+              <strong>How to configure:</strong> Configure your Premiumize account at <a href="https://aiostreams.elfhosted.com/stremio/configure" target="_blank" rel="noreferrer">aiostreams.elfhosted.com <FiExternalLink style={{ verticalAlign: "middle", fontSize: 12 }} /></a>, then paste your generated manifest URL or instance link below.
+            </div>
+
+            <form onSubmit={handleSaveAioUrl} className="tokenForm" style={{ marginTop: 15 }}>
+              <div className="inputGroup">
+                <label htmlFor="aioUrl">AIOSTREAMS_MANIFEST_URL</label>
+                <div className="inputWrapper">
+                  <input
+                    id="aioUrl"
+                    type="text"
+                    value={aioUrl}
+                    onChange={(e) => setAioUrl(e.target.value)}
+                    placeholder="https://aiostreams.elfhosted.com/.../manifest.json"
+                  />
+                </div>
+              </div>
+
+              {aioStatus && (
+                <div className={`statusBanner ${aioStatus.type}`}>
+                  {aioStatus.type === "success" && <FiCheckCircle />}
+                  {aioStatus.type === "error" && <FiXCircle />}
+                  <span>{aioStatus.text}</span>
+                </div>
+              )}
+
+              <div className="buttonGroup">
+                <button type="submit" className="saveBtn" disabled={testingAio}>
+                  <FiSave /> {testingAio ? "Verifying..." : "Save AIOStreams URL"}
+                </button>
+                {hasAioCustom && (
+                  <button
+                    type="button"
+                    className="clearBtn"
+                    onClick={handleClearAioUrl}
+                  >
+                    Reset to Default
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+
+          {/* Backend Server Host & Address Card */}
           <div className="settingsCard">
             <div className="cardHeader">
               <h2><FiServer style={{ marginRight: 8 }} /> Backend Server Address</h2>
@@ -461,11 +470,9 @@ const SettingsPage = () => {
                 {hasCustomServer ? "Custom Host Active" : "Default Relative Host"}
               </span>
             </div>
-
             <p className="description">
-              Specify a custom BubbaFlix backend server IP or URL for central settings storage and API proxying (saved independently on each device).
+              Specify a custom BubbaFlix backend server IP or URL for central settings storage and proxying (saved independently on each device).
             </p>
-
             <form onSubmit={handleSaveServerUrl} className="tokenForm">
               <div className="inputGroup">
                 <label htmlFor="serverUrl">BACKEND_SERVER_URL</label>
@@ -479,7 +486,6 @@ const SettingsPage = () => {
                   />
                 </div>
               </div>
-
               {serverStatus && (
                 <div className={`statusBanner ${serverStatus.type}`}>
                   {serverStatus.type === "success" && <FiCheckCircle />}
@@ -487,7 +493,6 @@ const SettingsPage = () => {
                   <span>{serverStatus.text}</span>
                 </div>
               )}
-
               <div className="buttonGroup">
                 <button type="submit" className="saveBtn" disabled={testingServer}>
                   <FiSave /> {testingServer ? "Connecting..." : "Save Server Address"}
@@ -505,7 +510,7 @@ const SettingsPage = () => {
             </form>
           </div>
 
-          {/* SIMKL Watch Tracker Card (Available on All Devices) */}
+          {/* SIMKL Watch Tracker Card */}
           <div className="settingsCard">
             <div className="cardHeader">
               <h2><FiCheckSquare style={{ marginRight: 8 }} /> SIMKL Watch Status Tracker</h2>
@@ -513,16 +518,13 @@ const SettingsPage = () => {
                 <FiServer style={{ marginRight: 4 }} /> {hasSimklCustom ? "SIMKL Sync Active" : "SIMKL ID Required"}
               </span>
             </div>
-
             <p className="description">
               Sync watched movies and TV episode playback history automatically with your SIMKL watchlist across all devices using your SIMKL Client ID.
             </p>
-
             <div className="apiInstruction">
               <FiInfo style={{ marginRight: 6, verticalAlign: "middle" }} />
               <strong>How to get key:</strong> Register at <a href="https://simkl.com/settings/developer/" target="_blank" rel="noreferrer">simkl.com/settings/developer/</a> &gt; Create App to get your Client ID.
             </div>
-
             <form onSubmit={handleSaveSimkl} className="tokenForm" style={{ marginTop: 15 }}>
               <div className="inputGroup">
                 <label htmlFor="simklClientId">SIMKL_CLIENT_ID</label>
@@ -536,7 +538,6 @@ const SettingsPage = () => {
                   />
                 </div>
               </div>
-
               {simklStatus && (
                 <div className={`statusBanner ${simklStatus.type}`}>
                   {simklStatus.type === "success" && <FiCheckCircle />}
@@ -544,7 +545,6 @@ const SettingsPage = () => {
                   <span>{simklStatus.text}</span>
                 </div>
               )}
-
               <div className="buttonGroup">
                 <button type="submit" className="saveBtn" disabled={testingSimkl}>
                   <FiSave /> {testingSimkl ? "Verifying..." : "Save SIMKL Config"}
@@ -569,15 +569,11 @@ const SettingsPage = () => {
               <div className="settingsCard">
                 <div className="cardHeader">
                   <h2><FiSun style={{ marginRight: 8 }} /> Application Color Theme</h2>
-                  <span className="badge custom">
-                    <FiServer style={{ marginRight: 4 }} /> Server Synced
-                  </span>
+                  <span className="badge custom"><FiServer style={{ marginRight: 4 }} /> Server Synced</span>
                 </div>
-
                 <p className="description">
                   Select your preferred color theme for BubbaFlix, including Dark Red (Netflix Style). Synced across all client devices.
                 </p>
-
                 <div className="themeGrid">
                   {THEMES.map((theme) => (
                     <div
@@ -599,24 +595,12 @@ const SettingsPage = () => {
                           borderColor: activeTheme === theme.id ? theme.primary : "rgba(255,255,255,0.1)",
                         }}
                       >
-                        <div
-                          className="previewHeader"
-                          style={{ background: theme.bg2 }}
-                        >
-                          <div
-                            className="previewBadge"
-                            style={{ background: theme.gradient }}
-                          />
+                        <div className="previewHeader" style={{ background: theme.bg2 }}>
+                          <div className="previewBadge" style={{ background: theme.gradient }} />
                         </div>
                         <div className="previewBody">
-                          <div
-                            className="previewDot"
-                            style={{ background: theme.primary }}
-                          />
-                          <div
-                            className="previewDot"
-                            style={{ background: theme.secondary }}
-                          />
+                          <div className="previewDot" style={{ background: theme.primary }} />
+                          <div className="previewDot" style={{ background: theme.secondary }} />
                         </div>
                       </div>
                       <div className="themeInfo">
@@ -633,71 +617,6 @@ const SettingsPage = () => {
                 </div>
               </div>
 
-              {/* Premiumize.me API Card */}
-              <div className="settingsCard">
-                <div className="cardHeader">
-                  <h2><FiCloudLightning style={{ marginRight: 8 }} /> Premiumize.me Streaming API Key</h2>
-                  <span className={`badge ${hasPremiumizeCustom ? "custom" : "default"}`}>
-                    <FiServer style={{ marginRight: 4 }} /> {hasPremiumizeCustom ? "Premiumize Stream Active" : "Key Required to Play Streams"}
-                  </span>
-                </div>
-
-                <p className="description">
-                  Required to instantly stream magnet torrent links directly inside the BubbaFlix video player without downloading.
-                </p>
-
-                <div className="apiInstruction">
-                  <FiInfo style={{ marginRight: 6, verticalAlign: "middle" }} />
-                  <strong>How to get key:</strong> Log in at <a href="https://www.premiumize.me/" target="_blank" rel="noreferrer">Premiumize.me</a> &gt; Account &gt; API Key.
-                </div>
-
-                <form onSubmit={handleSavePremiumize} className="tokenForm" style={{ marginTop: 15 }}>
-                  <div className="inputGroup">
-                    <label htmlFor="premiumizeKey">PREMIUMIZE_API_KEY</label>
-                    <div className="inputWrapper">
-                      <input
-                        id="premiumizeKey"
-                        type={showPremiumizeKey ? "text" : "password"}
-                        value={premiumizeKey}
-                        onChange={(e) => setPremiumizeKey(e.target.value)}
-                        placeholder="Enter your Premiumize.me API key..."
-                      />
-                      <button
-                        type="button"
-                        className="toggleVisibility"
-                        onClick={() => setShowPremiumizeKey(!showPremiumizeKey)}
-                        title={showPremiumizeKey ? "Hide Key" : "Show Key"}
-                      >
-                        {showPremiumizeKey ? <FiEyeOff /> : <FiEye />}
-                      </button>
-                    </div>
-                  </div>
-
-                  {premiumizeStatus && (
-                    <div className={`statusBanner ${premiumizeStatus.type}`}>
-                      {premiumizeStatus.type === "success" && <FiCheckCircle />}
-                      {premiumizeStatus.type === "error" && <FiXCircle />}
-                      <span>{premiumizeStatus.text}</span>
-                    </div>
-                  )}
-
-                  <div className="buttonGroup">
-                    <button type="submit" className="saveBtn" disabled={testingPremiumize}>
-                      <FiSave /> {testingPremiumize ? "Verifying..." : "Save Premiumize Key"}
-                    </button>
-                    {hasPremiumizeCustom && (
-                      <button
-                        type="button"
-                        className="clearBtn"
-                        onClick={handleClearPremiumize}
-                      >
-                        Clear Key
-                      </button>
-                    )}
-                  </div>
-                </form>
-              </div>
-
               {/* Groq AI Key Card */}
               <div className="settingsCard">
                 <div className="cardHeader">
@@ -706,16 +625,13 @@ const SettingsPage = () => {
                     <FiServer style={{ marginRight: 4 }} /> {hasGroqCustom ? "Groq AI Active" : "Regex Filter Mode"}
                   </span>
                 </div>
-
                 <p className="description">
                   Used to intelligently classify stream titles using fast Llama 3 AI inference, filtering out adult content, music audio files, and unrelated software.
                 </p>
-
                 <div className="apiInstruction">
                   <FiInfo style={{ marginRight: 6, verticalAlign: "middle" }} />
                   <strong>How to get key:</strong> Register at <a href="https://console.groq.com/" target="_blank" rel="noreferrer">console.groq.com</a> &gt; API Keys to get your free key.
                 </div>
-
                 <form onSubmit={handleSaveGroq} className="tokenForm" style={{ marginTop: 15 }}>
                   <div className="inputGroup">
                     <label htmlFor="groqKey">GROQ_API_KEY</label>
@@ -737,7 +653,6 @@ const SettingsPage = () => {
                       </button>
                     </div>
                   </div>
-
                   {groqStatus && (
                     <div className={`statusBanner ${groqStatus.type}`}>
                       {groqStatus.type === "success" && <FiCheckCircle />}
@@ -745,7 +660,6 @@ const SettingsPage = () => {
                       <span>{groqStatus.text}</span>
                     </div>
                   )}
-
                   <div className="buttonGroup">
                     <button type="submit" className="saveBtn">
                       <FiSave /> Save Groq AI Key
@@ -771,16 +685,13 @@ const SettingsPage = () => {
                     <FiServer style={{ marginRight: 4 }} /> {isCustom ? "Custom Token Active" : "Default Token Active"}
                   </span>
                 </div>
-
                 <p className="description">
                   Used to fetch live movies, TV shows, backdrop banners, and poster images.
                 </p>
-
                 <div className="apiInstruction">
                   <FiInfo style={{ marginRight: 6, verticalAlign: "middle" }} />
                   <strong>How to get key:</strong> Register at <a href="https://themoviedb.org/" target="_blank" rel="noreferrer">themoviedb.org</a> &gt; Settings &gt; API &gt; API Read Access Token (v4).
                 </div>
-
                 <form onSubmit={handleSaveTmdb} className="tokenForm" style={{ marginTop: 15 }}>
                   <div className="inputGroup">
                     <label htmlFor="tmdbToken">TMDB_READ_ACCESS_TOKEN</label>
@@ -802,7 +713,6 @@ const SettingsPage = () => {
                       </button>
                     </div>
                   </div>
-
                   {statusMessage && (
                     <div className={`statusBanner ${statusMessage.type}`}>
                       {statusMessage.type === "success" && <FiCheckCircle />}
@@ -810,7 +720,6 @@ const SettingsPage = () => {
                       <span>{statusMessage.text}</span>
                     </div>
                   )}
-
                   <div className="buttonGroup">
                     <button type="submit" className="saveBtn">
                       <FiSave /> Save TMDB Token
@@ -837,84 +746,15 @@ const SettingsPage = () => {
                 </form>
               </div>
 
-              {/* Bitsearch API Card */}
-              <div className="settingsCard">
-                <div className="cardHeader">
-                  <h2>Bitsearch API Key</h2>
-                  <span className={`badge ${hasBitsearchCustom ? "custom" : "default"}`}>
-                    <FiServer style={{ marginRight: 4 }} /> {hasBitsearchCustom ? "Bitsearch API Key Active" : "Public Mode Active"}
-                  </span>
-                </div>
-
-                <p className="description">
-                  Used to search torrent magnet links. If left empty, public torrent engines are used.
-                </p>
-
-                <div className="apiInstruction">
-                  <FiInfo style={{ marginRight: 6, verticalAlign: "middle" }} />
-                  <strong>How to get key:</strong> Register at <a href="https://bitsearch.to/api" target="_blank" rel="noreferrer">bitsearch.to/api</a>.
-                </div>
-
-                <form onSubmit={handleSaveBitsearch} className="tokenForm" style={{ marginTop: 15 }}>
-                  <div className="inputGroup">
-                    <label htmlFor="bitsearchKey">BITSEARCH_API_KEY</label>
-                    <div className="inputWrapper">
-                      <input
-                        id="bitsearchKey"
-                        type={showBitsearchKey ? "text" : "password"}
-                        value={bitsearchKey}
-                        onChange={(e) => setBitsearchKey(e.target.value)}
-                        placeholder="Enter your Bitsearch API key..."
-                      />
-                      <button
-                        type="button"
-                        className="toggleVisibility"
-                        onClick={() => setShowBitsearchKey(!showBitsearchKey)}
-                        title={showBitsearchKey ? "Hide Key" : "Show Key"}
-                      >
-                        {showBitsearchKey ? <FiEyeOff /> : <FiEye />}
-                      </button>
-                    </div>
-                  </div>
-
-                  {bitsearchStatus && (
-                    <div className={`statusBanner ${bitsearchStatus.type}`}>
-                      {bitsearchStatus.type === "success" && <FiCheckCircle />}
-                      {bitsearchStatus.type === "error" && <FiXCircle />}
-                      <span>{bitsearchStatus.text}</span>
-                    </div>
-                  )}
-
-                  <div className="buttonGroup">
-                    <button type="submit" className="saveBtn">
-                      <FiSave /> Save Bitsearch Key
-                    </button>
-                    {hasBitsearchCustom && (
-                      <button
-                        type="button"
-                        className="clearBtn"
-                        onClick={handleClearBitsearch}
-                      >
-                        Clear Key
-                      </button>
-                    )}
-                  </div>
-                </form>
-              </div>
-
               {/* Stream Resolution & CAM Exclusion Settings Card */}
               <div className="settingsCard">
                 <div className="cardHeader">
                   <h2><FiSliders style={{ marginRight: 8 }} /> Stream Resolution & Quality Filters</h2>
-                  <span className="badge custom">
-                    <FiServer style={{ marginRight: 4 }} /> Server Synced
-                  </span>
+                  <span className="badge custom"><FiServer style={{ marginRight: 4 }} /> Server Synced</span>
                 </div>
-
                 <p className="description">
                   Configure allowed resolutions and toggle CAM / HDTS low-quality release exclusions across all devices.
                 </p>
-
                 <form onSubmit={handleSaveStreamFilters} className="tokenForm">
                   <div className="inputGroup">
                     <label>ALLOWED_STREAM_RESOLUTIONS</label>
@@ -941,7 +781,6 @@ const SettingsPage = () => {
                       ))}
                     </div>
                   </div>
-
                   <div className="inputGroup" style={{ marginTop: 20 }}>
                     <label>EXCLUDE_LOW_QUALITY_CAM_HDTS</label>
                     <div
@@ -963,7 +802,6 @@ const SettingsPage = () => {
                       </span>
                     </div>
                   </div>
-
                   {filterStatus && (
                     <div className={`statusBanner ${filterStatus.type}`}>
                       {filterStatus.type === "success" && <FiCheckCircle />}
@@ -971,7 +809,6 @@ const SettingsPage = () => {
                       <span>{filterStatus.text}</span>
                     </div>
                   )}
-
                   <div className="buttonGroup" style={{ marginTop: 20 }}>
                     <button type="submit" className="saveBtn">
                       <FiSave /> Save Stream Preferences

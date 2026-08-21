@@ -7,14 +7,12 @@ This guide provides technical specifications, API endpoints, device-aware stream
 ## 📋 Table of Contents
 
 1. [Backend Server Architecture](#-backend-server-architecture)
-2. [Direct Native Stream Handoff (No Transcoding)](#-direct-native-stream-handoff-no-transcoding)
-3. [Device-Aware Stream Filtering (Smart TV vs. Web Browser)](#-device-aware-stream-filtering-smart-tv-vs-web-browser)
-4. [Docker, Portainer, and CasaOS Environment Variables](#-docker-portainer-and-casaos-environment-variables)
-5. [Resolving Torrent Magnets to Stream URLs](#-resolving-torrent-magnets-to-stream-urls)
-6. [Centralized Server Settings API (`/api/settings`)](#-centralized-server-settings-api-apisettings)
-7. [SIMKL Watch Status Synchronization API](#-simkl-watch-status-synchronization-api)
-8. [Smart TV D-Pad Remote Control KeyCode Reference & Boundary Lock](#-smart-tv-d-pad-remote-control-keycode-reference--boundary-lock)
-9. [Native Video Player Code Examples](#-native-video-player-code-examples)
+2. [AIOStreams Integration (ElfHosted + Premiumize)](#-aiostreams-integration-elfhosted--premiumize)
+3. [Docker, Portainer, and CasaOS Environment Variables](#-docker-portainer-and-casaos-environment-variables)
+4. [Centralized Server Settings API (`/api/settings`)](#-centralized-server-settings-api-apisettings)
+5. [SIMKL Watch Status Synchronization API](#-simkl-watch-status-synchronization-api)
+6. [Smart TV D-Pad Remote Control KeyCode Reference & Boundary Lock](#-smart-tv-d-pad-remote-control-keycode-reference--boundary-lock)
+7. [Native Video Player Code Examples](#-native-video-player-code-examples)
 
 ---
 
@@ -22,62 +20,33 @@ This guide provides technical specifications, API endpoints, device-aware stream
 
 The BubbaFlix backend server runs on Node.js (internal port: `5000`, external mapped port: `5150`). It serves two primary functions:
 
-1. **Centralized Settings Storage**: Persists shared API keys and configuration across devices in `/app/server/settings.json`.
+1. **Centralized Settings Storage**: Persists shared API keys, AIOStreams URL, and configuration across devices in `/app/server/settings.json`.
 2. **SIMKL Sync Proxy**: Proxies watch history tracking calls to SIMKL API.
 
 ---
 
-## 🍿 Direct Native Stream Handoff (No Transcoding)
+## ⚡ AIOStreams Integration (ElfHosted + Premiumize)
 
-BubbaFlix hands off direct, un-transcoded original media stream URLs (`stream_link` / `location`) from Premiumize straight to native device players and full-screen video player modals, bypassing all server transcoding and eliminating buffering latency.
+BubbaFlix integrates with AIOStreams (ElfHosted + Premiumize) to fetch torrent streams and resolve direct playback URLs:
 
----
-
-## 🍿 Device-Aware Stream Filtering (Smart TV vs. Web Browser)
-
-BubbaFlix detects device hardware capability (`isTvDevice()`) in `src/utils/bitsearch.js`:
-
-- **Smart TV Devices (Android TV, Firestick, Apple TV, webOS, Tizen, Shield)**: Returns **ALL available streams** (4K x265, HEVC, MKV, DTS, AC3, 5.1/7.1 audio), allowing native TV hardware decoders (ExoPlayer, VLC, AVPlayer) to decode full-quality streams natively.
-- **Desktop & Mobile Web Browsers**: Pre-filters stream results to return natively playable x264/MP4 streams with AAC audio for direct HTML5 browser playback.
-
-### Device Filtering Rules
-
-| Format Type | Smart TV Devices | Desktop & Mobile Web Browsers |
-| :--- | :--- | :--- |
-| **MP4 / x264 / H.264 / AAC** | Included | Included |
-| **MKV (`.mkv`) / AVI (`.avi`)** | Included | Excluded |
-| **x265 / HEVC / H.265 / AV1 / XviD** | Included | Excluded |
-| **DTS / AC3 / EAC3 / TrueHD / Atmos / 5.1 / 7.1** | Included | Excluded |
+### Endpoints
+- **Movie Streams**: `GET <AIO_MANIFEST_URL>/stream/movie/<IMDB_ID_OR_TMDB_ID>.json`
+- **TV Series Streams**: `GET <AIO_MANIFEST_URL>/stream/series/<IMDB_ID_OR_TMDB_ID>:<SEASON>:<EPISODE>.json`
 
 ---
 
 ## 🐳 Docker, Portainer, and CasaOS Environment Variables
 
-Define API keys via environment variables in `docker-compose.yml`, Portainer Stacks, or CasaOS app settings:
+Define configuration variables in `docker-compose.yml`, Portainer Stacks, or CasaOS app settings:
 
 | Variable Name | Purpose | Example |
 | :--- | :--- | :--- |
+| `AIOSTREAMS_URL` | AIOStreams Addon Manifest URL | `https://aiostreams.elfhosted.com/` |
 | `SIMKL_CLIENT_ID` | SIMKL API Client ID | `abcdef123456` |
-| `PREMIUMIZE_API_KEY` | Premiumize.me API Key | `prem_key_123` |
 | `GROQ_API_KEY` | Groq AI Stream Filter API Key | `gsk_...` |
 | `TMDB_READ_ACCESS_TOKEN` | TMDB v4 Read Access Token | `eyJhbGci...` |
-| `BITSEARCH_API_KEY` | Bitsearch API Key | `bit_key_123` |
 
 Settings persist across container restarts and redeployments using the Docker volume mapping: `bubbaflix-data:/app/server`. Default external container port is **5150**.
-
----
-
-## 🧲 Resolving Torrent Magnets to Stream URLs
-
-Native TV applications use the Premiumize API to convert magnet links into direct HTTP stream URLs:
-
-### Endpoint
-- **HTTP Method**: `POST`
-- **URL**: `https://www.premiumize.me/api/transfer/directdl`
-- **Headers**: `Content-Type: application/x-www-form-urlencoded`
-- **Body Parameters**:
-  - `src`: `<MAGNET_LINK>`
-  - `apikey`: `<PREMIUMIZE_API_KEY>`
 
 ---
 
