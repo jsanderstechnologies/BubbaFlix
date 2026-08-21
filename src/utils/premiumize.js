@@ -22,126 +22,34 @@ export const testPremiumizeAccount = async (apiKey) => {
 
   if (!key) return { success: false, message: "No Premiumize API Key provided." };
 
-  const baseUrl = getServerUrl();
-  const testEndpoints = [
-    `${baseUrl}/api/premiumize/account/info`,
-    `https://www.premiumize.me/api/account/info`,
-  ];
-
-  let lastErrorMsg = "Invalid Premiumize API Key.";
-
-  for (const endpoint of testEndpoints) {
-    try {
-      console.log(`[Premiumize API Account Test] Connecting via: ${endpoint}`);
-      const response = await axios.get(endpoint, {
-        params: { apikey: key },
-        headers: {
-          Authorization: `Bearer ${key}`,
-        },
-        timeout: 8000,
-      });
-
-      if (response.data?.status === "success") {
-        const premiumDays = response.data.premium_until
-          ? Math.max(0, Math.ceil((response.data.premium_until - Date.now() / 1000) / 86400))
-          : 0;
-        return {
-          success: true,
-          message: `Account Connected! Premium Days Remaining: ${premiumDays}`,
-          data: response.data,
-        };
-      } else if (response.data?.message) {
-        lastErrorMsg = response.data.message;
-      }
-    } catch (err) {
-      lastErrorMsg = err.response?.data?.message || err.message || lastErrorMsg;
-      console.warn(`[Premiumize API Account Test Warning - ${endpoint}]:`, lastErrorMsg);
-    }
-  }
-
-  return {
-    success: false,
-    message: lastErrorMsg === "Not logged in." ? "Invalid API Key or unauthorized on Premiumize. Please verify your Premiumize API Key." : lastErrorMsg,
-  };
-};
-
-// Premiumize Cache Check API: Checks which stream magnet links are instantly cached on Premiumize cloud servers
-export const checkPremiumizeCache = async (results) => {
-  if (!Array.isArray(results) || results.length === 0) return results;
-
-  let apiKey = getPremiumizeApiKey();
-  if (!apiKey) {
-    const serverSettings = await fetchServerSettings();
-    if (serverSettings?.premiumizeKey) {
-      apiKey = serverSettings.premiumizeKey;
-      localStorage.setItem("premiumize_api_key", apiKey);
-    }
-  }
-
-  if (!apiKey) return results;
-
   try {
     const baseUrl = getServerUrl();
-    // Extract 40-character info_hash for lightweight, fast HTTP query strings
-    const hashes = results
-      .map((r) => {
-        if (r.info_hash && r.info_hash.length === 40) return r.info_hash;
-        if (r.magnet) {
-          const match = r.magnet.match(/btih:([a-fA-F0-9]{40})/i);
-          if (match) return match[1];
-        }
-        return null;
-      })
-      .filter(Boolean);
-
-    if (hashes.length === 0) return results;
-
-    // Batch query in lightweight chunks of 15 hashes
-    const chunkSize = 15;
-    const cacheMap = new Map();
-
-    for (let i = 0; i < hashes.length; i += chunkSize) {
-      const chunk = hashes.slice(i, i + chunkSize);
-      const params = new URLSearchParams();
-      params.append("apikey", apiKey);
-      chunk.forEach((hash) => params.append("items[]", hash));
-
-      try {
-        const response = await axios.get(`${baseUrl}/api/premiumize/cache/check?${params.toString()}`, {
-          headers: { Authorization: `Bearer ${apiKey}` },
-          timeout: 6000,
-        });
-
-        if (response.data?.status === "success" && Array.isArray(response.data?.response)) {
-          response.data.response.forEach((isCached, idx) => {
-            cacheMap.set(chunk[idx].toLowerCase(), !!isCached);
-          });
-        }
-      } catch (chunkErr) {
-        console.warn("[Premiumize Cache Check Chunk Error]:", chunkErr.message);
-      }
-    }
-
-    const updatedResults = results.map((item) => {
-      let hash = item.info_hash;
-      if (!hash && item.magnet) {
-        const match = item.magnet.match(/btih:([a-fA-F0-9]{40})/i);
-        if (match) hash = match[1];
-      }
-
-      const isCached = hash ? !!cacheMap.get(hash.toLowerCase()) : false;
-      return { ...item, isCached };
+    const response = await axios.get(`${baseUrl}/api/premiumize/account/info`, {
+      params: { apikey: key },
+      timeout: 8000,
     });
 
-    // Sort: Cached streams (isCached: true) boosted to top of list!
-    updatedResults.sort((a, b) => (b.isCached ? 1 : 0) - (a.isCached ? 1 : 0));
-    console.log(`[Premiumize Cache Check] Found ${updatedResults.filter((r) => r.isCached).length} instantly cached streams out of ${updatedResults.length}`);
-    return updatedResults;
+    if (response.data?.status === "success") {
+      const premiumDays = response.data.premium_until
+        ? Math.max(0, Math.ceil((response.data.premium_until - Date.now() / 1000) / 86400))
+        : 0;
+      return {
+        success: true,
+        message: `Account Connected! Premium Days Remaining: ${premiumDays}`,
+        data: response.data,
+      };
+    } else {
+      return {
+        success: false,
+        message: response.data?.message || "Invalid Premiumize API Key.",
+      };
+    }
   } catch (err) {
-    console.warn("[Premiumize Cache Check Warning]:", err.message);
+    return {
+      success: false,
+      message: err.response?.data?.message || err.message || "Failed to connect to Premiumize API.",
+    };
   }
-
-  return results;
 };
 
 export const getDirectStreamUrl = async (magnetLink) => {
@@ -179,9 +87,6 @@ export const getDirectStreamUrl = async (magnetLink) => {
         params: {
           apikey: apiKey,
           src: magnetLink,
-        },
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
         },
         timeout: 12000,
       }

@@ -6,7 +6,7 @@ import { markAsWatchedOnSimkl } from "../../../utils/simkl";
 import ContentWrapper from "../../../components/content-wrapper";
 import Spinner from "../../../components/spinner";
 import VideoPlayerModal from "../../../components/video-player-modal";
-import { FiPlay, FiChevronDown, FiChevronUp, FiAlertCircle, FiZap } from "react-icons/fi";
+import { FiPlay, FiChevronDown, FiChevronUp, FiAlertCircle } from "react-icons/fi";
 import "./index.scss";
 
 const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, compact = false }) => {
@@ -109,28 +109,12 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
           ) : (
             <div className="magnetList">
               {magnets.map((item, index) => (
-                <div key={index} className={`magnetItem ${item.isCached ? "cachedItem" : ""}`}>
+                <div key={index} className="magnetItem">
                   <div className="itemInfo">
                     <span className="itemTitle" title={item.title}>
                       {item.title}
                     </span>
                     <div className="itemMeta">
-                      {item.isCached && (
-                        <span
-                          className="metaBadge cached"
-                          style={{
-                            background: "rgba(34, 197, 94, 0.2)",
-                            color: "#4ade80",
-                            border: "1px solid rgba(34, 197, 94, 0.4)",
-                            fontWeight: "600",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "4px"
-                          }}
-                        >
-                          <FiZap style={{ fill: "#4ade80" }} /> INSTANT CACHED
-                        </span>
-                      )}
                       <span className="metaBadge size">📦 {item.size}</span>
                       <span className="metaBadge seeds">🌱 {item.seeders} Seeds</span>
                       <span className="metaBadge leeches">🩸 {item.leechers} Leeches</span>
@@ -144,7 +128,7 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
 
                   <div className="itemActions">
                     <button
-                      className={`actionBtn play ${playingIndex === index ? "loading" : ""} ${item.isCached ? "instantPlay" : ""}`}
+                      className={`actionBtn play ${playingIndex === index ? "loading" : ""}`}
                       onClick={() => handlePlayStream(item, index)}
                       onKeyDown={(e) => {
                         const code = e.keyCode;
@@ -155,10 +139,10 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
                       }}
                       disabled={playingIndex === index}
                       tabIndex="0"
-                      title={item.isCached ? "Play Instant Cached Stream" : "Stream Video via Premiumize"}
+                      title="Stream Video via Premiumize"
                     >
                       <FiPlay />
-                      <span>{playingIndex === index ? "Connecting..." : item.isCached ? "Instant Play" : "Play Stream"}</span>
+                      <span>{playingIndex === index ? "Connecting..." : "Play Stream"}</span>
                     </button>
                   </div>
                 </div>

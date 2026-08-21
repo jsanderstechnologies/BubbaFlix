@@ -1,7 +1,7 @@
 import axios from "axios";
 import { filterWithGroqAI } from "./groqFilter";
+import { isTvDevice } from "./zoom";
 import { fetchServerSettings, getServerUrl } from "./serverSettings";
-import { checkPremiumizeCache } from "./premiumize";
 
 export const getBitsearchApiKey = () => {
   if (typeof window !== "undefined") {
@@ -47,6 +47,35 @@ export const isAdultOrAudioFile = (titleStr) => {
   return hasAdult || hasAudio;
 };
 
+export const isWebCompatibleStream = (titleStr) => {
+  if (!titleStr) return false;
+  const t = titleStr.toLowerCase();
+
+  // Incompatible video containers & codecs for native HTML5 web players
+  const incompatibleVideo = [
+    ".mkv", ".avi", "x265", "h265", "h.265", "hevc", "av1", "xvid", "divx"
+  ];
+
+  // Incompatible audio codecs & multi-channel surround sound tags for native HTML5 web players
+  const incompatibleAudio = [
+    "dts", "dts-hd", "dtshd", "dts-x", "dtsx", "ac3", "eac3", "ddp", "dd+",
+    "dd5.1", "ddp5.1", "ddp7.1", "truehd", "atmos", "5.1", "7.1", "6ch", "8ch",
+    "aac5.1", "flac"
+  ];
+
+  const hasBadVideo = incompatibleVideo.some((w) => t.includes(w));
+  if (hasBadVideo) return false;
+
+  const hasBadAudio = incompatibleAudio.some((w) => {
+    const regex = new RegExp(`\\b${w.replace(".", "\\.")}\\b`, "i");
+    return regex.test(t) || t.includes(`.${w}.`) || t.includes(`-${w}-`) || t.includes(` ${w} `) || t.includes(`${w}-`);
+  });
+
+  if (hasBadAudio) return false;
+
+  return true;
+};
+
 const normalizeText = (str) => {
   if (!str) return "";
   return str
@@ -57,7 +86,7 @@ const normalizeText = (str) => {
 };
 
 export const isExactTitleMatch = (streamTitle, targetTitle, targetYear, seasonNum, episodeNum) => {
-  if (!streamTitle || !targetTitle) return true;
+  if (!streamTitle || !targetTitle) return false;
 
   const normStream = normalizeText(streamTitle);
   const normTarget = normalizeText(targetTitle);
@@ -105,7 +134,7 @@ export const isExactTitleMatch = (streamTitle, targetTitle, targetYear, seasonNu
     }
   }
 
-  // Verify target year if provided (allow 2 year margin for release differences)
+  // Verify target year if provided (allow 2 years margin for international/theatrical release variances)
   if (targetYear && streamYear) {
     const targetYrNum = Number(targetYear);
     if (!isNaN(targetYrNum) && Math.abs(streamYear - targetYrNum) > 2) {
@@ -121,9 +150,16 @@ export const isExactTitleMatch = (streamTitle, targetTitle, targetYear, seasonNu
     return true;
   }
 
-  // Allow clean prefix matches with optional release descriptors
+  // Allow clean prefix matches with optional release descriptors (e.g. "Mutiny Extended Cut")
   if (cleanStreamTitle.startsWith(cleanTargetTitle)) {
-    return true;
+    const remainder = cleanStreamTitle.slice(cleanTargetTitle.length).trim();
+    const allowedSuffixes = [
+      "", "the", "movie", "complete", "extended", "cut", "unrated", "edition",
+      "directors cut", "remastered", "special edition", "collector", "4k", "repack"
+    ];
+    if (allowedSuffixes.some((sfx) => sfx === remainder)) {
+      return true;
+    }
   }
 
   return false;
@@ -160,22 +196,35 @@ const filterByPreferences = (results, targetTitle, targetYear, seasonNum, episod
   if (!results || results.length === 0) return [];
 
   const { resolutions, excludeLowQuality } = getStreamPreferences();
+  const isTv = isTvDevice();
 
-  // 1. Require valid Magnet URI (magnet:?xt=urn:btih:)
+  // 1. Strictly require valid Magnet URI (magnet:?xt=urn:btih:) & exclude dead streams (0 seeders)
   let pool = results.filter((item) => {
     if (!item || !item.magnet || typeof item.magnet !== "string") {
       return false;
     }
+
     const cleanMagnet = item.magnet.trim().toLowerCase();
-    return cleanMagnet.startsWith("magnet:?xt=urn:btih:");
+    if (!cleanMagnet.startsWith("magnet:?xt=urn:btih:")) {
+      return false;
+    }
+
+    const seeds = Number(item.seeders);
+    if (isNaN(seeds) || seeds <= 0) {
+      return false;
+    }
+
+    return true;
   });
 
-  if (pool.length === 0) return [];
+  if (pool.length === 0) {
+    return [];
+  }
 
   // 2. Filter out Adult content & standalone audio/music files
-  const cleanAdultPool = pool.filter((item) => !isAdultOrAudioFile(item.title));
-  if (cleanAdultPool.length > 0) {
-    pool = cleanAdultPool;
+  pool = pool.filter((item) => !isAdultOrAudioFile(item.title));
+  if (pool.length === 0) {
+    return [];
   }
 
   // 3. Strict Title & Episode / Movie Year Match Filter
@@ -188,7 +237,15 @@ const filterByPreferences = (results, targetTitle, targetYear, seasonNum, episod
     }
   }
 
-  // 4. Filter out CAM, HDCAM, Telesync, HDTS, TC videos if excludeLowQuality is true
+  // 4. Web Player Audio & Video Compatibility Filter (for non-TV desktop/mobile browsers)
+  if (!isTv) {
+    const webPool = pool.filter((item) => isWebCompatibleStream(item.title));
+    if (webPool.length > 0) {
+      pool = webPool;
+    }
+  }
+
+  // 5. Filter out CAM, HDCAM, Telesync, HDTS, TC videos if excludeLowQuality is true
   if (excludeLowQuality) {
     const cleanPool = pool.filter((item) => !isLowQualityCamOrTS(item.title));
     if (cleanPool.length > 0) {
@@ -196,7 +253,7 @@ const filterByPreferences = (results, targetTitle, targetYear, seasonNum, episod
     }
   }
 
-  // 5. Filter by user resolution selections
+  // 6. Filter by user resolution selections
   const resActive = resolutions && resolutions.length > 0 && resolutions.length < 4;
   if (!resActive) {
     return pool;
@@ -223,51 +280,7 @@ const formatSize = (bytes) => {
   return num + " B";
 };
 
-// Parse Bitsearch HTML web search results (keyless fallback provider)
-export const parseBitsearchHtml = (htmlStr) => {
-  if (!htmlStr || typeof htmlStr !== "string") return [];
-  const results = [];
-
-  const cardRegex = /<li[^>]*class="[^"]*search-result[^"]*"[\s\S]*?<\/li>/gi;
-  const cards = htmlStr.match(cardRegex) || [];
-
-  for (const card of cards) {
-    const magnetMatch = card.match(/href="(magnet:\?xt=urn:btih:[^"]+)"/i);
-    if (!magnetMatch) continue;
-
-    const magnet = magnetMatch[1];
-    const hashMatch = magnet.match(/btih:([a-fA-F0-9]{40})/i);
-    const infoHash = hashMatch ? hashMatch[1] : null;
-
-    const titleMatch = card.match(/<h5[^>]*class="[^"]*title[^"]*"[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/i);
-    let title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, "").trim() : "";
-
-    const sizeMatch = card.match(/class="[^\"]*size[^\"]*"[^>]*>([\s\S]*?)<\/div>/i);
-    let size = sizeMatch ? sizeMatch[1].replace(/<[^>]+>/g, "").trim() : "N/A";
-
-    const seedMatch = card.match(/class="[^\"]*stats[^\"]*"[\s\S]*?(\d+)\s*seeds/i) || card.match(/(\d+)\s*seeds/i);
-    const seeders = seedMatch ? Number(seedMatch[1]) : 1;
-
-    const leechMatch = card.match(/class="[^\"]*stats[^\"]*"[\s\S]*?(\d+)\s*leeches/i) || card.match(/(\d+)\s*leeches/i);
-    const leechers = leechMatch ? Number(leechMatch[1]) : 0;
-
-    if (magnet && title) {
-      results.push({
-        source: "Bitsearch Web",
-        title: title,
-        magnet: magnet,
-        info_hash: infoHash,
-        size: size,
-        seeders: seeders,
-        leechers: leechers,
-      });
-    }
-  }
-
-  return results;
-};
-
-// Stream Magnet Search Engine: Bitsearch Web Scraper + Bitsearch API + SolidTorrents API
+// Search helper function
 const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNum, episodeNum) => {
   let apiKey = getBitsearchApiKey();
   if (!apiKey) {
@@ -279,39 +292,33 @@ const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNu
   }
 
   const baseUrl = getServerUrl();
-  const rawPool = [];
-  const seenHashes = new Set();
 
-  // Provider 1: Keyless Bitsearch Web Search Scraper (via Nginx proxy & direct)
-  const bitsearchWebUrls = [
-    `${baseUrl}/api/bitsearch_web/search?q=${encodeURIComponent(searchQuery)}`,
-    `https://bitsearch.to/search?q=${encodeURIComponent(searchQuery)}`,
-  ];
+  // 1. Try Nginx proxied torrent API (/api/torrent?q=...)
+  try {
+    const proxyUrl = `${baseUrl}/api/torrent?q=${encodeURIComponent(searchQuery)}`;
+    console.log(`[Torrent API] Fetching magnet links via proxy: ${proxyUrl}`);
+    const response = await axios.get(proxyUrl, { timeout: 8000 });
 
-  for (const webUrl of bitsearchWebUrls) {
-    try {
-      console.log(`[Bitsearch Web Scraper] Fetching magnet links: ${webUrl}`);
-      const response = await axios.get(webUrl, { timeout: 8000 });
-      if (typeof response.data === "string" && response.data.includes("magnet:?")) {
-        const webResults = parseBitsearchHtml(response.data);
-        if (webResults.length > 0) {
-          webResults.forEach((item) => {
-            const hashKey = item.info_hash ? item.info_hash.toLowerCase() : item.magnet.toLowerCase();
-            if (!seenHashes.has(hashKey)) {
-              seenHashes.add(hashKey);
-              rawPool.push(item);
-            }
-          });
-          console.log(`[Bitsearch Web Success] Retrieved ${webResults.length} magnets from ${webUrl}`);
-          break;
-        }
+    if (Array.isArray(response.data) && response.data.length > 0 && response.data[0].id !== "0") {
+      const results = response.data
+        .filter((item) => item && item.info_hash && Number(item.seeders || 0) > 0)
+        .map((item) => ({
+          title: item.name,
+          magnet: `magnet:?xt=urn:btih:${item.info_hash}&dn=${encodeURIComponent(item.name)}&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.stealth.si:80/announce`,
+          size: formatSize(item.size),
+          seeders: Number(item.seeders || 0),
+          leechers: Number(item.leechers || 0),
+        }));
+
+      if (results.length > 0) {
+        return filterByPreferences(results, targetTitle, targetYear, seasonNum, episodeNum);
       }
-    } catch (webErr) {
-      console.warn(`[Bitsearch Web Scraper Warning - ${webUrl}]:`, webErr.message);
     }
+  } catch (err) {
+    console.warn("[Torrent API Proxy] Error:", err.message);
   }
 
-  // Provider 2: Bitsearch API (if API Key provided)
+  // 2. Try Bitsearch API (/api/bitsearch/v1/search?q=...)
   try {
     const headers = {};
     if (apiKey) {
@@ -319,108 +326,57 @@ const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNu
       headers["Authorization"] = `Bearer ${apiKey}`;
     }
 
-    const bitsearchUrl = `${baseUrl}/api/bitsearch/v1/search?q=${encodeURIComponent(searchQuery)}&limit=30`;
+    const bitsearchUrl = `${baseUrl}/api/bitsearch/v1/search?q=${encodeURIComponent(searchQuery)}&limit=25`;
     console.log(`[Bitsearch API] Fetching via proxy: ${bitsearchUrl}`);
     const response = await axios.get(bitsearchUrl, { headers, timeout: 8000 });
 
     const rawResults = response.data?.results || response.data || [];
     if (Array.isArray(rawResults) && rawResults.length > 0) {
-      rawResults.forEach((item) => {
-        if (item) {
+      const results = rawResults
+        .filter((item) => item && (item.magnet || item.magnet_link || item.info_hash))
+        .map((item) => {
           let magnet = item.magnet || item.magnet_link;
-          let infoHash = item.info_hash;
-          if (!infoHash && magnet) {
-            const hashMatch = magnet.match(/btih:([a-fA-F0-9]{40})/i);
-            if (hashMatch) infoHash = hashMatch[1];
+          if ((!magnet || !magnet.startsWith("magnet:?")) && item.info_hash) {
+            magnet = `magnet:?xt=urn:btih:${item.info_hash}&dn=${encodeURIComponent(item.title || item.name || searchQuery)}`;
           }
-
-          if ((!magnet || !magnet.startsWith("magnet:?")) && infoHash) {
-            magnet = `magnet:?xt=urn:btih:${infoHash}&dn=${encodeURIComponent(item.title || item.name || searchQuery)}`;
-          }
-
-          const hashKey = infoHash ? infoHash.toLowerCase() : (magnet || "").toLowerCase();
-          if (magnet && !seenHashes.has(hashKey)) {
-            seenHashes.add(hashKey);
-            rawPool.push({
-              source: "Bitsearch",
-              title: item.title || item.name || searchQuery,
-              magnet: magnet,
-              info_hash: infoHash,
-              size: formatSize(item.size || item.size_formatted || item.filesize),
-              seeders: item.seeders !== undefined ? Number(item.seeders) : Number(item.seeds || 0),
-              leechers: item.leechers !== undefined ? Number(item.leechers) : Number(item.leeches || 0),
-              date: item.date || item.created_at || "",
-            });
-          }
-        }
-      });
-    }
-  } catch (err) {
-    console.warn("[Bitsearch API Warning]:", err.message);
-  }
-
-  // Provider 3: SolidTorrents API
-  const solidEndpoints = [
-    `${baseUrl}/api/solidtorrents/search?q=${encodeURIComponent(searchQuery)}&category=video`,
-    `https://solidtorrents.to/api/v1/search?q=${encodeURIComponent(searchQuery)}&category=video`,
-    `https://solidtorrents.net/api/v1/search?q=${encodeURIComponent(searchQuery)}&category=video`,
-  ];
-
-  for (const solidUrl of solidEndpoints) {
-    try {
-      console.log(`[SolidTorrents API] Fetching magnet links: ${solidUrl}`);
-      const response = await axios.get(solidUrl, { timeout: 7000 });
-      const results = response.data?.results || response.data?.data || [];
-
-      if (Array.isArray(results) && results.length > 0) {
-        results.forEach((item) => {
-          if (!item) return;
-
-          let magnet = item.magnet;
-          let infoHash = item.infoHash || item.info_hash;
-
-          if (!infoHash && magnet) {
-            const hashMatch = magnet.match(/btih:([a-fA-F0-9]{40})/i);
-            if (hashMatch) infoHash = hashMatch[1];
-          }
-
-          if ((!magnet || !magnet.startsWith("magnet:?")) && infoHash) {
-            magnet = `magnet:?xt=urn:btih:${infoHash}&dn=${encodeURIComponent(item.title || searchQuery)}&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.stealth.si:80/announce`;
-          }
-
-          if (magnet && infoHash) {
-            const hashLower = infoHash.toLowerCase();
-            if (!seenHashes.has(hashLower)) {
-              seenHashes.add(hashLower);
-              const seeders = item.swarm?.seeders !== undefined ? Number(item.swarm.seeders) : Number(item.seeders || item.seeds || 0);
-              const leechers = item.swarm?.leechers !== undefined ? Number(item.swarm.leechers) : Number(item.leechers || item.leeches || 0);
-
-              rawPool.push({
-                source: "SolidTorrents",
-                title: item.title || searchQuery,
-                magnet: magnet,
-                info_hash: infoHash,
-                size: formatSize(item.size),
-                seeders: seeders,
-                leechers: leechers,
-              });
-            }
-          }
+          return {
+            title: item.title || item.name || searchQuery,
+            magnet: magnet,
+            size: formatSize(item.size || item.size_formatted || item.filesize),
+            seeders: item.seeders !== undefined ? Number(item.seeders) : Number(item.seeds || 0),
+            leechers: item.leechers !== undefined ? Number(item.leechers) : Number(item.leeches || 0),
+            date: item.date || item.created_at || "",
+          };
         });
 
-        if (rawPool.length > 0) {
-          break;
-        }
+      if (results.length > 0) {
+        return filterByPreferences(results, targetTitle, targetYear, seasonNum, episodeNum);
       }
-    } catch (err) {
-      console.warn(`[SolidTorrents API Warning - ${solidUrl}]:`, err.message);
     }
+  } catch (err) {
+    console.warn("[Bitsearch API] Error:", err.message);
   }
 
-  if (rawPool.length > 0) {
-    // Sort pool by seeders descending
-    rawPool.sort((a, b) => b.seeders - a.seeders);
-    return filterByPreferences(rawPool, targetTitle, targetYear, seasonNum, episodeNum);
+  // 3. Fallback: Direct APIBay API
+  try {
+    const directUrl = `https://apibay.org/q.php?q=${encodeURIComponent(searchQuery)}`;
+    console.log(`[Torrent API Direct] Fetching: ${directUrl}`);
+    const response = await axios.get(directUrl, { timeout: 8000 });
+
+    if (Array.isArray(response.data) && response.data.length > 0 && response.data[0].id !== "0") {
+      const results = response.data
+        .filter((item) => item && item.info_hash && Number(item.seeders || 0) > 0)
+        .map((item) => ({
+          title: item.name,
+          magnet: `magnet:?xt=urn:btih:${item.info_hash}&dn=${encodeURIComponent(item.name)}&tr=udp://tracker.opentrackr.org:1337/announce`,
+          size: formatSize(item.size),
+          seeders: Number(item.seeders || 0),
+          leechers: Number(item.leechers || 0),
+        }));
+      return filterByPreferences(results, targetTitle, targetYear, seasonNum, episodeNum);
+    }
+  } catch (err) {
+    console.warn("[Torrent API Direct] Error:", err.message);
   }
 
   return [];
@@ -438,35 +394,23 @@ export const searchBitsearchMagnets = async (title, year, seasonNum, episodeNum)
 
     const epQuery1 = `${title} S${sPad}E${ePad}`;
     const res1 = await fetchMagnetResults(epQuery1, title, year, seasonNum, episodeNum);
-    if (res1 && res1.length > 0) rawResults = res1;
+    if (res1 && res1.length > 0) rawResults.push(...res1);
 
-    if (rawResults.length === 0) {
-      const epQuery2 = `${title} S${seasonNum}E${episodeNum}`;
-      const res2 = await fetchMagnetResults(epQuery2, title, year, seasonNum, episodeNum);
-      if (res2 && res2.length > 0) rawResults = res2;
-    }
-
-    if (rawResults.length === 0) {
-      const res3 = await fetchMagnetResults(title, title, year, seasonNum, episodeNum);
-      if (res3 && res3.length > 0) rawResults = res3;
-    }
+    const epQuery2 = `${title} S${seasonNum}E${episodeNum}`;
+    const res2 = await fetchMagnetResults(epQuery2, title, year, seasonNum, episodeNum);
+    if (res2 && res2.length > 0) rawResults.push(...res2);
   } else {
-    // 2. Movie search with year
-    const currentYear = new Date().getFullYear();
-    const yearNum = Number(year);
-    if (year && !isNaN(yearNum) && yearNum <= currentYear) {
-      const resultsWithYear = await fetchMagnetResults(`${title} ${year}`, title, year, seasonNum, episodeNum);
-      if (resultsWithYear && resultsWithYear.length > 0) {
-        rawResults = resultsWithYear;
+    // 2. Movie search: search both with year and title alone, then combine
+    if (year) {
+      const resWithYear = await fetchMagnetResults(`${title} ${year}`, title, year, seasonNum, episodeNum);
+      if (resWithYear && resWithYear.length > 0) {
+        rawResults.push(...resWithYear);
       }
     }
 
-    // 3. Fallback: Search title alone
-    if (rawResults.length === 0) {
-      const resultsTitleOnly = await fetchMagnetResults(title, title, year, seasonNum, episodeNum);
-      if (resultsTitleOnly && resultsTitleOnly.length > 0) {
-        rawResults = resultsTitleOnly;
-      }
+    const resTitleOnly = await fetchMagnetResults(title, title, year, seasonNum, episodeNum);
+    if (resTitleOnly && resTitleOnly.length > 0) {
+      rawResults.push(...resTitleOnly);
     }
   }
 
@@ -474,11 +418,21 @@ export const searchBitsearchMagnets = async (title, year, seasonNum, episodeNum)
     return { results: [], error: null };
   }
 
+  // Deduplicate results by magnet link
+  const seenMagnets = new Set();
+  const uniqueResults = [];
+  for (const item of rawResults) {
+    const key = (item.magnet || item.title).toLowerCase();
+    if (!seenMagnets.has(key)) {
+      seenMagnets.add(key);
+      uniqueResults.push(item);
+    }
+  }
+
+  // Sort by seeders descending
+  uniqueResults.sort((a, b) => (b.seeders || 0) - (a.seeders || 0));
+
   // 4. If Groq AI is configured, run AI stream classification filter
-  const aiFilteredResults = await filterWithGroqAI(rawResults, title);
-
-  // 5. Premiumize Cache Check: Check which streams are instantly cached on Premiumize & boost cached streams to top
-  const finalResults = await checkPremiumizeCache(aiFilteredResults || rawResults);
-
-  return { results: finalResults || rawResults, error: null };
+  const finalResults = await filterWithGroqAI(uniqueResults, title);
+  return { results: finalResults, error: null };
 };
