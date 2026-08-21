@@ -69,30 +69,60 @@ export const checkPremiumizeCache = async (results) => {
 
   try {
     const baseUrl = getServerUrl();
-    const items = results.map((r) => r.magnet || r.info_hash).filter(Boolean);
-    if (items.length === 0) return results;
+    // Extract 40-character info_hash for lightweight, fast HTTP query strings
+    const hashes = results
+      .map((r) => {
+        if (r.info_hash && r.info_hash.length === 40) return r.info_hash;
+        if (r.magnet) {
+          const match = r.magnet.match(/btih:([a-fA-F0-9]{40})/i);
+          if (match) return match[1];
+        }
+        return null;
+      })
+      .filter(Boolean);
 
-    const params = new URLSearchParams();
-    params.append("apikey", apiKey);
-    items.forEach((item) => params.append("items[]", item));
+    if (hashes.length === 0) return results;
 
-    console.log(`[Premiumize Cache Check] Checking cache status for ${items.length} stream magnets...`);
-    const response = await axios.get(`${baseUrl}/api/premiumize/cache/check?${params.toString()}`, {
-      timeout: 8000,
+    // Batch query in lightweight chunks of 15 hashes
+    const chunkSize = 15;
+    const cacheMap = new Map();
+
+    for (let i = 0; i < hashes.length; i += chunkSize) {
+      const chunk = hashes.slice(i, i + chunkSize);
+      const params = new URLSearchParams();
+      params.append("apikey", apiKey);
+      chunk.forEach((hash) => params.append("items[]", hash));
+
+      try {
+        const response = await axios.get(`${baseUrl}/api/premiumize/cache/check?${params.toString()}`, {
+          timeout: 6000,
+        });
+
+        if (response.data?.status === "success" && Array.isArray(response.data?.response)) {
+          response.data.response.forEach((isCached, idx) => {
+            cacheMap.set(chunk[idx].toLowerCase(), !!isCached);
+          });
+        }
+      } catch (chunkErr) {
+        console.warn("[Premiumize Cache Check Chunk Error]:", chunkErr.message);
+      }
+    }
+
+    const updatedResults = results.map((item) => {
+      let hash = item.info_hash;
+      if (!hash && item.magnet) {
+        const match = item.magnet.match(/btih:([a-fA-F0-9]{40})/i);
+        if (match) hash = match[1];
+      }
+
+      const isCached = hash ? !!cacheMap.get(hash.toLowerCase()) : false;
+      return { ...item, isCached };
     });
 
-    if (response.data?.status === "success" && Array.isArray(response.data?.response)) {
-      const cacheStatuses = response.data.response;
-      const updatedResults = results.map((item, idx) => ({
-        ...item,
-        isCached: !!cacheStatuses[idx],
-      }));
-
-      // Sort: Cached streams (isCached: true) boosted to top of list!
-      updatedResults.sort((a, b) => (b.isCached ? 1 : 0) - (a.isCached ? 1 : 0));
-      console.log(`[Premiumize Cache Check] Found ${updatedResults.filter((r) => r.isCached).length} instantly cached streams!`);
-      return updatedResults;
-    }
+    // Sort: Cached streams (isCached: true) boosted to top of list!
+    updatedResults.sort((a, b) => (b.isCached ? 1 : 0) - (a.isCached ? 1 : 0));
+    console.log(`[Premiumize Cache Check] Found ${updatedResults.filter((r) => r.isCached).length} instantly cached streams out of ${updatedResults.length}`);
+    return updatedResults;
   } catch (err) {
     console.warn("[Premiumize Cache Check Warning]:", err.message);
   }
