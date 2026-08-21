@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getServerUrl } from "./serverSettings";
 
 export const getSimklConfig = () => {
   let clientId = "";
@@ -72,9 +73,11 @@ export const fetchUserSimklHistory = async () => {
     headers["Authorization"] = `Bearer ${userToken.trim()}`;
   }
 
+  const baseUrl = getServerUrl();
+
   try {
     // 1. Fetch movies history
-    const moviesRes = await axios.get("/api/simkl/sync/all-items/movies", { headers, timeout: 8000 });
+    const moviesRes = await axios.get(`${baseUrl}/api/simkl/sync/all-items/movies`, { headers, timeout: 8000 });
     if (Array.isArray(moviesRes.data?.movies)) {
       moviesRes.data.movies.forEach((m) => {
         if (m.ids?.tmdb) {
@@ -84,7 +87,7 @@ export const fetchUserSimklHistory = async () => {
     }
 
     // 2. Fetch shows history
-    const showsRes = await axios.get("/api/simkl/sync/all-items/shows", { headers, timeout: 8000 });
+    const showsRes = await axios.get(`${baseUrl}/api/simkl/sync/all-items/shows`, { headers, timeout: 8000 });
     if (Array.isArray(showsRes.data?.shows)) {
       showsRes.data.shows.forEach((show) => {
         const showId = show.ids?.tmdb ? String(show.ids.tmdb) : null;
@@ -171,7 +174,8 @@ export const toggleSimklWatched = async ({ tmdbId, title, mediaType, seasonNum, 
 
   try {
     console.log(`[Simkl API] ${currentlyWatched ? "Removing from" : "Adding to"} SIMKL history:`, payload);
-    await axios.post(endpoint, payload, { headers, timeout: 8000 });
+    const baseUrl = getServerUrl();
+    await axios.post(`${baseUrl}${endpoint}`, payload, { headers, timeout: 8000 });
   } catch (err) {
     console.warn(`[Simkl API Sync Error]:`, err.message);
   }
@@ -208,7 +212,8 @@ export const updateWatchlistStatusSimkl = async ({ tmdbId, title, mediaType, sta
     const payload = mediaType === "movie" ? { movies: [item] } : { shows: [item] };
 
     console.log(`[Simkl API] Updating watchlist status to '${status}':`, payload);
-    await axios.post("/api/simkl/sync/add-to-list", payload, {
+    const baseUrl = getServerUrl();
+    await axios.post(`${baseUrl}/api/simkl/sync/add-to-list`, payload, {
       headers,
       timeout: 8000,
     });
@@ -226,39 +231,75 @@ export const testSimklConnection = async (clientId, userToken) => {
   const token = userToken || getSimklConfig().userToken;
 
   if (!cId) {
-    return { success: false, message: "Simkl Client ID is required." };
+    return { success: false, message: "SIMKL Client ID is required." };
   }
 
-  try {
-    const headers = {
-      "simkl-api-key": cId,
-      "Content-Type": "application/json",
-    };
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
+  const headers = {
+    "simkl-api-key": cId,
+    "Content-Type": "application/json",
+  };
 
-    const response = await axios.get("/api/simkl/users/settings", {
+  const baseUrl = getServerUrl();
+
+  // 1. If User Access Token is provided, test user account endpoint
+  if (token && token.trim().length > 0) {
+    headers["Authorization"] = `Bearer ${token.trim()}`;
+    try {
+      const response = await axios.get(`${baseUrl}/api/simkl/users/settings`, {
+        headers,
+        timeout: 8000,
+      });
+
+      if (response.data && (response.data.user || response.data.account)) {
+        const username = response.data.user?.name || response.data.user?.username || "Connected";
+        return {
+          success: true,
+          message: `SIMKL Account Connected! Logged in as: ${username}`,
+        };
+      }
+
+      return {
+        success: true,
+        message: "SIMKL Client ID & User Token connected successfully!",
+      };
+    } catch (err) {
+      if (err.response?.status === 401) {
+        return {
+          success: false,
+          message: "Invalid or expired SIMKL User Access Token. Please verify your token in SIMKL developer settings.",
+        };
+      }
+      return {
+        success: false,
+        message: err.response?.data?.message || err.message || "Failed to verify SIMKL User Token.",
+      };
+    }
+  }
+
+  // 2. If NO User Access Token is provided (Client ID only), verify Client ID via SIMKL API search endpoint
+  try {
+    const response = await axios.get(`${baseUrl}/api/simkl/search/id?tmdb=550`, {
       headers,
       timeout: 8000,
     });
 
-    if (response.data && (response.data.user || response.data.account)) {
-      const username = response.data.user?.name || response.data.user?.username || "Connected";
+    if (response.status === 200) {
       return {
         success: true,
-        message: `Simkl Connection Successful! Logged in as: ${username}`,
+        message: "SIMKL Client ID verified & saved successfully!",
       };
     }
-
-    return {
-      success: true,
-      message: "Simkl API Client ID connected successfully!",
-    };
   } catch (err) {
-    return {
-      success: false,
-      message: err.response?.data?.message || err.message || "Failed to connect to Simkl API.",
-    };
+    if (err.response?.status === 401) {
+      return {
+        success: false,
+        message: "Invalid SIMKL Client ID. Please check your SIMKL Client ID in developer settings.",
+      };
+    }
   }
+
+  return {
+    success: true,
+    message: "SIMKL Client ID saved!",
+  };
 };
