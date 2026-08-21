@@ -6,8 +6,30 @@ const url = require("url");
 // Internal Node settings server port inside Docker container (always 5000 for Nginx proxy)
 const PORT = 5000;
 const SETTINGS_FILE = path.join(__dirname, "settings.json");
+const LOG_FILE = path.join(__dirname, "bubbaflix.log");
 
 const DEFAULT_TMDB_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmYjM3ODM3YzJiMDlkNzEyMDIwMDIxZjc0NGI5ZTQwNyIsInN1YiI6IjY0NjNlNzE5ZTNmYTJmMDEyNDQ3ODk1NCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.3Y0VloCdPlprLy-OMZQmqtZd4_Ti9GDfHo4SZXh3erU";
+
+// Dual-logging utility: writes to stdout/stderr AND appends to disk volume log file (/app/server/bubbaflix.log)
+const logMessage = (msg, isError = false) => {
+  const timestamp = new Date().toISOString();
+  const formatted = `[${timestamp}] ${msg}`;
+  if (isError) {
+    console.error(formatted);
+  } else {
+    console.log(formatted);
+  }
+
+  try {
+    const dir = path.dirname(LOG_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.appendFileSync(LOG_FILE, formatted + "\n", "utf8");
+  } catch (err) {
+    // Ignore log file write errors
+  }
+};
 
 // Load environment variables for default server settings
 const getEnvDefaultSettings = () => {
@@ -61,11 +83,13 @@ const loadServerSettings = () => {
         merged.tmdbToken = envDefaults.tmdbToken;
       }
 
+      logMessage(`[Server Settings Loaded] Configured keys: AIOStreams=${!!merged.aiostreams_url}, SIMKL=${!!merged.simklClientId}, GROQ=${!!merged.groqKey}, TMDB=${!!merged.tmdbToken}`);
       return merged;
     }
   } catch (err) {
-    console.error("[Backend Settings Storage Error]: Failed to read settings.json", err.message);
+    logMessage(`[Backend Settings Storage Error]: Failed to read settings.json: ${err.message}`, true);
   }
+  logMessage(`[Server Settings Init] Using environment variable defaults.`);
   return { ...envDefaults };
 };
 
@@ -77,10 +101,10 @@ const saveServerSettings = (settingsData) => {
       fs.mkdirSync(dir, { recursive: true });
     }
     fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settingsData, null, 2), "utf8");
-    console.log("[Backend Settings Storage] Updated global settings.json on server disk.");
+    logMessage("[Backend Settings Storage] Updated global settings.json on server disk.");
     return true;
   } catch (err) {
-    console.error("[Backend Settings Storage Error]: Failed to save settings.json", err.message);
+    logMessage(`[Backend Settings Storage Error]: Failed to save settings.json: ${err.message}`, true);
     return false;
   }
 };
@@ -98,6 +122,8 @@ const sendJson = (res, statusCode, data) => {
 const server = http.createServer((req, res) => {
   const parsedUrl = url.parse(req.url, true);
   const pathname = parsedUrl.pathname;
+
+  logMessage(`[HTTP Request] ${req.method} ${pathname}`);
 
   if (req.method === "OPTIONS") {
     res.writeHead(204, {
@@ -142,15 +168,18 @@ const server = http.createServer((req, res) => {
 
         const saved = saveServerSettings(updatedSettings);
         if (saved) {
+          logMessage(`[Settings Updated] Successfully saved keys to settings.json.`);
           return sendJson(res, 200, {
             status: "success",
             message: "Global server settings updated successfully.",
             settings: updatedSettings,
           });
         } else {
+          logMessage("[Settings Error] Failed to write settings.json to disk.", true);
           return sendJson(res, 500, { error: "Failed to persist settings on server storage." });
         }
       } catch (e) {
+        logMessage(`[Settings Error] Invalid JSON payload: ${e.message}`, true);
         return sendJson(res, 400, { error: "Invalid JSON payload." });
       }
     });
@@ -161,18 +190,18 @@ const server = http.createServer((req, res) => {
 });
 
 process.on("uncaughtException", (err) => {
-  console.error("[BubbaFlix Server Uncaught Exception]:", err);
+  logMessage(`[BubbaFlix Server Uncaught Exception]: ${err.stack || err}`, true);
 });
 
 process.on("unhandledRejection", (reason) => {
-  console.error("[BubbaFlix Server Unhandled Rejection]:", reason);
+  logMessage(`[BubbaFlix Server Unhandled Rejection]: ${reason}`, true);
 });
 
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`[BubbaFlix Backend Engine] Pure Node Settings Server listening on 0.0.0.0:${PORT}`);
+  logMessage(`[BubbaFlix Backend Engine] Pure Node Settings Server listening on 0.0.0.0:${PORT}`);
   loadServerSettings();
 });
 
 server.on("error", (err) => {
-  console.error("[BubbaFlix Backend Listen Error]:", err);
+  logMessage(`[BubbaFlix Backend Listen Error]: ${err.stack || err}`, true);
 });
