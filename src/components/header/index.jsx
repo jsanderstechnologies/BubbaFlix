@@ -7,11 +7,9 @@ import { VscChromeClose } from "react-icons/vsc";
 import { useNavigate, useLocation } from "react-router-dom";
 import { FiSettings } from "react-icons/fi";
 import ContentWrapper from "../content-wrapper";
-import logo from "../../assets/main-logo.png";
 
 const Header = () => {
 	const [show, setShow] = useState("top");
-	const [lastScrollY, setLastScrollY] = useState(0);
 	const [mobileMenu, setMobileMenu] = useState(false);
 	const [query, setQuery] = useState("");
 	const [showSearch, setShowSearch] = useState(false);
@@ -22,26 +20,6 @@ const Header = () => {
 	useEffect(() => {
 		window.scrollTo(0, 0);
 	}, [location]);
-
-	const handleNavbar = () => {
-		if (window.scrollY > 200) {
-			if (window.scrollY > lastScrollY && !mobileMenu) {
-				setShow("hide");
-			} else {
-				setShow("show");
-			}
-		} else {
-			setShow("top");
-		}
-		setLastScrollY(window.scrollY);
-	};
-
-	useEffect(() => {
-		window.addEventListener("scroll", handleNavbar);
-		return () => {
-			window.removeEventListener("scroll", handleNavbar);
-		};
-	}, [lastScrollY]);
 
 	const searchQuery = (e) => {
 		const code = e.keyCode;
@@ -88,7 +66,6 @@ const Header = () => {
 	return (
 		<header
 			className={`header ${mobileMenu ? "mobileView" : ""} ${show}`}
-			onFocus={() => setShow("show")}
 		>
 			<ContentWrapper>
 				<div

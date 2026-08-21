@@ -11,7 +11,7 @@ import "./index.scss";
 const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, compact = false }) => {
   const [streams, setStreams] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false); // Closed by default
   const [unconfigured, setUnconfigured] = useState(false);
 
   // Streaming state
@@ -45,9 +45,6 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
     }
 
     setStreams(res.streams || []);
-    if (res.streams && res.streams.length > 0) {
-      setIsOpen(true);
-    }
   };
 
   const handlePlayStream = (item) => {
