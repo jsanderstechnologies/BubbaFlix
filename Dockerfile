@@ -7,7 +7,7 @@ WORKDIR /app
 ARG VITE_APP_TMDB_KEY
 ENV VITE_APP_TMDB_KEY=$VITE_APP_TMDB_KEY
 
-# Copy package files and install all dependencies
+# Copy package files and install dependencies
 COPY package*.json ./
 RUN npm install
 
@@ -17,28 +17,25 @@ COPY . .
 # Build production bundle
 RUN npm run build
 
-# Stage 2: Serve application using Nginx + Node.js Settings Backend
+# Stage 2: Serve application using ultra-lightweight Nginx + Native Node.js Settings Backend
 FROM nginx:alpine
 
-# Install Node.js and npm for backend settings server
-RUN apk add --no-cache nodejs npm
+# Install ONLY lightweight Node.js runtime (No npm, No FFmpeg, No heavy build tools!)
+RUN apk add --no-cache nodejs
 
 WORKDIR /app
 
-# Copy server package files and install production dependencies directly in Alpine runtime
-COPY package*.json ./
+# Copy server backend and startup script
 COPY server ./server
 COPY start.sh ./start.sh
-
-RUN npm install --production
 
 # Ensure start.sh script is executable
 RUN chmod +x ./start.sh
 
-# Copy custom Nginx configuration for React Router single-page app
+# Copy custom Nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy static output files from build stage
+# Copy compiled static HTML/JS/CSS output from build stage
 COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 80 5000
