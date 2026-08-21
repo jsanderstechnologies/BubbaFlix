@@ -13,6 +13,7 @@ BubbaFlix features **Android TV & Smart TV D-Pad Spatial Navigation with Horizon
 ## 🌟 Key Features
 
 ### 🎬 Official SIMKL API Compliance & Activity Delta Sync
+- **Streamlined Client ID Integration**: Simplified SIMKL watch history tracking requiring ONLY your SIMKL Client ID.
 - **Official API Rules Compliant**: Fully compliant with SIMKL API rules (`client_id`, `app-name=BubbaFlix`, `app-version=1.0`, `User-Agent: BubbaFlix/1.0 (Smart TV Media App)`).
 - **Phase 2 Activity Check First**: Always queries `/sync/activities` first on startup/wake, skipping payload sync if activity dates match.
 - **Phase 2 Combined Delta Sync**: Uses `/sync/all-items/?date_from=SAVED_DATE` to fetch only updated items, protecting server bandwidth and client_id status.
@@ -37,7 +38,7 @@ BubbaFlix features **Android TV & Smart TV D-Pad Spatial Navigation with Horizon
 ### 🌐 Centralized Backend Server Settings Storage (`/api/settings`)
 - **Backend Disk & Docker Persistence**: Settings persist in `/app/server/settings.json` on the server and sync across all connected client devices:
   - **Color Themes**: Dark Red (Netflix Style), Dark Purple, Cyberpunk Teal, Dark Gold, Slate Blue.
-  - **SIMKL Credentials**: Client ID & User Access Token.
+  - **SIMKL Credentials**: SIMKL API Client ID.
   - **Premiumize.me API Key**: For instant torrent streaming.
   - **Groq AI Key**: Fast Llama 3 AI stream title classification.
   - **TMDB Read Access Token**: Movie & TV metadata fallback.
@@ -68,7 +69,6 @@ Pre-configure your API credentials directly in `docker-compose.yml`, Portainer S
 | Environment Variable | Description | Default Value |
 | :--- | :--- | :--- |
 | `SIMKL_CLIENT_ID` | SIMKL API Client ID | `""` |
-| `SIMKL_ACCESS_TOKEN` | SIMKL User Access Token | `""` |
 | `PREMIUMIZE_API_KEY` | Premiumize.me API Key | `""` |
 | `GROQ_API_KEY` | Groq AI Stream Filter API Key | `""` |
 | `TMDB_READ_ACCESS_TOKEN` | TMDB v4 Read Access Token | Built-in fallback |
@@ -101,7 +101,6 @@ Pre-configure your API credentials directly in `docker-compose.yml`, Portainer S
    VITE_APP_TMDB_KEY=your_tmdb_read_access_token
    PREMIUMIZE_API_KEY=your_premiumize_api_key
    SIMKL_CLIENT_ID=your_simkl_client_id
-   SIMKL_ACCESS_TOKEN=your_simkl_access_token
    BITSEARCH_API_KEY=your_bitsearch_api_key
    GROQ_API_KEY=your_groq_api_key
    ```

@@ -50,8 +50,6 @@ const SettingsPage = () => {
 
   // SIMKL State
   const [simklClientId, setSimklClientId] = useState("");
-  const [simklToken, setSimklToken] = useState("");
-  const [showSimklToken, setShowSimklToken] = useState(false);
   const [simklStatus, setSimklStatus] = useState(null);
   const [hasSimklCustom, setHasSimklCustom] = useState(false);
   const [testingSimkl, setTestingSimkl] = useState(false);
@@ -101,9 +99,8 @@ const SettingsPage = () => {
     setPremiumizeKey(savedPrem || "");
     setHasPremiumizeCustom(!!savedPrem);
 
-    const { clientId, userToken } = getSimklConfig();
+    const { clientId } = getSimklConfig();
     setSimklClientId(clientId || "");
-    setSimklToken(userToken || "");
     setHasSimklCustom(!!clientId);
 
     const savedBitsearch = getBitsearchApiKey();
@@ -243,18 +240,17 @@ const SettingsPage = () => {
   const handleSaveSimkl = async (e) => {
     e.preventDefault();
     const cleanId = simklClientId.trim();
-    const cleanToken = simklToken.trim();
     if (!cleanId) {
       setSimklStatus({ type: "error", text: "SIMKL Client ID cannot be empty." });
       return;
     }
     localStorage.setItem("simkl_client_id", cleanId);
-    localStorage.setItem("simkl_access_token", cleanToken);
+    localStorage.removeItem("simkl_access_token");
     setHasSimklCustom(true);
-    await updateServerSettings({ simklClientId: cleanId, simklToken: cleanToken });
+    await updateServerSettings({ simklClientId: cleanId });
 
     setTestingSimkl(true);
-    const testRes = await testSimklConnection(cleanId, cleanToken);
+    const testRes = await testSimklConnection(cleanId);
     setTestingSimkl(false);
 
     if (testRes.success) {
@@ -268,9 +264,8 @@ const SettingsPage = () => {
     localStorage.removeItem("simkl_client_id");
     localStorage.removeItem("simkl_access_token");
     setSimklClientId("");
-    setSimklToken("");
     setHasSimklCustom(false);
-    await updateServerSettings({ simklClientId: "", simklToken: "" });
+    await updateServerSettings({ simklClientId: "" });
     setSimklStatus({ type: "info", text: "SIMKL credentials cleared on server." });
   };
 
@@ -520,16 +515,12 @@ const SettingsPage = () => {
             </div>
 
             <p className="description">
-              Sync watched movies and TV episode playback history automatically with your SIMKL watchlist across all devices.
+              Sync watched movies and TV episode playback history automatically with your SIMKL watchlist across all devices using your SIMKL Client ID.
             </p>
 
             <div className="apiInstruction">
               <FiInfo style={{ marginRight: 6, verticalAlign: "middle" }} />
               <strong>How to get key:</strong> Register at <a href="https://simkl.com/settings/developer/" target="_blank" rel="noreferrer">simkl.com/settings/developer/</a> &gt; Create App to get your Client ID.
-              <br />
-              <span style={{ fontSize: "0.85em", opacity: 0.85, marginTop: 4, display: "block" }}>
-                * Note: Do NOT enter your Client Secret in the User Access Token field. If you do not have an OAuth User Access Token, leave the User Access Token field empty—Client ID alone will save and sync watch status.
-              </span>
             </div>
 
             <form onSubmit={handleSaveSimkl} className="tokenForm" style={{ marginTop: 15 }}>
@@ -543,27 +534,6 @@ const SettingsPage = () => {
                     onChange={(e) => setSimklClientId(e.target.value)}
                     placeholder="Enter your SIMKL API Client ID..."
                   />
-                </div>
-              </div>
-
-              <div className="inputGroup" style={{ marginTop: 12 }}>
-                <label htmlFor="simklToken">SIMKL_USER_ACCESS_TOKEN (Optional)</label>
-                <div className="inputWrapper">
-                  <input
-                    id="simklToken"
-                    type={showSimklToken ? "text" : "password"}
-                    value={simklToken}
-                    onChange={(e) => setSimklToken(e.target.value)}
-                    placeholder="Leave empty if you only have Client ID..."
-                  />
-                  <button
-                    type="button"
-                    className="toggleVisibility"
-                    onClick={() => setShowSimklToken(!showSimklToken)}
-                    title={showSimklToken ? "Hide Token" : "Show Token"}
-                  >
-                    {showSimklToken ? <FiEyeOff /> : <FiEye />}
-                  </button>
                 </div>
               </div>
 

@@ -58,7 +58,6 @@ Define API keys via environment variables in `docker-compose.yml`, Portainer Sta
 | Variable Name | Purpose | Example |
 | :--- | :--- | :--- |
 | `SIMKL_CLIENT_ID` | SIMKL API Client ID | `abcdef123456` |
-| `SIMKL_ACCESS_TOKEN` | SIMKL User Access Token | `token_xyz` |
 | `PREMIUMIZE_API_KEY` | Premiumize.me API Key | `prem_key_123` |
 | `GROQ_API_KEY` | Groq AI Stream Filter API Key | `gsk_...` |
 | `TMDB_READ_ACCESS_TOKEN` | TMDB v4 Read Access Token | `eyJhbGci...` |
@@ -106,10 +105,10 @@ To keep watch status in sync when a native player starts or finishes video playb
 
 ### Mark Media as Watched
 - **HTTP Method**: `POST`
-- **URL**: `http://<SERVER_IP>:3000/api/simkl/sync/history` (or `https://api.simkl.com/sync/history`)
+- **URL**: `http://<SERVER_IP>:3000/api/simkl/sync/history?client_id=<SIMKL_CLIENT_ID>&app-name=BubbaFlix&app-version=1.0`
 - **Headers**:
   - `simkl-api-key: <SIMKL_CLIENT_ID>`
-  - `Authorization: Bearer <SIMKL_USER_ACCESS_TOKEN>`
+  - `User-Agent: BubbaFlix/1.0 (Smart TV Media App)`
   - `Content-Type: application/json`
 
 ---

@@ -19,14 +19,11 @@ const enforcePostRateLimit = async () => {
 
 export const getSimklConfig = () => {
   let clientId = "";
-  let userToken = "";
   if (typeof window !== "undefined") {
     clientId = localStorage.getItem("simkl_client_id") || "";
-    userToken = localStorage.getItem("simkl_access_token") || "";
   }
   return {
     clientId: (clientId && clientId.trim()) || import.meta.env.VITE_SIMKL_CLIENT_ID || "",
-    userToken: (userToken && userToken.trim()) || import.meta.env.VITE_SIMKL_ACCESS_TOKEN || "",
   };
 };
 
@@ -59,16 +56,12 @@ const getRequiredQueryParams = (clientId, extraParams = {}) => {
   return params.toString();
 };
 
-const getRequiredHeaders = (clientId, userToken) => {
-  const headers = {
+const getRequiredHeaders = (clientId) => {
+  return {
     "simkl-api-key": clientId,
     "User-Agent": USER_AGENT,
     "Content-Type": "application/json",
   };
-  if (userToken && userToken.trim().length > 0) {
-    headers["Authorization"] = `Bearer ${userToken.trim()}`;
-  }
-  return headers;
 };
 
 export const isSimklWatched = ({ tmdbId, mediaType, seasonNum, episodeNum }) => {
@@ -99,7 +92,7 @@ export const isSimklWatched = ({ tmdbId, mediaType, seasonNum, episodeNum }) => 
 
 // SIMKL API Phase 1 & Phase 2 Compliant Sync Strategy
 export const fetchUserSimklHistory = async (forceManualSync = false) => {
-  const { clientId, userToken } = getSimklConfig();
+  const { clientId } = getSimklConfig();
   if (!clientId) return getSimklWatchCache();
 
   if (typeof window !== "undefined" && !forceManualSync) {
@@ -113,7 +106,7 @@ export const fetchUserSimklHistory = async (forceManualSync = false) => {
   }
 
   const cache = getSimklWatchCache();
-  const headers = getRequiredHeaders(clientId, userToken);
+  const headers = getRequiredHeaders(clientId);
   const baseUrl = getServerUrl();
   const savedActivityDate = typeof window !== "undefined" ? localStorage.getItem("simkl_last_activity_date") : null;
 
@@ -216,18 +209,14 @@ export const fetchUserSimklHistory = async (forceManualSync = false) => {
 
     console.log("[SIMKL Sync Rules] SIMKL watch history sync completed successfully.");
   } catch (err) {
-    if (err.response?.status === 401) {
-      console.warn("[SIMKL API] User Access Token required or expired for private SIMKL account sync.");
-    } else {
-      console.warn("[SIMKL Sync Warning]:", err.message);
-    }
+    console.warn("[SIMKL History Sync Warning]:", err.message);
   }
 
   return cache;
 };
 
 export const toggleSimklWatched = async ({ tmdbId, title, mediaType, seasonNum, episodeNum }) => {
-  const { clientId, userToken } = getSimklConfig();
+  const { clientId } = getSimklConfig();
   const currentlyWatched = isSimklWatched({ tmdbId, mediaType, seasonNum, episodeNum });
   const cache = getSimklWatchCache();
   const idStr = String(tmdbId);
@@ -257,7 +246,7 @@ export const toggleSimklWatched = async ({ tmdbId, title, mediaType, seasonNum, 
 
   const endpointPath = currentlyWatched ? "/api/simkl/sync/history/remove" : "/api/simkl/sync/history";
   const queryParams = getRequiredQueryParams(clientId);
-  const headers = getRequiredHeaders(clientId, userToken);
+  const headers = getRequiredHeaders(clientId);
 
   const payload = {};
 
@@ -294,7 +283,7 @@ export const markAsWatchedOnSimkl = async ({ tmdbId, title, mediaType, seasonNum
 };
 
 export const updateWatchlistStatusSimkl = async ({ tmdbId, title, mediaType, status }) => {
-  const { clientId, userToken } = getSimklConfig();
+  const { clientId } = getSimklConfig();
   if (!clientId) return false;
 
   // Enforce 1 request / sec rate limit for POST requests per SIMKL rules
@@ -302,7 +291,7 @@ export const updateWatchlistStatusSimkl = async ({ tmdbId, title, mediaType, sta
 
   try {
     const queryParams = getRequiredQueryParams(clientId);
-    const headers = getRequiredHeaders(clientId, userToken);
+    const headers = getRequiredHeaders(clientId);
 
     const item = {
       title,
@@ -327,74 +316,20 @@ export const updateWatchlistStatusSimkl = async ({ tmdbId, title, mediaType, sta
   return false;
 };
 
-export const testSimklConnection = async (clientId, userToken) => {
+export const testSimklConnection = async (clientId) => {
   const cId = clientId || getSimklConfig().clientId;
-  const token = userToken || getSimklConfig().userToken;
 
   if (!cId) {
     return { success: false, message: "SIMKL Client ID is required." };
   }
 
-  const queryParams = getRequiredQueryParams(cId);
-  const headers = getRequiredHeaders(cId, token);
+  const headers = getRequiredHeaders(cId);
   const baseUrl = getServerUrl();
 
-  // 1. If User Access Token is provided, test user account endpoint
-  if (token && token.trim().length > 0) {
-    try {
-      const response = await axios.get(`${baseUrl}/api/simkl/users/settings?${queryParams}`, {
-        headers,
-        timeout: 8000,
-      });
-
-      if (response.data && (response.data.user || response.data.account)) {
-        const username = response.data.user?.name || response.data.user?.username || "Connected";
-        return {
-          success: true,
-          message: `SIMKL Account Connected! Logged in as: ${username}`,
-        };
-      }
-
-      return {
-        success: true,
-        message: "SIMKL Client ID & User Token connected successfully!",
-      };
-    } catch (err) {
-      if (err.response?.status === 401) {
-        // Test if Client ID itself is valid
-        try {
-          const searchParams = getRequiredQueryParams(cId, { tmdb: "550" });
-          const testRes = await axios.get(`${baseUrl}/api/simkl/search/id?${searchParams}`, {
-            headers: { "simkl-api-key": cId, "User-Agent": USER_AGENT },
-            timeout: 5000,
-          });
-          if (testRes.status === 200) {
-            return {
-              success: false,
-              message: "SIMKL Client ID is valid, but the User Access Token was rejected (401). If you do not have an OAuth User Token, leave the User Access Token field empty (do not use Client Secret).",
-            };
-          }
-        } catch (e) {
-          // Fallthrough
-        }
-
-        return {
-          success: false,
-          message: "Invalid SIMKL User Access Token. Leave User Access Token empty if you only have a Client ID.",
-        };
-      }
-      return {
-        success: false,
-        message: err.response?.data?.message || err.message || "Failed to verify SIMKL User Token.",
-      };
-    }
-  }
-
-  // 2. If NO User Access Token is provided (Client ID only), verify Client ID via SIMKL API search endpoint
   try {
     const searchParams = getRequiredQueryParams(cId, { tmdb: "550" });
     const response = await axios.get(`${baseUrl}/api/simkl/search/id?${searchParams}`, {
-      headers: { "simkl-api-key": cId, "User-Agent": USER_AGENT },
+      headers,
       timeout: 8000,
     });
 

@@ -22,7 +22,6 @@ const getEnvDefaultSettings = () => {
   return {
     theme: process.env.THEME || process.env.DEFAULT_THEME || "dark-red",
     simklClientId: process.env.SIMKL_CLIENT_ID || "",
-    simklToken: process.env.SIMKL_ACCESS_TOKEN || process.env.SIMKL_USER_TOKEN || "",
     premiumizeKey: process.env.PREMIUMIZE_API_KEY || "",
     groqKey: process.env.GROQ_API_KEY || "",
     tmdbToken: defaultTmdb,
@@ -49,7 +48,6 @@ const loadServerSettings = () => {
 
       // Apply environment variable overrides if local fields are empty
       if (!merged.simklClientId && envDefaults.simklClientId) merged.simklClientId = envDefaults.simklClientId;
-      if (!merged.simklToken && envDefaults.simklToken) merged.simklToken = envDefaults.simklToken;
       if (!merged.premiumizeKey && envDefaults.premiumizeKey) merged.premiumizeKey = envDefaults.premiumizeKey;
       if (!merged.groqKey && envDefaults.groqKey) merged.groqKey = envDefaults.groqKey;
       if (!merged.bitsearchKey && envDefaults.bitsearchKey) merged.bitsearchKey = envDefaults.bitsearchKey;

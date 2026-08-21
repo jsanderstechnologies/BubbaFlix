@@ -37,7 +37,6 @@ export const fetchServerSettings = async () => {
         applyTheme(s.theme);
       }
       if (s.simklClientId) localStorage.setItem("simkl_client_id", s.simklClientId);
-      if (s.simklToken) localStorage.setItem("simkl_access_token", s.simklToken);
       if (s.premiumizeKey) localStorage.setItem("premiumize_api_key", s.premiumizeKey);
       if (s.groqKey) localStorage.setItem("groq_api_key", s.groqKey);
       if (s.tmdbToken && s.tmdbToken.trim().length > 0) {
