@@ -280,7 +280,7 @@ const formatSize = (bytes) => {
   return num + " B";
 };
 
-// Multi-Source Magnet Aggregator: YTS + PirateBay + Bitsearch
+// Magnet Aggregator: YTS Movies API + Bitsearch API
 const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNum, episodeNum) => {
   let apiKey = getBitsearchApiKey();
   if (!apiKey) {
@@ -295,7 +295,7 @@ const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNu
   const rawPool = [];
   const seenHashes = new Set();
 
-  // 1. Fetch from YTS Movies API (yts.mx via Nginx proxy or direct fallback)
+  // 1. Fetch from YTS Movies API (yts.mx via Nginx proxy)
   try {
     const ytsUrl = `${baseUrl}/api/yts/list_movies.json?query_term=${encodeURIComponent(searchQuery)}&sort_by=seeds`;
     console.log(`[YTS API Proxy] Fetching magnet links: ${ytsUrl}`);
@@ -365,67 +365,7 @@ const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNu
     }
   }
 
-  // 2. Fetch from PirateBay (apibay.org via Nginx proxy)
-  try {
-    const pbUrl = `${baseUrl}/api/torrent?q=${encodeURIComponent(searchQuery)}`;
-    console.log(`[PirateBay API Proxy] Fetching magnet links: ${pbUrl}`);
-    const response = await axios.get(pbUrl, { timeout: 8000 });
-
-    if (Array.isArray(response.data) && response.data.length > 0 && response.data[0].id !== "0") {
-      response.data.forEach((item) => {
-        if (item && item.info_hash && item.info_hash !== "0000000000000000000000000000000000000000") {
-          const hashLower = item.info_hash.toLowerCase();
-          if (!seenHashes.has(hashLower)) {
-            seenHashes.add(hashLower);
-            const magnet = `magnet:?xt=urn:btih:${item.info_hash}&dn=${encodeURIComponent(item.name)}&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.stealth.si:80/announce&tr=udp://tracker.torrent.eu.org:451/announce`;
-            rawPool.push({
-              source: "PirateBay",
-              title: item.name,
-              magnet: magnet,
-              size: formatSize(item.size),
-              seeders: Number(item.seeders || 0),
-              leechers: Number(item.leechers || 0),
-            });
-          }
-        }
-      });
-    }
-  } catch (err) {
-    console.warn("[PirateBay API Proxy Warning]:", err.message);
-  }
-
-  // Direct PirateBay fallback if proxy returned no items
-  if (rawPool.length === 0) {
-    try {
-      const pbDirectUrl = `https://apibay.org/q.php?q=${encodeURIComponent(searchQuery)}`;
-      console.log(`[PirateBay API Direct] Fetching: ${pbDirectUrl}`);
-      const response = await axios.get(pbDirectUrl, { timeout: 8000 });
-
-      if (Array.isArray(response.data) && response.data.length > 0 && response.data[0].id !== "0") {
-        response.data.forEach((item) => {
-          if (item && item.info_hash && item.info_hash !== "0000000000000000000000000000000000000000") {
-            const hashLower = item.info_hash.toLowerCase();
-            if (!seenHashes.has(hashLower)) {
-              seenHashes.add(hashLower);
-              const magnet = `magnet:?xt=urn:btih:${item.info_hash}&dn=${encodeURIComponent(item.name)}&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.stealth.si:80/announce`;
-              rawPool.push({
-                source: "PirateBay",
-                title: item.name,
-                magnet: magnet,
-                size: formatSize(item.size),
-                seeders: Number(item.seeders || 0),
-                leechers: Number(item.leechers || 0),
-              });
-            }
-          }
-        });
-      }
-    } catch (err) {
-      console.warn("[PirateBay API Direct Warning]:", err.message);
-    }
-  }
-
-  // 3. Fetch from Bitsearch API
+  // 2. Fetch from Bitsearch API
   try {
     const headers = {};
     if (apiKey) {
