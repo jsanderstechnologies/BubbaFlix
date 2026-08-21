@@ -52,7 +52,6 @@ export const fetchAioStreams = async ({ tmdbId, imdbId, mediaType = "movie", sea
   }
 
   const userAioUrl = getAioStreamsUrl();
-  const baseUrl = getServerUrl();
 
   // Normalize URL to handle trailing slashes
   let cleanAioUrl = userAioUrl.replace(/\/manifest\.json$/, "").replace(/\/$/, "");
@@ -96,13 +95,18 @@ export const fetchAioStreams = async ({ tmdbId, imdbId, mediaType = "movie", sea
 
     // Format streams for BubbaFlix player
     const formattedStreams = rawStreams.map((s, index) => {
-      const titleText = s.description || s.title || s.name || `Stream #${index + 1}`;
+      const fullText = s.description || s.title || s.name || `Stream #${index + 1}`;
       const nameText = s.name || "AIOStreams";
+
+      const lines = fullText.split("\n").map((l) => l.trim()).filter(Boolean);
+      const cleanTitle = lines[0] || fullText;
+      const metaText = lines.slice(1).join(" • ");
 
       return {
         id: index,
         name: nameText,
-        title: titleText,
+        title: cleanTitle,
+        metaText: metaText,
         url: s.url || s.externalUrl || "",
         behaviorHints: s.behaviorHints || {},
       };
