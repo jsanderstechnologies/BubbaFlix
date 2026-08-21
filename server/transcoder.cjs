@@ -1,13 +1,11 @@
-const express = require("express");
+const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const url = require("url");
 
-const app = express();
-// Internal Node server port inside Docker container (always 5000 for Nginx proxy)
+// Internal Node settings server port inside Docker container (always 5000 for Nginx proxy)
 const PORT = 5000;
 const SETTINGS_FILE = path.join(__dirname, "settings.json");
-
-app.use(express.json());
 
 const DEFAULT_TMDB_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmYjM3ODM3YzJiMDlkNzEyMDIwMDIxZjc0NGI5ZTQwNyIsInN1YiI6IjY0NjNlNzE5ZTNmYTJmMDEyNDQ3ODk1NCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.3Y0VloCdPlprLy-OMZQmqtZd4_Ti9GDfHo4SZXh3erU";
 
@@ -81,30 +79,71 @@ const saveServerSettings = (settingsData) => {
   }
 };
 
-// Health check endpoint
-app.get("/api/transcode/health", (req, res) => {
-  res.json({ status: "ok", service: "BubbaFlix Backend Engine" });
-});
+const sendJson = (res, statusCode, data) => {
+  res.writeHead(statusCode, {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  });
+  res.end(JSON.stringify(data));
+};
 
-// Centralized Settings API Endpoints
-app.get("/api/settings", (req, res) => {
-  const currentSettings = loadServerSettings();
-  res.json({ status: "success", settings: currentSettings });
-});
+const server = http.createServer((req, res) => {
+  const parsedUrl = url.parse(req.url, true);
+  const pathname = parsedUrl.pathname;
 
-app.post("/api/settings", (req, res) => {
-  const currentSettings = loadServerSettings();
-  const updatedSettings = { ...currentSettings, ...(req.body || {}) };
-  if (!updatedSettings.tmdbToken || updatedSettings.tmdbToken.trim() === "") {
-    updatedSettings.tmdbToken = DEFAULT_TMDB_KEY;
+  if (req.method === "OPTIONS") {
+    res.writeHead(204, {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    });
+    return res.end();
   }
-  const saved = saveServerSettings(updatedSettings);
 
-  if (saved) {
-    res.json({ status: "success", message: "Global server settings updated successfully.", settings: updatedSettings });
-  } else {
-    res.status(500).json({ error: "Failed to persist settings on server storage." });
+  if (pathname === "/api/transcode/health" && req.method === "GET") {
+    return sendJson(res, 200, { status: "ok", service: "BubbaFlix Backend Engine" });
   }
+
+  if (pathname === "/api/settings" && req.method === "GET") {
+    const settings = loadServerSettings();
+    return sendJson(res, 200, { status: "success", settings });
+  }
+
+  if (pathname === "/api/settings" && req.method === "POST") {
+    let body = "";
+    req.on("data", (chunk) => {
+      body += chunk.toString();
+    });
+
+    req.on("end", () => {
+      try {
+        const payload = body ? JSON.parse(body) : {};
+        const currentSettings = loadServerSettings();
+        const updatedSettings = { ...currentSettings, ...payload };
+        if (!updatedSettings.tmdbToken || updatedSettings.tmdbToken.trim() === "") {
+          updatedSettings.tmdbToken = DEFAULT_TMDB_KEY;
+        }
+
+        const saved = saveServerSettings(updatedSettings);
+        if (saved) {
+          return sendJson(res, 200, {
+            status: "success",
+            message: "Global server settings updated successfully.",
+            settings: updatedSettings,
+          });
+        } else {
+          return sendJson(res, 500, { error: "Failed to persist settings on server storage." });
+        }
+      } catch (e) {
+        return sendJson(res, 400, { error: "Invalid JSON payload." });
+      }
+    });
+    return;
+  }
+
+  return sendJson(res, 404, { error: "Endpoint not found." });
 });
 
 process.on("uncaughtException", (err) => {
@@ -115,8 +154,8 @@ process.on("unhandledRejection", (reason) => {
   console.error("[BubbaFlix Server Unhandled Rejection]:", reason);
 });
 
-const server = app.listen(PORT, "0.0.0.0", () => {
-  console.log(`[BubbaFlix Backend Engine] Server listening on 0.0.0.0:${PORT}`);
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`[BubbaFlix Backend Engine] Pure Node Settings Server listening on 0.0.0.0:${PORT}`);
   loadServerSettings();
 });
 
