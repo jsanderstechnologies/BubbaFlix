@@ -110,12 +110,10 @@ export const isExactTitleMatch = (streamTitle, targetTitle, targetYear, seasonNu
     const epMatchIndex = streamTitle.search(/s\d+e\d+|\d+x\d+/i);
     const titlePrefix = epMatchIndex > 0 ? normalizeText(streamTitle.slice(0, epMatchIndex)) : normStream;
 
-    // Check if prefix contains target title or starts with target title
-    if (!titlePrefix.includes(normTarget) && !normStream.startsWith(normTarget)) {
-      return false;
-    }
+    const cleanPrefix = titlePrefix.replace(/^the\s+/, "").trim();
+    const cleanTarget = normTarget.replace(/^the\s+/, "").trim();
 
-    return true;
+    return cleanPrefix === cleanTarget || cleanPrefix.startsWith(cleanTarget);
   }
 
   // 2. For Movies
@@ -130,13 +128,13 @@ export const isExactTitleMatch = (streamTitle, targetTitle, targetYear, seasonNu
       streamMovieName = normStream.slice(0, yearIdx).trim();
     }
   } else {
-    const tagMatch = normStream.match(/\b(2160p|1080p|720p|480p|webrip|web-dl|bluray|hdtv|x264|x265)\b/);
+    const tagMatch = normStream.match(/\b(2160p|1080p|720p|480p|webrip|web-dl|web|bluray|hdtv|x264|x265|hevc|mkv|mp4)\b/);
     if (tagMatch && tagMatch.index > 0) {
       streamMovieName = normStream.slice(0, tagMatch.index).trim();
     }
   }
 
-  // Verify target year if provided
+  // Verify target year if provided (allow 1 year margin for release differences)
   if (targetYear && streamYear) {
     const targetYrNum = Number(targetYear);
     if (!isNaN(targetYrNum) && Math.abs(streamYear - targetYrNum) > 1) {
@@ -144,21 +142,27 @@ export const isExactTitleMatch = (streamTitle, targetTitle, targetYear, seasonNu
     }
   }
 
-  // Exact movie title or clean prefix match (rejecting sequels/spin-offs)
-  if (streamMovieName === normTarget) {
+  const cleanStreamTitle = streamMovieName.replace(/^the\s+/, "").trim();
+  const cleanTargetTitle = normTarget.replace(/^the\s+/, "").trim();
+
+  // Exact title match
+  if (cleanStreamTitle === cleanTargetTitle) {
     return true;
   }
 
-  if (streamMovieName.startsWith(normTarget)) {
-    const remainder = streamMovieName.slice(normTarget.length).trim();
-    if (remainder.length > 0 && !["the", "movie", "complete"].includes(remainder)) {
-      return false;
+  // Allow clean prefix matches with optional release descriptors (e.g. "Mutiny Extended Cut")
+  if (cleanStreamTitle.startsWith(cleanTargetTitle)) {
+    const remainder = cleanStreamTitle.slice(cleanTargetTitle.length).trim();
+    const allowedSuffixes = [
+      "", "the", "movie", "complete", "extended", "cut", "unrated", "edition",
+      "directors cut", "remastered", "special edition", "collector", "4k", "repack"
+    ];
+    if (allowedSuffixes.some((sfx) => sfx === remainder)) {
+      return true;
     }
-  } else if (!normStream.includes(normTarget)) {
-    return false;
   }
 
-  return true;
+  return false;
 };
 
 export const isLowQualityCamOrTS = (titleStr) => {

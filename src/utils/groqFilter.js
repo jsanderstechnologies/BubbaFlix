@@ -25,9 +25,10 @@ export const filterWithGroqAI = async (results, expectedTitle) => {
 
   const titlesList = results.map((r, i) => `${i + 1}. ${r.title}`).join("\n");
 
-  const prompt = `You are a stream safety & quality classifier for media title: "${expectedTitle}".
-Review the following list of torrent/stream file titles and return ONLY the numbers of titles that are legitimate video releases (movies or TV episodes) for "${expectedTitle}".
+  const prompt = `You are a stream safety & title classifier for media title: "${expectedTitle}".
+Review the following list of torrent/stream file titles and return ONLY the numbers of titles that are legitimate video releases (movies or TV episodes) specifically for "${expectedTitle}".
 STRICTLY EXCLUDE:
+- Any unrelated movies, documentaries, sports specials, or spin-offs that happen to contain matching words in their title (e.g. exclude "The Bus: A French Football Mutiny" when searching for "Mutiny").
 - Any porn, adult content, XXX, or erotica.
 - Standalone audio, MP3, FLAC, soundtracks, or music albums.
 - Games, software, or unrelated files.
