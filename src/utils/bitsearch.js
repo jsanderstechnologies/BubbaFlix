@@ -281,7 +281,7 @@ const formatSize = (bytes) => {
   return num + " B";
 };
 
-// Stream Magnet Search Engine (Bitsearch API)
+// Stream Magnet Search Engine (SolidTorrents API + Bitsearch API)
 const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNum, episodeNum) => {
   let apiKey = getBitsearchApiKey();
   if (!apiKey) {
@@ -296,7 +296,66 @@ const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNu
   const rawPool = [];
   const seenHashes = new Set();
 
-  // Fetch from Bitsearch API
+  // 1. Fetch from SolidTorrents API (Nginx proxy & direct fallbacks)
+  const solidEndpoints = [
+    `${baseUrl}/api/solidtorrents/search?q=${encodeURIComponent(searchQuery)}&category=video`,
+    `https://solidtorrents.to/api/v1/search?q=${encodeURIComponent(searchQuery)}&category=video`,
+    `https://solidtorrents.net/api/v1/search?q=${encodeURIComponent(searchQuery)}&category=video`,
+  ];
+
+  for (const solidUrl of solidEndpoints) {
+    try {
+      console.log(`[SolidTorrents API] Fetching magnet links: ${solidUrl}`);
+      const response = await axios.get(solidUrl, { timeout: 7000 });
+      const results = response.data?.results || response.data?.data || [];
+
+      if (Array.isArray(results) && results.length > 0) {
+        results.forEach((item) => {
+          if (!item) return;
+
+          let magnet = item.magnet;
+          let infoHash = item.infoHash || item.info_hash;
+
+          if (!infoHash && magnet) {
+            const hashMatch = magnet.match(/btih:([a-fA-F0-9]{40})/i);
+            if (hashMatch) infoHash = hashMatch[1];
+          }
+
+          if ((!magnet || !magnet.startsWith("magnet:?")) && infoHash) {
+            magnet = `magnet:?xt=urn:btih:${infoHash}&dn=${encodeURIComponent(item.title || searchQuery)}&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.stealth.si:80/announce`;
+          }
+
+          if (magnet && infoHash) {
+            const hashLower = infoHash.toLowerCase();
+            if (!seenHashes.has(hashLower)) {
+              seenHashes.add(hashLower);
+              const seeders = item.swarm?.seeders !== undefined ? Number(item.swarm.seeders) : Number(item.seeders || item.seeds || 0);
+              const leechers = item.swarm?.leechers !== undefined ? Number(item.swarm.leechers) : Number(item.leechers || item.leeches || 0);
+
+              rawPool.push({
+                source: "SolidTorrents",
+                title: item.title || searchQuery,
+                magnet: magnet,
+                info_hash: infoHash,
+                size: formatSize(item.size),
+                seeders: seeders,
+                leechers: leechers,
+              });
+            }
+          }
+        });
+
+        if (rawPool.length > 0) {
+          console.log(`[SolidTorrents API Success] Retrieved ${rawPool.length} torrents from ${solidUrl}`);
+          break;
+        }
+      }
+    } catch (err) {
+      console.warn(`[SolidTorrents API Warning - ${solidUrl}]:`, err.message);
+    }
+  }
+
+  // 2. Fetch from Bitsearch API
   try {
     const headers = {};
     if (apiKey) {
@@ -330,6 +389,7 @@ const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNu
               source: "Bitsearch",
               title: item.title || item.name || searchQuery,
               magnet: magnet,
+              info_hash: infoHash,
               size: formatSize(item.size || item.size_formatted || item.filesize),
               seeders: item.seeders !== undefined ? Number(item.seeders) : Number(item.seeds || 0),
               leechers: item.leechers !== undefined ? Number(item.leechers) : Number(item.leeches || 0),
