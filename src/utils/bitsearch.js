@@ -280,7 +280,7 @@ const formatSize = (bytes) => {
   return num + " B";
 };
 
-// Magnet Aggregator: YTS Movies API + Bitsearch API
+// Magnet Aggregator: YTS Movies API (yts.mx / yts.am / yts.pm / yts.rs) + Bitsearch API
 const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNum, episodeNum) => {
   let apiKey = getBitsearchApiKey();
   if (!apiKey) {
@@ -295,46 +295,18 @@ const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNu
   const rawPool = [];
   const seenHashes = new Set();
 
-  // 1. Fetch from YTS Movies API (yts.mx via Nginx proxy)
-  try {
-    const ytsUrl = `${baseUrl}/api/yts/list_movies.json?query_term=${encodeURIComponent(searchQuery)}&sort_by=seeds`;
-    console.log(`[YTS API Proxy] Fetching magnet links: ${ytsUrl}`);
-    const response = await axios.get(ytsUrl, { timeout: 8000 });
+  // 1. Fetch from YTS Movies API across multiple domain mirrors (yts.mx, yts.am, yts.pm, yts.rs)
+  const ytsEndpoints = [
+    `${baseUrl}/api/yts/list_movies.json?query_term=${encodeURIComponent(searchQuery)}&sort_by=seeds`,
+    `${baseUrl}/api/yts_am/list_movies.json?query_term=${encodeURIComponent(searchQuery)}&sort_by=seeds`,
+    `https://yts.am/api/v2/list_movies.json?query_term=${encodeURIComponent(searchQuery)}&sort_by=seeds`,
+    `https://yts.mx/api/v2/list_movies.json?query_term=${encodeURIComponent(searchQuery)}&sort_by=seeds`,
+  ];
 
-    if (response.data?.status === "ok" && Array.isArray(response.data?.data?.movies)) {
-      response.data.data.movies.forEach((movie) => {
-        if (Array.isArray(movie.torrents)) {
-          movie.torrents.forEach((t) => {
-            if (t && t.hash && Number(t.seeds || 0) > 0) {
-              const hashLower = t.hash.toLowerCase();
-              if (!seenHashes.has(hashLower)) {
-                seenHashes.add(hashLower);
-                const streamTitle = `${movie.title} (${movie.year}) [${t.quality}] [${t.type ? t.type.toUpperCase() : "YTS"}] YTS`;
-                const magnet = `magnet:?xt=urn:btih:${t.hash}&dn=${encodeURIComponent(streamTitle)}&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.stealth.si:80/announce&tr=udp://tracker.torrent.eu.org:451/announce`;
-                rawPool.push({
-                  source: "YTS",
-                  title: streamTitle,
-                  magnet: magnet,
-                  size: formatSize(t.size_bytes || t.size),
-                  seeders: Number(t.seeds || 0),
-                  leechers: Number(t.peers || 0),
-                });
-              }
-            }
-          });
-        }
-      });
-    }
-  } catch (err) {
-    console.warn("[YTS API Proxy Warning]:", err.message);
-  }
-
-  // Direct YTS API Fallback if Nginx proxy fails
-  if (rawPool.length === 0) {
+  for (const ytsUrl of ytsEndpoints) {
     try {
-      const ytsDirectUrl = `https://yts.mx/api/v2/list_movies.json?query_term=${encodeURIComponent(searchQuery)}&sort_by=seeds`;
-      console.log(`[YTS API Direct] Fetching: ${ytsDirectUrl}`);
-      const response = await axios.get(ytsDirectUrl, { timeout: 8000 });
+      console.log(`[YTS API Mirror] Fetching magnet links: ${ytsUrl}`);
+      const response = await axios.get(ytsUrl, { timeout: 6000 });
 
       if (response.data?.status === "ok" && Array.isArray(response.data?.data?.movies)) {
         response.data.data.movies.forEach((movie) => {
@@ -345,7 +317,7 @@ const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNu
                 if (!seenHashes.has(hashLower)) {
                   seenHashes.add(hashLower);
                   const streamTitle = `${movie.title} (${movie.year}) [${t.quality}] [${t.type ? t.type.toUpperCase() : "YTS"}] YTS`;
-                  const magnet = `magnet:?xt=urn:btih:${t.hash}&dn=${encodeURIComponent(streamTitle)}&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.stealth.si:80/announce`;
+                  const magnet = `magnet:?xt=urn:btih:${t.hash}&dn=${encodeURIComponent(streamTitle)}&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.stealth.si:80/announce&tr=udp://tracker.torrent.eu.org:451/announce`;
                   rawPool.push({
                     source: "YTS",
                     title: streamTitle,
@@ -359,9 +331,14 @@ const fetchMagnetResults = async (searchQuery, targetTitle, targetYear, seasonNu
             });
           }
         });
+
+        if (rawPool.length > 0) {
+          console.log(`[YTS API Success] Retrieved ${rawPool.length} streams from YTS mirror: ${ytsUrl}`);
+          break; // Stop querying additional YTS mirrors once items are found
+        }
       }
     } catch (err) {
-      console.warn("[YTS API Direct Warning]:", err.message);
+      console.warn(`[YTS API Mirror Warning - ${ytsUrl}]:`, err.message);
     }
   }
 
