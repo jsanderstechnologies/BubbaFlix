@@ -7,6 +7,10 @@ services:
     restart: unless-stopped
     ports:
       - "${PORT:-5150}:80"
+    labels:
+      - "io.casaos.icon=https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/public/icon.svg"
+      - "net.unraid.docker.icon=https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/public/icon.svg"
+      - "com.docker.desktop.extension.icon=https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/public/icon.svg"
     environment:
       - SIMKL_CLIENT_ID=${SIMKL_CLIENT_ID:-}
       - PREMIUMIZE_API_KEY=${PREMIUMIZE_API_KEY:-}
