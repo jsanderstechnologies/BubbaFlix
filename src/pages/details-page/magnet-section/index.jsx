@@ -54,6 +54,16 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
     setActiveFilename(item.title || title);
     setShowPlayer(true);
 
+    // Request fullscreen context within user click gesture
+    try {
+      const docEl = document.documentElement;
+      if (docEl && docEl.requestFullscreen && !document.fullscreenElement) {
+        docEl.requestFullscreen().catch(() => {});
+      }
+    } catch (e) {
+      // Ignore gesture policy restriction
+    }
+
     // Auto-sync SIMKL watch history
     if (tmdbId || title) {
       markAsWatchedOnSimkl({

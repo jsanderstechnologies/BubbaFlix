@@ -59,17 +59,19 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
       setControlsVisible(true);
       resetControlsTimeout();
 
-      // Initial focus on Main Play button for Smart TV remote control
+      // Trigger automatic Fullscreen launch
       setTimeout(() => {
+        if (containerRef.current && !document.fullscreenElement) {
+          containerRef.current.requestFullscreen().catch(() => {});
+          setIsFullscreen(true);
+        }
         if (mainPlayBtnRef.current) {
           mainPlayBtnRef.current.focus();
-        } else if (backBtnRef.current) {
-          backBtnRef.current.focus();
         }
         if (videoRef.current) {
           videoRef.current.play().catch(() => {});
         }
-      }, 150);
+      }, 100);
 
       // Load TMDB Logo
       if (tmdbId) {
@@ -79,6 +81,11 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
       // Load Subtitles
       loadSubtitles();
     } else {
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+      setIsFullscreen(false);
+
       if (hideControlsTimeoutRef.current) {
         clearTimeout(hideControlsTimeoutRef.current);
       }
@@ -366,6 +373,9 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
   };
 
   const hidePopup = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    }
     setShow(false);
   };
 
