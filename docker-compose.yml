@@ -6,7 +6,7 @@ services:
     container_name: bubbaflix
     restart: unless-stopped
     ports:
-      - "${PORT:-3000}:80"
+      - "${PORT:-5150}:80"
     environment:
       - SIMKL_CLIENT_ID=${SIMKL_CLIENT_ID:-}
       - PREMIUMIZE_API_KEY=${PREMIUMIZE_API_KEY:-}

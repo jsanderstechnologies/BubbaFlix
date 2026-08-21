@@ -46,7 +46,7 @@ BubbaFlix features **Android TV & Smart TV D-Pad Spatial Navigation with Horizon
   - **Stream Resolution Filters**: Allowed resolutions (4K, 1080p, 720p, 480p) and CAM/HDTS exclusions.
 - **Per-Device Local Settings**:
   - **TV Screen Zoom Scale**: 50% to 140% UI scale saved independently per device.
-  - **Backend Server Address**: Custom server IP/URL per device (e.g. `http://192.168.10.10:3000`).
+  - **Backend Server Address**: Custom server IP/URL per device (e.g. `http://192.168.10.10:5150`).
 
 ---
 
@@ -126,7 +126,7 @@ Run BubbaFlix containerized with Nginx reverse proxy:
 ```bash
 docker compose up --build -d
 ```
-Access the application at **`http://localhost:3000`**.
+Access the application at **`http://localhost:5150`**.
 
 To stop the stack:
 ```bash

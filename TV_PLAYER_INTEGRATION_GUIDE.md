@@ -20,7 +20,7 @@ This guide provides technical specifications, API endpoints, device-aware stream
 
 ## 🏗️ Backend Server Architecture
 
-The BubbaFlix backend server runs on Express.js (default port: `3000` or custom port via `TRANSCODER_PORT`). It serves two primary functions:
+The BubbaFlix backend server runs on Node.js (internal port: `5000`, external mapped port: `5150`). It serves two primary functions:
 
 1. **Centralized Settings Storage**: Persists shared API keys and configuration across devices in `/app/server/settings.json`.
 2. **SIMKL Sync Proxy**: Proxies watch history tracking calls to SIMKL API.
@@ -63,7 +63,7 @@ Define API keys via environment variables in `docker-compose.yml`, Portainer Sta
 | `TMDB_READ_ACCESS_TOKEN` | TMDB v4 Read Access Token | `eyJhbGci...` |
 | `BITSEARCH_API_KEY` | Bitsearch API Key | `bit_key_123` |
 
-Settings persist across container restarts and redeployments using the Docker volume mapping: `bubbaflix-data:/app/server`.
+Settings persist across container restarts and redeployments using the Docker volume mapping: `bubbaflix-data:/app/server`. Default external container port is **5150**.
 
 ---
 
@@ -87,15 +87,15 @@ Native devices can read and write shared configuration settings directly to/from
 
 ### 1. Get Server Settings
 - **HTTP Method**: `GET`
-- **URL**: `http://<SERVER_IP>:3000/api/settings`
+- **URL**: `http://<SERVER_IP>:5150/api/settings`
 
 ### 2. Update Server Settings
 - **HTTP Method**: `POST`
-- **URL**: `http://<SERVER_IP>:3000/api/settings`
+- **URL**: `http://<SERVER_IP>:5150/api/settings`
 
 ### 3. Server Health Check
 - **HTTP Method**: `GET`
-- **URL**: `http://<SERVER_IP>:3000/api/transcode/health`
+- **URL**: `http://<SERVER_IP>:5150/api/transcode/health`
 
 ---
 
@@ -105,7 +105,7 @@ To keep watch status in sync when a native player starts or finishes video playb
 
 ### Mark Media as Watched
 - **HTTP Method**: `POST`
-- **URL**: `http://<SERVER_IP>:3000/api/simkl/sync/history?client_id=<SIMKL_CLIENT_ID>&app-name=BubbaFlix&app-version=1.0`
+- **URL**: `http://<SERVER_IP>:5150/api/simkl/sync/history?client_id=<SIMKL_CLIENT_ID>&app-name=BubbaFlix&app-version=1.0`
 - **Headers**:
   - `simkl-api-key: <SIMKL_CLIENT_ID>`
   - `User-Agent: BubbaFlix/1.0 (Smart TV Media App)`
