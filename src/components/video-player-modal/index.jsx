@@ -18,8 +18,19 @@ import "./index.scss";
 const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, mediaType = "movie", seasonNum, episodeNum }) => {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
-  const backBtnRef = useRef(null);
   const hideControlsTimeoutRef = useRef(null);
+
+  // Element Refs for D-Pad Spatial Navigation
+  const backBtnRef = useRef(null);
+  const rewind30BtnRef = useRef(null);
+  const rewind10BtnRef = useRef(null);
+  const mainPlayBtnRef = useRef(null);
+  const ff10BtnRef = useRef(null);
+  const ff30BtnRef = useRef(null);
+  const scrubberRef = useRef(null);
+  const subtitlesBtnRef = useRef(null);
+  const fullscreenBtnRef = useRef(null);
+  const subOptionRefs = useRef([]);
 
   // Player State
   const [currentUrl, setCurrentUrl] = useState("");
@@ -38,6 +49,7 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
   const [activeSubId, setActiveSubId] = useState("off");
   const [activeVttUrl, setActiveVttUrl] = useState(null);
   const [subLoading, setSubLoading] = useState(false);
+  const [focusedSubIdx, setFocusedSubIdx] = useState(0);
 
   useEffect(() => {
     if (show) {
@@ -47,13 +59,15 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
       setControlsVisible(true);
       resetControlsTimeout();
 
-      // Attempt immediate play & focus
+      // Initial focus on Main Play button for Smart TV remote control
       setTimeout(() => {
-        if (videoRef.current) {
-          videoRef.current.focus();
-          videoRef.current.play().catch(() => {});
+        if (mainPlayBtnRef.current) {
+          mainPlayBtnRef.current.focus();
         } else if (backBtnRef.current) {
           backBtnRef.current.focus();
+        }
+        if (videoRef.current) {
+          videoRef.current.play().catch(() => {});
         }
       }, 150);
 
@@ -188,47 +202,153 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
     setShowSubMenu(false);
   };
 
+  // Smart TV Remote D-Pad Navigation Handler
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (!show) return;
       resetControlsTimeout();
 
       const code = e.keyCode;
+      const activeEl = document.activeElement;
 
-      // Close player modal on Escape or Android TV Remote Back button (KeyCodes: 27, 4, 10009, 461)
+      // 1. Back Button / Escape (KeyCodes: 27, 4, 10009, 461)
       if (e.key === "Escape" || e.key === "Back" || code === 27 || code === 4 || code === 10009 || code === 461) {
         e.preventDefault();
         e.stopPropagation();
-        setShow(false);
+        if (showSubMenu) {
+          setShowSubMenu(false);
+          if (subtitlesBtnRef.current) subtitlesBtnRef.current.focus();
+        } else {
+          setShow(false);
+        }
         return;
       }
 
-      // Space or Enter / OK (KeyCodes: 13, 23, 66) toggles play/pause when video element is active
-      if (
-        e.key === " " ||
-        e.key === "Enter" ||
-        code === 13 ||
-        code === 23 ||
-        code === 66
-      ) {
-        if (document.activeElement === videoRef.current || document.activeElement === containerRef.current) {
+      // 2. Subtitles Menu Navigation
+      if (showSubMenu) {
+        const totalOptions = subtitles.length + 1; // "Off" option + subtitles
+        if (e.key === "ArrowDown" || code === 40 || code === 20) {
           e.preventDefault();
-          togglePlayPause();
+          const nextIdx = (focusedSubIdx + 1) % totalOptions;
+          setFocusedSubIdx(nextIdx);
+          if (subOptionRefs.current[nextIdx]) subOptionRefs.current[nextIdx].focus();
+          return;
+        }
+        if (e.key === "ArrowUp" || code === 38 || code === 19) {
+          e.preventDefault();
+          const prevIdx = (focusedSubIdx - 1 + totalOptions) % totalOptions;
+          setFocusedSubIdx(prevIdx);
+          if (subOptionRefs.current[prevIdx]) subOptionRefs.current[prevIdx].focus();
+          return;
+        }
+        if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+          e.preventDefault();
+          if (focusedSubIdx === 0) {
+            handleSelectSubtitle({ id: "off" });
+          } else {
+            const targetSub = subtitles[focusedSubIdx - 1];
+            if (targetSub) handleSelectSubtitle(targetSub);
+          }
+          return;
         }
       }
 
-      // Left arrow seeks back 10s, Right arrow seeks forward 10s
-      if (e.key === "ArrowLeft" || code === 37 || code === 21) {
-        seekRelative(-10);
+      // 3. Transport Row Horizontal Navigation (Rewind 30s <-> Rewind 10s <-> Play/Pause <-> FF 10s <-> FF 30s)
+      const transportOrder = [
+        rewind30BtnRef.current,
+        rewind10BtnRef.current,
+        mainPlayBtnRef.current,
+        ff10BtnRef.current,
+        ff30BtnRef.current,
+      ];
+
+      const transportIdx = transportOrder.indexOf(activeEl);
+
+      if (transportIdx !== -1) {
+        if (e.key === "ArrowRight" || code === 39 || code === 22) {
+          e.preventDefault();
+          const nextBtn = transportOrder[Math.min(transportOrder.length - 1, transportIdx + 1)];
+          if (nextBtn) nextBtn.focus();
+          return;
+        }
+        if (e.key === "ArrowLeft" || code === 37 || code === 21) {
+          e.preventDefault();
+          const prevBtn = transportOrder[Math.max(0, transportIdx - 1)];
+          if (prevBtn) prevBtn.focus();
+          return;
+        }
+        if (e.key === "ArrowDown" || code === 40 || code === 20) {
+          e.preventDefault();
+          if (scrubberRef.current) scrubberRef.current.focus();
+          return;
+        }
+        if (e.key === "ArrowUp" || code === 38 || code === 19) {
+          e.preventDefault();
+          if (backBtnRef.current) backBtnRef.current.focus();
+          return;
+        }
       }
-      if (e.key === "ArrowRight" || code === 39 || code === 22) {
-        seekRelative(10);
+
+      // 4. Header Navigation (Back button)
+      if (activeEl === backBtnRef.current) {
+        if (e.key === "ArrowDown" || code === 40 || code === 20) {
+          e.preventDefault();
+          if (mainPlayBtnRef.current) mainPlayBtnRef.current.focus();
+          return;
+        }
+      }
+
+      // 5. Scrubber Navigation
+      if (activeEl === scrubberRef.current) {
+        if (e.key === "ArrowUp" || code === 38 || code === 19) {
+          e.preventDefault();
+          if (mainPlayBtnRef.current) mainPlayBtnRef.current.focus();
+          return;
+        }
+        if (e.key === "ArrowDown" || code === 40 || code === 20) {
+          e.preventDefault();
+          if (subtitlesBtnRef.current) subtitlesBtnRef.current.focus();
+          return;
+        }
+        if (e.key === "ArrowLeft" || code === 37 || code === 21) {
+          e.preventDefault();
+          seekRelative(-10);
+          return;
+        }
+        if (e.key === "ArrowRight" || code === 39 || code === 22) {
+          e.preventDefault();
+          seekRelative(10);
+          return;
+        }
+      }
+
+      // 6. Footer Buttons Navigation (Subtitles <-> Fullscreen)
+      if (activeEl === subtitlesBtnRef.current || activeEl === fullscreenBtnRef.current) {
+        if (e.key === "ArrowUp" || code === 38 || code === 19) {
+          e.preventDefault();
+          if (scrubberRef.current) scrubberRef.current.focus();
+          return;
+        }
+        if (e.key === "ArrowLeft" || code === 37 || code === 21) {
+          if (activeEl === fullscreenBtnRef.current) {
+            e.preventDefault();
+            if (subtitlesBtnRef.current) subtitlesBtnRef.current.focus();
+          }
+          return;
+        }
+        if (e.key === "ArrowRight" || code === 39 || code === 22) {
+          if (activeEl === subtitlesBtnRef.current) {
+            e.preventDefault();
+            if (fullscreenBtnRef.current) fullscreenBtnRef.current.focus();
+          }
+          return;
+        }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [show, isPlaying]);
+  }, [show, isPlaying, showSubMenu, focusedSubIdx, subtitles]);
 
   const formatTime = (secs) => {
     if (isNaN(secs) || secs < 0) return "00:00";
@@ -307,6 +427,13 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
                 onClick={hidePopup}
                 tabIndex="0"
                 title="Exit Player"
+                onKeyDown={(e) => {
+                  const code = e.keyCode;
+                  if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+                    e.preventDefault();
+                    hidePopup();
+                  }
+                }}
               >
                 <FiArrowLeft className="backIcon" />
                 <span className="backText">Back</span>
@@ -327,49 +454,89 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
           {/* Center Transport Controls (-30s, -10s, Play/Pause, +10s, +30s) */}
           <div className="centerTransportControls">
             <button
+              ref={rewind30BtnRef}
               className="transportBtn seek"
               onClick={() => seekRelative(-30)}
               title="Rewind 30 seconds"
               tabIndex="0"
+              onKeyDown={(e) => {
+                const code = e.keyCode;
+                if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+                  e.preventDefault();
+                  seekRelative(-30);
+                }
+              }}
             >
               <FiRotateCcw />
               <span className="btnBadge">30</span>
             </button>
 
             <button
+              ref={rewind10BtnRef}
               className="transportBtn seek"
               onClick={() => seekRelative(-10)}
               title="Rewind 10 seconds"
               tabIndex="0"
+              onKeyDown={(e) => {
+                const code = e.keyCode;
+                if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+                  e.preventDefault();
+                  seekRelative(-10);
+                }
+              }}
             >
               <FiRotateCcw />
               <span className="btnBadge">10</span>
             </button>
 
             <button
+              ref={mainPlayBtnRef}
               className="transportBtn mainPlay"
               onClick={togglePlayPause}
               title={isPlaying ? "Pause" : "Play"}
               tabIndex="0"
+              onKeyDown={(e) => {
+                const code = e.keyCode;
+                if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+                  e.preventDefault();
+                  togglePlayPause();
+                }
+              }}
             >
               {isPlaying ? <FiPause /> : <FiPlay className="playIcon" />}
             </button>
 
             <button
+              ref={ff10BtnRef}
               className="transportBtn seek"
               onClick={() => seekRelative(10)}
               title="Fast Forward 10 seconds"
               tabIndex="0"
+              onKeyDown={(e) => {
+                const code = e.keyCode;
+                if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+                  e.preventDefault();
+                  seekRelative(10);
+                }
+              }}
             >
               <FiRotateCw />
               <span className="btnBadge">10</span>
             </button>
 
             <button
+              ref={ff30BtnRef}
               className="transportBtn seek"
               onClick={() => seekRelative(30)}
               title="Fast Forward 30 seconds"
               tabIndex="0"
+              onKeyDown={(e) => {
+                const code = e.keyCode;
+                if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+                  e.preventDefault();
+                  seekRelative(30);
+                }
+              }}
             >
               <FiRotateCw />
               <span className="btnBadge">30</span>
@@ -381,6 +548,7 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
             <div className="scrubberRow">
               <span className="timeDisplay">{formatTime(currentTime)}</span>
               <input
+                ref={scrubberRef}
                 type="range"
                 min="0"
                 max={duration || 100}
@@ -388,6 +556,7 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
                 value={currentTime}
                 onChange={handleSeekChange}
                 className="timelineScrubber"
+                tabIndex="0"
               />
               <span className="timeDisplay">{formatTime(duration)}</span>
             </div>
@@ -396,13 +565,24 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
               {/* Subtitles Button & Popup Menu */}
               <div className="subtitlesContainer">
                 <button
+                  ref={subtitlesBtnRef}
                   className={`footerControlBtn ${activeSubId !== "off" ? "active" : ""}`}
                   onClick={() => {
                     resetControlsTimeout();
                     setShowSubMenu(!showSubMenu);
+                    setFocusedSubIdx(0);
                   }}
                   title="Subtitles (OpenSubtitles)"
                   tabIndex="0"
+                  onKeyDown={(e) => {
+                    const code = e.keyCode;
+                    if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+                      e.preventDefault();
+                      resetControlsTimeout();
+                      setShowSubMenu(!showSubMenu);
+                      setFocusedSubIdx(0);
+                    }
+                  }}
                 >
                   <FiMessageSquare />
                   <span className="btnText">Subtitles</span>
@@ -415,8 +595,10 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
                     </div>
                     <div className="menuList">
                       <div
-                        className={`subOption ${activeSubId === "off" ? "selected" : ""}`}
+                        ref={(el) => (subOptionRefs.current[0] = el)}
+                        className={`subOption ${activeSubId === "off" ? "selected" : ""} ${focusedSubIdx === 0 ? "focused" : ""}`}
                         onClick={() => handleSelectSubtitle({ id: "off" })}
+                        tabIndex="0"
                       >
                         {activeSubId === "off" && <FiCheck className="checkIcon" />}
                         <span>Off</span>
@@ -427,11 +609,13 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
                       ) : subtitles.length === 0 ? (
                         <div className="subLoadingNotice">No OpenSubtitles found</div>
                       ) : (
-                        subtitles.map((sub) => (
+                        subtitles.map((sub, idx) => (
                           <div
                             key={sub.id}
-                            className={`subOption ${activeSubId === sub.id ? "selected" : ""}`}
+                            ref={(el) => (subOptionRefs.current[idx + 1] = el)}
+                            className={`subOption ${activeSubId === sub.id ? "selected" : ""} ${focusedSubIdx === idx + 1 ? "focused" : ""}`}
                             onClick={() => handleSelectSubtitle(sub)}
+                            tabIndex="0"
                           >
                             {activeSubId === sub.id && <FiCheck className="checkIcon" />}
                             <span className="langLabel">[{sub.language}]</span>
@@ -448,10 +632,18 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
 
               {/* Fullscreen Button */}
               <button
+                ref={fullscreenBtnRef}
                 className="footerControlBtn"
                 onClick={toggleFullscreen}
                 title="Toggle Fullscreen"
                 tabIndex="0"
+                onKeyDown={(e) => {
+                  const code = e.keyCode;
+                  if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+                    e.preventDefault();
+                    toggleFullscreen();
+                  }
+                }}
               >
                 {isFullscreen ? <FiMinimize /> : <FiMaximize />}
               </button>

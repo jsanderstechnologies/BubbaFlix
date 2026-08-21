@@ -105,13 +105,17 @@
             cursor: pointer;
             font-size: 14px;
             font-weight: 600;
+            outline: none;
             transition: all 0.2s ease;
             backdrop-filter: blur(8px);
 
             &:hover,
-            &:focus {
-              background: rgba(255, 255, 255, 0.15);
+            &:focus,
+            &:focus-visible {
+              background: rgba(255, 255, 255, 0.2);
               border-color: var(--pink);
+              box-shadow: 0 0 16px var(--pink), 0 4px 20px rgba(218, 47, 104, 0.6);
+              transform: scale(1.1);
 
               .backIcon {
                 color: var(--pink);
@@ -156,6 +160,7 @@
           color: white;
           border-radius: 50%;
           cursor: pointer;
+          outline: none;
           transition: all 0.2s ease;
           backdrop-filter: blur(8px);
 
@@ -175,10 +180,12 @@
             }
 
             &:hover,
-            &:focus {
-              background: rgba(255, 255, 255, 0.2);
+            &:focus,
+            &:focus-visible {
+              background: rgba(255, 255, 255, 0.25);
               border-color: var(--pink);
-              transform: scale(1.1);
+              transform: scale(1.2);
+              box-shadow: 0 0 18px var(--pink), 0 4px 20px rgba(218, 47, 104, 0.6);
             }
           }
 
@@ -187,7 +194,7 @@
             height: 72px;
             font-size: 32px;
             background: var(--gradient);
-            border: none;
+            border: 2px solid transparent;
             box-shadow: 0 4px 20px rgba(218, 47, 104, 0.5);
 
             .playIcon {
@@ -195,9 +202,11 @@
             }
 
             &:hover,
-            &:focus {
-              transform: scale(1.12);
-              box-shadow: 0 6px 24px rgba(218, 47, 104, 0.7);
+            &:focus,
+            &:focus-visible {
+              transform: scale(1.22);
+              border-color: white;
+              box-shadow: 0 0 24px var(--pink), 0 6px 30px rgba(218, 47, 104, 0.8);
             }
           }
         }
@@ -230,6 +239,13 @@
             cursor: pointer;
             border-radius: 3px;
             background: rgba(255, 255, 255, 0.3);
+            outline: none;
+
+            &:focus,
+            &:focus-visible {
+              outline: 2px solid var(--pink);
+              box-shadow: 0 0 12px var(--pink);
+            }
           }
         }
 
@@ -254,6 +270,7 @@
               cursor: pointer;
               font-size: 14px;
               font-weight: 500;
+              outline: none;
               transition: all 0.2s ease;
               backdrop-filter: blur(8px);
 
@@ -264,9 +281,12 @@
               }
 
               &:hover,
-              &:focus {
-                background: rgba(255, 255, 255, 0.15);
+              &:focus,
+              &:focus-visible {
+                background: rgba(255, 255, 255, 0.2);
                 border-color: var(--pink);
+                box-shadow: 0 0 16px var(--pink);
+                transform: scale(1.08);
               }
             }
 
@@ -310,10 +330,22 @@
                   cursor: pointer;
                   font-size: 13px;
                   color: rgba(255, 255, 255, 0.85);
+                  outline: none;
                   transition: background-color 0.2s ease;
 
-                  &:hover {
-                    background-color: rgba(255, 255, 255, 0.1);
+                  &:hover,
+                  &:focus,
+                  &:focus-visible,
+                  &.focused {
+                    background-color: var(--pink);
+                    color: white;
+
+                    .langLabel {
+                      color: white;
+                    }
+                    .checkIcon {
+                      color: white;
+                    }
                   }
 
                   &.selected {
@@ -363,13 +395,17 @@
             border-radius: 8px;
             cursor: pointer;
             font-size: 18px;
+            outline: none;
             transition: all 0.2s ease;
             backdrop-filter: blur(8px);
 
             &:hover,
-            &:focus {
-              background: rgba(255, 255, 255, 0.15);
+            &:focus,
+            &:focus-visible {
+              background: rgba(255, 255, 255, 0.2);
               border-color: var(--pink);
+              box-shadow: 0 0 16px var(--pink);
+              transform: scale(1.1);
             }
           }
         }
