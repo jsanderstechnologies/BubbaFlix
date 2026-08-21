@@ -2,6 +2,7 @@ import axios from "axios";
 import { filterWithGroqAI } from "./groqFilter";
 import { isTvDevice } from "./zoom";
 import { fetchServerSettings, getServerUrl } from "./serverSettings";
+import { checkPremiumizeCache } from "./premiumize";
 
 export const getBitsearchApiKey = () => {
   if (typeof window !== "undefined") {
@@ -395,6 +396,10 @@ export const searchBitsearchMagnets = async (title, year, seasonNum, episodeNum)
   }
 
   // 4. If Groq AI is configured, run AI stream classification filter
-  const finalResults = await filterWithGroqAI(rawResults, title);
+  const aiFilteredResults = await filterWithGroqAI(rawResults, title);
+
+  // 5. Premiumize Cache Check: Check which streams are instantly cached on Premiumize & boost cached streams to top
+  const finalResults = await checkPremiumizeCache(aiFilteredResults);
+
   return { results: finalResults, error: null };
 };

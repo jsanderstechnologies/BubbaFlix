@@ -52,6 +52,54 @@ export const testPremiumizeAccount = async (apiKey) => {
   }
 };
 
+// Premiumize Cache Check API: Checks which stream magnet links are instantly cached on Premiumize cloud servers
+export const checkPremiumizeCache = async (results) => {
+  if (!Array.isArray(results) || results.length === 0) return results;
+
+  let apiKey = getPremiumizeApiKey();
+  if (!apiKey) {
+    const serverSettings = await fetchServerSettings();
+    if (serverSettings?.premiumizeKey) {
+      apiKey = serverSettings.premiumizeKey;
+      localStorage.setItem("premiumize_api_key", apiKey);
+    }
+  }
+
+  if (!apiKey) return results;
+
+  try {
+    const baseUrl = getServerUrl();
+    const items = results.map((r) => r.magnet || r.info_hash).filter(Boolean);
+    if (items.length === 0) return results;
+
+    const params = new URLSearchParams();
+    params.append("apikey", apiKey);
+    items.forEach((item) => params.append("items[]", item));
+
+    console.log(`[Premiumize Cache Check] Checking cache status for ${items.length} stream magnets...`);
+    const response = await axios.get(`${baseUrl}/api/premiumize/cache/check?${params.toString()}`, {
+      timeout: 8000,
+    });
+
+    if (response.data?.status === "success" && Array.isArray(response.data?.response)) {
+      const cacheStatuses = response.data.response;
+      const updatedResults = results.map((item, idx) => ({
+        ...item,
+        isCached: !!cacheStatuses[idx],
+      }));
+
+      // Sort: Cached streams (isCached: true) boosted to top of list!
+      updatedResults.sort((a, b) => (b.isCached ? 1 : 0) - (a.isCached ? 1 : 0));
+      console.log(`[Premiumize Cache Check] Found ${updatedResults.filter((r) => r.isCached).length} instantly cached streams!`);
+      return updatedResults;
+    }
+  } catch (err) {
+    console.warn("[Premiumize Cache Check Warning]:", err.message);
+  }
+
+  return results;
+};
+
 export const getDirectStreamUrl = async (magnetLink) => {
   let apiKey = getPremiumizeApiKey();
 
