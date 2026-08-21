@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   FiArrowLeft,
   FiPlay,
@@ -53,6 +54,7 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
 
   useEffect(() => {
     if (show) {
+      document.body.classList.add("videoPlayerActive");
       const targetUrl = rawUrl || videoUrl || "";
       setCurrentUrl(targetUrl);
       setIsPlaying(true);
@@ -81,6 +83,7 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
       // Load Subtitles
       loadSubtitles();
     } else {
+      document.body.classList.remove("videoPlayerActive");
       if (document.fullscreenElement) {
         document.exitFullscreen().catch(() => {});
       }
@@ -94,6 +97,10 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
         setActiveVttUrl(null);
       }
     }
+
+    return () => {
+      document.body.classList.remove("videoPlayerActive");
+    };
   }, [show, videoUrl, rawUrl, tmdbId]);
 
   const loadTmdbLogo = async () => {
@@ -226,7 +233,7 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
           setShowSubMenu(false);
           if (subtitlesBtnRef.current) subtitlesBtnRef.current.focus();
         } else {
-          setShow(false);
+          hidePopup();
         }
         return;
       }
@@ -373,6 +380,7 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
   };
 
   const hidePopup = () => {
+    document.body.classList.remove("videoPlayerActive");
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(() => {});
     }
@@ -383,7 +391,7 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
 
   if (!show) return null;
 
-  return (
+  return createPortal(
     <div
       ref={containerRef}
       className={`videoPlayerModal ${show ? "visible" : ""}`}
@@ -670,7 +678,8 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
