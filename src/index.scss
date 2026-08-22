@@ -30,20 +30,30 @@ html, body {
   width: 100%;
   min-height: 100vh;
   overflow-x: hidden;
-  overflow-y: auto !important;
+  overflow-y: auto;
   scroll-behavior: smooth;
   background-color: var(--black);
 }
 
-/* Hide Header Navigation Bar completely when Web Video Player is active */
+/* Hide Header Navigation Bar & Scrollbar completely when Web Video Player is active */
+html.videoPlayerActive,
 body.videoPlayerActive {
   overflow: hidden !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
 
   .header {
     display: none !important;
     opacity: 0 !important;
     visibility: hidden !important;
     pointer-events: none !important;
+  }
+
+  &::-webkit-scrollbar,
+  ::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
   }
 }
 

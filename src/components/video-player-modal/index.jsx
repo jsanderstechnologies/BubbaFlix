@@ -55,6 +55,7 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
   useEffect(() => {
     if (show) {
       document.body.classList.add("videoPlayerActive");
+      document.documentElement.classList.add("videoPlayerActive");
       const targetUrl = rawUrl || videoUrl || "";
       setCurrentUrl(targetUrl);
       setIsPlaying(true);
@@ -84,6 +85,7 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
       loadSubtitles();
     } else {
       document.body.classList.remove("videoPlayerActive");
+      document.documentElement.classList.remove("videoPlayerActive");
       if (document.fullscreenElement) {
         document.exitFullscreen().catch(() => {});
       }
@@ -100,16 +102,32 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
 
     return () => {
       document.body.classList.remove("videoPlayerActive");
+      document.documentElement.classList.remove("videoPlayerActive");
     };
   }, [show, videoUrl, rawUrl, tmdbId]);
 
   const loadTmdbLogo = async () => {
     try {
-      const endpoint = mediaType === "tv" || mediaType === "series" ? `/tv/${tmdbId}/images` : `/movie/${tmdbId}/images`;
-      const res = await fetchDataFromAPI(`${endpoint}?include_image_language=en,null`);
-      if (res && res.logos && res.logos.length > 0) {
-        const logoPath = res.logos[0].file_path;
-        setMediaLogoUrl(`https://image.tmdb.org/t500${logoPath}`);
+      setMediaLogoUrl(null);
+      const targetType = mediaType === "tv" || mediaType === "series" ? "tv" : "movie";
+      const endpoint = `/${targetType}/${tmdbId}/images`;
+      const res = await fetchDataFromAPI(endpoint, { include_image_language: "en,null" });
+
+      if (res && Array.isArray(res.logos) && res.logos.length > 0) {
+        const engLogo = res.logos.find((l) => l.iso_639_1 === "en") || res.logos[0];
+        if (engLogo && engLogo.file_path) {
+          setMediaLogoUrl(`https://image.tmdb.org/t500${engLogo.file_path}`);
+          return;
+        }
+      }
+
+      // Fallback lookup without language filter if none found
+      const fallbackRes = await fetchDataFromAPI(endpoint);
+      if (fallbackRes && Array.isArray(fallbackRes.logos) && fallbackRes.logos.length > 0) {
+        const fallbackLogo = fallbackRes.logos[0];
+        if (fallbackLogo && fallbackLogo.file_path) {
+          setMediaLogoUrl(`https://image.tmdb.org/t500${fallbackLogo.file_path}`);
+        }
       }
     } catch (e) {
       console.warn("[Player TMDB Logo Error]:", e.message);
@@ -381,6 +399,7 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
 
   const hidePopup = () => {
     document.body.classList.remove("videoPlayerActive");
+    document.documentElement.classList.remove("videoPlayerActive");
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(() => {});
     }
