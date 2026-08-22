@@ -16,10 +16,22 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType =
   const [isOpen, setIsOpen] = useState(!compact);
   const [unconfigured, setUnconfigured] = useState(false);
 
-  // Streaming state
   const [showPlayer, setShowPlayer] = useState(false);
   const [activeVideoUrl, setActiveVideoUrl] = useState("");
   const [activeFilename, setActiveFilename] = useState("");
+  const lastFocusedElementRef = useRef(null);
+
+  // Restore focus to stream button when player closes
+  useEffect(() => {
+    if (!showPlayer && lastFocusedElementRef.current) {
+      const timer = setTimeout(() => {
+        if (lastFocusedElementRef.current && typeof lastFocusedElementRef.current.focus === "function") {
+          lastFocusedElementRef.current.focus();
+        }
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [showPlayer]);
 
   useEffect(() => {
     if (title || tmdbId) {
@@ -51,6 +63,10 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType =
 
   const handlePlayStream = async (item) => {
     if (!item || !item.url) return;
+
+    if (typeof document !== "undefined" && document.activeElement) {
+      lastFocusedElementRef.current = document.activeElement;
+    }
 
     let targetUrl = item.url;
 
