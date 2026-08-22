@@ -4,6 +4,19 @@
 
 ---
 
+## 📲 Downloader App Direct Install Code
+
+You can install **BubbaFlix TV** directly on any Firestick, Android TV, or Google TV device using the **Downloader** app:
+
+> 🔥 **Downloader Code**: **`3996723`**
+
+### Steps to Install via Downloader:
+1. Open the **Downloader** app on your Firestick, Fire TV, or Android TV.
+2. In the URL/Code search field, enter **`3996723`** and press **Go**.
+3. The APK will download and prompt you to install automatically!
+
+---
+
 ## 🌟 Key Features
 
 - 📺 **Native Android TV Leanback Banner**: Displays on the home screen launcher of Android TV, Google TV, and Fire TV devices.
@@ -25,10 +38,10 @@ From the `android-tv` directory:
 
 ```bash
 # Build Debug APK
-./gradlew assembleDebug
+./gradlew.bat assembleDebug
 
 # Build Release APK
-./gradlew assembleRelease
+./gradlew.bat assembleRelease
 ```
 
 The compiled APK will be generated at:
@@ -36,9 +49,12 @@ The compiled APK will be generated at:
 
 ---
 
-## 📲 How to Install & Sideload on TV Devices
+## 📲 Alternative Installation Methods
 
-### Method 1: ADB (Android Debug Bridge)
+### Method 1: Downloader Code
+Enter **`3996723`** in the Downloader app search bar.
+
+### Method 2: ADB (Android Debug Bridge)
 Connect your computer to your TV over Wi-Fi or USB:
 
 ```bash
@@ -46,13 +62,8 @@ Connect your computer to your TV over Wi-Fi or USB:
 adb connect 192.168.1.XX:5555
 
 # Install BubbaFlix TV APK
-adb install -r android-tv/app/build/outputs/apk/debug/app-debug.apk
+adb install -r BubbaFlixTV.apk
 ```
-
-### Method 2: Firestick / Android TV "Downloader" App
-1. Install the **Downloader** app from the Amazon Appstore or Google Play Store on your TV.
-2. Enable "Install Unknown Apps" for Downloader in TV Settings.
-3. Enter the URL of your hosted `BubbaFlixTV.apk` or GitHub Release link in Downloader to install directly!
 
 ---
 
