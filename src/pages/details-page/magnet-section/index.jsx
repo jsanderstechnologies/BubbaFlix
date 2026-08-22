@@ -3,35 +3,22 @@ import { useState, useEffect } from "react";
 import { fetchAioStreams } from "../../../utils/aiostreams";
 import { markAsWatchedOnSimkl } from "../../../utils/simkl";
 import { getPremiumizeKey, resolveMagnetWithPremiumize } from "../../../utils/premiumize";
-import { shouldAutoTranscode } from "../../../utils/codecDetect";
 import ContentWrapper from "../../../components/content-wrapper";
 import Spinner from "../../../components/spinner";
 import VideoPlayerModal from "../../../components/video-player-modal";
 import { FiPlay, FiChevronDown, FiChevronUp, FiAlertCircle, FiExternalLink } from "react-icons/fi";
 import "./index.scss";
 
-const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType = "movie", compact = false }) => {
+const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, compact = false }) => {
   const [streams, setStreams] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [isOpen, setIsOpen] = useState(!compact);
+  const [isOpen, setIsOpen] = useState(false); // Closed by default
   const [unconfigured, setUnconfigured] = useState(false);
 
+  // Streaming state
   const [showPlayer, setShowPlayer] = useState(false);
   const [activeVideoUrl, setActiveVideoUrl] = useState("");
   const [activeFilename, setActiveFilename] = useState("");
-  const lastFocusedElementRef = useRef(null);
-
-  // Restore focus to stream button when player closes
-  useEffect(() => {
-    if (!showPlayer && lastFocusedElementRef.current) {
-      const timer = setTimeout(() => {
-        if (lastFocusedElementRef.current && typeof lastFocusedElementRef.current.focus === "function") {
-          lastFocusedElementRef.current.focus();
-        }
-      }, 150);
-      return () => clearTimeout(timer);
-    }
-  }, [showPlayer]);
 
   useEffect(() => {
     if (title || tmdbId) {
@@ -52,7 +39,7 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType =
 
     setLoading(false);
 
-    if (res.unconfigured && res.streams.length === 0) {
+    if (res.unconfigured) {
       setUnconfigured(true);
       setStreams([]);
       return;
@@ -61,12 +48,8 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType =
     setStreams(res.streams || []);
   };
 
-  const handlePlayStream = async (item) => {
+  const handlePlayStream = async (item, transcodeMode = false) => {
     if (!item || !item.url) return;
-
-    if (typeof document !== "undefined" && document.activeElement) {
-      lastFocusedElementRef.current = document.activeElement;
-    }
 
     let targetUrl = item.url;
 
@@ -82,22 +65,16 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType =
       }
     }
 
-    // Smart Auto-Detect Transcoding Requirement for Web Clients
-    const needsTranscode = shouldAutoTranscode(targetUrl, item.title || title);
-    if (needsTranscode && targetUrl.startsWith("magnet:")) {
+    if (transcodeMode && targetUrl.startsWith("magnet:")) {
       alert(
         "Magnet P2P streams require a Debrid account (Real-Debrid, Premiumize, TorBox) for server transcoding.\n\nPlease save your Premiumize API Key in Settings or select a direct HTTP stream."
       );
       return;
     }
 
-    const streamUrl = needsTranscode
+    const streamUrl = transcodeMode
       ? `/api/transcode?url=${encodeURIComponent(targetUrl)}`
       : targetUrl;
-
-    if (needsTranscode) {
-      console.log("[MagnetSection Engine] Auto-detected incompatible browser codec. Streaming via backend server transcoder.");
-    }
 
     setActiveVideoUrl(streamUrl);
     setActiveFilename(item.title || title);
@@ -189,12 +166,20 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType =
                       </div>
                     </div>
 
-                    <div className="itemActions">
+                    <div className="itemActions" style={{ display: "flex", gap: "8px" }}>
                       <button
                         className="actionBtn play"
-                        onClick={() => handlePlayStream(item)}
+                        onClick={() => handlePlayStream(item, false)}
                       >
-                        <FiPlay /> Play Stream
+                        <FiPlay /> Play Direct
+                      </button>
+                      <button
+                        className="actionBtn play transcode"
+                        style={{ background: "rgba(218, 47, 104, 0.2)", borderColor: "var(--pink)", color: "#ffffff" }}
+                        onClick={() => handlePlayStream(item, true)}
+                        title="Transcode stream on backend server for universal browser & device compatibility"
+                      >
+                        ⚡ Transcode
                       </button>
                     </div>
                   </div>

@@ -69,6 +69,6 @@ export const fetchDataFromAPI = async (url, params) => {
     return data;
   } catch (e) {
     console.error("[TMDB API Request Failed]:", e.message || e);
-    return null;
+    return e;
   }
 };

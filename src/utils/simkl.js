@@ -90,59 +90,6 @@ export const isSimklWatched = ({ tmdbId, mediaType, seasonNum, episodeNum }) => 
   return false;
 };
 
-/**
- * Calculates the next unwatched episode for a TV show based on watch history.
- */
-export const findNextUnwatchedEpisode = (tmdbId, seasons = []) => {
-  if (!tmdbId || !Array.isArray(seasons) || seasons.length === 0) {
-    return { seasonNumber: 1, episodeNumber: 1 };
-  }
-
-  const cache = getSimklWatchCache();
-  const idStr = String(tmdbId);
-
-  const validSeasons = seasons.filter((s) => s.season_number > 0).sort((a, b) => a.season_number - b.season_number);
-
-  let lastWatchedSeason = 1;
-  let lastWatchedEpisode = 0;
-  let foundAnyWatched = false;
-
-  for (const s of validSeasons) {
-    const sNum = s.season_number;
-    const epCount = s.episode_count || 30;
-
-    for (let eNum = 1; eNum <= epCount; eNum++) {
-      const epKey = `${idStr}_s${sNum}_e${eNum}`;
-      if (cache.episodes[epKey]) {
-        lastWatchedSeason = sNum;
-        lastWatchedEpisode = eNum;
-        foundAnyWatched = true;
-      }
-    }
-  }
-
-  if (!foundAnyWatched) {
-    return { seasonNumber: validSeasons[0]?.season_number || 1, episodeNumber: 1 };
-  }
-
-  // Check next episode in same season
-  const currentSeasonObj = validSeasons.find((s) => s.season_number === lastWatchedSeason);
-  const totalInCurrentSeason = currentSeasonObj?.episode_count || 30;
-
-  if (lastWatchedEpisode < totalInCurrentSeason) {
-    return { seasonNumber: lastWatchedSeason, episodeNumber: lastWatchedEpisode + 1 };
-  }
-
-  // Check first episode of next season
-  const nextSeasonObj = validSeasons.find((s) => s.season_number > lastWatchedSeason);
-  if (nextSeasonObj) {
-    return { seasonNumber: nextSeasonObj.season_number, episodeNumber: 1 };
-  }
-
-  // All seasons/episodes watched -> stay on latest episode
-  return { seasonNumber: lastWatchedSeason, episodeNumber: lastWatchedEpisode };
-};
-
 // SIMKL API Phase 1 & Phase 2 Compliant Sync Strategy
 export const fetchUserSimklHistory = async (forceManualSync = false) => {
   const { clientId } = getSimklConfig();

@@ -12,8 +12,6 @@ import dayjs from "dayjs";
 import { FiTv, FiCalendar, FiClock, FiAlertCircle } from "react-icons/fi";
 import "./index.scss";
 
-import { findNextUnwatchedEpisode } from "../../../utils/simkl";
-
 const SeasonsSection = ({ tvId, seasons, showTitle }) => {
   const { url } = useSelector((state) => state.home);
 
@@ -22,33 +20,19 @@ const SeasonsSection = ({ tvId, seasons, showTitle }) => {
     : [{ id: 1, season_number: 1, name: "Season 1", episode_count: 8 }];
 
   const [selectedSeasonNumber, setSelectedSeasonNumber] = useState(1);
-  const [targetEpNumber, setTargetEpNumber] = useState(1);
 
   useEffect(() => {
     if (Array.isArray(seasons) && seasons.length > 0) {
-      const nextEp = findNextUnwatchedEpisode(tvId, seasons);
-      if (nextEp.seasonNumber) {
-        setSelectedSeasonNumber(nextEp.seasonNumber);
-        setTargetEpNumber(nextEp.episodeNumber || 1);
+      const filtered = seasons.filter((s) => s.season_number > 0);
+      if (filtered.length > 0 && !filtered.some((s) => s.season_number === selectedSeasonNumber)) {
+        setSelectedSeasonNumber(filtered[0].season_number);
       }
     }
-  }, [tvId, seasons]);
+  }, [seasons]);
 
   const { data: seasonData, loading, error } = useFetch(
     `/tv/${tvId}/season/${selectedSeasonNumber}`
   );
-
-  useEffect(() => {
-    if (!loading && seasonData?.episodes?.length > 0 && targetEpNumber) {
-      const timer = setTimeout(() => {
-        const epElement = document.getElementById(`episode-card-${selectedSeasonNumber}-${targetEpNumber}`);
-        if (epElement) {
-          epElement.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [loading, seasonData, selectedSeasonNumber, targetEpNumber]);
 
   const today = dayjs();
 
@@ -127,7 +111,7 @@ const SeasonsSection = ({ tvId, seasons, showTitle }) => {
                 : false;
 
               return (
-                <div key={ep.id} id={`episode-card-${selectedSeasonNumber}-${ep.episode_number}`} className="episodeCard">
+                <div key={ep.id} className="episodeCard">
                   <div className="episodeMain">
                     <div className="stillBlock">
                       <Img className="stillImg" src={stillUrl} />

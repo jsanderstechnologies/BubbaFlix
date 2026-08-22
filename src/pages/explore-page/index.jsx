@@ -64,19 +64,6 @@ const Explore = () => {
 		fetchInitialData();
 	}, [mediaType]);
 
-	// Auto-focus the upper-left (first) poster when Movies / TV Shows page finishes loading
-	useEffect(() => {
-		if (!loading && data?.results?.length > 0) {
-			const timer = setTimeout(() => {
-				const firstPoster = document.querySelector(".explorePage .content .movieCard");
-				if (firstPoster && typeof firstPoster.focus === "function") {
-					firstPoster.focus();
-				}
-			}, 250);
-			return () => clearTimeout(timer);
-		}
-	}, [loading, data, mediaType]);
-
 	const handleSortChange = (e) => {
 		const val = e.target.value;
 		setSortby(val);

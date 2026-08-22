@@ -21,11 +21,7 @@ const MovieCard = ({ data, fromSearch, mediaType }) => {
 		: PosterFallback;
 
 	const handleSelect = () => {
-		const targetType = data.media_type || mediaType || "movie";
-		const targetId = data.id;
-		if (targetId) {
-			navigate(`/${targetType}/${targetId}`);
-		}
+		navigate(`/${data.media_type || mediaType}/${data.id}`);
 	};
 
 	return (
