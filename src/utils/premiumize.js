@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getServerSettings } from "./serverSettings";
+import { fetchServerSettings } from "./serverSettings";
 
 export const getPremiumizeKey = () => {
   if (typeof window !== "undefined") {
@@ -29,7 +29,7 @@ export const resolveMagnetWithPremiumize = async (magnetUrl, customApiKey = null
 
     if (!apiKey) {
       // Fallback check server backend settings
-      const serverSettings = await getServerSettings();
+      const serverSettings = await fetchServerSettings();
       apiKey = serverSettings?.premiumizeKey || "";
     }
 
