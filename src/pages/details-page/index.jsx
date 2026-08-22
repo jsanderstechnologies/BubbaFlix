@@ -9,10 +9,12 @@ import { useParams } from "react-router-dom";
 
 const DetailsPage = () => {
 	const { mediaType, id } = useParams();
-	const { data: detailsData } = useFetch(`/${mediaType}/${id}`);
-	const { data, loading } = useFetch(`/${mediaType}/${id}/videos`);
+	const cleanMediaType = mediaType === "tv" || mediaType === "series" ? "tv" : "movie";
+
+	const { data: detailsData } = useFetch(`/${cleanMediaType}/${id}`);
+	const { data, loading } = useFetch(`/${cleanMediaType}/${id}/videos`);
 	const { data: credits, loading: creditsLoading } = useFetch(
-		`/${mediaType}/${id}/credits`
+		`/${cleanMediaType}/${id}/credits`
 	);
 
 	const title = detailsData?.title || detailsData?.name;
@@ -23,7 +25,7 @@ const DetailsPage = () => {
 			<DetailsBanner video={data?.results?.[0]} crew={credits?.crew} />
 
 			{/* Show season dropdown & episode magnet streams ONLY for TV series */}
-			{mediaType === "tv" && (
+			{cleanMediaType === "tv" && (
 				<SeasonsSection
 					tvId={id}
 					seasons={detailsData?.seasons}

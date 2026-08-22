@@ -19,7 +19,8 @@ const DetailsBanner = ({ video, crew }) => {
 	const [videoId, setVideoId] = useState(null);
 
 	const { mediaType, id } = useParams();
-	const { data, loading } = useFetch(`/${mediaType}/${id}`);
+	const cleanMediaType = mediaType === "tv" || mediaType === "series" ? "tv" : "movie";
+	const { data, loading } = useFetch(`/${cleanMediaType}/${id}`);
 
 	const { url } = useSelector((state) => state.home);
 
@@ -33,6 +34,30 @@ const DetailsBanner = ({ video, crew }) => {
 		const minutes = totalMinutes % 60;
 		return `${hours}h${minutes > 0 ? ` ${minutes}m` : ""}`;
 	};
+
+	if (!loading && (!data || !data.id)) {
+		return (
+			<div className="detailsBanner" style={{ minHeight: "400px", display: "flex", alignItems: "center" }}>
+				<ContentWrapper>
+					<div style={{ textAlign: "center", padding: "60px 20px" }}>
+						<h2 style={{ fontSize: "24px", color: "#ffffff", marginBottom: "12px" }}>
+							Unable to Load Details
+						</h2>
+						<p style={{ color: "rgba(255,255,255,0.7)", marginBottom: "24px" }}>
+							The requested title details could not be retrieved. Please check your network connection or select another item.
+						</p>
+						<button
+							className="actionBtn play"
+							onClick={() => window.history.back()}
+							style={{ padding: "12px 24px", cursor: "pointer", display: "inline-flex", alignItems: "center" }}
+						>
+							Go Back
+						</button>
+					</div>
+				</ContentWrapper>
+			</div>
+		);
+	}
 
 	return (
 		<div className="detailsBanner">
