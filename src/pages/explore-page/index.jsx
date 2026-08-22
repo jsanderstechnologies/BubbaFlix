@@ -1,40 +1,33 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import InfiniteScroll from "react-infinite-scroll-component";
-import Select from "react-select";
 
 import "./index.scss";
 
-// import useFetch from "../../hooks/useFetch";
 import { fetchDataFromAPI } from "../../utils/api";
 import ContentWrapper from "../../components/content-wrapper";
 import MovieCard from "../../components/movie-card";
 import Spinner from "../../components/spinner";
+import { FiSliders } from "react-icons/fi";
 
 let filters = {};
 
-const sortbyData = [
-	{ value: "popularity.desc", label: "Popularity Descending" },
-	{ value: "popularity.asc", label: "Popularity Ascending" },
-	{ value: "vote_average.desc", label: "Rating Descending" },
-	{ value: "vote_average.asc", label: "Rating Ascending" },
-	{
-		value: "primary_release_date.desc",
-		label: "Release Date Descending",
-	},
-	{ value: "primary_release_date.asc", label: "Release Date Ascending" },
-	{ value: "original_title.asc", label: "Title (A-Z)" },
+const SORT_OPTIONS = [
+	{ value: "popularity.desc", label: "Sort by Popularity (High to Low)" },
+	{ value: "vote_average.desc", label: "Sort by Rating (Top Rated)" },
+	{ value: "primary_release_date.desc", label: "Sort by Release Date (Newest)" },
+	{ value: "original_title.asc", label: "Sort by Title (A-Z)" },
+	{ value: "popularity.asc", label: "Sort by Popularity (Low to High)" },
+	{ value: "vote_average.asc", label: "Sort by Rating (Lowest)" },
+	{ value: "primary_release_date.asc", label: "Sort by Release Date (Oldest)" },
 ];
 
 const Explore = () => {
 	const [data, setData] = useState(null);
 	const [pageNum, setPageNum] = useState(1);
 	const [loading, setLoading] = useState(false);
-	// const [genre, setGenre] = useState(null);
-	const [sortby, setSortby] = useState(null);
+	const [sortby, setSortby] = useState("popularity.desc");
 	const { mediaType } = useParams();
-
-	// const { data: genresData } = useFetch(`/genre/${mediaType}/list`);
 
 	const fetchInitialData = () => {
 		setLoading(true);
@@ -63,35 +56,21 @@ const Explore = () => {
 	};
 
 	useEffect(() => {
-		filters = {};
+		filters = { sort_by: "popularity.desc" };
 		setData(null);
 		setPageNum(1);
-		setSortby(null);
-		// setGenre(null);
+		setSortby("popularity.desc");
 		fetchInitialData();
 	}, [mediaType]);
 
-	const onChange = (selectedItems, action) => {
-		if (action.name === "sortby") {
-			setSortby(selectedItems);
-			if (action.action !== "clear") {
-				filters.sort_by = selectedItems.value;
-			} else {
-				delete filters.sort_by;
-			}
+	const handleSortChange = (e) => {
+		const val = e.target.value;
+		setSortby(val);
+		if (val) {
+			filters.sort_by = val;
+		} else {
+			delete filters.sort_by;
 		}
-
-		// if (action.name === "genres") {
-		// 	setGenre(selectedItems);
-		// 	if (action.action !== "clear") {
-		// 		let genreId = selectedItems.map((g) => g.id);
-		// 		genreId = JSON.stringify(genreId).slice(1, -1);
-		// 		filters.with_genres = genreId;
-		// 	} else {
-		// 		delete filters.with_genres;
-		// 	}
-		// }
-
 		setPageNum(1);
 		fetchInitialData();
 	};
@@ -102,51 +81,44 @@ const Explore = () => {
 				<div className="pageHeader">
 					<div className="pageTitle">
 						{mediaType === "tv"
-							? "Explore TV Shows"
+							? "Explore TV Series"
 							: "Explore Movies"}
 					</div>
 					<div className="filters">
-						{/* <Select
-							isMulti
-							name="genres"
-							value={genre}
-							closeMenuOnSelect={false}
-							options={genresData?.genres}
-							getOptionLabel={(option) => option.name}
-							getOptionValue={(option) => option.id}
-							onChange={onChange}
-							placeholder="Select genres"
-							className="react-select-container genresDD"
-							classNamePrefix="react-select"
-						/> */}
-						<Select
-							name="sortby"
-							value={sortby}
-							options={sortbyData}
-							onChange={onChange}
-							isClearable={true}
-							placeholder="Sort by"
-							className="react-select-container sortbyDD"
-							classNamePrefix="react-select"
-						/>
+						<div className="selectWrapper">
+							<FiSliders className="selectIcon" />
+							<select
+								className="tvSortSelect"
+								value={sortby}
+								onChange={handleSortChange}
+								tabIndex="0"
+							>
+								{SORT_OPTIONS.map((opt) => (
+									<option key={opt.value} value={opt.value}>
+										{opt.label}
+									</option>
+								))}
+							</select>
+						</div>
 					</div>
 				</div>
+
 				{loading && <Spinner initial={true} />}
 				{!loading && (
 					<>
 						{data?.results?.length > 0 ? (
 							<InfiniteScroll
 								className="content"
-								dataLength={data?.results?.length || []}
+								dataLength={data?.results?.length || 0}
 								next={fetchNextPageData}
 								hasMore={pageNum <= data?.total_pages}
 								loader={<Spinner />}
 							>
 								{data?.results?.map((item, index) => {
-									if (item.media_type === "person") return;
+									if (item.media_type === "person") return null;
 									return (
 										<MovieCard
-											key={index}
+											key={`${item.id}-${index}`}
 											data={item}
 											mediaType={mediaType}
 										/>
@@ -155,7 +127,7 @@ const Explore = () => {
 							</InfiniteScroll>
 						) : (
 							<span className="resultNotFound">
-								Sorry, Results not found!
+								Sorry, no media titles found matching your request.
 							</span>
 						)}
 					</>

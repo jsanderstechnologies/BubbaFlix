@@ -38,13 +38,14 @@ export const applyZoom = (scalePercent) => {
 
   const ratio = validScale / 100;
 
-  // Apply zoom using standard CSS zoom property supported by WebKit/Blink (Android TV, Silk, FireTV, Chrome, Edge, Safari)
-  if ("zoom" in document.body.style) {
+  // Apply zoom safely without breaking position: fixed headers on Android TV WebViews
+  if ("zoom" in document.documentElement.style) {
+    document.documentElement.style.zoom = ratio;
+  } else if ("zoom" in document.body.style) {
     document.body.style.zoom = ratio;
   } else {
-    // Fallback transform for Firefox
-    document.body.style.transform = `scale(${ratio})`;
-    document.body.style.transformOrigin = "top center";
+    // Font-size scaling fallback
+    document.documentElement.style.fontSize = `${16 * ratio}px`;
   }
 
   window.dispatchEvent(new Event("tv-zoom-updated"));
