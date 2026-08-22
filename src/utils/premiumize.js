@@ -22,6 +22,7 @@ export const savePremiumizeKey = (key) => {
 
 /**
  * Resolves a magnet link into a direct high-speed HTTP/HTTPS CDN video stream via Premiumize.me API
+ * Automatically adds the magnet transfer to the user's Premiumize cloud storage (7-day retention)
  */
 export const resolveMagnetWithPremiumize = async (magnetUrl, customApiKey = null) => {
   try {
@@ -36,34 +37,35 @@ export const resolveMagnetWithPremiumize = async (magnetUrl, customApiKey = null
     if (!apiKey) {
       return {
         success: false,
-        message: "No Premiumize API Key configured. Please add your Premiumize API Key in Settings.",
+        message: "No Premiumize API Key configured. Please save your Premiumize API Key in Settings.",
       };
     }
 
-    console.log("[Premiumize API] Submitting magnet link for instant cloud resolution...");
+    console.log("[Premiumize API] Submitting magnet link for 7-day cloud transfer creation...");
 
-    // 1. Create transfer on Premiumize
-    const formData = new FormData();
-    formData.append("src", magnetUrl);
-    formData.append("apikey", apiKey);
+    // 1. Create transfer on Premiumize using x-www-form-urlencoded params
+    const createParams = new URLSearchParams();
+    createParams.append("src", magnetUrl);
+    createParams.append("apikey", apiKey);
 
-    const createRes = await axios.post("https://www.premiumize.me/api/transfer/create", formData, {
+    const createRes = await axios.post("https://www.premiumize.me/api/transfer/create", createParams, {
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
       timeout: 12000,
     });
 
     if (createRes.data && createRes.data.status === "success") {
       const transferId = createRes.data.id;
       const transferName = createRes.data.name || "Media File";
-      console.log(`[Premiumize API] Transfer created successfully: ID=${transferId}, Name=${transferName}`);
+      console.log(`[Premiumize API] Transfer successfully created in Cloud Transfers: ID=${transferId}, Name=${transferName}`);
 
-      // 2. Query transfer status / file list to get direct stream link
-      // Wait brief moment for instant cache resolution
-      await new Promise((r) => setTimeout(r, 800));
+      // 2. Query transfer status / file list to get direct CDN stream link
+      await new Promise((r) => setTimeout(r, 1000));
 
-      const listFormData = new FormData();
-      listFormData.append("apikey", apiKey);
+      const listParams = new URLSearchParams();
+      listParams.append("apikey", apiKey);
 
-      const listRes = await axios.post("https://www.premiumize.me/api/transfer/list", listFormData, {
+      const listRes = await axios.post("https://www.premiumize.me/api/transfer/list", listParams, {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
         timeout: 10000,
       });
 
@@ -71,15 +73,17 @@ export const resolveMagnetWithPremiumize = async (magnetUrl, customApiKey = null
         const match = listRes.data.transfers.find((t) => t.id === transferId || t.name === transferName) || listRes.data.transfers[0];
 
         if (match) {
-          // If transfer has a direct file_id or folder_id
           const targetId = match.file_id || match.folder_id;
           if (targetId) {
-            const itemFormData = new FormData();
-            itemFormData.append("id", targetId);
-            itemFormData.append("apikey", apiKey);
+            const itemParams = new URLSearchParams();
+            itemParams.append("id", targetId);
+            itemParams.append("apikey", apiKey);
 
             if (match.file_id) {
-              const fileRes = await axios.post("https://www.premiumize.me/api/item/details", itemFormData, { timeout: 10000 });
+              const fileRes = await axios.post("https://www.premiumize.me/api/item/details", itemParams, {
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                timeout: 10000,
+              });
               if (fileRes.data && fileRes.data.link) {
                 console.log(`[Premiumize API] Direct Stream CDN URL Resolved: ${fileRes.data.link}`);
                 return {
@@ -89,7 +93,10 @@ export const resolveMagnetWithPremiumize = async (magnetUrl, customApiKey = null
                 };
               }
             } else if (match.folder_id) {
-              const folderRes = await axios.post("https://www.premiumize.me/api/folder/list", itemFormData, { timeout: 10000 });
+              const folderRes = await axios.post("https://www.premiumize.me/api/folder/list", itemParams, {
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                timeout: 10000,
+              });
               if (folderRes.data && Array.isArray(folderRes.data.content)) {
                 // Find largest video file in folder
                 const videoFiles = folderRes.data.content
@@ -112,9 +119,13 @@ export const resolveMagnetWithPremiumize = async (magnetUrl, customApiKey = null
       }
 
       // Fallback check root folder list for recent downloads
-      const rootFormData = new FormData();
-      rootFormData.append("apikey", apiKey);
-      const rootFolderRes = await axios.post("https://www.premiumize.me/api/folder/list", rootFormData, { timeout: 10000 });
+      const rootParams = new URLSearchParams();
+      rootParams.append("apikey", apiKey);
+
+      const rootFolderRes = await axios.post("https://www.premiumize.me/api/folder/list", rootParams, {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        timeout: 10000,
+      });
 
       if (rootFolderRes.data && Array.isArray(rootFolderRes.data.content)) {
         const videoFiles = rootFolderRes.data.content
@@ -130,6 +141,12 @@ export const resolveMagnetWithPremiumize = async (magnetUrl, customApiKey = null
           };
         }
       }
+    } else if (createRes.data && createRes.data.message) {
+      console.warn("[Premiumize API Notice]:", createRes.data.message);
+      return {
+        success: false,
+        message: createRes.data.message,
+      };
     }
   } catch (err) {
     console.warn("[Premiumize API Error]:", err.message);
@@ -141,6 +158,6 @@ export const resolveMagnetWithPremiumize = async (magnetUrl, customApiKey = null
 
   return {
     success: false,
-    message: "Magnet added to Premiumize cloud. Please allow a few moments for caching or select another stream.",
+    message: "Magnet added to Premiumize Cloud. Please allow a few moments for download or select another stream.",
   };
 };
