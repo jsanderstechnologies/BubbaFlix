@@ -47,10 +47,14 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
     setStreams(res.streams || []);
   };
 
-  const handlePlayStream = (item) => {
+  const handlePlayStream = (item, transcodeMode = false) => {
     if (!item || !item.url) return;
 
-    setActiveVideoUrl(item.url);
+    const streamUrl = transcodeMode
+      ? `/api/transcode?url=${encodeURIComponent(item.url)}`
+      : item.url;
+
+    setActiveVideoUrl(streamUrl);
     setActiveFilename(item.title || title);
     setShowPlayer(true);
 
@@ -140,12 +144,20 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
                       </div>
                     </div>
 
-                    <div className="itemActions">
+                    <div className="itemActions" style={{ display: "flex", gap: "8px" }}>
                       <button
                         className="actionBtn play"
-                        onClick={() => handlePlayStream(item)}
+                        onClick={() => handlePlayStream(item, false)}
                       >
-                        <FiPlay /> Play Stream
+                        <FiPlay /> Play Direct
+                      </button>
+                      <button
+                        className="actionBtn play transcode"
+                        style={{ background: "rgba(218, 47, 104, 0.2)", borderColor: "var(--pink)", color: "#ffffff" }}
+                        onClick={() => handlePlayStream(item, true)}
+                        title="Transcode stream on backend server for universal browser & device compatibility"
+                      >
+                        ⚡ Transcode
                       </button>
                     </div>
                   </div>

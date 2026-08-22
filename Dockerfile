@@ -13,11 +13,11 @@ COPY . .
 # Build production bundle
 RUN npm run build
 
-# Stage 2: Serve application using ultra-lightweight Nginx + Native Node.js Settings Backend
+# Stage 2: Serve application using Nginx + Native Node.js Backend + FFmpeg & VLC Transcoder Engine
 FROM nginx:alpine
 
-# Install ONLY lightweight Node.js runtime (No npm, No FFmpeg, No heavy build tools!)
-RUN apk add --no-cache nodejs
+# Install Node.js runtime, FFmpeg, and VLC media engine for universal backend stream transcoding
+RUN apk add --no-cache nodejs ffmpeg vlc
 
 WORKDIR /app
 

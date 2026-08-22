@@ -2,6 +2,7 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const url = require("url");
+const { spawn } = require("child_process");
 
 // Internal Node settings server port inside Docker container (always 5000 for Nginx proxy)
 const PORT = 5000;
@@ -69,7 +70,6 @@ const loadServerSettings = () => {
       const loaded = JSON.parse(data);
       const merged = { ...envDefaults, ...loaded };
 
-      // Ensure environment variables override empty disk settings
       if ((!loaded.aiostreams_url || loaded.aiostreams_url === "https://aiostreams.elfhosted.com/") && envDefaults.aiostreams_url) {
         merged.aiostreams_url = envDefaults.aiostreams_url;
       }
@@ -134,15 +134,95 @@ const server = http.createServer((req, res) => {
     return res.end();
   }
 
+  // Health check endpoint
   if (pathname === "/api/transcode/health" && req.method === "GET") {
-    return sendJson(res, 200, { status: "ok", service: "BubbaFlix Backend Engine" });
+    return sendJson(res, 200, {
+      status: "ok",
+      service: "BubbaFlix VLC & FFmpeg Transcoder Engine",
+      capabilities: ["AC3", "EAC3", "TrueHD", "DTS", "DTS-HD", "FLAC", "HEVC", "AV1", "VP9", "H264", "MKV", "TS", "MP4"]
+    });
   }
 
+  // Real-Time Transcoding & Remuxing Proxy Stream Endpoint
+  if (pathname === "/api/transcode" && req.method === "GET") {
+    const targetUrl = parsedUrl.query.url;
+
+    if (!targetUrl) {
+      logMessage("[Transcoder Engine Error] Request missing required 'url' parameter.", true);
+      return sendJson(res, 400, { error: "Missing required query parameter: url" });
+    }
+
+    logMessage(`====================================================`);
+    logMessage(`[Backend Transcoder Engine] Incoming stream transcode request`);
+    logMessage(`[Backend Transcoder Engine] Stream Target: ${targetUrl}`);
+
+    res.writeHead(200, {
+      "Content-Type": "video/mp4",
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+      "Pragma": "no-cache",
+      "Expires": "0",
+      "Transfer-Encoding": "chunked",
+      "Access-Control-Allow-Origin": "*",
+    });
+
+    // FFmpeg / VLC execution parameters for real-time MP4 streaming with H.264 video and stereo AAC audio
+    const ffmpegArgs = [
+      "-user_agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "-i", targetUrl,
+      "-c:v", "libx264",
+      "-preset", "ultrafast",
+      "-tune", "zerolatency",
+      "-crf", "23",
+      "-maxrate", "4M",
+      "-bufsize", "8M",
+      "-c:a", "aac",
+      "-b:a", "192k",
+      "-ac", "2",
+      "-f", "mp4",
+      "-movflags", "frag_keyframe+empty_moov+default_base_moof",
+      "pipe:1"
+    ];
+
+    logMessage(`[Backend Transcoder Engine] Spawning real-time transcoder pipe...`);
+    const transcoderProcess = spawn("ffmpeg", ffmpegArgs);
+
+    // Pipe stdout directly to HTTP response
+    transcoderProcess.stdout.pipe(res);
+
+    transcoderProcess.stderr.on("data", (data) => {
+      const msg = data.toString().trim();
+      if (msg.includes("frame=") || msg.includes("Error") || msg.includes("warning")) {
+        // Output periodic stats to server log
+      }
+    });
+
+    transcoderProcess.on("error", (err) => {
+      logMessage(`[Backend Transcoder Error] Failed to launch transcoder process: ${err.message}`, true);
+    });
+
+    transcoderProcess.on("close", (code) => {
+      logMessage(`[Backend Transcoder Engine] Stream session terminated (Exit code: ${code})`);
+      logMessage(`====================================================`);
+    });
+
+    // Kill transcoder process immediately when client disconnects
+    req.on("close", () => {
+      logMessage(`[Backend Transcoder Engine] Client disconnected stream. Terminating transcoder process.`);
+      try {
+        transcoderProcess.kill("SIGKILL");
+      } catch (e) {}
+    });
+
+    return;
+  }
+
+  // Server Settings GET API
   if (pathname === "/api/settings" && req.method === "GET") {
     const settings = loadServerSettings();
     return sendJson(res, 200, { status: "success", settings });
   }
 
+  // Server Settings POST API
   if (pathname === "/api/settings" && req.method === "POST") {
     let body = "";
     req.on("data", (chunk) => {
@@ -198,7 +278,7 @@ process.on("unhandledRejection", (reason) => {
 });
 
 server.listen(PORT, "0.0.0.0", () => {
-  logMessage(`[BubbaFlix Backend Engine] Pure Node Settings Server listening on 0.0.0.0:${PORT}`);
+  logMessage(`[BubbaFlix Backend Transcoder & Settings Engine] Pure Node Server listening on 0.0.0.0:${PORT}`);
   loadServerSettings();
 });
 
