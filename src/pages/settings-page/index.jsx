@@ -6,11 +6,12 @@ import { fetchDataFromAPI, getActiveTmdbToken } from "../../utils/api";
 import { getAioStreamsUrl, saveAioStreamsUrl, testAioStreamsConnection, DEFAULT_AIOSTREAMS_URL } from "../../utils/aiostreams";
 import { getSimklConfig, testSimklConnection } from "../../utils/simkl";
 import { getGroqApiKey } from "../../utils/groqFilter";
+import { getPremiumizeKey, savePremiumizeKey } from "../../utils/premiumize";
 import { isTvDevice, getSavedZoom, applyZoom } from "../../utils/zoom";
 import { updateServerSettings, fetchServerSettings, getServerUrl, saveServerUrl, testBackendServerHealth } from "../../utils/serverSettings";
 import { getApiConfiguration } from "../../store/homeSlice";
 import { THEMES, getSavedTheme, applyTheme } from "../../utils/theme";
-import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning, FiCheckSquare, FiTv, FiPlus, FiMinus, FiServer, FiInfo, FiExternalLink } from "react-icons/fi";
+import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning, FiCheckSquare, FiTv, FiPlus, FiMinus, FiServer, FiInfo, FiExternalLink, FiCloud } from "react-icons/fi";
 import "./index.scss";
 
 const ALL_RESOLUTIONS = [
@@ -39,6 +40,12 @@ const SettingsPage = () => {
   const [aioStatus, setAioStatus] = useState(null);
   const [testingAio, setTestingAio] = useState(false);
   const [hasAioCustom, setHasAioCustom] = useState(false);
+
+  // Premiumize.me API State
+  const [premiumizeKey, setPremiumizeKey] = useState("");
+  const [showPremiumizeKey, setShowPremiumizeKey] = useState(false);
+  const [premiumizeStatus, setPremiumizeStatus] = useState(null);
+  const [hasPremiumizeCustom, setHasPremiumizeCustom] = useState(false);
 
   // TMDB Key State
   const [token, setToken] = useState("");
@@ -100,6 +107,11 @@ const SettingsPage = () => {
     const activeGroq = savedGroq || serverSettings?.groqKey || "";
     setGroqKey(activeGroq);
     setHasGroqCustom(!!activeGroq);
+
+    const savedPrem = getPremiumizeKey();
+    const activePrem = savedPrem || serverSettings?.premiumizeKey || "";
+    setPremiumizeKey(activePrem);
+    setHasPremiumizeCustom(!!activePrem);
 
     const savedRes = localStorage.getItem("stream_resolutions");
     const savedExcludeLow = localStorage.getItem("stream_exclude_low_quality");
@@ -262,28 +274,35 @@ const SettingsPage = () => {
   const handleSaveGroq = async (e) => {
     e.preventDefault();
     const cleanKey = groqKey.trim();
-    if (!cleanKey) {
-      setGroqStatus({ type: "error", text: "Groq API Key cannot be empty." });
-      return;
-    }
-    localStorage.setItem("groq_api_key", cleanKey);
-    setHasGroqCustom(true);
+    saveGroqApiKey(cleanKey);
+    setHasGroqCustom(!!cleanKey);
     await updateServerSettings({ groqKey: cleanKey });
-    setGroqStatus({
-      type: "success",
-      text: "Groq AI Key saved & synced to backend server! AI stream filtering is active.",
-    });
+    setGroqStatus({ type: "success", text: cleanKey ? "Groq AI Stream Filter Key saved!" : "Groq AI Key cleared." });
   };
 
   const handleClearGroq = async () => {
-    localStorage.removeItem("groq_api_key");
+    saveGroqApiKey("");
     setGroqKey("");
     setHasGroqCustom(false);
     await updateServerSettings({ groqKey: "" });
-    setGroqStatus({
-      type: "info",
-      text: "Groq API Key cleared on server.",
-    });
+    setGroqStatus({ type: "success", text: "Groq AI Key cleared." });
+  };
+
+  const handleSavePremiumize = async (e) => {
+    e.preventDefault();
+    const cleanKey = premiumizeKey.trim();
+    savePremiumizeKey(cleanKey);
+    setHasPremiumizeCustom(!!cleanKey);
+    await updateServerSettings({ premiumizeKey: cleanKey });
+    setPremiumizeStatus({ type: "success", text: "Premiumize API Key saved successfully!" });
+  };
+
+  const handleClearPremiumize = async () => {
+    savePremiumizeKey("");
+    setPremiumizeKey("");
+    setHasPremiumizeCustom(false);
+    await updateServerSettings({ premiumizeKey: "" });
+    setPremiumizeStatus({ type: "success", text: "Premiumize API Key cleared." });
   };
 
   const handleToggleResolution = (resId) => {
@@ -671,6 +690,66 @@ const SettingsPage = () => {
                         type="button"
                         className="clearBtn"
                         onClick={handleClearGroq}
+                      >
+                        Clear Key
+                      </button>
+                    )}
+                  </div>
+                </form>
+              </div>
+
+              {/* Premiumize.me API Cloud Stream Card */}
+              <div className="settingsCard">
+                <div className="cardHeader">
+                  <h2><FiCloudLightning style={{ marginRight: 8 }} /> Premiumize.me Cloud Stream Key</h2>
+                  <span className={`badge ${hasPremiumizeCustom ? "custom" : "default"}`}>
+                    <FiServer style={{ marginRight: 4 }} /> {hasPremiumizeCustom ? "Premiumize Active" : "No Key Set"}
+                  </span>
+                </div>
+                <p className="description">
+                  Automatically adds magnet torrent files to your Premiumize cloud storage for 7-day retention, resolving direct high-speed HTTP CDN video streams for instant playback across all devices.
+                </p>
+                <div className="apiInstruction">
+                  <FiInfo style={{ marginRight: 6, verticalAlign: "middle" }} />
+                  <strong>How to get key:</strong> Login at <a href="https://www.premiumize.me/account" target="_blank" rel="noreferrer">premiumize.me/account</a> &gt; API Key.
+                </div>
+                <form onSubmit={handleSavePremiumize} className="tokenForm" style={{ marginTop: 15 }}>
+                  <div className="inputGroup">
+                    <label htmlFor="premiumizeKey">PREMIUMIZE_API_KEY</label>
+                    <div className="inputWrapper">
+                      <input
+                        id="premiumizeKey"
+                        type={showPremiumizeKey ? "text" : "password"}
+                        value={premiumizeKey}
+                        onChange={(e) => setPremiumizeKey(e.target.value)}
+                        placeholder="Enter your Premiumize Customer ID / API Key..."
+                      />
+                      <button
+                        type="button"
+                        className="toggleVisibility"
+                        onClick={() => setShowPremiumizeKey(!showPremiumizeKey)}
+                        title={showPremiumizeKey ? "Hide Key" : "Show Key"}
+                      >
+                        {showPremiumizeKey ? <FiEyeOff /> : <FiEye />}
+                      </button>
+                    </div>
+                  </div>
+                  {premiumizeStatus && (
+                    <div className={`statusBanner ${premiumizeStatus.type}`}>
+                      {premiumizeStatus.type === "success" && <FiCheckCircle />}
+                      {premiumizeStatus.type === "error" && <FiXCircle />}
+                      <span>{premiumizeStatus.text}</span>
+                    </div>
+                  )}
+                  <div className="buttonGroup">
+                    <button type="submit" className="saveBtn">
+                      <FiSave /> Save Premiumize Key
+                    </button>
+                    {hasPremiumizeCustom && (
+                      <button
+                        type="button"
+                        className="clearBtn"
+                        onClick={handleClearPremiumize}
                       >
                         Clear Key
                       </button>

@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { fetchAioStreams } from "../../../utils/aiostreams";
 import { markAsWatchedOnSimkl } from "../../../utils/simkl";
+import { getPremiumizeKey, resolveMagnetWithPremiumize } from "../../../utils/premiumize";
 import ContentWrapper from "../../../components/content-wrapper";
 import Spinner from "../../../components/spinner";
 import VideoPlayerModal from "../../../components/video-player-modal";
@@ -47,19 +48,34 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
     setStreams(res.streams || []);
   };
 
-  const handlePlayStream = (item, transcodeMode = false) => {
+  const handlePlayStream = async (item, transcodeMode = false) => {
     if (!item || !item.url) return;
 
-    if (transcodeMode && item.url.startsWith("magnet:")) {
+    let targetUrl = item.url;
+
+    // Auto-resolve magnet link via Premiumize Cloud API (adds to 7-day cloud retention)
+    if (targetUrl.startsWith("magnet:")) {
+      const premKey = getPremiumizeKey();
+      if (premKey) {
+        console.log("[MagnetSection] Resolving magnet via Premiumize Cloud API...");
+        const premRes = await resolveMagnetWithPremiumize(targetUrl, premKey);
+        if (premRes.success && premRes.streamUrl) {
+          targetUrl = premRes.streamUrl;
+          console.log("[MagnetSection] Successfully resolved Premiumize HTTP CDN stream URL:", targetUrl);
+        }
+      }
+    }
+
+    if (transcodeMode && targetUrl.startsWith("magnet:")) {
       alert(
-        "Magnet P2P streams require a Debrid account (Real-Debrid, Premiumize, TorBox) for server transcoding.\n\nPlease configure your AIOStreams Debrid URL in Settings or select a direct HTTP stream."
+        "Magnet P2P streams require a Debrid account (Real-Debrid, Premiumize, TorBox) for server transcoding.\n\nPlease save your Premiumize API Key in Settings or select a direct HTTP stream."
       );
       return;
     }
 
     const streamUrl = transcodeMode
-      ? `/api/transcode?url=${encodeURIComponent(item.url)}`
-      : item.url;
+      ? `/api/transcode?url=${encodeURIComponent(targetUrl)}`
+      : targetUrl;
 
     setActiveVideoUrl(streamUrl);
     setActiveFilename(item.title || title);
