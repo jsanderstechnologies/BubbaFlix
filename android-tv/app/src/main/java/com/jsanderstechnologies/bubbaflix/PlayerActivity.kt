@@ -162,6 +162,7 @@ class PlayerActivity : AppCompatActivity() {
             .build()
             .apply {
                 playerView.player = this
+                playerView.keepScreenOn = true
                 val mediaItem = MediaItem.fromUri(Uri.parse(videoUrl))
                 setMediaItem(mediaItem)
                 prepare()

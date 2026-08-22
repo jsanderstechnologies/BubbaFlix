@@ -44,6 +44,10 @@ export const fetchImdbId = async (tmdbId, mediaType = "movie") => {
   return null;
 };
 
+/**
+ * Fetches stream sources from primary AIOStreams endpoint.
+ * Retries up to 3 times with a 2-second delay if stream fetching fails or returns 0 streams.
+ */
 export const fetchAioStreams = async ({ tmdbId, imdbId, mediaType = "movie", seasonNum, episodeNum }) => {
   let targetImdbId = imdbId;
   if (!targetImdbId && tmdbId) {
@@ -65,68 +69,34 @@ export const fetchAioStreams = async ({ tmdbId, imdbId, mediaType = "movie", sea
     streamPath = `/stream/movie/${idParam}.json`;
   }
 
-  // 1. Query Primary AIOStreams Server
-  try {
-    const targetEndpoint = `${cleanAioUrl}${streamPath}`;
-    console.log(`[AIOStreams Engine] Querying primary streams: ${targetEndpoint}`);
+  const targetEndpoint = `${cleanAioUrl}${streamPath}`;
+  const MAX_RETRIES = 3;
+  const RETRY_DELAY_MS = 2000;
 
-    const response = await axios.get(targetEndpoint, { timeout: 9000 });
-    const rawStreams = response.data?.streams || [];
-
-    const hasConfigError = rawStreams.some((s) =>
-      s.name?.includes("[❌]") || s.description?.includes("reconfigure") || s.externalUrl?.includes("/configure")
-    );
-
-    if (!hasConfigError && Array.isArray(rawStreams) && rawStreams.length > 0) {
-      const formattedStreams = rawStreams
-        .map((s, index) => {
-          const fullText = s.description || s.title || s.name || `Stream #${index + 1}`;
-          const nameText = s.name || "AIOStreams";
-          const lines = fullText.split("\n").map((l) => l.trim()).filter(Boolean);
-          const cleanTitle = lines[0] || fullText;
-          const metaText = lines.slice(1).join(" • ");
-          const streamUrl = s.url || s.externalUrl || (s.infoHash ? `magnet:?xt=urn:btih:${s.infoHash}&dn=${encodeURIComponent(cleanTitle)}` : "");
-
-          return {
-            id: index,
-            name: nameText,
-            title: cleanTitle,
-            metaText: metaText,
-            url: streamUrl,
-            behaviorHints: s.behaviorHints || {},
-          };
-        })
-        .filter((s) => s.url && s.url.length > 0);
-
-      if (formattedStreams.length > 0) {
-        return { streams: formattedStreams, unconfigured: false, message: null };
-      }
-    }
-  } catch (err) {
-    console.warn("[Primary AIOStreams Warning]:", err.message);
-  }
-
-  // 2. Query Automatic Fallback Provider (Torrentio Public Addon)
-  if (targetImdbId) {
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const fallbackEndpoint = `https://torrentio.strem.fun${streamPath}`;
-      console.log(`[AIOStreams Engine] Querying Torrentio fallback: ${fallbackEndpoint}`);
+      console.log(`[AIOStreams Engine] Querying primary streams (Attempt ${attempt}/${MAX_RETRIES}): ${targetEndpoint}`);
 
-      const response = await axios.get(fallbackEndpoint, { timeout: 9000 });
+      const response = await axios.get(targetEndpoint, { timeout: 9000 });
       const rawStreams = response.data?.streams || [];
 
-      if (Array.isArray(rawStreams) && rawStreams.length > 0) {
+      const hasConfigError = rawStreams.some((s) =>
+        s.name?.includes("[❌]") || s.description?.includes("reconfigure") || s.externalUrl?.includes("/configure")
+      );
+
+      if (!hasConfigError && Array.isArray(rawStreams) && rawStreams.length > 0) {
         const formattedStreams = rawStreams
           .map((s, index) => {
-            const nameLine = (s.name || "Torrentio").replace("\n", " ");
-            const titleLines = (s.title || "").split("\n").map((l) => l.trim()).filter(Boolean);
-            const cleanTitle = titleLines[0] || `Episode Stream #${index + 1}`;
-            const metaText = titleLines.slice(1).join(" • ");
+            const fullText = s.description || s.title || s.name || `Stream #${index + 1}`;
+            const nameText = s.name || "AIOStreams";
+            const lines = fullText.split("\n").map((l) => l.trim()).filter(Boolean);
+            const cleanTitle = lines[0] || fullText;
+            const metaText = lines.slice(1).join(" • ");
             const streamUrl = s.url || s.externalUrl || (s.infoHash ? `magnet:?xt=urn:btih:${s.infoHash}&dn=${encodeURIComponent(cleanTitle)}` : "");
 
             return {
               id: index,
-              name: nameLine,
+              name: nameText,
               title: cleanTitle,
               metaText: metaText,
               url: streamUrl,
@@ -136,11 +106,17 @@ export const fetchAioStreams = async ({ tmdbId, imdbId, mediaType = "movie", sea
           .filter((s) => s.url && s.url.length > 0);
 
         if (formattedStreams.length > 0) {
+          console.log(`[AIOStreams Engine] Success! Retrieved ${formattedStreams.length} stream sources on Attempt ${attempt}.`);
           return { streams: formattedStreams, unconfigured: false, message: null };
         }
       }
     } catch (err) {
-      console.warn("[Torrentio Fallback Warning]:", err.message);
+      console.warn(`[AIOStreams Engine Warning] Attempt ${attempt} failed: ${err.message}`);
+    }
+
+    if (attempt < MAX_RETRIES) {
+      console.log(`[AIOStreams Engine] Waiting ${RETRY_DELAY_MS / 1000}s before retry...`);
+      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
     }
   }
 
