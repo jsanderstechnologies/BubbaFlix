@@ -1,6 +1,6 @@
-# BubbaFlix TV 📺 - Native Android TV, Google TV & Fire TV App
+# BubbaFlix TV 📺 - Native Android TV, Google TV & Fire TV App (v1.0.0)
 
-**BubbaFlix TV** is the official native Android application for Android TV, Google TV, Chromecast with Google TV, Nvidia Shield, and Amazon Fire TV devices.
+**BubbaFlix TV v1.0.0** is the official native Android application for Android TV, Google TV, Chromecast with Google TV, Nvidia Shield, and Amazon Fire TV devices.
 
 ---
 
@@ -13,7 +13,7 @@ You can install **BubbaFlix TV** directly on any Firestick, Android TV, or Googl
 ### Steps to Install via Downloader:
 1. Open the **Downloader** app on your Firestick, Fire TV, or Android TV.
 2. In the URL/Code search field, enter **`7040100`** and press **Go**.
-3. The APK will download and prompt you to install automatically!
+3. The APK (`BubbaFlixTV-v1.0.0.apk`) will download and prompt you to install automatically!
 
 ---
 
@@ -37,7 +37,7 @@ You can install **BubbaFlix TV** directly on any Firestick, Android TV, or Googl
 From the `android-tv` directory:
 
 ```bash
-# Build Debug APK
+# Build Debug APK (BubbaFlixTV-v1.0.0.apk)
 ./gradlew.bat assembleDebug
 
 # Build Release APK
@@ -45,7 +45,7 @@ From the `android-tv` directory:
 ```
 
 The compiled APK will be generated at:
-`android-tv/app/build/outputs/apk/debug/app-debug.apk`
+`android-tv/app/build/outputs/apk/debug/BubbaFlixTV-v1.0.0.apk`
 
 ---
 
@@ -62,7 +62,7 @@ Connect your computer to your TV over Wi-Fi or USB:
 adb connect 192.168.1.XX:5555
 
 # Install BubbaFlix TV APK
-adb install -r BubbaFlixTV.apk
+adb install -r BubbaFlixTV-v1.0.0.apk
 ```
 
 ---

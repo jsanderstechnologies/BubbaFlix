@@ -2,7 +2,7 @@
   <img src="public/icon.svg" alt="BubbaFlix Logo" width="180" />
 </p>
 
-# BubbaFlix 🎬 - Movie & TV Show Streaming & Discovery App
+# BubbaFlix 🎬 - Movie & TV Show Streaming & Discovery App (v1.0.0)
 
 BubbaFlix is a modern, high-performance movie and TV show streaming discovery app built with **React 18**, **Redux Toolkit**, **React Router v6**, **Vite**, **Pure Node.js**, **Native Android TV (Kotlin)**, and integrated with **AIOStreams (ElfHosted + Premiumize)**, **TMDB**, **Groq AI**, and **SIMKL**.
 
@@ -12,7 +12,7 @@ BubbaFlix features **Direct AIOStreams Integration**, **Native Android TV & Fire
 
 ## 📲 Downloader App Quick Install
 
-Install **BubbaFlix TV** directly on any Firestick, Fire TV, or Android TV device using the **Downloader** app:
+Install **BubbaFlix TV v1.0.0** directly on any Firestick, Fire TV, or Android TV device using the **Downloader** app:
 
 > 🔥 **Downloader Code**: **`7040100`**
 
@@ -21,7 +21,7 @@ Install **BubbaFlix TV** directly on any Firestick, Fire TV, or Android TV devic
 ## 🌟 Key Features
 
 ### 📺 Native Android TV, Google TV & Fire TV App (`android-tv/`)
-- **Downloader App Quick Install**: Enter code **`7040100`** in the Downloader app to install directly on your TV.
+- **Downloader App Quick Install**: Enter code **`7040100`** in the Downloader app to install `BubbaFlixTV-v1.0.0.apk` directly on your TV.
 - **Native Android TV Launcher Banner**: Includes full Leanback launcher integration (`LEANBACK_LAUNCHER`) for Android TV, Google TV, Chromecast, Nvidia Shield, and Amazon Fire TV devices.
 - **Hardware-Accelerated Embedded Player**: Native Kotlin wrapper tuned for 10ft TV displays with hardware acceleration and zero external player intent hijacking.
 - **Server Discovery & Address Prompt**: Connects seamlessly to your local network server IP (e.g. `http://192.168.1.50:5150`).
@@ -63,7 +63,7 @@ Settings persist across container restarts using the Docker volume mapping: `bub
 ## 📱 Android TV APK Build & Deployment
 
 - **Downloader App Code**: **`7040100`**
-- **Manual APK File**: [`BubbaFlixTV.apk`](file:///f:/Cyberflix/BubbaFlixTV.apk)
+- **Manual APK File**: [`BubbaFlixTV-v1.0.0.apk`](file:///f:/Cyberflix/BubbaFlixTV-v1.0.0.apk)
 
 To build the native Android TV APK manually:
 ```bash

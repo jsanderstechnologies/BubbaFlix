@@ -4,20 +4,27 @@
     android:height="180dp"
     android:viewportWidth="320"
     android:viewportHeight="180">
-    <!-- Dark Background -->
+    <!-- Dark Background matched to icon tile background -->
+    <path
+        android:fillColor="#08080a"
+        android:pathData="M0,0h320v180h-320z" />
+    
+    <!-- Outer Border Frame -->
     <path
         android:fillColor="#141414"
-        android:pathData="M0,0h320v180h-320z" />
-    <!-- Gradient Accent Pill -->
+        android:pathData="M10,10h300v160h-300z" />
+
+    <!-- Red Gradient Banner Card -->
     <path
-        android:fillColor="#E50914"
-        android:pathData="M20,20h280v140h-280z" />
-    <!-- Center Dark Inner Card -->
+        android:fillColor="#1f0304"
+        android:pathData="M14,14h292v152h-292z" />
+
+    <!-- Center Play / Brand Accent -->
     <path
-        android:fillColor="#080808"
-        android:pathData="M25,25h270v130h-270z" />
-    <!-- Play Icon Play Symbol -->
+        android:fillColor="#e50914"
+        android:pathData="M40,90 L65,75 L65,105 Z" />
+
     <path
-        android:fillColor="#E50914"
-        android:pathData="M140,65 L190,90 L140,115 Z" />
+        android:fillColor="#ffffff"
+        android:pathData="M80,72 h15 v36 h-15 z M100,72 h30 v8 h-22 v6 h20 v8 h-20 v6 h22 v8 h-30 z M135,72 h30 v8 h-22 v6 h20 v8 h-20 v6 h22 v8 h-30 z" />
 </vector>

@@ -2,12 +2,26 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <!-- Container Box matching public/icon.svg -->
     <path
-        android:fillColor="#E50914"
-        android:pathData="M0,0h108v108h-108z" />
+        android:fillColor="#08080a"
+        android:strokeColor="#222222"
+        android:strokeWidth="8"
+        android:pathData="M16,16h480v480h-480z" />
+    
+    <!-- 3D Shadow Layer for the B Letter -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M44,34 L72,54 L44,74 Z" />
+        android:fillColor="#140000"
+        android:strokeColor="#000000"
+        android:strokeWidth="12"
+        android:pathData="M166,134 h100 c55,0 95,25 95,70 c0,30 -20,55 -50,65 c40,10 65,40 65,80 c0,55 -45,85 -110,85 h-100 z M226,184 v70 h40 c25,0 40,-12 40,-35 c0,-23 -15,-35 -40,-35 z M226,304 v80 h45 c30,0 50,-15 50,-40 c0,-25 -20,-40 -50,-40 z" />
+
+    <!-- Foreground Main Letter B with 3D Red Gradient color (#e50914) -->
+    <path
+        android:fillColor="#e50914"
+        android:strokeColor="#ffffff"
+        android:strokeWidth="2"
+        android:pathData="M160,128 h100 c55,0 95,25 95,70 c0,30 -20,55 -50,65 c40,10 65,40 65,80 c0,55 -45,85 -110,85 h-100 z M220,178 v70 h40 c25,0 40,-12 40,-35 c0,-23 -15,-35 -40,-35 z M220,298 v80 h45 c30,0 50,-15 50,-40 c0,-25 -20,-40 -50,-40 z" />
 </vector>
