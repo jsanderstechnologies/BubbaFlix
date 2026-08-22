@@ -6,7 +6,7 @@
 
 BubbaFlix is a modern, high-performance movie and TV show streaming discovery app built with **React 18**, **Redux Toolkit**, **React Router v6**, **Vite**, **Express**, and integrated with **AIOStreams (ElfHosted)**, **TMDB**, **Groq AI**, and **SIMKL**.
 
-BubbaFlix features **Direct AIOStreams (ElfHosted + Premiumize) Integration**, **Android TV & Smart TV D-Pad Spatial Navigation with Horizontal Boundary Locks**, **Zero Transcoding Native Playback**, **Official SIMKL API Rule Compliance & Activity Sync**, **Centralized Backend Server Settings Storage**, **Client-Side TV Screen Zoom (50%–140%)**, and automatic **English-only Live-Action Filtering (No Anime/Animation)**.
+BubbaFlix features **Direct AIOStreams (ElfHosted + Premiumize) Integration**, **Universal Integrated Web Video Player across All Devices (Android TV, Firestick, Desktop, Mobile)**, **Android TV & Smart TV D-Pad Spatial Navigation with Row Wrapping**, **Official SIMKL API Rule Compliance & Activity Sync**, **Centralized Backend Server Settings Storage**, **Client-Side TV Screen Zoom (50%–140%)**, and automatic **English-only Live-Action Filtering (No Anime/Animation)**.
 
 ---
 
@@ -15,7 +15,7 @@ BubbaFlix features **Direct AIOStreams (ElfHosted + Premiumize) Integration**, *
 ### ⚡ AIOStreams (ElfHosted + Premiumize) Direct Streaming
 - **Direct Addon Integration**: Powered by AIOStreams (ElfHosted) to fetch torrents and resolve direct Premiumize streams without client-side resolving.
 - **Custom Addon Manifest URLs**: Configure your personal AIOStreams addon URL (with Premiumize & torrent indexers) in Settings or Docker environment variables.
-- **Zero Transcode Latency**: Stream links play directly in native device players or the full-screen player modal with zero server CPU load.
+- **Universal Integrated Web Player**: Android TV devices, Firestick, Smart TVs, desktop browsers, and mobile devices all use the built-in, zero-latency **BubbaFlix Web Video Player** (`VideoPlayerModal`), ensuring a unified streaming interface without external native app launches.
 
 ### 🎬 Official SIMKL API Compliance & Activity Delta Sync
 - **Streamlined Client ID Integration**: Simplified SIMKL watch history tracking requiring ONLY your SIMKL Client ID.
@@ -25,8 +25,8 @@ BubbaFlix features **Direct AIOStreams (ElfHosted + Premiumize) Integration**, *
 
 ### 📺 Smart TV & Remote Control Spatial Navigation
 - **Native Smart TV Remote D-Pad Navigation**: Fully compatible with Android TV, Google TV, Firestick, Apple TV, LG webOS, Samsung Tizen, and TV browser D-Pad remotes (`Arrow Keys`, `OK / Select (KeyCodes 13, 23, 66)`, `Back (KeyCodes 4, 27, 10009, 461)`).
-- **Universal 3D "Bring Forward" Focus Effect**: All focusable elements elevate forward (`transform: scale(1.14) translateY(-6px)`) with dynamic depth drop-shadows and vibrant active theme glows.
-- **Strict Horizontal Boundary Locking**: Left and Right D-Pad arrow keys are locked within the active horizontal row/carousel container (`vertical diff <= 80px`), preventing focus from jumping into the Hero section or header bar unless the user explicitly presses **Up Arrow**.
+- **2D Spatial Grid Navigation**: Seamless `ArrowRight` and `ArrowLeft` card navigation with automatic row wrapping across Explore Movies (`/explore/movie`), Explore TV Shows (`/explore/tv`), and Search Results.
+- **Universal 3D Focus Glow Effect**: All focusable elements elevate forward (`transform: scale(1.08) translateY(-3px)`) with dynamic depth drop-shadows and vibrant active theme glows.
 
 ---
 

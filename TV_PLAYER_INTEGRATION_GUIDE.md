@@ -1,6 +1,8 @@
-# BubbaFlix 📺 - Smart TV & Native Player Integration Guide
+# BubbaFlix 📺 - Smart TV & Web Player Integration Guide
 
-This guide provides technical specifications, API endpoints, device-aware stream resolution logic, environment variable configuration for Docker/Portainer/CasaOS, and remote control KeyCode mappings for developers building or integrating native TV client applications (Android TV, Google TV, Firestick, Apple TV, LG webOS, Samsung Tizen, VLC, ExoPlayer, MX Player, etc.) with the **BubbaFlix Backend Engine**.
+This guide provides technical specifications, API endpoints, device-aware stream resolution logic, environment variable configuration for Docker/Portainer/CasaOS, and remote control KeyCode mappings for developers running **BubbaFlix** across Android TV, Google TV, Firestick, Apple TV, LG webOS, Samsung Tizen, desktop browsers, and mobile devices.
+
+All devices exclusively use the unified **BubbaFlix Web Video Player** (`VideoPlayerModal`) built directly into the web application. External native player apps (VLC, MX Player, ExoPlayer intents) are completely bypassed in favor of the seamless, full-screen Web Player.
 
 ---
 
@@ -11,8 +13,8 @@ This guide provides technical specifications, API endpoints, device-aware stream
 3. [Docker, Portainer, and CasaOS Environment Variables](#-docker-portainer-and-casaos-environment-variables)
 4. [Centralized Server Settings API (`/api/settings`)](#-centralized-server-settings-api-apisettings)
 5. [SIMKL Watch Status Synchronization API](#-simkl-watch-status-synchronization-api)
-6. [Smart TV D-Pad Remote Control KeyCode Reference & Boundary Lock](#-smart-tv-d-pad-remote-control-keycode-reference--boundary-lock)
-7. [Native Video Player Code Examples](#-native-video-player-code-examples)
+6. [Smart TV D-Pad Remote Control KeyCode Reference](#-smart-tv-d-pad-remote-control-keycode-reference)
+7. [Universal Web Video Player Architecture](#-universal-web-video-player-architecture)
 
 ---
 
@@ -70,7 +72,7 @@ Native devices can read and write shared configuration settings directly to/from
 
 ## 🎬 SIMKL Watch Status Synchronization API
 
-To keep watch status in sync when a native player starts or finishes video playback:
+To keep watch status in sync when a player starts or finishes video playback:
 
 ### Mark Media as Watched
 - **HTTP Method**: `POST`
@@ -82,36 +84,30 @@ To keep watch status in sync when a native player starts or finishes video playb
 
 ---
 
-## 🎮 Smart TV D-Pad Remote Control KeyCode Reference & Boundary Lock
+## 🎮 Smart TV D-Pad Remote Control KeyCode Reference
 
 Native Android TV, Google TV, Firestick, Apple TV, and Smart TV remote keycodes supported across BubbaFlix:
 
 | Action / Button | Key Name | KeyCode | Description |
 | :--- | :--- | :--- | :--- |
-| **D-Pad Up** | `ArrowUp` | `19` / `38` | Spatial navigation up (Transitions between rows, Hero section, and Header) |
-| **D-Pad Down** | `ArrowDown` | `20` / `40` | Spatial navigation down (Transitions to lower rows) |
-| **D-Pad Left** | `ArrowLeft` | `21` / `37` | Spatial navigation left (Locked to same-row items, `vertical diff <= 80px`) |
-| **D-Pad Right** | `ArrowRight` | `22` / `39` | Spatial navigation right (Locked to same-row items, `vertical diff <= 80px`) |
+| **D-Pad Up** | `ArrowUp` | `19` / `38` | Spatial navigation up |
+| **D-Pad Down** | `ArrowDown` | `20` / `40` | Spatial navigation down |
+| **D-Pad Left** | `ArrowLeft` | `21` / `37` | Spatial navigation left |
+| **D-Pad Right** | `ArrowRight` | `22` / `39` | Spatial navigation right |
 | **Center / OK / Select** | `Enter` / `Select` | `13` / `23` / `66` | Launch poster, play stream, toggle play/pause |
 | **Back Button** | `Escape` / `Back` | `4` / `27` / `10009` / `461` | Close video player or return to previous page |
 
 ---
 
-## 📱 Native Video Player Code Examples
+## 📺 Universal Web Video Player Architecture
 
-### 1. Android ExoPlayer (Kotlin)
-```kotlin
-import com.google.android.exoplayer2.ExoPlayer
-import com.google.android.exoplayer2.MediaItem
+All devices (Android TV, Firestick, Smart TVs, desktop, mobile) use the integrated **BubbaFlix Web Video Player** (`VideoPlayerModal`).
 
-fun playBubbaFlixStream(context: Context, streamUrl: String) {
-    val player = ExoPlayer.Builder(context).build()
-    val mediaItem = MediaItem.fromUri(streamUrl)
-    player.setMediaItem(mediaItem)
-    player.prepare()
-    player.play()
-}
-```
+Features:
+- **Full-Screen Auto Launch**: Automatically triggers browser full-screen mode upon stream start.
+- **TMDB Title Logo**: Displays transparent title logo overlay in top-left control header.
+- **OpenSubtitles Integration**: Search and load `.vtt` subtitles on the fly.
+- **D-Pad Remote Spatial Controls**: Complete spatial navigation across all transport buttons (`-30s`, `-10s`, `Play/Pause`, `+10s`, `+30s`), timeline scrubber, and subtitle options.
 
 ---
 
