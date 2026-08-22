@@ -9,31 +9,30 @@ import Spinner from "../../../components/spinner";
 import WatchCheckmark from "../../../components/watch-checkmark";
 import { useSelector } from "react-redux";
 import dayjs from "dayjs";
-import { FiTv, FiCalendar, FiClock } from "react-icons/fi";
+import { FiTv, FiCalendar, FiClock, FiAlertCircle } from "react-icons/fi";
 import "./index.scss";
 
 const SeasonsSection = ({ tvId, seasons, showTitle }) => {
   const { url } = useSelector((state) => state.home);
 
-  const validSeasons = Array.isArray(seasons)
+  const validSeasons = Array.isArray(seasons) && seasons.length > 0
     ? seasons.filter((s) => s.season_number > 0)
-    : [];
+    : [{ id: 1, season_number: 1, name: "Season 1", episode_count: 8 }];
 
-  const [selectedSeasonNumber, setSelectedSeasonNumber] = useState(
-    validSeasons.length > 0 ? validSeasons[0].season_number : 1
-  );
+  const [selectedSeasonNumber, setSelectedSeasonNumber] = useState(1);
 
   useEffect(() => {
-    if (validSeasons.length > 0 && !validSeasons.some((s) => s.season_number === selectedSeasonNumber)) {
-      setSelectedSeasonNumber(validSeasons[0].season_number);
+    if (Array.isArray(seasons) && seasons.length > 0) {
+      const filtered = seasons.filter((s) => s.season_number > 0);
+      if (filtered.length > 0 && !filtered.some((s) => s.season_number === selectedSeasonNumber)) {
+        setSelectedSeasonNumber(filtered[0].season_number);
+      }
     }
   }, [seasons]);
 
-  const { data: seasonData, loading } = useFetch(
+  const { data: seasonData, loading, error } = useFetch(
     `/tv/${tvId}/season/${selectedSeasonNumber}`
   );
-
-  if (!validSeasons || validSeasons.length === 0) return null;
 
   const today = dayjs();
 
@@ -61,10 +60,12 @@ const SeasonsSection = ({ tvId, seasons, showTitle }) => {
                 onChange={(e) => setSelectedSeasonNumber(Number(e.target.value))}
               >
                 {validSeasons.map((s) => {
-                  const year = s.air_date ? s.air_date.substring(0, 4) : "N/A";
+                  const year = s.air_date ? s.air_date.substring(0, 4) : "";
+                  const yearText = year ? ` (${year})` : "";
+                  const countText = s.episode_count ? ` — ${s.episode_count} Episodes` : "";
                   return (
                     <option key={s.id || s.season_number} value={s.season_number}>
-                      Season {s.season_number} ({year}) — {s.episode_count || 0} Episodes
+                      Season {s.season_number}{yearText}{countText}
                     </option>
                   );
                 })}
@@ -89,7 +90,14 @@ const SeasonsSection = ({ tvId, seasons, showTitle }) => {
           </div>
         )}
 
-        {!loading && seasonData?.episodes && (
+        {!loading && (error || !seasonData?.episodes || seasonData.episodes.length === 0) && (
+          <div className="noEpisodesNotice">
+            <FiAlertCircle className="icon" />
+            <span>No episode data returned for Season {selectedSeasonNumber}. Please select another season or try again.</span>
+          </div>
+        )}
+
+        {!loading && seasonData?.episodes && seasonData.episodes.length > 0 && (
           <div className="episodesList">
             {seasonData.episodes.map((ep) => {
               const stillBase = url?.profile || "https://image.tmdb.org/t/p/original";

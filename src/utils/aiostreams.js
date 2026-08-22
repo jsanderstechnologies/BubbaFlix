@@ -1,6 +1,5 @@
 import axios from "axios";
 import { fetchDataFromAPI } from "./api";
-import { fetchServerSettings, getServerUrl } from "./serverSettings";
 
 export const DEFAULT_AIOSTREAMS_URL = "https://aiostreams.elfhosted.com/";
 
@@ -52,8 +51,6 @@ export const fetchAioStreams = async ({ tmdbId, imdbId, mediaType = "movie", sea
   }
 
   const userAioUrl = getAioStreamsUrl();
-
-  // Normalize URL to handle trailing slashes
   let cleanAioUrl = userAioUrl.replace(/\/manifest\.json$/, "").replace(/\/$/, "");
 
   // Build stream resource path per Stremio / AIOStreams protocol
@@ -68,55 +65,91 @@ export const fetchAioStreams = async ({ tmdbId, imdbId, mediaType = "movie", sea
     streamPath = `/stream/movie/${idParam}.json`;
   }
 
-  const targetEndpoint = `${cleanAioUrl}${streamPath}`;
-  console.log(`[AIOStreams Engine] Querying streams from: ${targetEndpoint}`);
-
+  // 1. Query Primary AIOStreams Server
   try {
-    const response = await axios.get(targetEndpoint, { timeout: 10000 });
+    const targetEndpoint = `${cleanAioUrl}${streamPath}`;
+    console.log(`[AIOStreams Engine] Querying primary streams: ${targetEndpoint}`);
+
+    const response = await axios.get(targetEndpoint, { timeout: 9000 });
     const rawStreams = response.data?.streams || [];
 
-    if (!Array.isArray(rawStreams) || rawStreams.length === 0) {
-      return { streams: [], unconfigured: false, message: "No streams found for this item." };
-    }
-
-    // Check if instance returned a configuration error notice
     const hasConfigError = rawStreams.some((s) =>
       s.name?.includes("[❌]") || s.description?.includes("reconfigure") || s.externalUrl?.includes("/configure")
     );
 
-    if (hasConfigError) {
-      return {
-        streams: [],
-        unconfigured: true,
-        message: "AIOStreams requires configuration. Please configure your AIOStreams URL in Settings.",
-        configUrl: rawStreams[0]?.externalUrl || "https://aiostreams.elfhosted.com/stremio/configure",
-      };
+    if (!hasConfigError && Array.isArray(rawStreams) && rawStreams.length > 0) {
+      const formattedStreams = rawStreams
+        .map((s, index) => {
+          const fullText = s.description || s.title || s.name || `Stream #${index + 1}`;
+          const nameText = s.name || "AIOStreams";
+          const lines = fullText.split("\n").map((l) => l.trim()).filter(Boolean);
+          const cleanTitle = lines[0] || fullText;
+          const metaText = lines.slice(1).join(" • ");
+          const streamUrl = s.url || s.externalUrl || (s.infoHash ? `magnet:?xt=urn:btih:${s.infoHash}&dn=${encodeURIComponent(cleanTitle)}` : "");
+
+          return {
+            id: index,
+            name: nameText,
+            title: cleanTitle,
+            metaText: metaText,
+            url: streamUrl,
+            behaviorHints: s.behaviorHints || {},
+          };
+        })
+        .filter((s) => s.url && s.url.length > 0);
+
+      if (formattedStreams.length > 0) {
+        return { streams: formattedStreams, unconfigured: false, message: null };
+      }
     }
-
-    // Format streams for BubbaFlix player
-    const formattedStreams = rawStreams.map((s, index) => {
-      const fullText = s.description || s.title || s.name || `Stream #${index + 1}`;
-      const nameText = s.name || "AIOStreams";
-
-      const lines = fullText.split("\n").map((l) => l.trim()).filter(Boolean);
-      const cleanTitle = lines[0] || fullText;
-      const metaText = lines.slice(1).join(" • ");
-
-      return {
-        id: index,
-        name: nameText,
-        title: cleanTitle,
-        metaText: metaText,
-        url: s.url || s.externalUrl || "",
-        behaviorHints: s.behaviorHints || {},
-      };
-    }).filter((s) => s.url && s.url.length > 0);
-
-    return { streams: formattedStreams, unconfigured: false, message: null };
   } catch (err) {
-    console.warn("[AIOStreams Engine Error]:", err.message);
-    return { streams: [], unconfigured: false, error: err.message };
+    console.warn("[Primary AIOStreams Warning]:", err.message);
   }
+
+  // 2. Query Automatic Fallback Provider (Torrentio Public Addon)
+  if (targetImdbId) {
+    try {
+      const fallbackEndpoint = `https://torrentio.strem.fun${streamPath}`;
+      console.log(`[AIOStreams Engine] Querying Torrentio fallback: ${fallbackEndpoint}`);
+
+      const response = await axios.get(fallbackEndpoint, { timeout: 9000 });
+      const rawStreams = response.data?.streams || [];
+
+      if (Array.isArray(rawStreams) && rawStreams.length > 0) {
+        const formattedStreams = rawStreams
+          .map((s, index) => {
+            const nameLine = (s.name || "Torrentio").replace("\n", " ");
+            const titleLines = (s.title || "").split("\n").map((l) => l.trim()).filter(Boolean);
+            const cleanTitle = titleLines[0] || `Episode Stream #${index + 1}`;
+            const metaText = titleLines.slice(1).join(" • ");
+            const streamUrl = s.url || s.externalUrl || (s.infoHash ? `magnet:?xt=urn:btih:${s.infoHash}&dn=${encodeURIComponent(cleanTitle)}` : "");
+
+            return {
+              id: index,
+              name: nameLine,
+              title: cleanTitle,
+              metaText: metaText,
+              url: streamUrl,
+              behaviorHints: s.behaviorHints || {},
+            };
+          })
+          .filter((s) => s.url && s.url.length > 0);
+
+        if (formattedStreams.length > 0) {
+          return { streams: formattedStreams, unconfigured: false, message: null };
+        }
+      }
+    } catch (err) {
+      console.warn("[Torrentio Fallback Warning]:", err.message);
+    }
+  }
+
+  return {
+    streams: [],
+    unconfigured: true,
+    message: "AIOStreams requires configuration. Please configure your AIOStreams URL in Settings.",
+    configUrl: "https://aiostreams.elfhosted.com/stremio/configure",
+  };
 };
 
 export const testAioStreamsConnection = async (customUrl) => {
