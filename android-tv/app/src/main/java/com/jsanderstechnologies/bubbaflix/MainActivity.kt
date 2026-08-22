@@ -27,6 +27,13 @@ class MainActivity : AppCompatActivity() {
         private const val DEFAULT_URL = "http://192.168.1.50:5150"
     }
 
+    class AndroidPlayerBridge(private val context: Context) {
+        @JavascriptInterface
+        fun playStream(videoUrl: String, title: String?, logoUrl: String?, tmdbId: String?, mediaType: String?) {
+            PlayerActivity.start(context, videoUrl, title, logoUrl, tmdbId, mediaType)
+        }
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -72,6 +79,9 @@ class MainActivity : AppCompatActivity() {
         // Configure custom Android TV / Google TV User-Agent
         val defaultUa = settings.userAgentString
         settings.userAgentString = "$defaultUa BubbaFlixTV/1.0 (Android TV Smart Client)"
+
+        // Register Native Universal Codec Player Javascript Interface
+        webView.addJavascriptInterface(AndroidPlayerBridge(this), "AndroidPlayer")
 
         webView.webChromeClient = object : WebChromeClient() {
             override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {

@@ -59,9 +59,18 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
 
   useEffect(() => {
     if (show) {
+      const targetUrl = rawUrl || videoUrl || "";
+
+      // Check if running inside Native Android TV App Client with Universal ExoPlayer
+      if (typeof window !== "undefined" && window.AndroidPlayer && typeof window.AndroidPlayer.playStream === "function") {
+        console.log("[Launching Native Universal Player Activity]:", targetUrl);
+        window.AndroidPlayer.playStream(targetUrl, title || "", mediaLogoUrl || "", tmdbId || "", mediaType || "movie");
+        setShow(false);
+        return;
+      }
+
       document.body.classList.add("videoPlayerActive");
       document.documentElement.classList.add("videoPlayerActive");
-      const targetUrl = rawUrl || videoUrl || "";
       setCurrentUrl(targetUrl);
       setIsPlaying(true);
       setControlsVisible(true);

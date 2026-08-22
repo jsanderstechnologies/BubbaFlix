@@ -44,6 +44,14 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Native Universal Codec Player Activity -->
+        <activity
+            android:name=".PlayerActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
+            android:screenOrientation="landscape"
+            android:theme="@style/Theme.BubbaFlixTV" />
     </application>
 
 </manifest>
