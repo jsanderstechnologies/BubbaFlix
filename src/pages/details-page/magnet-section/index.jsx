@@ -3,16 +3,17 @@ import { useState, useEffect } from "react";
 import { fetchAioStreams } from "../../../utils/aiostreams";
 import { markAsWatchedOnSimkl } from "../../../utils/simkl";
 import { getPremiumizeKey, resolveMagnetWithPremiumize } from "../../../utils/premiumize";
+import { shouldAutoTranscode } from "../../../utils/codecDetect";
 import ContentWrapper from "../../../components/content-wrapper";
 import Spinner from "../../../components/spinner";
 import VideoPlayerModal from "../../../components/video-player-modal";
 import { FiPlay, FiChevronDown, FiChevronUp, FiAlertCircle, FiExternalLink } from "react-icons/fi";
 import "./index.scss";
 
-const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, compact = false }) => {
+const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType = "movie", compact = false }) => {
   const [streams, setStreams] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [isOpen, setIsOpen] = useState(false); // Closed by default
+  const [isOpen, setIsOpen] = useState(!compact);
   const [unconfigured, setUnconfigured] = useState(false);
 
   // Streaming state
@@ -39,7 +40,7 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
 
     setLoading(false);
 
-    if (res.unconfigured) {
+    if (res.unconfigured && res.streams.length === 0) {
       setUnconfigured(true);
       setStreams([]);
       return;
@@ -48,7 +49,7 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
     setStreams(res.streams || []);
   };
 
-  const handlePlayStream = async (item, transcodeMode = false) => {
+  const handlePlayStream = async (item) => {
     if (!item || !item.url) return;
 
     let targetUrl = item.url;
@@ -65,16 +66,22 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
       }
     }
 
-    if (transcodeMode && targetUrl.startsWith("magnet:")) {
+    // Smart Auto-Detect Transcoding Requirement for Web Clients
+    const needsTranscode = shouldAutoTranscode(targetUrl, item.title || title);
+    if (needsTranscode && targetUrl.startsWith("magnet:")) {
       alert(
         "Magnet P2P streams require a Debrid account (Real-Debrid, Premiumize, TorBox) for server transcoding.\n\nPlease save your Premiumize API Key in Settings or select a direct HTTP stream."
       );
       return;
     }
 
-    const streamUrl = transcodeMode
+    const streamUrl = needsTranscode
       ? `/api/transcode?url=${encodeURIComponent(targetUrl)}`
       : targetUrl;
+
+    if (needsTranscode) {
+      console.log("[MagnetSection Engine] Auto-detected incompatible browser codec. Streaming via backend server transcoder.");
+    }
 
     setActiveVideoUrl(streamUrl);
     setActiveFilename(item.title || title);
@@ -166,20 +173,12 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
                       </div>
                     </div>
 
-                    <div className="itemActions" style={{ display: "flex", gap: "8px" }}>
+                    <div className="itemActions">
                       <button
                         className="actionBtn play"
-                        onClick={() => handlePlayStream(item, false)}
+                        onClick={() => handlePlayStream(item)}
                       >
-                        <FiPlay /> Play Direct
-                      </button>
-                      <button
-                        className="actionBtn play transcode"
-                        style={{ background: "rgba(218, 47, 104, 0.2)", borderColor: "var(--pink)", color: "#ffffff" }}
-                        onClick={() => handlePlayStream(item, true)}
-                        title="Transcode stream on backend server for universal browser & device compatibility"
-                      >
-                        ⚡ Transcode
+                        <FiPlay /> Play Stream
                       </button>
                     </div>
                   </div>
