@@ -50,6 +50,13 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
   const handlePlayStream = (item, transcodeMode = false) => {
     if (!item || !item.url) return;
 
+    if (transcodeMode && item.url.startsWith("magnet:")) {
+      alert(
+        "Magnet P2P streams require a Debrid account (Real-Debrid, Premiumize, TorBox) for server transcoding.\n\nPlease configure your AIOStreams Debrid URL in Settings or select a direct HTTP stream."
+      );
+      return;
+    }
+
     const streamUrl = transcodeMode
       ? `/api/transcode?url=${encodeURIComponent(item.url)}`
       : item.url;

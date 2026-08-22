@@ -152,6 +152,14 @@ const server = http.createServer((req, res) => {
       return sendJson(res, 400, { error: "Missing required query parameter: url" });
     }
 
+    if (targetUrl.startsWith("magnet:")) {
+      logMessage("[Transcoder Engine Warning] Magnet link received. Direct P2P magnet transcoding requires Debrid.", true);
+      res.writeHead(400, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
+      return res.end(JSON.stringify({
+        error: "Magnet torrent links require a Debrid account. Please configure your AIOStreams Debrid URL in Settings or select a direct HTTP stream."
+      }));
+    }
+
     logMessage(`====================================================`);
     logMessage(`[Backend Transcoder Engine] Incoming stream transcode request`);
     logMessage(`[Backend Transcoder Engine] Stream Target: ${targetUrl}`);
