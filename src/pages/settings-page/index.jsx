@@ -566,10 +566,8 @@ const SettingsPage = () => {
             </form>
           </div>
 
-          {/* Additional Global Server API Cards (Hidden on TV Devices) */}
-          {!isTv && (
-            <>
-              {/* Color Theme Selector Card */}
+          {/* Global System & Stream Resolution Settings Cards */}
+          {/* Color Theme Selector Card */}
               <div className="settingsCard">
                 <div className="cardHeader">
                   <h2><FiSun style={{ marginRight: 8 }} /> Application Color Theme</h2>
@@ -820,8 +818,6 @@ const SettingsPage = () => {
                   </div>
                 </form>
               </div>
-            </>
-          )}
         </div>
       </ContentWrapper>
     </div>
