@@ -8,11 +8,11 @@
 
 You can install **BubbaFlix TV** directly on any Firestick, Android TV, or Google TV device using the **Downloader** app:
 
-> 🔥 **Downloader Code**: **`7040100`**
+> 🔥 **Downloader Code**: **`8628534`**
 
 ### Steps to Install via Downloader:
 1. Open the **Downloader** app on your Firestick, Fire TV, or Android TV.
-2. In the URL/Code search field, enter **`7040100`** and press **Go**.
+2. In the URL/Code search field, enter **`8628534`** and press **Go**.
 3. The APK (`BubbaFlixTV-v1.0.0.apk`) will download and prompt you to install automatically!
 
 ---
@@ -52,7 +52,7 @@ The compiled APK will be generated at:
 ## 📲 Alternative Installation Methods
 
 ### Method 1: Downloader Code
-Enter **`7040100`** in the Downloader app search bar.
+Enter **`8628534`** in the Downloader app search bar.
 
 ### Method 2: ADB (Android Debug Bridge)
 Connect your computer to your TV over Wi-Fi or USB:
