@@ -21,16 +21,16 @@ const FOCUSABLE_SELECTOR = [
 ].join(", ");
 
 const getFocusableElements = () => {
-  return Array.from(document.querySelectorAll(FOCUSABLE_SELECTOR)).filter(
-    (el) => el.offsetWidth > 0 && el.offsetHeight > 0 && getComputedStyle(el).visibility !== "hidden"
-  );
+  return Array.from(document.querySelectorAll(FOCUSABLE_SELECTOR)).filter((el) => {
+    const rect = el.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0 && getComputedStyle(el).visibility !== "hidden";
+  });
 };
 
 const getDirectionFromEvent = (e) => {
   const key = e.key;
   const code = e.keyCode;
 
-  // Standard Keyboard & Android TV D-Pad KeyCodes
   if (key === "ArrowUp" || code === 38 || code === 19) return "ArrowUp";
   if (key === "ArrowDown" || code === 40 || code === 20) return "ArrowDown";
   if (key === "ArrowLeft" || code === 37 || code === 21) return "ArrowLeft";
@@ -39,63 +39,23 @@ const getDirectionFromEvent = (e) => {
   return null;
 };
 
-const getDistance = (activeEl, candidateEl, direction) => {
-  const rect1 = activeEl.getBoundingClientRect();
-  const rect2 = candidateEl.getBoundingClientRect();
+// Safe focus and scroll helper
+const focusAndScroll = (el) => {
+  if (!el) return;
+  el.focus();
 
-  const c1 = { x: rect1.left + rect1.width / 2, y: rect1.top + rect1.height / 2 };
-  const c2 = { x: rect2.left + rect2.width / 2, y: rect2.top + rect2.height / 2 };
-
-  const dx = c2.x - c1.x;
-  const dy = c2.y - c1.y;
-
-  const inCarousel = !!activeEl.closest(".carouselItems");
-
-  // In horizontal carousels (home page), keep left/right locked to the carousel row
-  if (inCarousel && (direction === "ArrowLeft" || direction === "ArrowRight")) {
-    if (Math.abs(dy) > 80) return Infinity;
-    if (direction === "ArrowLeft" && dx >= -5) return Infinity;
-    if (direction === "ArrowRight" && dx <= 5) return Infinity;
-    return Math.abs(dx) + Math.abs(dy) * 4;
+  const parentCarousel = el.closest(".carouselItems");
+  if (parentCarousel) {
+    const itemLeft = el.offsetLeft;
+    const itemWidth = el.offsetWidth;
+    const containerWidth = parentCarousel.offsetWidth;
+    parentCarousel.scrollTo({
+      left: itemLeft - containerWidth / 2 + itemWidth / 2,
+      behavior: "smooth",
+    });
+  } else {
+    el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
   }
-
-  // Grid Navigation (Explore Movies, Explore TV Shows, Search Results)
-  if (direction === "ArrowRight") {
-    // 1. Prefer items directly to the right on the same row
-    if (dx > 5 && Math.abs(dy) < rect1.height * 0.8) {
-      return dx + Math.abs(dy) * 2;
-    }
-    // 2. Wrap to start of next row if at end of current row
-    if (dy > 20 && dx < 0) {
-      return dy * 2 + Math.abs(dx);
-    }
-    return Infinity;
-  }
-
-  if (direction === "ArrowLeft") {
-    // 1. Prefer items directly to the left on the same row
-    if (dx < -5 && Math.abs(dy) < rect1.height * 0.8) {
-      return Math.abs(dx) + Math.abs(dy) * 2;
-    }
-    // 2. Wrap to end of previous row if at start of current row
-    if (dy < -20 && dx > 0) {
-      return Math.abs(dy) * 2 + dx;
-    }
-    return Infinity;
-  }
-
-  if (direction === "ArrowDown") {
-    if (dy <= 5) return Infinity;
-    // Weight horizontal distance to keep focus in the closest grid column
-    return dy + Math.abs(dx) * 2.5;
-  }
-
-  if (direction === "ArrowUp") {
-    if (dy >= -5) return Infinity;
-    return Math.abs(dy) + Math.abs(dx) * 2.5;
-  }
-
-  return Infinity;
 };
 
 export const initDpadNavigation = () => {
@@ -114,7 +74,7 @@ export const initDpadNavigation = () => {
       return;
     }
 
-    // Handle Smart TV Back Button (Escape = 27, Samsung = 10009, LG = 461, Android Back = 4)
+    // Handle Smart TV Back Button
     if (key === "Escape" || key === "Back" || code === 27 || code === 10009 || code === 461 || code === 4) {
       if (window.location.pathname !== "/") {
         e.preventDefault();
@@ -123,7 +83,7 @@ export const initDpadNavigation = () => {
       }
     }
 
-    // Android TV Center / OK / Select button simulation on focused non-buttons
+    // Android TV Center / OK / Select button simulation
     if (key === "Select" || code === 23 || code === 66) {
       if (activeEl && activeEl !== document.body) {
         if (activeEl.tagName !== "BUTTON" && activeEl.tagName !== "A" && activeEl.tagName !== "INPUT" && activeEl.tagName !== "SELECT") {
@@ -134,61 +94,127 @@ export const initDpadNavigation = () => {
       }
     }
 
-    // D-Pad Navigation Direction
     const direction = getDirectionFromEvent(e);
     if (!direction) return;
+
+    // Always prevent native browser scroll/jump on D-Pad directional presses
+    e.preventDefault();
 
     const focusables = getFocusableElements();
     if (focusables.length === 0) return;
 
-    // Function to safely focus & scroll candidate element into view
-    const focusAndScroll = (el) => {
-      el.focus();
-
-      // If item is inside a horizontal carousel container, scroll container to keep item centered
-      const parentCarousel = el.closest(".carouselItems");
-      if (parentCarousel) {
-        const itemLeft = el.offsetLeft;
-        const itemWidth = el.offsetWidth;
-        const containerWidth = parentCarousel.offsetWidth;
-        parentCarousel.scrollTo({
-          left: itemLeft - containerWidth / 2 + itemWidth / 2,
-          behavior: "smooth",
-        });
-      } else {
-        el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
-      }
-    };
-
     // If no valid active element, focus the first available item
     if (!activeEl || activeEl === document.body || !focusables.includes(activeEl)) {
-      e.preventDefault();
       focusAndScroll(focusables[0]);
       return;
     }
 
+    // 1. CAROUSEL / ROW DIRECT SIBLING NAVIGATION
+    const inCarousel = activeEl.closest(".carouselItems") || activeEl.closest(".menuItems");
+    if (inCarousel) {
+      if (direction === "ArrowRight") {
+        const next = activeEl.nextElementSibling;
+        if (next && focusables.includes(next)) {
+          focusAndScroll(next);
+          return;
+        }
+      }
+      if (direction === "ArrowLeft") {
+        const prev = activeEl.previousElementSibling;
+        if (prev && focusables.includes(prev)) {
+          focusAndScroll(prev);
+          return;
+        }
+      }
+    }
+
+    // 2. STRICT SPATIAL GEOMETRIC NAVIGATION FOR GRIDS & PAGE LAYOUTS
+    const r1 = activeEl.getBoundingClientRect();
+    const c1 = { x: r1.left + r1.width / 2, y: r1.top + r1.height / 2 };
+
     let bestCandidate = null;
-    let minDistance = Infinity;
+    let minScore = Infinity;
 
     for (const candidate of focusables) {
       if (candidate === activeEl) continue;
-      const dist = getDistance(activeEl, candidate, direction);
 
-      if (dist < minDistance) {
-        minDistance = dist;
+      const r2 = candidate.getBoundingClientRect();
+      const c2 = { x: r2.left + r2.width / 2, y: r2.top + r2.height / 2 };
+      const dx = c2.x - c1.x;
+      const dy = c2.y - c1.y;
+
+      let score = Infinity;
+
+      if (direction === "ArrowRight") {
+        // Candidate must be strictly to the right
+        if (r2.left >= r1.left + 5) {
+          const verticalOverlap = Math.abs(dy) < r1.height * 0.7;
+          if (verticalOverlap) {
+            // High priority: same row items
+            score = dx + Math.abs(dy) * 3;
+          }
+        }
+      } else if (direction === "ArrowLeft") {
+        // Candidate must be strictly to the left
+        if (r2.right <= r1.right - 5) {
+          const verticalOverlap = Math.abs(dy) < r1.height * 0.7;
+          if (verticalOverlap) {
+            score = Math.abs(dx) + Math.abs(dy) * 3;
+          }
+        }
+      } else if (direction === "ArrowDown") {
+        // Candidate must be strictly below
+        if (r2.top >= r1.top + 5) {
+          score = dy + Math.abs(dx) * 2;
+        }
+      } else if (direction === "ArrowUp") {
+        // Candidate must be strictly above
+        if (r2.bottom <= r1.bottom - 5) {
+          score = Math.abs(dy) + Math.abs(dx) * 2;
+        }
+      }
+
+      if (score < minScore) {
+        minScore = score;
         bestCandidate = candidate;
       }
     }
 
+    // 3. ROW WRAP FALLBACK FOR GRIDS IF AT ROW EDGE
+    if (!bestCandidate) {
+      if (direction === "ArrowRight") {
+        // Find first item in the row directly below
+        const belowCandidates = focusables.filter((el) => {
+          const r2 = el.getBoundingClientRect();
+          return r2.top >= r1.bottom + 5;
+        });
+        if (belowCandidates.length > 0) {
+          // Pick the leftmost candidate below
+          belowCandidates.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
+          bestCandidate = belowCandidates[0];
+        }
+      } else if (direction === "ArrowLeft") {
+        // Find last item in the row directly above
+        const aboveCandidates = focusables.filter((el) => {
+          const r2 = el.getBoundingClientRect();
+          return r2.bottom <= r1.top - 5;
+        });
+        if (aboveCandidates.length > 0) {
+          // Pick the rightmost candidate above
+          aboveCandidates.sort((a, b) => b.getBoundingClientRect().right - a.getBoundingClientRect().right);
+          bestCandidate = aboveCandidates[0];
+        }
+      }
+    }
+
     if (bestCandidate) {
-      e.preventDefault();
       focusAndScroll(bestCandidate);
     }
   };
 
-  window.addEventListener("keydown", handleKeyDown);
+  window.addEventListener("keydown", handleKeyDown, true);
 
   return () => {
-    window.removeEventListener("keydown", handleKeyDown);
+    window.removeEventListener("keydown", handleKeyDown, true);
   };
 };
