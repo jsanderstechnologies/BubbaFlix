@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.jsanderstechnologies.bubbaflix.app-mergeDebugResources-31:/values-xlarge-v4/values-xlarge-v4.xml",
+            "outputFile": "com.jsanderstechnologies.bubbaflix.app-mergeDebugResources-35:/values-xlarge-v4/values-xlarge-v4.xml",
             "map": [
                 {
                     "source": "F:\\.gradle\\caches\\transforms-3\\8670e6b4b111ddc2b129815394f7924d\\transformed\\appcompat-1.6.1\\res\\values-xlarge-v4\\values-xlarge-v4.xml",

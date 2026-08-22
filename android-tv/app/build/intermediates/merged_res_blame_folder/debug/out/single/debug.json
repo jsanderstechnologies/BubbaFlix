@@ -1,26 +1,42 @@
 [
     {
-        "merged": "F:\\.gradle\\daemon\\8.4\\com.jsanderstechnologies.bubbaflix.app-merged_res-33:\\drawable_ic_launcher.xml.flat",
-        "source": "F:\\.gradle\\daemon\\8.4\\com.jsanderstechnologies.bubbaflix.app-main-35:\\drawable\\ic_launcher.xml"
+        "merged": "com.jsanderstechnologies.bubbaflix.app-merged_res-37:/drawable_ic_launcher.xml.flat",
+        "source": "com.jsanderstechnologies.bubbaflix.app-main-39:/drawable/ic_launcher.xml"
     },
     {
-        "merged": "com.jsanderstechnologies.bubbaflix.app-merged_res-33:/drawable_ic_launcher.xml.flat",
-        "source": "com.jsanderstechnologies.bubbaflix.app-main-35:/drawable/ic_launcher.xml"
+        "merged": "com.jsanderstechnologies.bubbaflix.app-merged_res-37:/drawable_player_overlay_gradient.xml.flat",
+        "source": "com.jsanderstechnologies.bubbaflix.app-main-39:/drawable/player_overlay_gradient.xml"
     },
     {
-        "merged": "F:\\.gradle\\daemon\\8.4\\com.jsanderstechnologies.bubbaflix.app-merged_res-33:\\drawable_ic_launcher_round.xml.flat",
-        "source": "F:\\.gradle\\daemon\\8.4\\com.jsanderstechnologies.bubbaflix.app-main-35:\\drawable\\ic_launcher_round.xml"
+        "merged": "com.jsanderstechnologies.bubbaflix.app-merged_res-37:/layout_activity_player.xml.flat",
+        "source": "com.jsanderstechnologies.bubbaflix.app-main-39:/layout/activity_player.xml"
     },
     {
-        "merged": "com.jsanderstechnologies.bubbaflix.app-merged_res-33:/drawable_ic_launcher_round.xml.flat",
-        "source": "com.jsanderstechnologies.bubbaflix.app-main-35:/drawable/ic_launcher_round.xml"
+        "merged": "com.jsanderstechnologies.bubbaflix.app-merged_res-37:/drawable_player_seekbar_progress.xml.flat",
+        "source": "com.jsanderstechnologies.bubbaflix.app-main-39:/drawable/player_seekbar_progress.xml"
     },
     {
-        "merged": "F:\\.gradle\\daemon\\8.4\\com.jsanderstechnologies.bubbaflix.app-merged_res-33:\\drawable_tv_banner.xml.flat",
-        "source": "F:\\.gradle\\daemon\\8.4\\com.jsanderstechnologies.bubbaflix.app-main-35:\\drawable\\tv_banner.xml"
+        "merged": "com.jsanderstechnologies.bubbaflix.app-merged_res-37:/drawable_btn_main_play_bg.xml.flat",
+        "source": "com.jsanderstechnologies.bubbaflix.app-main-39:/drawable/btn_main_play_bg.xml"
     },
     {
-        "merged": "com.jsanderstechnologies.bubbaflix.app-merged_res-33:/drawable_tv_banner.xml.flat",
-        "source": "com.jsanderstechnologies.bubbaflix.app-main-35:/drawable/tv_banner.xml"
+        "merged": "com.jsanderstechnologies.bubbaflix.app-merged_res-37:/drawable_tv_banner.xml.flat",
+        "source": "com.jsanderstechnologies.bubbaflix.app-main-39:/drawable/tv_banner.xml"
+    },
+    {
+        "merged": "com.jsanderstechnologies.bubbaflix.app-merged_res-37:/drawable_ic_launcher_round.xml.flat",
+        "source": "com.jsanderstechnologies.bubbaflix.app-main-39:/drawable/ic_launcher_round.xml"
+    },
+    {
+        "merged": "com.jsanderstechnologies.bubbaflix.app-merged_res-37:/drawable_btn_player_control_circle.xml.flat",
+        "source": "com.jsanderstechnologies.bubbaflix.app-main-39:/drawable/btn_player_control_circle.xml"
+    },
+    {
+        "merged": "com.jsanderstechnologies.bubbaflix.app-merged_res-37:/drawable_btn_player_control_bg.xml.flat",
+        "source": "com.jsanderstechnologies.bubbaflix.app-main-39:/drawable/btn_player_control_bg.xml"
+    },
+    {
+        "merged": "com.jsanderstechnologies.bubbaflix.app-merged_res-37:/drawable_player_seekbar_thumb.xml.flat",
+        "source": "com.jsanderstechnologies.bubbaflix.app-main-39:/drawable/player_seekbar_thumb.xml"
     }
 ]

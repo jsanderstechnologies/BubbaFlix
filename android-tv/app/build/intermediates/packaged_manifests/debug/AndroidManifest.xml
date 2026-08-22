@@ -62,6 +62,14 @@
             </intent-filter>
         </activity>
 
+        <!-- Native Universal Codec Player Activity -->
+        <activity
+            android:name="com.jsanderstechnologies.bubbaflix.PlayerActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
+            android:exported="false"
+            android:screenOrientation="landscape"
+            android:theme="@style/Theme.BubbaFlixTV" />
+
         <provider
             android:name="androidx.startup.InitializationProvider"
             android:authorities="com.jsanderstechnologies.bubbaflix.androidx-startup"

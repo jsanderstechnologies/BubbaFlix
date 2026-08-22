@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.jsanderstechnologies.bubbaflix.app-mergeDebugResources-31:/values-pt-rBR/values-pt-rBR.xml",
+            "outputFile": "com.jsanderstechnologies.bubbaflix.app-mergeDebugResources-35:/values-pt-rBR/values-pt-rBR.xml",
             "map": [
                 {
                     "source": "F:\\.gradle\\caches\\transforms-3\\dbea1a29ae83d7f9e502b47348cc08dd\\transformed\\material-1.10.0\\res\\values-pt-rBR\\values-pt-rBR.xml",
