@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import Hls from "hls.js";
 import {
   FiArrowLeft,
   FiPlay,
@@ -10,7 +11,8 @@ import {
   FiMaximize,
   FiMinimize,
   FiMessageSquare,
-  FiCheck
+  FiCheck,
+  FiAlertTriangle
 } from "react-icons/fi";
 import { fetchDataFromAPI } from "../../utils/api";
 import { fetchOpenSubtitles, downloadAndConvertSubtitle } from "../../utils/subtitles";
@@ -20,6 +22,7 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   const hideControlsTimeoutRef = useRef(null);
+  const hlsRef = useRef(null);
 
   // Element Refs for D-Pad Spatial Navigation
   const backBtnRef = useRef(null);
@@ -40,6 +43,8 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
   const [duration, setDuration] = useState(0);
   const [controlsVisible, setControlsVisible] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   // TMDB Logo State
   const [mediaLogoUrl, setMediaLogoUrl] = useState(null);
@@ -60,15 +65,14 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
       setCurrentUrl(targetUrl);
       setIsPlaying(true);
       setControlsVisible(true);
+      setHasError(false);
+      setErrorMessage("");
       resetControlsTimeout();
 
-      // Focus main play button for remote D-Pad controls & start playback
+      // Focus main play button for remote D-Pad controls
       setTimeout(() => {
         if (mainPlayBtnRef.current) {
           mainPlayBtnRef.current.focus();
-        }
-        if (videoRef.current) {
-          videoRef.current.play().catch(() => {});
         }
       }, 100);
 
@@ -90,13 +94,71 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
         URL.revokeObjectURL(activeVttUrl);
         setActiveVttUrl(null);
       }
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
     }
 
     return () => {
       document.body.classList.remove("videoPlayerActive");
       document.documentElement.classList.remove("videoPlayerActive");
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
     };
   }, [show, videoUrl, rawUrl, tmdbId, mediaType]);
+
+  // HLS.js & Native Video Element Media Binding
+  useEffect(() => {
+    if (!show || !currentUrl || !videoRef.current) return;
+
+    const videoNode = videoRef.current;
+    setHasError(false);
+
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+
+    const isHls = currentUrl.includes(".m3u8") || currentUrl.includes("/hls/") || currentUrl.includes("m3u8");
+
+    if (isHls && Hls.isSupported()) {
+      const hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: true,
+      });
+      hlsRef.current = hls;
+
+      hls.loadSource(currentUrl);
+      hls.attachMedia(videoNode);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        videoNode.play().catch(() => {});
+      });
+
+      hls.on(Hls.Events.ERROR, (event, data) => {
+        if (data.fatal) {
+          console.warn("[Player HLS Fatal Error]:", data);
+          setHasError(true);
+          setErrorMessage("Failed to decode video stream. Please select another stream.");
+        }
+      });
+    } else {
+      videoNode.src = currentUrl;
+      videoNode.play().catch((err) => {
+        console.warn("[Player Native Play Error]:", err.message);
+      });
+    }
+
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+    };
+  }, [show, currentUrl]);
 
   const loadTmdbLogo = async () => {
     try {
@@ -111,7 +173,6 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
         const engLogo = res.logos.find((l) => l.iso_639_1 === "en") || res.logos[0];
         if (engLogo && engLogo.file_path) {
           const logoFullUrl = `https://image.tmdb.org/t/p/w500${engLogo.file_path}`;
-          console.log("[Player TMDB Logo Loaded]:", logoFullUrl);
           setMediaLogoUrl(logoFullUrl);
           return;
         }
@@ -123,7 +184,6 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
         const fallbackLogo = fallbackRes.logos[0];
         if (fallbackLogo && fallbackLogo.file_path) {
           const logoFullUrl = `https://image.tmdb.org/t/p/w500${fallbackLogo.file_path}`;
-          console.log("[Player TMDB Logo Loaded Fallback]:", logoFullUrl);
           setMediaLogoUrl(logoFullUrl);
         }
       }
@@ -401,6 +461,10 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(() => {});
     }
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
     setShow(false);
   };
 
@@ -416,13 +480,12 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
       tabIndex="-1"
     >
       <div className="playerWindow">
-        {/* Inline HTML5 Video Element */}
+        {/* Inline HTML5 Video Element with HLS.js Support */}
         <div className="videoWrapper" onClick={togglePlayPause}>
-          {currentUrl ? (
+          {currentUrl && !hasError ? (
             <video
               ref={videoRef}
               key={currentUrl}
-              src={currentUrl}
               autoPlay
               playsInline
               webkit-playsinline="true"
@@ -436,6 +499,11 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
               }}
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
+              onError={(e) => {
+                console.warn("[Video Player Error Event]:", e);
+                setHasError(true);
+                setErrorMessage("Unable to load or play stream. Please select another stream or configure AIOStreams Debrid.");
+              }}
             >
               {activeVttUrl && (
                 <track
@@ -450,7 +518,8 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
             </video>
           ) : (
             <div className="noStreamNotice">
-              <p>Unable to load video stream URL.</p>
+              <FiAlertTriangle style={{ fontSize: 36, color: "#ff4d4d", marginBottom: 10 }} />
+              <p>{errorMessage || "Unable to load video stream URL."}</p>
             </div>
           )}
         </div>
