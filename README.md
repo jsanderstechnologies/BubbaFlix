@@ -4,24 +4,23 @@
 
 # BubbaFlix 🎬 - Movie & TV Show Streaming & Discovery App
 
-BubbaFlix is a modern, high-performance movie and TV show streaming discovery app built with **React 18**, **Redux Toolkit**, **React Router v6**, **Vite**, **Pure Node.js**, and integrated with **AIOStreams (ElfHosted + Premiumize)**, **TMDB**, **Groq AI**, and **SIMKL**.
+BubbaFlix is a modern, high-performance movie and TV show streaming discovery app built with **React 18**, **Redux Toolkit**, **React Router v6**, **Vite**, **Pure Node.js**, **Native Android TV (Kotlin)**, and integrated with **AIOStreams (ElfHosted + Premiumize)**, **TMDB**, **Groq AI**, and **SIMKL**.
 
-BubbaFlix features **Direct AIOStreams Integration**, **Universal Integrated Web Video Player across All Devices (Android TV, Firestick, Smart TVs, Desktop, Mobile)**, **Smart TV D-Pad 2D Spatial Grid Navigation with Row Wrapping**, **Official SIMKL API Rule Compliance & Activity Delta Sync**, **Groq AI Llama 3 Stream Title Filtering**, **Centralized Backend Server Settings API**, **Dual Console & Volume Log Persistence**, and automatic **English-only Live-Action Filtering (No Anime/Animation)**.
+BubbaFlix features **Direct AIOStreams Integration**, **Native Android TV & Fire TV App (`android-tv/`)**, **Universal Integrated Web Video Player across All Devices (Android TV, Firestick, Smart TVs, Desktop, Mobile)**, **Smart TV D-Pad 2D Spatial Grid Navigation with Row Wrapping**, **Official SIMKL API Rule Compliance & Activity Delta Sync**, **Groq AI Llama 3 Stream Title Filtering**, **Centralized Backend Server Settings API**, **Dual Console & Volume Log Persistence**, and automatic **English-only Live-Action Filtering (No Anime/Animation)**.
 
 ---
 
 ## 🌟 Key Features
 
+### 📺 Native Android TV, Google TV & Fire TV App (`android-tv/`)
+- **Native Android TV Launcher Banner**: Includes full Leanback launcher integration (`LEANBACK_LAUNCHER`) for Android TV, Google TV, Chromecast, Nvidia Shield, and Amazon Fire TV devices.
+- **Hardware-Accelerated Embedded Player**: Native Kotlin wrapper tuned for 10ft TV displays with hardware acceleration and zero external player intent hijacking.
+- **Server Discovery & Address Prompt**: Connects seamlessly to your local network server IP (e.g. `http://192.168.1.50:5150`).
+
 ### ⚡ AIOStreams (ElfHosted + Premiumize) Direct Streaming
 - **Direct Addon Integration**: Powered by AIOStreams (ElfHosted) to fetch torrents and resolve direct Premiumize streams without client-side resolving.
 - **Custom Addon Manifest URLs**: Configure your personal AIOStreams addon URL (with Premiumize & torrent indexers) in Settings or Docker environment variables.
-- **Universal Integrated Web Player**: Android TV devices, Firestick, Smart TVs, desktop browsers, and mobile devices all use the built-in, zero-latency **BubbaFlix Web Video Player** (`VideoPlayerModal`), ensuring a unified streaming interface without external native app launches or intent hijacking.
-
-### 📺 Universal Web Video Player & Remote Controls
-- **100% Viewport Overlay**: Fullscreen video overlay rendered cleanly across all browsers and Android TV WebViews without intent pickers.
-- **TMDB Transparent Title Logos**: Renders transparent title artwork overlay in the upper-left player header fetched from TMDB's CDN.
-- **OpenSubtitles Integration**: Search and download gzipped WebVTT subtitle tracks on the fly.
-- **D-Pad Remote Controls**: Complete remote navigation for `-30s`, `-10s`, `Play/Pause`, `+10s`, `+30s` transport controls, scrubber timeline, and subtitle menus.
+- **Universal Integrated Web Player**: Android TV devices, Firestick, Smart TVs, desktop browsers, and mobile devices all use the built-in, zero-latency **BubbaFlix Web Video Player** (`VideoPlayerModal`), ensuring a unified streaming interface without external native app launches.
 
 ### 🎮 Smart TV Remote Control Spatial Navigation Engine
 - **2D Spatial Sector Navigation**: Fully compatible with Android TV, Google TV, Firestick, Apple TV, LG webOS, Samsung Tizen, and TV D-Pad remotes.
@@ -34,8 +33,6 @@ BubbaFlix features **Direct AIOStreams Integration**, **Universal Integrated Web
 ### 🎬 Official SIMKL API Compliance & Activity Delta Sync
 - **Streamlined Client ID Integration**: Simplified SIMKL watch history tracking requiring ONLY your SIMKL Client ID.
 - **Official API Rules Compliant**: Fully compliant with SIMKL API rules (`client_id`, `app-name=BubbaFlix`, `app-version=1.0`, `User-Agent: BubbaFlix/1.0 (Smart TV Media App)`).
-- **Phase 2 Activity Check First**: Always queries `/sync/activities` first on startup/wake, skipping payload sync if activity dates match.
-- **Phase 2 Combined Delta Sync**: Uses `/sync/all-items/?date_from=SAVED_DATE` to fetch only updated items.
 
 ---
 
@@ -54,42 +51,15 @@ Settings persist across container restarts using the Docker volume mapping: `bub
 
 ---
 
-## 📝 Comprehensive Logging System
+## 📱 Android TV APK Build & Deployment
 
-BubbaFlix features a dual-output logging pipeline:
-- **Container Standard Output (`stdout`/`stderr`)**: Logs HTTP API requests, settings updates, and system health in real-time for `docker logs bubbaflix` and Portainer monitoring.
-- **Persistent Disk Volume (`/app/server/bubbaflix.log`)**: Appends formatted ISO 8601 logs to disk volume storage across container restarts.
+To build the native Android TV APK for Firestick, Google TV, and Android TV:
 
----
-
-## 🚀 Quick Start (Local Development)
-
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/jsanderstechnologies/BubbaFlix.git
-   cd BubbaFlix
-   ```
-
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
-
-3. **Run Development Server**:
-   ```bash
-   npm run dev
-   ```
-   Open `http://localhost:5173` in your browser.
-
----
-
-## 🐳 Docker Deployment
-
-Run BubbaFlix containerized:
 ```bash
-docker compose up -d
+cd android-tv
+./gradlew assembleRelease
 ```
-Access the application at **`http://localhost:5150`**.
+See [`android-tv/README.md`](file:///f:/Cyberflix/android-tv/README.md) for step-by-step sideloading & installation guides.
 
 ---
 
