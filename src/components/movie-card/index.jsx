@@ -7,7 +7,6 @@ import { useSelector } from "react-redux";
 import "./index.scss";
 import Img from "../lazy-load";
 import CircleRating from "../circle-rating";
-import WatchCheckmark from "../watch-checkmark";
 import PosterFallback from "../../assets/no-poster.png";
 
 const DEFAULT_IMAGE_BASE = "https://image.tmdb.org/t/p/original";
@@ -46,14 +45,6 @@ const MovieCard = ({ data, fromSearch, mediaType }) => {
 						<CircleRating rating={Number(data.vote_average).toFixed(1)} />
 					</React.Fragment>
 				)}
-				<div className="cardCheckmark" onClick={(e) => e.stopPropagation()}>
-					<WatchCheckmark
-						tmdbId={data.id}
-						title={data.title || data.name}
-						mediaType={data.media_type || mediaType || "movie"}
-						size="sm"
-					/>
-				</div>
 			</div>
 			<div className="textBlock">
 				<span className="title">{data.title || data.name}</span>
