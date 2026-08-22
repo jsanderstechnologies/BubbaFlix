@@ -62,12 +62,8 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
       setControlsVisible(true);
       resetControlsTimeout();
 
-      // Trigger automatic Fullscreen launch
+      // Focus main play button for remote D-Pad controls & start playback
       setTimeout(() => {
-        if (containerRef.current && !document.fullscreenElement) {
-          containerRef.current.requestFullscreen().catch(() => {});
-          setIsFullscreen(true);
-        }
         if (mainPlayBtnRef.current) {
           mainPlayBtnRef.current.focus();
         }
@@ -86,10 +82,6 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
     } else {
       document.body.classList.remove("videoPlayerActive");
       document.documentElement.classList.remove("videoPlayerActive");
-      if (document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {});
-      }
-      setIsFullscreen(false);
 
       if (hideControlsTimeoutRef.current) {
         clearTimeout(hideControlsTimeoutRef.current);
@@ -424,7 +416,7 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
       tabIndex="-1"
     >
       <div className="playerWindow">
-        {/* Video Element */}
+        {/* Inline HTML5 Video Element */}
         <div className="videoWrapper" onClick={togglePlayPause}>
           {currentUrl ? (
             <video
@@ -433,6 +425,8 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
               src={currentUrl}
               autoPlay
               playsInline
+              webkit-playsinline="true"
+              x5-playsinline="true"
               className="videoElement"
               onTimeUpdate={() => {
                 if (videoRef.current) {
