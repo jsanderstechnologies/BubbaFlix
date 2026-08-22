@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { HiOutlineSearch, HiOutlineFilm, HiOutlineTv } from "react-icons/hi";
-import { FiSettings, FiHome } from "react-icons/fi";
+import { HiOutlineSearch, HiOutlineFilm } from "react-icons/hi";
+import { FiSettings, FiHome, FiTv } from "react-icons/fi";
 import ContentWrapper from "../content-wrapper";
 import "./index.scss";
 
@@ -96,7 +96,7 @@ const TopNav = () => {
 								}
 							}}
 						>
-							<HiOutlineTv className="navIcon" />
+							<FiTv className="navIcon" />
 							<span>TV Series</span>
 						</button>
 
