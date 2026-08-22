@@ -104,11 +104,13 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
       document.body.classList.remove("videoPlayerActive");
       document.documentElement.classList.remove("videoPlayerActive");
     };
-  }, [show, videoUrl, rawUrl, tmdbId]);
+  }, [show, videoUrl, rawUrl, tmdbId, mediaType]);
 
   const loadTmdbLogo = async () => {
     try {
       setMediaLogoUrl(null);
+      if (!tmdbId) return;
+
       const targetType = mediaType === "tv" || mediaType === "series" ? "tv" : "movie";
       const endpoint = `/${targetType}/${tmdbId}/images`;
       const res = await fetchDataFromAPI(endpoint, { include_image_language: "en,null" });
@@ -116,7 +118,9 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
       if (res && Array.isArray(res.logos) && res.logos.length > 0) {
         const engLogo = res.logos.find((l) => l.iso_639_1 === "en") || res.logos[0];
         if (engLogo && engLogo.file_path) {
-          setMediaLogoUrl(`https://image.tmdb.org/t500${engLogo.file_path}`);
+          const logoFullUrl = `https://image.tmdb.org/t/p/w500${engLogo.file_path}`;
+          console.log("[Player TMDB Logo Loaded]:", logoFullUrl);
+          setMediaLogoUrl(logoFullUrl);
           return;
         }
       }
@@ -126,7 +130,9 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
       if (fallbackRes && Array.isArray(fallbackRes.logos) && fallbackRes.logos.length > 0) {
         const fallbackLogo = fallbackRes.logos[0];
         if (fallbackLogo && fallbackLogo.file_path) {
-          setMediaLogoUrl(`https://image.tmdb.org/t500${fallbackLogo.file_path}`);
+          const logoFullUrl = `https://image.tmdb.org/t/p/w500${fallbackLogo.file_path}`;
+          console.log("[Player TMDB Logo Loaded Fallback]:", logoFullUrl);
+          setMediaLogoUrl(logoFullUrl);
         }
       }
     } catch (e) {
