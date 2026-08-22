@@ -8,6 +8,7 @@ import { fetchDataFromAPI } from "../../utils/api";
 import ContentWrapper from "../../components/content-wrapper";
 import MovieCard from "../../components/movie-card";
 import Spinner from "../../components/spinner";
+import TopNav from "../../components/top-nav";
 import { FiSliders } from "react-icons/fi";
 
 let filters = {};
@@ -77,6 +78,7 @@ const Explore = () => {
 
 	return (
 		<div className="explorePage">
+			<TopNav />
 			<ContentWrapper>
 				<div className="pageHeader">
 					<div className="pageTitle">

@@ -8,6 +8,7 @@ import { fetchDataFromAPI } from "../../utils/api";
 import ContentWrapper from "../../components/content-wrapper";
 import MovieCard from "../../components/movie-card";
 import Spinner from "../../components/spinner";
+import TopNav from "../../components/top-nav";
 
 const SearchResult = () => {
 	const [data, setData] = useState(null);
@@ -49,6 +50,7 @@ const SearchResult = () => {
 
 	return (
 		<div className="searchResultsPage">
+			<TopNav />
 			{loading && <Spinner initial={true} />}
 			{!loading && (
 				<ContentWrapper>
@@ -63,16 +65,16 @@ const SearchResult = () => {
 							</div>
 							<InfiniteScroll
 								className="content"
-								dataLength={data?.results?.length || []}
+								dataLength={data?.results?.length || 0}
 								next={fetchNextPageData}
 								hasMore={pageNum <= data?.total_pages}
 								loader={<Spinner />}
 							>
 								{data?.results.map((item, index) => {
-									if (item.media_type === "person") return;
+									if (item.media_type === "person") return null;
 									return (
 										<MovieCard
-											key={index}
+											key={`${item.id}-${index}`}
 											data={item}
 											fromSearch={true}
 										/>
@@ -82,7 +84,7 @@ const SearchResult = () => {
 						</>
 					) : (
 						<span className="resultNotFound">
-							Sorry, Results not found!
+							Sorry, no results found for &apos;{query}&apos;.
 						</span>
 					)}
 				</ContentWrapper>

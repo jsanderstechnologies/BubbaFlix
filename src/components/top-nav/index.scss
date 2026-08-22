@@ -1,0 +1,154 @@
+@import "../../mixins.scss";
+
+.topNav {
+	width: 100%;
+	padding: 16px 0;
+	background: var(--black3);
+	border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+	margin-bottom: 25px;
+
+	.topNavInner {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 20px;
+		flex-wrap: wrap;
+	}
+
+	.navLogo {
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		flex-shrink: 0;
+		border-radius: 8px;
+		padding: 4px;
+		transition: transform 0.25s ease, filter 0.25s ease;
+
+		img {
+			height: 44px;
+			max-height: 44px;
+			width: auto;
+			max-width: 175px;
+			object-fit: contain;
+			filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
+		}
+
+		&:focus,
+		&:focus-visible {
+			outline: none !important;
+			transform: scale(1.1) translateY(-2px);
+			filter: drop-shadow(0 0 12px var(--pink));
+		}
+	}
+
+	.navLinks {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		flex-wrap: wrap;
+
+		.navBtn {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			background: rgba(255, 255, 255, 0.05);
+			border: 1px solid rgba(255, 255, 255, 0.15);
+			color: white;
+			padding: 8px 16px;
+			border-radius: 12px;
+			font-size: 14px;
+			font-weight: 600;
+			cursor: pointer;
+			outline: none;
+			white-space: nowrap;
+			transition: all 0.25s ease;
+
+			.navIcon {
+				font-size: 17px;
+				color: var(--pink);
+			}
+
+			&.active {
+				background: var(--pink);
+				border-color: var(--pink);
+				color: white;
+
+				.navIcon {
+					color: white;
+				}
+			}
+
+			&:hover,
+			&:focus,
+			&:focus-visible {
+				border-color: var(--pink);
+				background: var(--pink);
+				color: white;
+				transform: scale(1.08) translateY(-2px);
+				box-shadow: 0 0 18px var(--pink), 0 4px 20px rgba(218, 47, 104, 0.6);
+
+				.navIcon {
+					color: white;
+				}
+			}
+		}
+	}
+
+	.navSearch {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		flex: 1;
+		max-width: 380px;
+		min-width: 240px;
+
+		.searchInput {
+			flex: 1;
+			height: 42px;
+			background: rgba(255, 255, 255, 0.08);
+			border: 1px solid rgba(255, 255, 255, 0.2);
+			border-radius: 20px;
+			padding: 0 16px;
+			color: white;
+			font-size: 14px;
+			outline: none;
+			transition: all 0.25s ease;
+
+			&::placeholder {
+				color: rgba(255, 255, 255, 0.5);
+			}
+
+			&:focus,
+			&:focus-visible {
+				border-color: var(--pink);
+				background: rgba(255, 255, 255, 0.15);
+				box-shadow: 0 0 16px var(--pink);
+			}
+		}
+
+		.searchBtn {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 42px;
+			height: 42px;
+			border-radius: 50%;
+			background: var(--gradient);
+			border: none;
+			color: white;
+			font-size: 18px;
+			cursor: pointer;
+			outline: none;
+			transition: all 0.25s ease;
+			flex-shrink: 0;
+
+			&:hover,
+			&:focus,
+			&:focus-visible {
+				transform: scale(1.15);
+				box-shadow: 0 0 20px var(--pink);
+			}
+		}
+	}
+}

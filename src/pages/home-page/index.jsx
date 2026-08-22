@@ -1,5 +1,5 @@
 import "./index.scss";
-import HeroBanner from "./hero-banner";
+import TopNav from "../../components/top-nav";
 import Trending from "./trending";
 import Popular from "./popular";
 import TopRated from "./top-rated";
@@ -7,7 +7,7 @@ import TopRated from "./top-rated";
 const HomePage = () => {
 	return (
 		<div className="home-page">
-			<HeroBanner />
+			<TopNav />
 			<Trending />
 			<Popular />
 			<TopRated />

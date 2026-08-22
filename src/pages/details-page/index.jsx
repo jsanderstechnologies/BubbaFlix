@@ -3,6 +3,7 @@ import Cast from "./cast-section";
 import DetailsBanner from "./details-banner";
 import VideosSection from "./videos-section";
 import SeasonsSection from "./seasons-section";
+import TopNav from "../../components/top-nav";
 import "./index.scss";
 import { useParams } from "react-router-dom";
 
@@ -18,6 +19,7 @@ const DetailsPage = () => {
 
 	return (
 		<div className="details-page">
+			<TopNav />
 			<DetailsBanner video={data?.results?.[0]} crew={credits?.crew} />
 
 			{/* Show season dropdown & episode magnet streams ONLY for TV series */}

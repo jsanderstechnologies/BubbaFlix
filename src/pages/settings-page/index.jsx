@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import ContentWrapper from "../../components/content-wrapper";
+import TopNav from "../../components/top-nav";
 import { fetchDataFromAPI, getActiveTmdbToken } from "../../utils/api";
 import { getAioStreamsUrl, saveAioStreamsUrl, testAioStreamsConnection, DEFAULT_AIOSTREAMS_URL } from "../../utils/aiostreams";
 import { getSimklConfig, testSimklConnection } from "../../utils/simkl";
@@ -335,6 +336,7 @@ const SettingsPage = () => {
 
   return (
     <div className="settingsPage">
+      <TopNav />
       <ContentWrapper>
         <div className="settingsContainer">
           <div className="settingsHeader">
