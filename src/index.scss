@@ -104,9 +104,9 @@ button:focus-visible,
 .menuItem:focus,
 .menuItem:focus-visible {
   outline: 3px solid var(--pink) !important;
-  outline-offset: 2px !important;
+  outline-offset: 3px !important;
   transform: scale(1.08) translateY(-3px) !important;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.8), 0 0 20px var(--pink) !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.8), 0 0 20px var(--pink), 0 0 30px #ffffff !important;
   z-index: 100 !important;
 }
 

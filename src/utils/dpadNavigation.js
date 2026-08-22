@@ -7,7 +7,7 @@ const FOCUSABLE_SELECTOR = [
   "input:not([disabled])",
   "select:not([disabled])",
   "textarea:not([disabled])",
-  '[tabindex]:not([tabindex="-1"])',
+  '[tabindex="0"]:not([tabindex="-1"])',
   ".logo",
   ".menuItem",
   ".headerIconBtn",
@@ -15,6 +15,9 @@ const FOCUSABLE_SELECTOR = [
   ".carouselItem",
   ".themeCard",
   ".tabItem",
+  ".resOption",
+  ".presetBtn",
+  ".zoomBtn",
 ].join(", ");
 
 const getFocusableElements = () => {
@@ -36,30 +39,63 @@ const getDirectionFromEvent = (e) => {
   return null;
 };
 
-const getDistance = (rect1, rect2, direction) => {
+const getDistance = (activeEl, candidateEl, direction) => {
+  const rect1 = activeEl.getBoundingClientRect();
+  const rect2 = candidateEl.getBoundingClientRect();
+
   const c1 = { x: rect1.left + rect1.width / 2, y: rect1.top + rect1.height / 2 };
   const c2 = { x: rect2.left + rect2.width / 2, y: rect2.top + rect2.height / 2 };
 
   const dx = c2.x - c1.x;
   const dy = c2.y - c1.y;
 
-  // Enforce direction constraints
-  if (direction === "ArrowUp" && dy >= -5) return Infinity;
-  if (direction === "ArrowDown" && dy <= 5) return Infinity;
-  if (direction === "ArrowLeft" && dx >= -5) return Infinity;
-  if (direction === "ArrowRight" && dx <= 5) return Infinity;
+  const inCarousel = !!activeEl.closest(".carouselItems");
 
-  // Restrict Left / Right arrow navigation to elements on the same horizontal row (vertical diff <= 80px)
-  // This prevents Left/Right arrow keys at carousel edges from jumping into the Hero section or header bar
-  if (direction === "ArrowLeft" || direction === "ArrowRight") {
-    if (Math.abs(dy) > 80) {
-      return Infinity; // Block vertical jumps on horizontal arrow presses!
-    }
+  // In horizontal carousels (home page), keep left/right locked to the carousel row
+  if (inCarousel && (direction === "ArrowLeft" || direction === "ArrowRight")) {
+    if (Math.abs(dy) > 80) return Infinity;
+    if (direction === "ArrowLeft" && dx >= -5) return Infinity;
+    if (direction === "ArrowRight" && dx <= 5) return Infinity;
     return Math.abs(dx) + Math.abs(dy) * 4;
   }
 
-  // Weight horizontal distance heavily for Up / Down navigation to keep vertical movement predictable
-  return Math.abs(dy) + Math.abs(dx) * 2;
+  // Grid Navigation (Explore Movies, Explore TV Shows, Search Results)
+  if (direction === "ArrowRight") {
+    // 1. Prefer items directly to the right on the same row
+    if (dx > 5 && Math.abs(dy) < rect1.height * 0.8) {
+      return dx + Math.abs(dy) * 2;
+    }
+    // 2. Wrap to start of next row if at end of current row
+    if (dy > 20 && dx < 0) {
+      return dy * 2 + Math.abs(dx);
+    }
+    return Infinity;
+  }
+
+  if (direction === "ArrowLeft") {
+    // 1. Prefer items directly to the left on the same row
+    if (dx < -5 && Math.abs(dy) < rect1.height * 0.8) {
+      return Math.abs(dx) + Math.abs(dy) * 2;
+    }
+    // 2. Wrap to end of previous row if at start of current row
+    if (dy < -20 && dx > 0) {
+      return Math.abs(dy) * 2 + dx;
+    }
+    return Infinity;
+  }
+
+  if (direction === "ArrowDown") {
+    if (dy <= 5) return Infinity;
+    // Weight horizontal distance to keep focus in the closest grid column
+    return dy + Math.abs(dx) * 2.5;
+  }
+
+  if (direction === "ArrowUp") {
+    if (dy >= -5) return Infinity;
+    return Math.abs(dy) + Math.abs(dx) * 2.5;
+  }
+
+  return Infinity;
 };
 
 export const initDpadNavigation = () => {
@@ -68,6 +104,15 @@ export const initDpadNavigation = () => {
   const handleKeyDown = (e) => {
     const key = e.key || e.keyCode;
     const code = e.keyCode;
+    const activeEl = document.activeElement;
+
+    // Ignore spatial navigation if video player modal is active or user is typing in input
+    if (
+      document.body.classList.contains("videoPlayerActive") ||
+      (activeEl && (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA") && activeEl.type === "text")
+    ) {
+      return;
+    }
 
     // Handle Smart TV Back Button (Escape = 27, Samsung = 10009, LG = 461, Android Back = 4)
     if (key === "Escape" || key === "Back" || code === 27 || code === 10009 || code === 461 || code === 4) {
@@ -80,11 +125,10 @@ export const initDpadNavigation = () => {
 
     // Android TV Center / OK / Select button simulation on focused non-buttons
     if (key === "Select" || code === 23 || code === 66) {
-      const active = document.activeElement;
-      if (active && active !== document.body) {
-        if (active.tagName !== "BUTTON" && active.tagName !== "A" && active.tagName !== "INPUT" && active.tagName !== "SELECT") {
+      if (activeEl && activeEl !== document.body) {
+        if (activeEl.tagName !== "BUTTON" && activeEl.tagName !== "A" && activeEl.tagName !== "INPUT" && activeEl.tagName !== "SELECT") {
           e.preventDefault();
-          active.click();
+          activeEl.click();
           return;
         }
       }
@@ -96,14 +140,6 @@ export const initDpadNavigation = () => {
 
     const focusables = getFocusableElements();
     if (focusables.length === 0) return;
-
-    const activeEl = document.activeElement;
-
-    // If active element is an input and user presses left/right inside text, don't hijack unless empty
-    if (activeEl && activeEl.tagName === "INPUT") {
-      if (direction === "ArrowLeft" && activeEl.selectionStart !== 0) return;
-      if (direction === "ArrowRight" && activeEl.selectionEnd !== activeEl.value.length) return;
-    }
 
     // Function to safely focus & scroll candidate element into view
     const focusAndScroll = (el) => {
@@ -120,7 +156,7 @@ export const initDpadNavigation = () => {
           behavior: "smooth",
         });
       } else {
-        el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+        el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
       }
     };
 
@@ -131,14 +167,12 @@ export const initDpadNavigation = () => {
       return;
     }
 
-    const activeRect = activeEl.getBoundingClientRect();
     let bestCandidate = null;
     let minDistance = Infinity;
 
     for (const candidate of focusables) {
       if (candidate === activeEl) continue;
-      const candRect = candidate.getBoundingClientRect();
-      const dist = getDistance(activeRect, candRect, direction);
+      const dist = getDistance(activeEl, candidate, direction);
 
       if (dist < minDistance) {
         minDistance = dist;
@@ -146,19 +180,6 @@ export const initDpadNavigation = () => {
       }
     }
 
-    // ALWAYS block browser native spatial navigation on horizontal (Left/Right) arrow key presses!
-    if (direction === "ArrowLeft" || direction === "ArrowRight") {
-      e.preventDefault();
-      if (bestCandidate) {
-        focusAndScroll(bestCandidate);
-      } else {
-        // At farthest item: keep focus clamped strictly on current active item
-        focusAndScroll(activeEl);
-      }
-      return;
-    }
-
-    // For Up & Down D-Pad Arrow keys:
     if (bestCandidate) {
       e.preventDefault();
       focusAndScroll(bestCandidate);
