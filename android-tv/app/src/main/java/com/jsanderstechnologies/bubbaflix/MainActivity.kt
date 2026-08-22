@@ -26,7 +26,7 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         // Hide system UI status & navigation bars for immersive 10ft TV experience
         hideSystemUI()
 
@@ -99,7 +99,7 @@ class MainActivity : AppCompatActivity() {
         builder.setTitle("BubbaFlix TV Server Address")
         builder.setMessage("Enter the IP address or URL of your BubbaFlix server (e.g. http://192.168.1.50:5150):")
 
-        const input = EditText(this)
+        val input = EditText(this)
         input.setText(DEFAULT_URL)
         input.setSelection(input.text.length)
         builder.setView(input)
