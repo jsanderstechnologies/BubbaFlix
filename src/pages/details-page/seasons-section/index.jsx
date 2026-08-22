@@ -1,5 +1,4 @@
-/* eslint-disable react/prop-types */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import useFetch from "../../../hooks/useFetch";
 import ContentWrapper from "../../../components/content-wrapper";
 import MagnetSection from "../magnet-section";
@@ -7,6 +6,7 @@ import Img from "../../../components/lazy-load";
 import PosterFallback from "../../../assets/no-poster.png";
 import Spinner from "../../../components/spinner";
 import WatchCheckmark from "../../../components/watch-checkmark";
+import { isSimklWatched } from "../../../utils/simkl";
 import { useSelector } from "react-redux";
 import dayjs from "dayjs";
 import { FiTv, FiCalendar, FiClock, FiAlertCircle } from "react-icons/fi";
@@ -20,19 +20,67 @@ const SeasonsSection = ({ tvId, seasons, showTitle }) => {
     : [{ id: 1, season_number: 1, name: "Season 1", episode_count: 8 }];
 
   const [selectedSeasonNumber, setSelectedSeasonNumber] = useState(1);
+  const hasAutoNavigatedSeason = useRef(false);
+  const hasAutoNavigatedEpisode = useRef(false);
 
+  // 1. Initial Load: Auto-select the first unwatched season
   useEffect(() => {
-    if (Array.isArray(seasons) && seasons.length > 0) {
-      const filtered = seasons.filter((s) => s.season_number > 0);
-      if (filtered.length > 0 && !filtered.some((s) => s.season_number === selectedSeasonNumber)) {
-        setSelectedSeasonNumber(filtered[0].season_number);
+    if (hasAutoNavigatedSeason.current) return;
+    if (!Array.isArray(seasons) || seasons.length === 0) return;
+
+    const filtered = seasons.filter((s) => s.season_number > 0);
+    if (filtered.length === 0) return;
+
+    let targetSeasonNum = filtered[0].season_number;
+    for (const s of filtered) {
+      const isSeasonWatched = isSimklWatched({
+        tmdbId: tvId,
+        mediaType: "tv",
+        seasonNum: s.season_number,
+      });
+      if (!isSeasonWatched) {
+        targetSeasonNum = s.season_number;
+        break;
       }
     }
-  }, [seasons]);
+
+    setSelectedSeasonNumber(targetSeasonNum);
+    hasAutoNavigatedSeason.current = true;
+  }, [seasons, tvId]);
 
   const { data: seasonData, loading, error } = useFetch(
     `/tv/${tvId}/season/${selectedSeasonNumber}`
   );
+
+  // 2. Initial Load: Auto-scroll & focus the first unwatched episode in the selected season
+  useEffect(() => {
+    if (hasAutoNavigatedEpisode.current) return;
+    if (!seasonData?.episodes || seasonData.episodes.length === 0) return;
+
+    const firstUnwatchedEp = seasonData.episodes.find((ep) => {
+      return !isSimklWatched({
+        tmdbId: tvId,
+        mediaType: "tv",
+        seasonNum: selectedSeasonNumber,
+        episodeNum: ep.episode_number,
+      });
+    });
+
+    const targetEpNum = firstUnwatchedEp
+      ? firstUnwatchedEp.episode_number
+      : seasonData.episodes[0].episode_number;
+
+    setTimeout(() => {
+      const epElement = document.getElementById(`episode-card-${tvId}-s${selectedSeasonNumber}-e${targetEpNum}`);
+      if (epElement) {
+        epElement.scrollIntoView({ behavior: "smooth", block: "center" });
+        const focusable = epElement.querySelector("button, select, input, [tabindex='0']");
+        if (focusable) focusable.focus();
+      }
+    }, 350);
+
+    hasAutoNavigatedEpisode.current = true;
+  }, [seasonData, selectedSeasonNumber, tvId]);
 
   const today = dayjs();
 
@@ -111,7 +159,11 @@ const SeasonsSection = ({ tvId, seasons, showTitle }) => {
                 : false;
 
               return (
-                <div key={ep.id} className="episodeCard">
+                <div
+                  key={ep.id}
+                  id={`episode-card-${tvId}-s${selectedSeasonNumber}-e${ep.episode_number}`}
+                  className="episodeCard"
+                >
                   <div className="episodeMain">
                     <div className="stillBlock">
                       <Img className="stillImg" src={stillUrl} />
