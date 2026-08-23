@@ -3,11 +3,18 @@ import { useState, useEffect } from "react";
 import { fetchAioStreams } from "../../../utils/aiostreams";
 import { markAsWatchedOnSimkl } from "../../../utils/simkl";
 import { getPremiumizeKey, resolveMagnetWithPremiumize } from "../../../utils/premiumize";
+import { isTvDevice } from "../../../utils/zoom";
 import ContentWrapper from "../../../components/content-wrapper";
 import Spinner from "../../../components/spinner";
 import VideoPlayerModal from "../../../components/video-player-modal";
 import { FiPlay, FiChevronDown, FiChevronUp, FiAlertCircle, FiExternalLink } from "react-icons/fi";
 import "./index.scss";
+
+const isHevcOrX265Stream = (item) => {
+  if (!item) return false;
+  const fullStr = `${item.title || ""} ${item.name || ""} ${item.metaText || ""} ${item.url || ""}`;
+  return /\b(hevc|x265|h265|h\.265)\b/i.test(fullStr);
+};
 
 const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, compact = false }) => {
   const [streams, setStreams] = useState([]);
@@ -21,7 +28,13 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
   const [activeFilename, setActiveFilename] = useState("");
 
   useEffect(() => {
-    if (title || tmdbId) {
+    if (isOpen && streams.length === 0 && !loading) {
+      loadStreams();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen) {
       loadStreams();
     }
   }, [title, tmdbId, year, seasonNum, episodeNum]);
@@ -45,7 +58,16 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
       return;
     }
 
-    setStreams(res.streams || []);
+    let finalStreams = res.streams || [];
+
+    // Filter HEVC / x265 codec streams in web player mode only
+    const isWebBrowserOnly = typeof window !== "undefined" && !isTvDevice() && !(window.AndroidPlayer && typeof window.AndroidPlayer.playStream === "function");
+    if (isWebBrowserOnly) {
+      console.log("[MagnetSection] Web Player mode: Filtering out HEVC / x265 streams for web browser compatibility.");
+      finalStreams = finalStreams.filter((item) => !isHevcOrX265Stream(item));
+    }
+
+    setStreams(finalStreams);
   };
 
   const handlePlayStream = async (item, transcodeMode = false) => {
