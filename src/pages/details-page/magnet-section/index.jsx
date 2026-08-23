@@ -28,13 +28,7 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
   const [activeFilename, setActiveFilename] = useState("");
 
   useEffect(() => {
-    if (isOpen && streams.length === 0 && !loading) {
-      loadStreams();
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (isOpen) {
+    if (title || tmdbId) {
       loadStreams();
     }
   }, [title, tmdbId, year, seasonNum, episodeNum]);

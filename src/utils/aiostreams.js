@@ -44,9 +44,37 @@ export const fetchImdbId = async (tmdbId, mediaType = "movie") => {
   return null;
 };
 
+const parseStremioStreams = (rawStreams, providerName = "Stream") => {
+  if (!Array.isArray(rawStreams)) return [];
+
+  return rawStreams
+    .filter((s) => !s.name?.includes("[❌]") && !s.description?.includes("reconfigure") && !s.externalUrl?.includes("/configure"))
+    .map((s, index) => {
+      const fullText = s.description || s.title || s.name || `${providerName} #${index + 1}`;
+      const nameText = s.name || providerName;
+      const lines = fullText.split("\n").map((l) => l.trim()).filter(Boolean);
+      const cleanTitle = lines[0] || fullText;
+      const metaText = lines.slice(1).join(" • ");
+      let streamUrl = s.url || s.externalUrl || "";
+
+      if (!streamUrl && s.infoHash) {
+        streamUrl = `magnet:?xt=urn:btih:${s.infoHash}&dn=${encodeURIComponent(cleanTitle)}`;
+      }
+
+      return {
+        id: `${providerName}-${index}`,
+        name: nameText,
+        title: cleanTitle,
+        metaText: metaText,
+        url: streamUrl,
+        behaviorHints: s.behaviorHints || {},
+      };
+    })
+    .filter((s) => s.url && s.url.length > 0);
+};
+
 /**
- * Fetches stream sources from primary AIOStreams endpoint.
- * Retries up to 3 times with a 2-second delay if stream fetching fails or returns 0 streams.
+ * Fetches stream sources with automatic fallback across AIOStreams and Torrentio providers.
  */
 export const fetchAioStreams = async ({ tmdbId, imdbId, mediaType = "movie", seasonNum, episodeNum }) => {
   let targetImdbId = imdbId;
@@ -55,7 +83,7 @@ export const fetchAioStreams = async ({ tmdbId, imdbId, mediaType = "movie", sea
   }
 
   const userAioUrl = getAioStreamsUrl();
-  let cleanAioUrl = userAioUrl.replace(/\/manifest\.json$/, "").replace(/\/$/, "");
+  const cleanAioUrl = userAioUrl.replace(/\/manifest\.json$/, "").replace(/\/$/, "");
 
   // Build stream resource path per Stremio / AIOStreams protocol
   let streamPath = "";
@@ -69,61 +97,37 @@ export const fetchAioStreams = async ({ tmdbId, imdbId, mediaType = "movie", sea
     streamPath = `/stream/movie/${idParam}.json`;
   }
 
-  const targetEndpoint = `${cleanAioUrl}${streamPath}`;
-  const MAX_RETRIES = 3;
-  const RETRY_DELAY_MS = 2000;
+  const endpointsToTry = [
+    { url: `${cleanAioUrl}${streamPath}`, name: "AIOStreams" },
+    { url: `https://torrentio.strem.fun${streamPath}`, name: "Torrentio" },
+  ];
 
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      console.log(`[AIOStreams Engine] Querying primary streams (Attempt ${attempt}/${MAX_RETRIES}): ${targetEndpoint}`);
+  for (const provider of endpointsToTry) {
+    console.log(`[Stream Engine] Querying ${provider.name} endpoint: ${provider.url}`);
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const response = await axios.get(provider.url, { timeout: 8000 });
+        const rawStreams = response.data?.streams || [];
+        const formatted = parseStremioStreams(rawStreams, provider.name);
 
-      const response = await axios.get(targetEndpoint, { timeout: 9000 });
-      const rawStreams = response.data?.streams || [];
-
-      const hasConfigError = rawStreams.some((s) =>
-        s.name?.includes("[❌]") || s.description?.includes("reconfigure") || s.externalUrl?.includes("/configure")
-      );
-
-      if (!hasConfigError && Array.isArray(rawStreams) && rawStreams.length > 0) {
-        const formattedStreams = rawStreams
-          .map((s, index) => {
-            const fullText = s.description || s.title || s.name || `Stream #${index + 1}`;
-            const nameText = s.name || "AIOStreams";
-            const lines = fullText.split("\n").map((l) => l.trim()).filter(Boolean);
-            const cleanTitle = lines[0] || fullText;
-            const metaText = lines.slice(1).join(" • ");
-            const streamUrl = s.url || s.externalUrl || (s.infoHash ? `magnet:?xt=urn:btih:${s.infoHash}&dn=${encodeURIComponent(cleanTitle)}` : "");
-
-            return {
-              id: index,
-              name: nameText,
-              title: cleanTitle,
-              metaText: metaText,
-              url: streamUrl,
-              behaviorHints: s.behaviorHints || {},
-            };
-          })
-          .filter((s) => s.url && s.url.length > 0);
-
-        if (formattedStreams.length > 0) {
-          console.log(`[AIOStreams Engine] Success! Retrieved ${formattedStreams.length} stream sources on Attempt ${attempt}.`);
-          return { streams: formattedStreams, unconfigured: false, message: null };
+        if (formatted.length > 0) {
+          console.log(`[Stream Engine] Success! Retrieved ${formatted.length} stream sources from ${provider.name} on attempt ${attempt}.`);
+          return { streams: formatted, unconfigured: false, message: null };
         }
+      } catch (err) {
+        console.warn(`[Stream Engine Warning] ${provider.name} attempt ${attempt} failed: ${err.message}`);
       }
-    } catch (err) {
-      console.warn(`[AIOStreams Engine Warning] Attempt ${attempt} failed: ${err.message}`);
-    }
 
-    if (attempt < MAX_RETRIES) {
-      console.log(`[AIOStreams Engine] Waiting ${RETRY_DELAY_MS / 1000}s before retry...`);
-      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+      if (attempt < 2) {
+        await new Promise((r) => setTimeout(r, 1500));
+      }
     }
   }
 
   return {
     streams: [],
     unconfigured: true,
-    message: "AIOStreams requires configuration. Please configure your AIOStreams URL in Settings.",
+    message: "No active streams found. Please configure your custom AIOStreams URL in Settings.",
     configUrl: "https://aiostreams.elfhosted.com/stremio/configure",
   };
 };
