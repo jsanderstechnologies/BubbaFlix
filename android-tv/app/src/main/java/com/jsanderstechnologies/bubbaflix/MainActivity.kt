@@ -61,6 +61,9 @@ class MainActivity : AppCompatActivity() {
         } else {
             loadBubbaFlix(savedUrl)
         }
+
+        // Check for GitHub app updates asynchronously on launch
+        UpdateManager.checkForUpdates(this)
     }
 
     @SuppressLint("SetJavaScriptEnabled")
