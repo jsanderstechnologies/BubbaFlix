@@ -6,13 +6,14 @@
     android:layout_height="match_parent"
     android:background="#000000">
 
-    <!-- Native ExoPlayer Texture View -->
+    <!-- Native ExoPlayer Surface View for Android TV Hardware Video Decoding -->
     <androidx.media3.ui.PlayerView
         android:id="@+id/player_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:use_controller="false"
-        app:surface_type="texture_view"
+        app:surface_type="surface_view"
+        app:shutter_background_color="@android:color/transparent"
         app:resize_mode="fit" />
 
     <!-- Error Notice Overlay -->
@@ -40,7 +41,7 @@
         android:id="@+id/controls_overlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@drawable/player_overlay_gradient"
+        android:background="@android:color/transparent"
         android:padding="24dp">
 
         <!-- Top Bar Header -->
