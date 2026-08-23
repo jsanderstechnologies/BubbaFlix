@@ -8,6 +8,10 @@
         "source": "F:\\.gradle\\daemon\\8.4\\com.jsanderstechnologies.bubbaflix.app-main-39:\\drawable\\btn_player_control_bg.xml"
     },
     {
+        "merged": "com.jsanderstechnologies.bubbaflix.app-merged_res-37:/layout_activity_player.xml.flat",
+        "source": "com.jsanderstechnologies.bubbaflix.app-main-39:/layout/activity_player.xml"
+    },
+    {
         "merged": "F:\\.gradle\\daemon\\8.4\\com.jsanderstechnologies.bubbaflix.app-merged_res-37:\\drawable_tv_banner.xml.flat",
         "source": "F:\\.gradle\\daemon\\8.4\\com.jsanderstechnologies.bubbaflix.app-main-39:\\drawable\\tv_banner.xml"
     },
@@ -42,10 +46,6 @@
     {
         "merged": "F:\\.gradle\\daemon\\8.4\\com.jsanderstechnologies.bubbaflix.app-merged_res-37:\\layout_activity_player.xml.flat",
         "source": "F:\\.gradle\\daemon\\8.4\\com.jsanderstechnologies.bubbaflix.app-main-39:\\layout\\activity_player.xml"
-    },
-    {
-        "merged": "com.jsanderstechnologies.bubbaflix.app-merged_res-37:/drawable_tv_banner.png.flat",
-        "source": "com.jsanderstechnologies.bubbaflix.app-main-39:/drawable/tv_banner.png"
     },
     {
         "merged": "F:\\.gradle\\daemon\\8.4\\com.jsanderstechnologies.bubbaflix.app-merged_res-37:\\drawable_ic_launcher_round.xml.flat",
