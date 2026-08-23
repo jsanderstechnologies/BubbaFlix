@@ -43,8 +43,11 @@
         android:usesCleartextTraffic="true" >
         <activity
             android:name="com.jsanderstechnologies.bubbaflix.MainActivity"
+            android:banner="@drawable/tv_banner"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:exported="true"
+            android:icon="@drawable/tv_banner"
+            android:logo="@drawable/tv_banner"
             android:screenOrientation="landscape"
             android:theme="@style/Theme.BubbaFlixTV" >
 
