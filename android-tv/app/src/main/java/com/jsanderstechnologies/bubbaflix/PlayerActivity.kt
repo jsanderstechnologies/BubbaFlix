@@ -158,6 +158,7 @@ class PlayerActivity : AppCompatActivity() {
         val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
 
         playerView.setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
+        playerView.setZOrderMediaOverlay(true)
 
         exoPlayer = ExoPlayer.Builder(this, renderersFactory)
             .setMediaSourceFactory(mediaSourceFactory)
