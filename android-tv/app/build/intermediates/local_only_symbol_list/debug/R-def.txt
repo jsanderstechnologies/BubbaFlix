@@ -32,3 +32,4 @@ layout activity_player
 string app_name
 string default_server_url
 style Theme.BubbaFlixTV
+xml file_paths

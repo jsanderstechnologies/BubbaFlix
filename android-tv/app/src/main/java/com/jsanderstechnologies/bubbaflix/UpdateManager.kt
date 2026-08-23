@@ -3,7 +3,6 @@ package com.jsanderstechnologies.bubbaflix
 import android.app.Activity
 import android.app.ProgressDialog
 import android.content.Intent
-import android.os.Build
 import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -31,27 +30,24 @@ object UpdateManager {
             }
 
             override fun onResponse(call: Call, response: Response) {
-                response.use { res ->
-                    if (!res.isSuccessful) {
-                        Log.w(TAG, "GitHub version check returned non-200 code: ${res.code}")
-                        return
-                    }
+                if (!response.isSuccessful) {
+                    Log.w(TAG, "GitHub version check returned non-200 code: ${response.code}")
+                    return
+                }
 
-                    val jsonStr = res.body?.string() ?: return
+                val bodyStr = response.body?.string()
+                if (!bodyStr.isNullOrEmpty()) {
                     try {
-                        val json = JSONObject(jsonStr)
+                        val json = JSONObject(bodyStr)
                         val remoteVersionCode = json.optInt("versionCode", 0)
                         val remoteVersionName = json.optString("versionName", "1.0.0")
                         val apkUrl = json.optString("apkUrl", "")
                         val releaseNotes = json.optString("releaseNotes", "New performance and feature updates.")
 
+                        @Suppress("DEPRECATION")
                         val pInfo = activity.packageManager.getPackageInfo(activity.packageName, 0)
-                        val localVersionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                            pInfo.longVersionCode.toInt()
-                        } else {
-                            @Suppress("DEPRECATION")
-                            pInfo.versionCode
-                        }
+                        @Suppress("DEPRECATION")
+                        val localVersionCode = pInfo.versionCode
 
                         Log.d(TAG, "Local versionCode: $localVersionCode, Remote versionCode: $remoteVersionCode")
 
