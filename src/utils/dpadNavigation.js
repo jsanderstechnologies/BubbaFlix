@@ -1,6 +1,16 @@
 // D-Pad / Smart TV Remote Spatial Navigation Engine for BubbaFlix
 // Completely Unlocked, Predictable 2D Spatial Navigation with Top-Left Poster Auto-Focus
 
+export const isTvDevice = () => {
+  if (typeof window === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  return (
+    (window.AndroidPlayer && typeof window.AndroidPlayer.playStream === "function") ||
+    /TV|AndroidTV|GoogleTV|SmartTV|SMART-TV|NETTV|WebOS|Tizen|BraveTV/i.test(ua) ||
+    window.innerWidth <= 1280
+  );
+};
+
 const FOCUSABLE_SELECTOR = [
   "a[href]",
   "button:not([disabled])",

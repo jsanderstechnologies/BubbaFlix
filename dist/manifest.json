@@ -1,0 +1,16 @@
+{
+  "short_name": "BubbaFlix",
+  "name": "BubbaFlix - Movie & TV Show Streaming App",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#04152d",
+  "theme_color": "#04152d",
+  "display": "standalone",
+  "orientation": "portrait"
+}
