@@ -3816,6 +3816,7 @@ id btn_ff_30
 id btn_play_pause
 id btn_rewind_10
 id btn_rewind_30
+id btn_subtitles
 id button
 id buttonPanel
 id button_start
