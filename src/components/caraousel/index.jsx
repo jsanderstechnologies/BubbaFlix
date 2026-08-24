@@ -12,6 +12,7 @@ import ContentWrapper from "../content-wrapper";
 import Img from "../lazy-load";
 import PosterFallback from "../../assets/no-poster.png";
 import CircleRating from "../circle-rating";
+import { isTvDevice } from "../../utils/zoom";
 
 import "./index.scss";
 
@@ -19,6 +20,7 @@ const Carousel = ({ data, loading, endpoint, title }) => {
 	const carouselContainer = useRef();
 	const { url } = useSelector((state) => state.home);
 	const navigate = useNavigate();
+	const isTv = isTvDevice();
 
 	const navigation = (direction) => {
 		const container = carouselContainer.current;
@@ -51,28 +53,18 @@ const Carousel = ({ data, loading, endpoint, title }) => {
 		<div className="carousel">
 			<ContentWrapper>
 				{title && <div className="carouselTitle">{title}</div>}
-				<BsFillArrowLeftCircleFill
-					className="carouselLeftNav arrow"
-					tabIndex="0"
-					onClick={() => navigation("left")}
-					onKeyDown={(e) => {
-						const code = e.keyCode;
-						if (e.key === "Enter" || code === 13 || code === 23 || code === 66) {
-							navigation("left");
-						}
-					}}
-				/>
-				<BsFillArrowRightCircleFill
-					className="carouselRightNav arrow"
-					tabIndex="0"
-					onClick={() => navigation("right")}
-					onKeyDown={(e) => {
-						const code = e.keyCode;
-						if (e.key === "Enter" || code === 13 || code === 23 || code === 66) {
-							navigation("right");
-						}
-					}}
-				/>
+				{!isTv && (
+					<>
+						<BsFillArrowLeftCircleFill
+							className="carouselLeftNav arrow"
+							onClick={() => navigation("left")}
+						/>
+						<BsFillArrowRightCircleFill
+							className="carouselRightNav arrow"
+							onClick={() => navigation("right")}
+						/>
+					</>
+				)}
 				{!loading ? (
 					<div className="carouselItems" ref={carouselContainer}>
 						{data?.map((item) => {
