@@ -12,7 +12,7 @@ app.get("/api/transcode/health", (req, res) => {
 });
 
 // FFmpeg On-the-Fly Video & Audio Transcoding Stream Endpoint
-app.get("/api/transcode", (req, res) => {
+app.get(["/api/transcode", "/api/transcode/"], (req, res) => {
   const videoUrl = req.query.url;
 
   if (!videoUrl) {

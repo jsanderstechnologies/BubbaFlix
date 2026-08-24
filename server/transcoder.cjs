@@ -144,7 +144,7 @@ const server = http.createServer((req, res) => {
   }
 
   // Real-Time Transcoding & Remuxing Proxy Stream Endpoint
-  if (pathname === "/api/transcode" && req.method === "GET") {
+  if ((pathname === "/api/transcode" || pathname === "/api/transcode/") && req.method === "GET") {
     const targetUrl = parsedUrl.query.url;
 
     if (!targetUrl) {
