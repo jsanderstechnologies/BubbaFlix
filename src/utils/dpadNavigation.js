@@ -1,5 +1,5 @@
 // D-Pad / Smart TV Remote Spatial Navigation Engine for BubbaFlix
-// Predictable 2D Spatial Navigation with Top-Left Poster Auto-Focus on Page Change
+// Completely Unlocked, Predictable 2D Spatial Navigation with Top-Left Poster Auto-Focus
 
 const FOCUSABLE_SELECTOR = [
   "a[href]",
@@ -96,14 +96,13 @@ export const initDpadNavigation = () => {
   // Auto-focus top-left poster on initial page load
   focusTopLeftPoster();
 
-  // Watch for page route changes (URL popstate & history push state)
+  // Watch for page route changes
   const handleRouteChange = () => {
     focusTopLeftPoster();
   };
 
   window.addEventListener("popstate", handleRouteChange);
 
-  // Intercept history.pushState & replaceState to detect React Router navigation
   const origPush = window.history.pushState;
   const origReplace = window.history.replaceState;
 
@@ -170,7 +169,7 @@ export const initDpadNavigation = () => {
       return;
     }
 
-    // 1. CAROUSEL & ROW DIRECT SIBLING NAVIGATION
+    // 1. CAROUSEL & ROW HORIZONTAL NAVIGATION (Left & Right)
     const inCarousel = activeEl.closest(".carouselItems") || activeEl.closest(".menuItems") || activeEl.closest(".navLinks");
     if (inCarousel) {
       if (direction === "ArrowRight" && activeEl.nextElementSibling) {
@@ -187,117 +186,77 @@ export const initDpadNavigation = () => {
       }
     }
 
-    // 2. PREDICTABLE SPATIAL NAVIGATION (Row & Column Alignment Lock)
+    // 2. UNLOCKED SPATIAL NAVIGATION (Up, Down, Left, Right)
     const r1 = activeEl.getBoundingClientRect();
     const c1 = { x: r1.left + r1.width / 2, y: r1.top + r1.height / 2 };
 
-    let bestCandidate = null;
-    let minScore = Infinity;
+    let candidates = [];
 
-    for (const candidate of focusables) {
-      if (candidate === activeEl) continue;
-
-      const r2 = candidate.getBoundingClientRect();
-      const c2 = { x: r2.left + r2.width / 2, y: r2.top + r2.height / 2 };
-      const dx = c2.x - c1.x;
-      const dy = c2.y - c1.y;
-
-      let primaryDist = 0;
-      let secondaryDist = 0;
-      let isValidDirection = false;
-      let alignmentPenalty = 1.0;
-
-      if (direction === "ArrowDown") {
-        if (r2.top >= r1.bottom - 10 || c2.y > c1.y + 10) {
-          isValidDirection = true;
-          primaryDist = Math.max(0, dy);
-          secondaryDist = Math.abs(dx);
-
-          const isAligned = r2.left < r1.right && r2.right > r1.left;
-          if (isAligned) alignmentPenalty = 0.5;
-        }
-      } else if (direction === "ArrowUp") {
-        if (r2.bottom <= r1.top + 10 || c2.y < c1.y - 10) {
-          isValidDirection = true;
-          primaryDist = Math.max(0, -dy);
-          secondaryDist = Math.abs(dx);
-
-          const isAligned = r2.left < r1.right && r2.right > r1.left;
-          if (isAligned) alignmentPenalty = 0.5;
-        }
-      } else if (direction === "ArrowRight") {
-        if (r2.left >= r1.right - 10 || c2.x > c1.x + 10) {
-          isValidDirection = true;
-          primaryDist = Math.max(0, dx);
-          secondaryDist = Math.abs(dy);
-
-          const isAligned = r2.top < r1.bottom && r2.bottom > r1.top;
-          if (isAligned) alignmentPenalty = 0.5;
-        }
-      } else if (direction === "ArrowLeft") {
-        if (r2.right <= r1.left + 10 || c2.x < c1.x - 10) {
-          isValidDirection = true;
-          primaryDist = Math.max(0, -dx);
-          secondaryDist = Math.abs(dy);
-
-          const isAligned = r2.top < r1.bottom && r2.bottom > r1.top;
-          if (isAligned) alignmentPenalty = 0.5;
-        }
-      }
-
-      if (isValidDirection) {
-        // Weighted 2D spatial distance score favoring aligned row/column items
-        const score = (primaryDist + secondaryDist * 3.0) * alignmentPenalty;
-        if (score < minScore) {
-          minScore = score;
-          bestCandidate = candidate;
-        }
-      }
+    if (direction === "ArrowDown") {
+      candidates = focusables.filter((el) => {
+        const r2 = el.getBoundingClientRect();
+        return r2.top >= r1.top + 10;
+      });
+    } else if (direction === "ArrowUp") {
+      candidates = focusables.filter((el) => {
+        const r2 = el.getBoundingClientRect();
+        return r2.bottom <= r1.bottom - 10;
+      });
+    } else if (direction === "ArrowRight") {
+      candidates = focusables.filter((el) => {
+        const r2 = el.getBoundingClientRect();
+        return r2.left >= r1.left + 10;
+      });
+    } else if (direction === "ArrowLeft") {
+      candidates = focusables.filter((el) => {
+        const r2 = el.getBoundingClientRect();
+        return r2.right <= r1.right - 10;
+      });
     }
 
-    // 3. FALLBACK FOR SECTION BOUNDARIES
-    if (!bestCandidate) {
-      if (direction === "ArrowDown") {
-        const belowCandidates = focusables.filter((el) => el.getBoundingClientRect().top >= r1.bottom - 5);
-        if (belowCandidates.length > 0) {
-          belowCandidates.sort((a, b) => {
-            const rA = a.getBoundingClientRect();
-            const rB = b.getBoundingClientRect();
-            const topDiff = rA.top - rB.top;
-            if (Math.abs(topDiff) > 50) return topDiff;
-            return Math.abs(rA.left - c1.x) - Math.abs(rB.left - c1.x);
-          });
-          bestCandidate = belowCandidates[0];
+    if (candidates.length > 0) {
+      // Sort candidates by spatial distance favoring primary axis movement
+      candidates.sort((a, b) => {
+        const rA = a.getBoundingClientRect();
+        const rB = b.getBoundingClientRect();
+        const cA = { x: rA.left + rA.width / 2, y: rA.top + rA.height / 2 };
+        const cB = { x: rB.left + rB.width / 2, y: rB.top + rB.height / 2 };
+
+        let scoreA = 0;
+        let scoreB = 0;
+
+        if (direction === "ArrowDown") {
+          scoreA = (cA.y - c1.y) + Math.abs(cA.x - c1.x) * 0.5;
+          scoreB = (cB.y - c1.y) + Math.abs(cB.x - c1.x) * 0.5;
+        } else if (direction === "ArrowUp") {
+          scoreA = (c1.y - cA.y) + Math.abs(cA.x - c1.x) * 0.5;
+          scoreB = (c1.y - cB.y) + Math.abs(cB.x - c1.x) * 0.5;
+        } else if (direction === "ArrowRight") {
+          scoreA = (cA.x - c1.x) + Math.abs(cA.y - c1.y) * 0.5;
+          scoreB = (cB.x - c1.x) + Math.abs(cB.y - c1.y) * 0.5;
+        } else if (direction === "ArrowLeft") {
+          scoreA = (c1.x - cA.x) + Math.abs(cA.y - c1.y) * 0.5;
+          scoreB = (c1.x - cB.x) + Math.abs(cB.y - c1.y) * 0.5;
         }
-      } else if (direction === "ArrowUp") {
-        const aboveCandidates = focusables.filter((el) => el.getBoundingClientRect().bottom <= r1.top + 5);
-        if (aboveCandidates.length > 0) {
-          aboveCandidates.sort((a, b) => {
-            const rA = a.getBoundingClientRect();
-            const rB = b.getBoundingClientRect();
-            const bottomDiff = rB.bottom - rA.bottom;
-            if (Math.abs(bottomDiff) > 50) return bottomDiff;
-            return Math.abs(rA.left - c1.x) - Math.abs(rB.left - c1.x);
-          });
-          bestCandidate = aboveCandidates[0];
-        }
-      } else if (direction === "ArrowRight") {
-        const belowCandidates = focusables.filter((el) => el.getBoundingClientRect().top >= r1.bottom + 5);
-        if (belowCandidates.length > 0) {
-          belowCandidates.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
-          bestCandidate = belowCandidates[0];
-        }
-      } else if (direction === "ArrowLeft") {
-        const aboveCandidates = focusables.filter((el) => el.getBoundingClientRect().bottom <= r1.top - 5);
-        if (aboveCandidates.length > 0) {
-          aboveCandidates.sort((a, b) => b.getBoundingClientRect().right - a.getBoundingClientRect().right);
-          bestCandidate = aboveCandidates[0];
-        }
-      }
+
+        return scoreA - scoreB;
+      });
+
+      focusAndScroll(candidates[0]);
+      return;
     }
 
-    if (bestCandidate) {
-      focusAndScroll(bestCandidate);
+    // 3. TOP NAVIGATION MENU FALLBACK ON ARROW-UP FROM TOP CONTENT ROW
+    if (direction === "ArrowUp") {
+      const navButtons = focusables.filter((el) => el.closest(".topNav") || el.closest(".header") || el.classList.contains("navBtn") || el.classList.contains("menuItem"));
+      if (navButtons.length > 0) {
+        navButtons.sort((a, b) => {
+          const rA = a.getBoundingClientRect();
+          const rB = b.getBoundingClientRect();
+          return Math.abs(rA.left - c1.x) - Math.abs(rB.left - c1.x);
+        });
+        focusAndScroll(navButtons[0]);
+      }
     }
   };
 
