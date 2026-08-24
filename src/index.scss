@@ -57,6 +57,27 @@ body.videoPlayerActive {
   }
 }
 
+/* Hide container slider arrows & scrollbars on Smart TV / Android TV D-Pad Mode */
+body.tvModeActive,
+html.tvModeActive {
+  .arrow,
+  .carouselLeftNav,
+  .carouselRightNav,
+  .sliderBtn,
+  .navBtn {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  ::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+}
+
 /* Custom Sleek Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;

@@ -1,5 +1,5 @@
 // D-Pad / Smart TV Remote Spatial Navigation Engine for BubbaFlix
-// Compatible with Android TV, Fire TV, Apple TV, LG webOS, Samsung Tizen, and D-Pad remote controls.
+// Fluid 2D Spatial Navigation (Unrestricted directional traversal across all grids and layouts)
 
 const FOCUSABLE_SELECTOR = [
   "a[href]",
@@ -18,28 +18,20 @@ const FOCUSABLE_SELECTOR = [
   ".resOption",
   ".presetBtn",
   ".zoomBtn",
+  ".episodeItem",
+  ".seasonCard",
+  ".actionBtn",
 ].join(", ");
 
 const getFocusableElements = () => {
   return Array.from(document.querySelectorAll(FOCUSABLE_SELECTOR)).filter((el) => {
     const rect = el.getBoundingClientRect();
-    return rect.width > 0 && rect.height > 0 && getComputedStyle(el).visibility !== "hidden";
+    if (rect.width <= 0 || rect.height <= 0) return false;
+    const style = getComputedStyle(el);
+    return style.visibility !== "hidden" && style.display !== "none" && style.opacity !== "0";
   });
 };
 
-const getDirectionFromEvent = (e) => {
-  const key = e.key;
-  const code = e.keyCode;
-
-  if (key === "ArrowUp" || code === 38 || code === 19) return "ArrowUp";
-  if (key === "ArrowDown" || code === 40 || code === 20) return "ArrowDown";
-  if (key === "ArrowLeft" || code === 37 || code === 21) return "ArrowLeft";
-  if (key === "ArrowRight" || code === 39 || code === 22) return "ArrowRight";
-
-  return null;
-};
-
-// Safe focus and scroll helper
 const focusAndScroll = (el) => {
   if (!el) return;
   el.focus();
@@ -66,7 +58,7 @@ export const initDpadNavigation = () => {
     const code = e.keyCode;
     const activeEl = document.activeElement;
 
-    // Ignore spatial navigation if video player modal is active or user is typing in input
+    // Ignore spatial navigation if video player modal is active or user is typing in text input
     if (
       document.body.classList.contains("videoPlayerActive") ||
       (activeEl && (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA") && activeEl.type === "text")
@@ -94,10 +86,15 @@ export const initDpadNavigation = () => {
       }
     }
 
-    const direction = getDirectionFromEvent(e);
+    let direction = null;
+    if (key === "ArrowUp" || code === 38 || code === 19) direction = "ArrowUp";
+    else if (key === "ArrowDown" || code === 40 || code === 20) direction = "ArrowDown";
+    else if (key === "ArrowLeft" || code === 37 || code === 21) direction = "ArrowLeft";
+    else if (key === "ArrowRight" || code === 39 || code === 22) direction = "ArrowRight";
+
     if (!direction) return;
 
-    // Always prevent native browser scroll/jump on D-Pad directional presses
+    // Always prevent native browser scroll on D-Pad directional presses
     e.preventDefault();
 
     const focusables = getFocusableElements();
@@ -109,26 +106,24 @@ export const initDpadNavigation = () => {
       return;
     }
 
-    // 1. CAROUSEL / ROW DIRECT SIBLING NAVIGATION
+    // 1. CAROUSEL HORIZONTAL DIRECT SIBLING NAVIGATION
     const inCarousel = activeEl.closest(".carouselItems") || activeEl.closest(".menuItems");
     if (inCarousel) {
-      if (direction === "ArrowRight") {
-        const next = activeEl.nextElementSibling;
-        if (next && focusables.includes(next)) {
-          focusAndScroll(next);
+      if (direction === "ArrowRight" && activeEl.nextElementSibling) {
+        if (focusables.includes(activeEl.nextElementSibling)) {
+          focusAndScroll(activeEl.nextElementSibling);
           return;
         }
       }
-      if (direction === "ArrowLeft") {
-        const prev = activeEl.previousElementSibling;
-        if (prev && focusables.includes(prev)) {
-          focusAndScroll(prev);
+      if (direction === "ArrowLeft" && activeEl.previousElementSibling) {
+        if (focusables.includes(activeEl.previousElementSibling)) {
+          focusAndScroll(activeEl.previousElementSibling);
           return;
         }
       }
     }
 
-    // 2. STRICT SPATIAL GEOMETRIC NAVIGATION FOR GRIDS & PAGE LAYOUTS
+    // 2. UNRESTRICTED 2D SPATIAL NAVIGATION (No rigid grid-locks)
     const r1 = activeEl.getBoundingClientRect();
     const c1 = { x: r1.left + r1.width / 2, y: r1.top + r1.height / 2 };
 
@@ -143,64 +138,79 @@ export const initDpadNavigation = () => {
       const dx = c2.x - c1.x;
       const dy = c2.y - c1.y;
 
-      let score = Infinity;
+      let primaryDist = 0;
+      let secondaryDist = 0;
+      let isValidDirection = false;
 
-      if (direction === "ArrowRight") {
-        // Candidate must be strictly to the right
-        if (r2.left >= r1.left + 5) {
-          const verticalOverlap = Math.abs(dy) < r1.height * 0.7;
-          if (verticalOverlap) {
-            // High priority: same row items
-            score = dx + Math.abs(dy) * 3;
-          }
-        }
-      } else if (direction === "ArrowLeft") {
-        // Candidate must be strictly to the left
-        if (r2.right <= r1.right - 5) {
-          const verticalOverlap = Math.abs(dy) < r1.height * 0.7;
-          if (verticalOverlap) {
-            score = Math.abs(dx) + Math.abs(dy) * 3;
-          }
-        }
-      } else if (direction === "ArrowDown") {
-        // Candidate must be strictly below
-        if (r2.top >= r1.top + 5) {
-          score = dy + Math.abs(dx) * 2;
+      if (direction === "ArrowDown") {
+        if (c2.y > c1.y + 2 || r2.top >= r1.top + 5) {
+          isValidDirection = true;
+          primaryDist = Math.max(0, dy);
+          secondaryDist = Math.abs(dx);
         }
       } else if (direction === "ArrowUp") {
-        // Candidate must be strictly above
-        if (r2.bottom <= r1.bottom - 5) {
-          score = Math.abs(dy) + Math.abs(dx) * 2;
+        if (c2.y < c1.y - 2 || r2.bottom <= r1.bottom - 5) {
+          isValidDirection = true;
+          primaryDist = Math.max(0, -dy);
+          secondaryDist = Math.abs(dx);
+        }
+      } else if (direction === "ArrowRight") {
+        if (c2.x > c1.x + 2 || r2.left >= r1.left + 5) {
+          isValidDirection = true;
+          primaryDist = Math.max(0, dx);
+          secondaryDist = Math.abs(dy);
+        }
+      } else if (direction === "ArrowLeft") {
+        if (c2.x < c1.x - 2 || r2.right <= r1.right - 5) {
+          isValidDirection = true;
+          primaryDist = Math.max(0, -dx);
+          secondaryDist = Math.abs(dy);
         }
       }
 
-      if (score < minScore) {
-        minScore = score;
-        bestCandidate = candidate;
+      if (isValidDirection) {
+        // Weighted 2D spatial distance score: primary vector + 0.8x secondary projection
+        const score = primaryDist + secondaryDist * 0.8;
+        if (score < minScore) {
+          minScore = score;
+          bestCandidate = candidate;
+        }
       }
     }
 
-    // 3. ROW WRAP FALLBACK FOR GRIDS IF AT ROW EDGE
+    // 3. FALLBACK FOR SECTION EDGES & NON-ALIGNED LAYOUTS
     if (!bestCandidate) {
-      if (direction === "ArrowRight") {
-        // Find first item in the row directly below
-        const belowCandidates = focusables.filter((el) => {
-          const r2 = el.getBoundingClientRect();
-          return r2.top >= r1.bottom + 5;
-        });
+      if (direction === "ArrowDown") {
+        const belowCandidates = focusables.filter((el) => el.getBoundingClientRect().top >= r1.bottom - 5);
         if (belowCandidates.length > 0) {
-          // Pick the leftmost candidate below
+          belowCandidates.sort((a, b) => {
+            const dA = Math.hypot(a.getBoundingClientRect().left - c1.x, a.getBoundingClientRect().top - c1.y);
+            const dB = Math.hypot(b.getBoundingClientRect().left - c1.x, b.getBoundingClientRect().top - c1.y);
+            return dA - dB;
+          });
+          bestCandidate = belowCandidates[0];
+        }
+      } else if (direction === "ArrowUp") {
+        const aboveCandidates = focusables.filter((el) => el.getBoundingClientRect().bottom <= r1.top + 5);
+        if (aboveCandidates.length > 0) {
+          aboveCandidates.sort((a, b) => {
+            const dA = Math.hypot(a.getBoundingClientRect().left - c1.x, a.getBoundingClientRect().top - c1.y);
+            const dB = Math.hypot(b.getBoundingClientRect().left - c1.x, b.getBoundingClientRect().top - c1.y);
+            return dA - dB;
+          });
+          bestCandidate = aboveCandidates[0];
+        }
+      } else if (direction === "ArrowRight") {
+        // Wrap to first element of section below if at far right edge
+        const belowCandidates = focusables.filter((el) => el.getBoundingClientRect().top >= r1.bottom + 5);
+        if (belowCandidates.length > 0) {
           belowCandidates.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
           bestCandidate = belowCandidates[0];
         }
       } else if (direction === "ArrowLeft") {
-        // Find last item in the row directly above
-        const aboveCandidates = focusables.filter((el) => {
-          const r2 = el.getBoundingClientRect();
-          return r2.bottom <= r1.top - 5;
-        });
+        // Wrap to last element of section above if at far left edge
+        const aboveCandidates = focusables.filter((el) => el.getBoundingClientRect().top <= r1.top - 5);
         if (aboveCandidates.length > 0) {
-          // Pick the rightmost candidate above
           aboveCandidates.sort((a, b) => b.getBoundingClientRect().right - a.getBoundingClientRect().right);
           bestCandidate = aboveCandidates[0];
         }
