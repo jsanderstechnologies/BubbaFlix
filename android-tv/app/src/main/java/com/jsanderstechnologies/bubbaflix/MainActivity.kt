@@ -44,13 +44,17 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+
+        @JavascriptInterface
+        fun promptExitApp() {
+            (activity as? MainActivity)?.promptExitApp()
+        }
     }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Hide system UI status & navigation bars for immersive 10ft TV experience
         hideSystemUI()
 
         prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -74,7 +78,6 @@ class MainActivity : AppCompatActivity() {
             loadBubbaFlix(savedUrl)
         }
 
-        // Check for GitHub app updates asynchronously on launch
         UpdateManager.checkForUpdates(this)
     }
 
@@ -91,11 +94,9 @@ class MainActivity : AppCompatActivity() {
         settings.useWideViewPort = true
         settings.loadWithOverviewMode = true
 
-        // Configure custom Android TV / Google TV User-Agent
         val defaultUa = settings.userAgentString
         settings.userAgentString = "$defaultUa BubbaFlixTV/1.0 (Android TV Smart Client)"
 
-        // Register Native Universal Codec Player Javascript Interface
         webView.addJavascriptInterface(AndroidPlayerBridge(this, this), "AndroidPlayer")
 
         webView.webChromeClient = object : WebChromeClient() {
@@ -179,6 +180,19 @@ class MainActivity : AppCompatActivity() {
         builder.show()
     }
 
+    fun promptExitApp() {
+        runOnUiThread {
+            AlertDialog.Builder(this)
+                .setTitle("Exit BubbaFlix?")
+                .setMessage("Are you sure you want to exit BubbaFlix TV?")
+                .setPositiveButton("Exit") { _, _ ->
+                    finishAffinity()
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        }
+    }
+
     private fun hideSystemUI() {
         window.decorView.systemUiVisibility = (
             View.SYSTEM_UI_FLAG_FULLSCREEN
@@ -193,10 +207,9 @@ class MainActivity : AppCompatActivity() {
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         // Handle Back button on Android TV D-Pad Remote
         if (keyCode == KeyEvent.KEYCODE_BACK) {
-            // First check if Web Player modal is active in web app
+            // Check if Web Player modal is active in web app
             webView.evaluateJavascript("document.body.classList.contains('videoPlayerActive');") { result ->
                 if (result == "true") {
-                    // Trigger ESC key inside web player to close modal cleanly
                     webView.evaluateJavascript(
                         "window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27 }));",
                         null
@@ -204,13 +217,12 @@ class MainActivity : AppCompatActivity() {
                 } else if (webView.canGoBack()) {
                     webView.goBack()
                 } else {
-                    super.onBackPressed()
+                    promptExitApp()
                 }
             }
             return true
         }
 
-        // Long press menu button to change server URL
         if (keyCode == KeyEvent.KEYCODE_MENU) {
             promptForServerUrl()
             return true

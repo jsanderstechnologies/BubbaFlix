@@ -1,6 +1,6 @@
 {
-  "versionCode": 9,
-  "versionName": "0.0.9",
+  "versionCode": 10,
+  "versionName": "1.0.0",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "Hide carousel navigation arrows on TV displays, fluid D-Pad spatial row boundary navigation, and TV soft keyboard Action button control."
+  "releaseNotes": "BubbaFlix TV v1.0.0 Official Release with Exit App Confirmation Dialog, D-Pad Row-Boundary Navigation, and Hardware Transcoder Proxy."
 }
