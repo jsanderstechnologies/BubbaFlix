@@ -14,7 +14,9 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.SeekBar
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -25,7 +27,9 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import com.bumptech.glide.Glide
-import okhttp3.OkHttpClient
+import okhttp3.*
+import org.json.JSONObject
+import java.io.IOException
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -37,6 +41,7 @@ class PlayerActivity : AppCompatActivity() {
 
     private lateinit var controlsOverlay: View
     private lateinit var btnBack: Button
+    private lateinit var btnSubtitles: Button
     private lateinit var imgMediaLogo: ImageView
     private lateinit var txtMediaTitle: TextView
 
@@ -96,6 +101,7 @@ class PlayerActivity : AppCompatActivity() {
         playerView = findViewById(R.id.player_view)
         controlsOverlay = findViewById(R.id.controls_overlay)
         btnBack = findViewById(R.id.btn_back)
+        btnSubtitles = findViewById(R.id.btn_subtitles)
         imgMediaLogo = findViewById(R.id.img_media_logo)
         txtMediaTitle = findViewById(R.id.txt_media_title)
 
@@ -114,15 +120,15 @@ class PlayerActivity : AppCompatActivity() {
         val videoUrl = intent.getStringExtra(EXTRA_VIDEO_URL) ?: ""
         val title = intent.getStringExtra(EXTRA_TITLE) ?: "BubbaFlix Stream"
         val logoUrl = intent.getStringExtra(EXTRA_LOGO_URL)
+        val tmdbId = intent.getStringExtra(EXTRA_TMDB_ID)
+        val mediaType = intent.getStringExtra(EXTRA_MEDIA_TYPE) ?: "movie"
 
         txtMediaTitle.text = title
 
         if (!logoUrl.isNullOrEmpty()) {
-            imgMediaLogo.visibility = View.VISIBLE
-            txtMediaTitle.visibility = View.GONE
-            Glide.with(this)
-                .load(logoUrl)
-                .into(imgMediaLogo)
+            loadLogoImage(logoUrl)
+        } else if (!tmdbId.isNullOrEmpty()) {
+            fetchTmdbLogo(tmdbId, mediaType)
         } else {
             imgMediaLogo.visibility = View.GONE
             txtMediaTitle.visibility = View.VISIBLE
@@ -136,6 +142,76 @@ class PlayerActivity : AppCompatActivity() {
         resetControlsTimeout()
     }
 
+    private fun loadLogoImage(url: String) {
+        imgMediaLogo.visibility = View.VISIBLE
+        txtMediaTitle.visibility = View.GONE
+        Glide.with(this)
+            .load(url)
+            .into(imgMediaLogo)
+    }
+
+    private fun fetchTmdbLogo(tmdbId: String, mediaType: String) {
+        val client = OkHttpClient()
+        val url = "https://api.themoviedb.org/3/$mediaType/$tmdbId/images?api_key=4544d6db87081702f3a61f38e078b6be"
+        val request = Request.Builder().url(url).build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                runOnUiThread {
+                    imgMediaLogo.visibility = View.GONE
+                    txtMediaTitle.visibility = View.VISIBLE
+                }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                if (!response.isSuccessful) {
+                    runOnUiThread {
+                        imgMediaLogo.visibility = View.GONE
+                        txtMediaTitle.visibility = View.VISIBLE
+                    }
+                    return
+                }
+
+                val bodyStr = response.body?.string()
+                if (!bodyStr.isNullOrEmpty()) {
+                    try {
+                        val json = JSONObject(bodyStr)
+                        val logos = json.optJSONArray("logos")
+                        if (logos != null && logos.length() > 0) {
+                            var logoPath: String? = null
+                            for (i in 0 until logos.length()) {
+                                val logoObj = logos.getJSONObject(i)
+                                val iso = logoObj.optString("iso_639_1", "")
+                                if (iso == "en") {
+                                    logoPath = logoObj.optString("file_path", "")
+                                    break
+                                }
+                            }
+                            if (logoPath.isNullOrEmpty()) {
+                                logoPath = logos.getJSONObject(0).optString("file_path", "")
+                            }
+
+                            if (!logoPath.isNullOrEmpty()) {
+                                val fullLogoUrl = "https://image.tmdb.org/t/p/w500$logoPath"
+                                runOnUiThread {
+                                    loadLogoImage(fullLogoUrl)
+                                }
+                                return
+                            }
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+
+                runOnUiThread {
+                    imgMediaLogo.visibility = View.GONE
+                    txtMediaTitle.visibility = View.VISIBLE
+                }
+            }
+        })
+    }
+
     @SuppressLint("UnsafeOptInUsageError")
     private fun initializeExoPlayer(videoUrl: String) {
         if (videoUrl.isEmpty()) {
@@ -143,7 +219,6 @@ class PlayerActivity : AppCompatActivity() {
             return
         }
 
-        // Enable Extension Decoders for Universal Codec Support (AC3, EAC3, TrueHD, DTS, HEVC, H.264, AV1, VP9)
         val renderersFactory = DefaultRenderersFactory(this).apply {
             setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
         }
@@ -168,6 +243,13 @@ class PlayerActivity : AppCompatActivity() {
             .apply {
                 playerView.player = this
                 playerView.keepScreenOn = true
+
+                // Disable subtitles by default on launch per user request
+                trackSelectionParameters = trackSelectionParameters
+                    .buildUpon()
+                    .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+                    .build()
+
                 val mediaItem = MediaItem.fromUri(Uri.parse(videoUrl))
                 setMediaItem(mediaItem)
                 prepare()
@@ -178,7 +260,7 @@ class PlayerActivity : AppCompatActivity() {
                         if (state == Player.STATE_READY) {
                             errorLayout.visibility = View.GONE
                             btnPlayPause.setImageResource(
-                                if (isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
+                                if (playWhenReady) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
                             )
                         }
                     }
@@ -201,12 +283,20 @@ class PlayerActivity : AppCompatActivity() {
     private fun setupControlClickListeners() {
         btnBack.setOnClickListener { finish() }
 
+        btnSubtitles.setOnClickListener { toggleSubtitles() }
+
         btnPlayPause.setOnClickListener {
-            exoPlayer?.let {
-                if (it.isPlaying) {
-                    it.pause()
+            resetControlsTimeout()
+            exoPlayer?.let { player ->
+                if (player.playWhenReady && player.playbackState != Player.STATE_ENDED) {
+                    player.playWhenReady = false
+                    btnPlayPause.setImageResource(android.R.drawable.ic_media_play)
                 } else {
-                    it.play()
+                    if (player.playbackState == Player.STATE_ENDED) {
+                        player.seekTo(0)
+                    }
+                    player.playWhenReady = true
+                    btnPlayPause.setImageResource(android.R.drawable.ic_media_pause)
                 }
             }
         }
@@ -215,6 +305,28 @@ class PlayerActivity : AppCompatActivity() {
         btnRewind10.setOnClickListener { seekRelative(-10000) }
         btnFF10.setOnClickListener { seekRelative(10000) }
         btnFF30.setOnClickListener { seekRelative(30000) }
+    }
+
+    private fun toggleSubtitles() {
+        resetControlsTimeout()
+        val player = exoPlayer ?: return
+        val isDisabled = player.trackSelectionParameters.disabledTrackTypes.contains(C.TRACK_TYPE_TEXT)
+
+        if (isDisabled) {
+            player.trackSelectionParameters = player.trackSelectionParameters
+                .buildUpon()
+                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                .build()
+            Toast.makeText(this, "Subtitles: ON", Toast.LENGTH_SHORT).show()
+            btnSubtitles.setTextColor(android.graphics.Color.parseColor("#DA2F68"))
+        } else {
+            player.trackSelectionParameters = player.trackSelectionParameters
+                .buildUpon()
+                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+                .build()
+            Toast.makeText(this, "Subtitles: OFF", Toast.LENGTH_SHORT).show()
+            btnSubtitles.setTextColor(android.graphics.Color.parseColor("#FFFFFF"))
+        }
     }
 
     private fun setupSeekBarListener() {
@@ -259,7 +371,7 @@ class PlayerActivity : AppCompatActivity() {
             val pos = player.currentPosition
             val dur = player.duration
 
-            if (dur > 0) {
+            if (dur > 0 && !seekBar.isPressed) {
                 txtCurrentTime.text = formatTime(pos)
                 txtDuration.text = formatTime(dur)
                 val progress = ((pos.toDouble() / dur.toDouble()) * 1000).toInt()
@@ -285,7 +397,7 @@ class PlayerActivity : AppCompatActivity() {
     private fun resetControlsTimeout() {
         showControls()
         handler.removeCallbacks(hideControlsRunnable)
-        handler.postDelayed(hideControlsRunnable, 3500)
+        handler.postDelayed(hideControlsRunnable, 4500)
     }
 
     private fun showControls() {
@@ -325,6 +437,11 @@ class PlayerActivity : AppCompatActivity() {
         if (keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE || keyCode == KeyEvent.KEYCODE_MEDIA_PLAY || keyCode == KeyEvent.KEYCODE_MEDIA_PAUSE) {
             btnPlayPause.performClick()
             return true
+        }
+
+        // Show controls overlay on any D-Pad directional navigation press without pausing playback
+        if (keyCode == KeyEvent.KEYCODE_DPAD_UP || keyCode == KeyEvent.KEYCODE_DPAD_DOWN || keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+            showControls()
         }
 
         return super.onKeyDown(keyCode, event)
