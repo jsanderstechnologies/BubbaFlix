@@ -1,5 +1,5 @@
 // D-Pad / Smart TV Remote Spatial Navigation Engine for BubbaFlix
-// Completely Unlocked, Predictable 2D Spatial Navigation with Top-Left Poster Auto-Focus
+// Section-Based 2D Spatial Navigation with Top-Left Poster Auto-Focus
 
 export const isTvDevice = () => {
   if (typeof window === "undefined") return false;
@@ -68,7 +68,6 @@ const focusAndScroll = (el) => {
 // Focus the top-leftmost poster element when changing pages
 export const focusTopLeftPoster = () => {
   setTimeout(() => {
-    // Prioritize poster elements on screen
     const posters = Array.from(
       document.querySelectorAll(".movieCard, .posterBlock, .carouselItem, .seasonCard, .episodeItem")
     ).filter((el) => {
@@ -79,7 +78,6 @@ export const focusTopLeftPoster = () => {
     });
 
     if (posters.length > 0) {
-      // Sort by top coordinate first (topmost), then by left (leftmost)
       posters.sort((a, b) => {
         const rA = a.getBoundingClientRect();
         const rB = b.getBoundingClientRect();
@@ -92,7 +90,6 @@ export const focusTopLeftPoster = () => {
       return;
     }
 
-    // Fallback to first focusable interactive element
     const focusables = getFocusableElements();
     if (focusables.length > 0) {
       focusAndScroll(focusables[0]);
@@ -103,10 +100,8 @@ export const focusTopLeftPoster = () => {
 export const initDpadNavigation = () => {
   if (typeof window === "undefined") return;
 
-  // Auto-focus top-left poster on initial page load
   focusTopLeftPoster();
 
-  // Watch for page route changes
   const handleRouteChange = () => {
     focusTopLeftPoster();
   };
@@ -131,7 +126,6 @@ export const initDpadNavigation = () => {
     const code = e.keyCode;
     const activeEl = document.activeElement;
 
-    // Ignore spatial navigation if video player modal is active or user is typing in text input
     if (
       document.body.classList.contains("videoPlayerActive") ||
       (activeEl && (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA") && activeEl.type === "text")
@@ -139,7 +133,6 @@ export const initDpadNavigation = () => {
       return;
     }
 
-    // Handle Smart TV Back Button
     if (key === "Escape" || key === "Back" || code === 27 || code === 10009 || code === 461 || code === 4) {
       if (window.location.pathname !== "/") {
         e.preventDefault();
@@ -148,7 +141,6 @@ export const initDpadNavigation = () => {
       }
     }
 
-    // Android TV Center / OK / Select button simulation
     if (key === "Select" || code === 23 || code === 66) {
       if (activeEl && activeEl !== document.body) {
         if (activeEl.tagName !== "BUTTON" && activeEl.tagName !== "A" && activeEl.tagName !== "INPUT" && activeEl.tagName !== "SELECT") {
@@ -167,21 +159,22 @@ export const initDpadNavigation = () => {
 
     if (!direction) return;
 
-    // Always prevent native browser scroll on D-Pad directional presses
     e.preventDefault();
 
     const focusables = getFocusableElements();
     if (focusables.length === 0) return;
 
-    // If no valid active element, focus the top-left poster item
     if (!activeEl || activeEl === document.body || !focusables.includes(activeEl)) {
       focusTopLeftPoster();
       return;
     }
 
-    // 1. CAROUSEL & ROW HORIZONTAL NAVIGATION (Left & Right)
-    const inCarousel = activeEl.closest(".carouselItems") || activeEl.closest(".menuItems") || activeEl.closest(".navLinks");
-    if (inCarousel) {
+    const r1 = activeEl.getBoundingClientRect();
+    const c1 = { x: r1.left + r1.width / 2, y: r1.top + r1.height / 2 };
+
+    // 1. CAROUSEL & ROW DIRECT SIBLING NAVIGATION (Left & Right)
+    const inRowContainer = activeEl.closest(".carouselItems") || activeEl.closest(".menuItems") || activeEl.closest(".navLinks");
+    if (inRowContainer) {
       if (direction === "ArrowRight" && activeEl.nextElementSibling) {
         if (focusables.includes(activeEl.nextElementSibling)) {
           focusAndScroll(activeEl.nextElementSibling);
@@ -196,31 +189,30 @@ export const initDpadNavigation = () => {
       }
     }
 
-    // 2. UNLOCKED SPATIAL NAVIGATION (Up, Down, Left, Right)
-    const r1 = activeEl.getBoundingClientRect();
-    const c1 = { x: r1.left + r1.width / 2, y: r1.top + r1.height / 2 };
-
+    // 2. UNLOCKED SECTION-BASED UP/DOWN/LEFT/RIGHT SPATIAL MOVEMENT
     let candidates = [];
 
     if (direction === "ArrowDown") {
+      // Filter candidates distinctly lower than current item's center/top
       candidates = focusables.filter((el) => {
         const r2 = el.getBoundingClientRect();
-        return r2.top >= r1.top + 10;
+        return r2.top >= r1.top + 35 || (r2.top >= r1.bottom - 10 && el !== activeEl);
       });
     } else if (direction === "ArrowUp") {
+      // Filter candidates distinctly higher than current item's center/bottom
       candidates = focusables.filter((el) => {
         const r2 = el.getBoundingClientRect();
-        return r2.bottom <= r1.bottom - 10;
+        return r2.bottom <= r1.bottom - 35 || (r2.bottom <= r1.top + 10 && el !== activeEl);
       });
     } else if (direction === "ArrowRight") {
       candidates = focusables.filter((el) => {
         const r2 = el.getBoundingClientRect();
-        return r2.left >= r1.left + 10;
+        return r2.left >= r1.left + 20 && el !== activeEl;
       });
     } else if (direction === "ArrowLeft") {
       candidates = focusables.filter((el) => {
         const r2 = el.getBoundingClientRect();
-        return r2.right <= r1.right - 10;
+        return r2.right <= r1.right - 20 && el !== activeEl;
       });
     }
 
@@ -236,17 +228,17 @@ export const initDpadNavigation = () => {
         let scoreB = 0;
 
         if (direction === "ArrowDown") {
-          scoreA = (cA.y - c1.y) + Math.abs(cA.x - c1.x) * 0.5;
-          scoreB = (cB.y - c1.y) + Math.abs(cB.x - c1.x) * 0.5;
+          scoreA = (cA.y - c1.y) * 2.0 + Math.abs(cA.x - c1.x);
+          scoreB = (cB.y - c1.y) * 2.0 + Math.abs(cB.x - c1.x);
         } else if (direction === "ArrowUp") {
-          scoreA = (c1.y - cA.y) + Math.abs(cA.x - c1.x) * 0.5;
-          scoreB = (c1.y - cB.y) + Math.abs(cB.x - c1.x) * 0.5;
+          scoreA = (c1.y - cA.y) * 2.0 + Math.abs(cA.x - c1.x);
+          scoreB = (c1.y - cB.y) * 2.0 + Math.abs(cB.x - c1.x);
         } else if (direction === "ArrowRight") {
-          scoreA = (cA.x - c1.x) + Math.abs(cA.y - c1.y) * 0.5;
-          scoreB = (cB.x - c1.x) + Math.abs(cB.y - c1.y) * 0.5;
+          scoreA = (cA.x - c1.x) * 2.0 + Math.abs(cA.y - c1.y);
+          scoreB = (cB.x - c1.x) * 2.0 + Math.abs(cB.y - c1.y);
         } else if (direction === "ArrowLeft") {
-          scoreA = (c1.x - cA.x) + Math.abs(cA.y - c1.y) * 0.5;
-          scoreB = (c1.x - cB.x) + Math.abs(cB.y - c1.y) * 0.5;
+          scoreA = (c1.x - cA.x) * 2.0 + Math.abs(cA.y - c1.y);
+          scoreB = (c1.x - cB.x) * 2.0 + Math.abs(cB.y - c1.y);
         }
 
         return scoreA - scoreB;
