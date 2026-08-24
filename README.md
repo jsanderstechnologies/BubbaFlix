@@ -14,14 +14,14 @@ BubbaFlix features **Direct AIOStreams Integration**, **Native Android TV & Fire
 
 Install **BubbaFlix TV v1.0.0** directly on any Firestick, Fire TV, or Android TV device using the **Downloader** app:
 
-> 🔥 **Downloader Code**: **`9215999`**
+> 🔥 **Downloader Code**: **`7862216`**
 
 ---
 
 ## 🌟 Key Features
 
 ### 📺 Native Android TV, Google TV & Fire TV App (`android-tv/`)
-- **Downloader App Quick Install**: Enter code **`9215999`** in the Downloader app to install `BubbaFlixTV-v1.0.0.apk` directly on your TV.
+- **Downloader App Quick Install**: Enter code **`7862216`** in the Downloader app to install `BubbaFlixTV-v1.0.0.apk` directly on your TV.
 - **Native Android TV Launcher Banner**: Includes full Leanback launcher integration (`LEANBACK_LAUNCHER`) for Android TV, Google TV, Chromecast, Nvidia Shield, and Amazon Fire TV devices.
 - **Hardware-Accelerated Embedded Player**: Native Kotlin wrapper tuned for 10ft TV displays with hardware acceleration and zero external player intent hijacking.
 - **Server Discovery & Address Prompt**: Connects seamlessly to your local network server IP (e.g. `http://192.168.1.50:5150`).
@@ -62,7 +62,7 @@ Settings persist across container restarts using the Docker volume mapping: `bub
 
 ## 📱 Android TV APK Build & Deployment
 
-- **Downloader App Code**: **`9215999`**
+- **Downloader App Code**: **`7862216`**
 - **Manual APK File**: [`BubbaFlixTV-v1.0.0.apk`](file:///f:/Cyberflix/BubbaFlixTV-v1.0.0.apk)
 
 To build the native Android TV APK manually:
