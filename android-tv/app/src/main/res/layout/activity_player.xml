@@ -74,17 +74,10 @@
                 android:scaleType="fitStart"
                 android:visibility="gone" />
 
-            <TextView
-                android:id="@+id/txt_media_title"
+            <View
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="20dp"
-                android:textColor="#FFFFFF"
-                android:textSize="20sp"
-                android:textStyle="bold"
-                android:ellipsize="end"
-                android:maxLines="1" />
+                android:layout_height="1dp"
+                android:layout_weight="1" />
 
             <Button
                 android:id="@+id/btn_subtitles"

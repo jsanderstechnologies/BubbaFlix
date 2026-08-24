@@ -22,6 +22,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.okhttp.OkHttpDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -43,7 +44,6 @@ class PlayerActivity : AppCompatActivity() {
     private lateinit var btnBack: Button
     private lateinit var btnSubtitles: Button
     private lateinit var imgMediaLogo: ImageView
-    private lateinit var txtMediaTitle: TextView
 
     private lateinit var btnRewind30: Button
     private lateinit var btnRewind10: Button
@@ -103,7 +103,6 @@ class PlayerActivity : AppCompatActivity() {
         btnBack = findViewById(R.id.btn_back)
         btnSubtitles = findViewById(R.id.btn_subtitles)
         imgMediaLogo = findViewById(R.id.img_media_logo)
-        txtMediaTitle = findViewById(R.id.txt_media_title)
 
         btnRewind30 = findViewById(R.id.btn_rewind_30)
         btnRewind10 = findViewById(R.id.btn_rewind_10)
@@ -118,12 +117,9 @@ class PlayerActivity : AppCompatActivity() {
         txtErrorMsg = findViewById(R.id.txt_error_msg)
 
         val videoUrl = intent.getStringExtra(EXTRA_VIDEO_URL) ?: ""
-        val title = intent.getStringExtra(EXTRA_TITLE) ?: "BubbaFlix Stream"
         val logoUrl = intent.getStringExtra(EXTRA_LOGO_URL)
         val tmdbId = intent.getStringExtra(EXTRA_TMDB_ID)
         val mediaType = intent.getStringExtra(EXTRA_MEDIA_TYPE) ?: "movie"
-
-        txtMediaTitle.text = title
 
         if (!logoUrl.isNullOrEmpty()) {
             loadLogoImage(logoUrl)
@@ -131,7 +127,6 @@ class PlayerActivity : AppCompatActivity() {
             fetchTmdbLogo(tmdbId, mediaType)
         } else {
             imgMediaLogo.visibility = View.GONE
-            txtMediaTitle.visibility = View.VISIBLE
         }
 
         setupControlClickListeners()
@@ -144,7 +139,6 @@ class PlayerActivity : AppCompatActivity() {
 
     private fun loadLogoImage(url: String) {
         imgMediaLogo.visibility = View.VISIBLE
-        txtMediaTitle.visibility = View.GONE
         Glide.with(this)
             .load(url)
             .into(imgMediaLogo)
@@ -159,7 +153,6 @@ class PlayerActivity : AppCompatActivity() {
             override fun onFailure(call: Call, e: IOException) {
                 runOnUiThread {
                     imgMediaLogo.visibility = View.GONE
-                    txtMediaTitle.visibility = View.VISIBLE
                 }
             }
 
@@ -167,7 +160,6 @@ class PlayerActivity : AppCompatActivity() {
                 if (!response.isSuccessful) {
                     runOnUiThread {
                         imgMediaLogo.visibility = View.GONE
-                        txtMediaTitle.visibility = View.VISIBLE
                     }
                     return
                 }
@@ -206,7 +198,6 @@ class PlayerActivity : AppCompatActivity() {
 
                 runOnUiThread {
                     imgMediaLogo.visibility = View.GONE
-                    txtMediaTitle.visibility = View.VISIBLE
                 }
             }
         })
@@ -224,8 +215,8 @@ class PlayerActivity : AppCompatActivity() {
         }
 
         val okHttpClient = OkHttpClient.Builder()
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(15, TimeUnit.SECONDS)
+            .connectTimeout(20, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
             .build()
 
         val dataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
@@ -233,12 +224,24 @@ class PlayerActivity : AppCompatActivity() {
 
         val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
 
+        // Aggressive Ahead-Buffering Engine to Prevent Video Freezing / Stuttering
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                60000,   // Min buffer before start/resume: 60 seconds (1 minute)
+                300000,  // Max buffer ahead: 300 seconds (5 minutes ahead!)
+                2500,    // Buffer needed to start playback: 2.5 seconds
+                5000     // Buffer needed to resume after rebuffer: 5.0 seconds
+            )
+            .setBackBuffer(30000, true) // Retain 30 seconds back-buffer for instant rewind
+            .build()
+
         playerView.setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
         (playerView.videoSurfaceView as? android.view.SurfaceView)?.setZOrderMediaOverlay(true)
         (playerView.videoSurfaceView as? android.view.TextureView)?.isOpaque = false
 
         exoPlayer = ExoPlayer.Builder(this, renderersFactory)
             .setMediaSourceFactory(mediaSourceFactory)
+            .setLoadControl(loadControl)
             .build()
             .apply {
                 playerView.player = this
