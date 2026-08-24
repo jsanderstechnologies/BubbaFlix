@@ -1,6 +1,6 @@
 # BubbaFlix TV 📺 - Native Android TV, Google TV & Fire TV App (v1.0.0)
 
-**BubbaFlix TV v1.0.0** is the official native Android application for Android TV, Google TV, Chromecast with Google TV, Nvidia Shield, and Amazon Fire TV devices.
+**BubbaFlix TV** is the official native Android application for Android TV, Google TV, Chromecast with Google TV, Nvidia Shield, and Amazon Fire TV devices.
 
 ---
 
@@ -9,20 +9,26 @@
 You can install **BubbaFlix TV** directly on any Firestick, Android TV, or Google TV device using the **Downloader** app:
 
 > 🔥 **Downloader Code**: **`7862216`**
+> 
+> 🔗 **Direct APK Download URL**: `https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk`
 
 ### Steps to Install via Downloader:
 1. Open the **Downloader** app on your Firestick, Fire TV, or Android TV.
 2. In the URL/Code search field, enter **`7862216`** and press **Go**.
-3. The APK (`BubbaFlixTV-v1.0.0.apk`) will download and prompt you to install automatically!
+3. The APK (`BubbaFlixTV.apk`) will download and prompt you to install automatically!
 
 ---
 
 ## 🌟 Key Features
 
-- 📺 **Native Android TV Leanback Banner**: Displays on the home screen launcher of Android TV, Google TV, and Fire TV devices.
-- 🕹️ **D-Pad Remote Control Optimization**: Fully hardware-accelerated WebView engine tuned for TV remotes with zero latency.
-- 🎬 **Unified Web Video Player Integration**: Embedded player with TMDB title logo artwork, OpenSubtitles search, and D-Pad transport controls.
-- ⚙️ **Custom Server Address Prompt**: Easily connect to any local network BubbaFlix backend server (e.g. `http://192.168.1.50:5150`).
+- 📺 **ExoPlayer 5-Minute Ahead-Buffering Engine**: Tuned in `PlayerActivity.kt` with `DefaultLoadControl` to buffer up to 300 seconds (5 minutes) ahead during stream playback, eliminating freezing, stutters, and buffering loops on 4K / 1080p high-bitrate media.
+- 🚀 **Interactive OTA Update Checker**: Queries `version.json` on GitHub on launch and prompts the user with an interactive Yes/No update dialog whenever a new `versionCode` is published.
+- ⭐ **Favorites Section & Star Toggle**: Seamless D-Pad navigation across the new `/favorites` section and details screen star toggle buttons.
+- 🕹️ **Unlocked 2D Spatial Remote Control**: Automatic top-left poster focus on page change, non-navigable top logo, and smooth section-transition vertical navigation between carousel rows and top menu bar.
+- 📺 **Native Android TV Leanback Banner**: Displays on the home screen launcher of Android TV, Google TV, Nvidia Shield, and Fire TV devices (`LEANBACK_LAUNCHER`).
+- 🔐 **Signed Production Release APK (`bubbaflix.jks`)**: Signed with 2048-bit RSA JKS keystore (`V1 + V2 signatures`) to guarantee clean, error-free package installation across all Android versions.
+- 🎬 **Unified Web Video Player Integration**: Embedded player with TMDB title logo artwork, OpenSubtitles search, default-off subtitles, and D-Pad transport controls.
+- ⚙️ **Custom Server Address Prompt**: Connects seamlessly to any local network BubbaFlix backend server (e.g. `http://192.168.1.50:5150`).
 - ⚡ **Auto Fullscreen & System UI Hiding**: Automatically hides navigation and status bars for a true 10ft cinema experience.
 
 ---
@@ -30,31 +36,33 @@ You can install **BubbaFlix TV** directly on any Firestick, Android TV, or Googl
 ## 🛠️ How to Build the APK
 
 ### Prerequisites
-- JDK 17+
+- JDK 17+ (Android Studio JBR recommended)
 - Android SDK (API Level 34)
 
 ### Command Line Build
 From the `android-tv` directory:
 
-```bash
-# Build Debug APK (BubbaFlixTV-v1.0.0.apk)
-./gradlew.bat assembleDebug
-
-# Build Release APK
-./gradlew.bat assembleRelease
+```powershell
+# Set Environment Variables & Build Release APK
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+$env:ANDROID_HOME = "F:\Android\Sdk"
+.\gradlew.bat assembleRelease --no-configuration-cache
 ```
 
-The compiled APK will be generated at:
-`android-tv/app/build/outputs/apk/debug/BubbaFlixTV-v1.0.0.apk`
+The compiled signed APK will be generated at:
+`android-tv/app/build/outputs/apk/release/BubbaFlixTV-v1.0.0.apk` (and copied to `BubbaFlixTV.apk` in root directory).
 
 ---
 
-## 📲 Alternative Installation Methods
+## 📲 Installation Methods
 
 ### Method 1: Downloader Code
 Enter **`7862216`** in the Downloader app search bar.
 
-### Method 2: ADB (Android Debug Bridge)
+### Method 2: Direct GitHub Download URL
+Enter `https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk` in any browser or Downloader app.
+
+### Method 3: ADB (Android Debug Bridge)
 Connect your computer to your TV over Wi-Fi or USB:
 
 ```bash
@@ -62,7 +70,7 @@ Connect your computer to your TV over Wi-Fi or USB:
 adb connect 192.168.1.XX:5555
 
 # Install BubbaFlix TV APK
-adb install -r BubbaFlixTV-v1.0.0.apk
+adb install -r BubbaFlixTV.apk
 ```
 
 ---

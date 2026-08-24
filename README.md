@@ -4,43 +4,55 @@
 
 # BubbaFlix 🎬 - Movie & TV Show Streaming & Discovery App (v1.0.0)
 
-BubbaFlix is a modern, high-performance movie and TV show streaming discovery app built with **React 18**, **Redux Toolkit**, **React Router v6**, **Vite**, **Pure Node.js**, **Native Android TV (Kotlin)**, and integrated with **AIOStreams (ElfHosted + Premiumize)**, **TMDB**, **Groq AI**, and **SIMKL**.
+BubbaFlix is a modern, high-performance movie and TV show streaming discovery platform built with **React 18**, **Redux Toolkit**, **React Router v6**, **Vite**, **Pure Node.js**, **Native Android TV (Kotlin / ExoPlayer)**, and integrated with **AIOStreams (ElfHosted + Premiumize)**, **TMDB**, **Groq AI**, and **SIMKL**.
 
-BubbaFlix features **Direct AIOStreams Integration**, **Native Android TV & Fire TV App (`android-tv/`)**, **Universal Integrated Web Video Player across All Devices (Android TV, Firestick, Smart TVs, Desktop, Mobile)**, **Smart TV D-Pad 2D Spatial Grid Navigation with Row Wrapping**, **Official SIMKL API Rule Compliance & Activity Delta Sync**, **Groq AI Llama 3 Stream Title Filtering**, **Centralized Backend Server Settings API**, **Dual Console & Volume Log Persistence**, and automatic **English-only Live-Action Filtering (No Anime/Animation)**.
+BubbaFlix features **⭐ Favorites Section & Star Toggle Persistence**, **Native Android TV App (`android-tv/`) with ExoPlayer 5-Minute Ahead-Buffering**, **Automatic Web Audio Transcoder (AC3/EAC3/DTS → AAC)**, **Unlocked Smart TV D-Pad Spatial Navigation with Top-Left Poster Auto-Focus**, **Canonical OTA Version Updates (`version.json`)**, **Groq AI Llama 3 Stream Title Filtering**, **Official SIMKL Watch History Sync**, and **Centralized Backend Transcoder Proxy**.
 
 ---
 
 ## 📲 Downloader App Quick Install
 
-Install **BubbaFlix TV v1.0.0** directly on any Firestick, Fire TV, or Android TV device using the **Downloader** app:
+Install **BubbaFlix TV** directly on any Firestick, Fire TV, or Android TV device using the **Downloader** app:
 
 > 🔥 **Downloader Code**: **`7862216`**
+> 
+> 🔗 **Direct APK URL**: `https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk`
 
 ---
 
 ## 🌟 Key Features
 
 ### 📺 Native Android TV, Google TV & Fire TV App (`android-tv/`)
-- **Downloader App Quick Install**: Enter code **`7862216`** in the Downloader app to install `BubbaFlixTV-v1.0.0.apk` directly on your TV.
+- **Downloader Quick Install**: Enter code **`7862216`** in the Downloader app to install `BubbaFlixTV.apk` directly on your TV.
+- **5-Minute Ahead-Buffering Engine**: ExoPlayer (`PlayerActivity.kt`) buffers up to 300 seconds (5 minutes) ahead with `DefaultLoadControl` to eliminate micro-stutters and video freezing on high-bitrate 4K / 1080p streams.
+- **Canonical OTA Update Checker**: Automatically checks `version.json` on app launch and prompts the user with an interactive Yes/No update dialog.
 - **Native Android TV Launcher Banner**: Includes full Leanback launcher integration (`LEANBACK_LAUNCHER`) for Android TV, Google TV, Chromecast, Nvidia Shield, and Amazon Fire TV devices.
-- **Hardware-Accelerated Embedded Player**: Native Kotlin wrapper tuned for 10ft TV displays with hardware acceleration and zero external player intent hijacking.
-- **Server Discovery & Address Prompt**: Connects seamlessly to your local network server IP (e.g. `http://192.168.1.50:5150`).
+- **Signed Production Keystore (`bubbaflix.jks`)**: Signed with V1 and V2 signatures for instant, seamless package installation on all Android TV versions.
+
+### ⭐ Favorites Section & Persistence
+- **Dedicated Favorites Page (`/favorites`)**: View all saved favorite movies and TV series in one centralized location with filter tabs (**All**, **Movies**, **TV Series**).
+- **Details Screen Star Toggle (`FavoriteStar`)**: Toggle items in and out of Favorites directly from their details screen with instant visual feedback and Toast notices.
+- **Top Menu Bar Position**: Positioned prominently in the top navigation bar right between **Home** and **Movies**:
+  `Home` → `⭐ Favorites` → `Movies` → `TV Series` → `Settings`
+
+### 🔊 Automatic Web Audio Transcoder & Nginx Engine
+- **Universal Audio Codec Transcoding**: Web browsers lack native decoders for AC3 (Dolby Digital), EAC3 (Dolby Digital Plus), TrueHD, and DTS audio tracks. The backend FFmpeg engine (`/api/transcode`) automatically converts unsupported audio into standard stereo AAC (`-c:a aac -b:a 192k -ac 2`), guaranteeing clear, loud audio across all web browsers.
+- **2-Stage Fail-Safe Fallback**: `VideoPlayerModal` attempts instant direct HTTP playback first, and automatically retries via `/api/transcode?url=...` in the background if a browser decoding error occurs.
+- **Nginx Transcoder Proxy**: Pre-configured in `nginx.conf` (`proxy_pass http://127.0.0.1:5000;`) for unbuffered real-time video/audio streaming.
+
+### 🕹️ Unlocked D-Pad Spatial Navigation & Top-Left Poster Auto-Focus
+- **Top-Left Poster Auto-Focus**: On page load or route change, initial D-Pad focus automatically targets **the top-left poster card** (`.movieCard`, `.posterBlock`, `.carouselItem`).
+- **Section-Transition Vertical Navigation**: Moving **`ArrowDown`** transitions smoothly to lower carousel rows, while moving **`ArrowUp`** transitions to upper rows and into the **Top Navigation Bar**.
+- **Non-Navigable Top Logo**: Logo image is excluded from D-Pad focus loop since the **Home** button handles home navigation.
 
 ### ⚡ AIOStreams (ElfHosted + Premiumize) Direct Streaming
 - **Direct Addon Integration**: Powered by AIOStreams (ElfHosted) to fetch torrents and resolve direct Premiumize streams without client-side resolving.
-- **Custom Addon Manifest URLs**: Configure your personal AIOStreams addon URL (with Premiumize & torrent indexers) in Settings or Docker environment variables.
-- **Universal Integrated Web Player**: Android TV devices, Firestick, Smart TVs, desktop browsers, and mobile devices all use the built-in, zero-latency **BubbaFlix Web Video Player** (`VideoPlayerModal`), ensuring a unified streaming interface without external native app launches.
-
-### 🎮 Smart TV Remote Control Spatial Navigation Engine
-- **2D Spatial Sector Navigation**: Fully compatible with Android TV, Google TV, Firestick, Apple TV, LG webOS, Samsung Tizen, and TV D-Pad remotes.
-- **Grid Row Wrapping**: `ArrowRight` and `ArrowLeft` traverse cards smoothly on Explore Movies (`/explore/movie`), Explore TV Shows (`/explore/tv`), and Search Results with automatic row wrapping at grid edges.
-- **Luminous 3D Focus Glow**: Focused items elevate (`transform: scale(1.08)`) with glowing outlines for clear 10ft TV viewing.
+- **Custom Addon Manifest URLs**: Pre-configure your personal AIOStreams addon URL in Settings or Docker environment variables.
 
 ### 🤖 Groq AI Llama 3 Stream Title Classifier
-- **Fast AI Inference**: Uses Groq AI (`llama3-8b-8192`) to classify torrent and stream titles, automatically filtering out adult content, music albums, software, and unrelated releases.
+- **Fast AI Inference**: Uses Groq AI (`llama3-8b-8192`) to classify stream titles, automatically filtering out adult content, software, and unrelated releases.
 
-### 🎬 Official SIMKL API Compliance & Activity Delta Sync
-- **Streamlined Client ID Integration**: Simplified SIMKL watch history tracking requiring ONLY your SIMKL Client ID.
+### 🎬 Official SIMKL API Compliance & Watch History Sync
 - **Official API Rules Compliant**: Fully compliant with SIMKL API rules (`client_id`, `app-name=BubbaFlix`, `app-version=1.0`, `User-Agent: BubbaFlix/1.0 (Smart TV Media App)`).
 
 ---
@@ -63,12 +75,14 @@ Settings persist across container restarts using the Docker volume mapping: `bub
 ## 📱 Android TV APK Build & Deployment
 
 - **Downloader App Code**: **`7862216`**
-- **Manual APK File**: [`BubbaFlixTV-v1.0.0.apk`](file:///f:/Cyberflix/BubbaFlixTV-v1.0.0.apk)
+- **Canonical APK Download**: [`BubbaFlixTV.apk`](https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk)
+- **Version Check JSON**: [`version.json`](https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/version.json)
 
 To build the native Android TV APK manually:
 ```bash
 cd android-tv
-./gradlew.bat assembleDebug
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+.\gradlew.bat assembleRelease
 ```
 See [`android-tv/README.md`](file:///f:/Cyberflix/android-tv/README.md) for step-by-step sideloading & installation guides.
 
