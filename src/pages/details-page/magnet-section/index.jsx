@@ -81,14 +81,20 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
       }
     }
 
-    if (transcodeMode && targetUrl.startsWith("magnet:")) {
+    // Check if running in a web browser (desktop, laptop, mobile web browser) vs native TV client
+    const isWebBrowserMode = typeof window !== "undefined" && !isTvDevice() && !(window.AndroidPlayer && typeof window.AndroidPlayer.playStream === "function");
+
+    // Enable backend server transcoding in web browser mode for universal audio (AC3/EAC3/DTS -> AAC) & video compatibility
+    const shouldUseTranscoder = transcodeMode || isWebBrowserMode;
+
+    if (shouldUseTranscoder && targetUrl.startsWith("magnet:")) {
       alert(
         "Magnet P2P streams require a Debrid account (Real-Debrid, Premiumize, TorBox) for server transcoding.\n\nPlease save your Premiumize API Key in Settings or select a direct HTTP stream."
       );
       return;
     }
 
-    const streamUrl = transcodeMode
+    const streamUrl = shouldUseTranscoder
       ? `/api/transcode?url=${encodeURIComponent(targetUrl)}`
       : targetUrl;
 
