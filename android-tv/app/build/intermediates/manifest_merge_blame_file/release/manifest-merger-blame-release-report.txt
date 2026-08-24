@@ -116,7 +116,7 @@
 67
 68        <!-- Native Universal Codec Player Activity -->
 69        <activity
-69-->F:\Cyberflix\android-tv\app\src\main\AndroidManifest.xml:53:9-58:56
+69-->F:\Cyberflix\android-tv\app\src\main\AndroidManifest.xml:53:9-58:63
 70            android:name="com.jsanderstechnologies.bubbaflix.PlayerActivity"
 70-->F:\Cyberflix\android-tv\app\src\main\AndroidManifest.xml:54:13-43
 71            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
@@ -125,8 +125,8 @@
 72-->F:\Cyberflix\android-tv\app\src\main\AndroidManifest.xml:55:13-37
 73            android:screenOrientation="landscape"
 73-->F:\Cyberflix\android-tv\app\src\main\AndroidManifest.xml:57:13-50
-74            android:theme="@style/Theme.BubbaFlixTV" />
-74-->F:\Cyberflix\android-tv\app\src\main\AndroidManifest.xml:58:13-53
+74            android:theme="@style/Theme.BubbaFlixTV.Player" />
+74-->F:\Cyberflix\android-tv\app\src\main\AndroidManifest.xml:58:13-60
 75
 76        <!-- FileProvider for Automatic Package Installation -->
 77        <provider

@@ -71,7 +71,7 @@
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
             android:exported="false"
             android:screenOrientation="landscape"
-            android:theme="@style/Theme.BubbaFlixTV" />
+            android:theme="@style/Theme.BubbaFlixTV.Player" />
 
         <!-- FileProvider for Automatic Package Installation -->
         <provider
