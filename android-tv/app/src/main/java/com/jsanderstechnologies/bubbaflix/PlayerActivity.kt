@@ -88,6 +88,7 @@ class PlayerActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
         hideSystemUI()
 
         setContentView(R.layout.activity_player)
@@ -159,6 +160,7 @@ class PlayerActivity : AppCompatActivity() {
 
         playerView.setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
         (playerView.videoSurfaceView as? android.view.SurfaceView)?.setZOrderMediaOverlay(true)
+        (playerView.videoSurfaceView as? android.view.TextureView)?.isOpaque = false
 
         exoPlayer = ExoPlayer.Builder(this, renderersFactory)
             .setMediaSourceFactory(mediaSourceFactory)

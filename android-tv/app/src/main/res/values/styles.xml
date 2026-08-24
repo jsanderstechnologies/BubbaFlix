@@ -6,4 +6,11 @@
         <item name="android:windowContentOverlay">@null</item>
         <item name="android:background">#141414</item>
     </style>
+
+    <!-- Transparent Player Theme ensuring SurfaceView / TextureView video punch-hole is never covered -->
+    <style name="Theme.BubbaFlixTV.Player" parent="Theme.BubbaFlixTV">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:colorBackground">@android:color/transparent</item>
+        <item name="android:background">@android:color/transparent</item>
+    </style>
 </resources>
