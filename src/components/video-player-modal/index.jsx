@@ -150,14 +150,23 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
       hls.on(Hls.Events.ERROR, (event, data) => {
         if (data.fatal) {
           console.warn("[Player HLS Fatal Error]:", data);
-          setHasError(true);
-          setErrorMessage("Failed to decode video stream. Please select another stream.");
+          if (currentUrl && !currentUrl.includes("/api/transcode")) {
+            console.log("[VideoPlayerModal] Direct HLS stream failed. Attempting backend transcoder fallback...");
+            setCurrentUrl(`/api/transcode?url=${encodeURIComponent(currentUrl)}`);
+          } else {
+            setHasError(true);
+            setErrorMessage("Failed to decode video stream. Please select another stream.");
+          }
         }
       });
     } else {
       videoNode.src = currentUrl;
       videoNode.play().catch((err) => {
         console.warn("[Player Native Play Error]:", err.message);
+        if (currentUrl && !currentUrl.includes("/api/transcode")) {
+          console.log("[VideoPlayerModal] Direct video play error. Attempting backend transcoder fallback...");
+          setCurrentUrl(`/api/transcode?url=${encodeURIComponent(currentUrl)}`);
+        }
       });
     }
 
@@ -510,8 +519,13 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
               onPause={() => setIsPlaying(false)}
               onError={(e) => {
                 console.warn("[Video Player Error Event]:", e);
-                setHasError(true);
-                setErrorMessage("Unable to load or play stream. Please select another stream or configure AIOStreams Debrid.");
+                if (currentUrl && !currentUrl.includes("/api/transcode")) {
+                  console.log("[VideoPlayerModal] Direct video load error. Attempting backend transcoder fallback...");
+                  setCurrentUrl(`/api/transcode?url=${encodeURIComponent(currentUrl)}`);
+                } else {
+                  setHasError(true);
+                  setErrorMessage("Unable to load or play stream. Please select another stream or configure AIOStreams Debrid.");
+                }
               }}
             >
               {activeVttUrl && (
