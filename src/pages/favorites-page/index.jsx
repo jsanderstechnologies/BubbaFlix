@@ -5,9 +5,7 @@ import { FiFilm, FiTv } from "react-icons/fi";
 import ContentWrapper from "../../components/content-wrapper";
 import MovieCard from "../../components/movie-card";
 import TopNav from "../../components/top-nav";
-import Header from "../../components/header";
 import { getFavorites } from "../../utils/favorites";
-import { isTvDevice } from "../../utils/dpadNavigation";
 import "./index.scss";
 
 const FavoritesPage = () => {
@@ -47,11 +45,9 @@ const FavoritesPage = () => {
       ? tvFavs
       : favorites;
 
-  const isTv = isTvDevice();
-
   return (
     <div className="favoritesPage">
-      {isTv ? <TopNav /> : <Header />}
+      <TopNav />
 
       <ContentWrapper>
         <div className="pageHeader">
@@ -108,7 +104,7 @@ const FavoritesPage = () => {
         </div>
 
         {displayedItems.length > 0 ? (
-          <div className="contentGrid">
+          <div className="content">
             {displayedItems.map((item) => (
               <MovieCard
                 key={`${item.media_type || item.mediaType || "movie"}-${item.id}`}
