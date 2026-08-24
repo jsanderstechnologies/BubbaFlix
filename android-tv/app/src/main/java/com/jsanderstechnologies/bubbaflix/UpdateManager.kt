@@ -68,15 +68,15 @@ object UpdateManager {
         if (activity.isFinishing || activity.isDestroyed) return
 
         val builder = AlertDialog.Builder(activity)
-        builder.setTitle("🚀 BubbaFlix Update Available (v$versionName)")
-        builder.setMessage("$releaseNotes\n\nWould you like to download and install this update now?")
+        builder.setTitle("🚀 BubbaFlix TV Update Available (v$versionName)")
+        builder.setMessage("$releaseNotes\n\nWould you like to update the BubbaFlix TV app?")
 
-        builder.setPositiveButton("Update Now") { dialog, _ ->
+        builder.setPositiveButton("Yes") { dialog, _ ->
             dialog.dismiss()
             downloadAndInstallApk(activity, apkUrl)
         }
 
-        builder.setNegativeButton("Later") { dialog, _ ->
+        builder.setNegativeButton("No") { dialog, _ ->
             dialog.dismiss()
         }
 
