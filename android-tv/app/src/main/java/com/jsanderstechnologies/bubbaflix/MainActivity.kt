@@ -27,10 +27,21 @@ class MainActivity : AppCompatActivity() {
         private const val DEFAULT_URL = "http://192.168.1.50:5150"
     }
 
-    class AndroidPlayerBridge(private val context: Context) {
+    class AndroidPlayerBridge(private val context: Context, private val activity: Activity) {
         @JavascriptInterface
         fun playStream(videoUrl: String, title: String?, logoUrl: String?, tmdbId: String?, mediaType: String?) {
             PlayerActivity.start(context, videoUrl, title, logoUrl, tmdbId, mediaType)
+        }
+
+        @JavascriptInterface
+        fun showKeyboard() {
+            activity.runOnUiThread {
+                val imm = activity.getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+                val currentFocusView = activity.currentFocus
+                if (currentFocusView != null) {
+                    imm?.showSoftInput(currentFocusView, android.view.inputmethod.InputMethodManager.SHOW_FORCED)
+                }
+            }
         }
     }
 
@@ -84,7 +95,7 @@ class MainActivity : AppCompatActivity() {
         settings.userAgentString = "$defaultUa BubbaFlixTV/1.0 (Android TV Smart Client)"
 
         // Register Native Universal Codec Player Javascript Interface
-        webView.addJavascriptInterface(AndroidPlayerBridge(this), "AndroidPlayer")
+        webView.addJavascriptInterface(AndroidPlayerBridge(this, this), "AndroidPlayer")
 
         webView.webChromeClient = object : WebChromeClient() {
             override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {

@@ -15,7 +15,6 @@ export const isTvDevice = () => {
   const isTizen = /Tizen/i.test(ua);
   const isGenericTv = /SmartTV/i.test(ua) || /TV/i.test(ua) || /HbbTV/i.test(ua) || /NetCast/i.test(ua);
 
-  // Manual override in settings
   const manualTvMode = localStorage.getItem("tv_mode_enabled");
   if (manualTvMode !== null) {
     return JSON.parse(manualTvMode);
@@ -38,14 +37,13 @@ export const applyZoom = (scalePercent) => {
 
   const ratio = validScale / 100;
 
-  // Apply zoom safely without breaking position: fixed headers on Android TV WebViews
-  if ("zoom" in document.documentElement.style) {
-    document.documentElement.style.zoom = ratio;
-  } else if ("zoom" in document.body.style) {
+  // Set root CSS variable for uniform component & poster scaling
+  document.documentElement.style.setProperty("--app-zoom", ratio.toString());
+
+  // Apply CSS zoom to documentElement and body so all poster cards, carousels, text, and grids scale proportionally
+  document.documentElement.style.zoom = ratio;
+  if (document.body) {
     document.body.style.zoom = ratio;
-  } else {
-    // Font-size scaling fallback
-    document.documentElement.style.fontSize = `${16 * ratio}px`;
   }
 
   window.dispatchEvent(new Event("tv-zoom-updated"));

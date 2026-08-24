@@ -1,5 +1,4 @@
-// D-Pad / Smart TV Remote Spatial Navigation Engine for BubbaFlix
-// Pure Row-Boundary Spatial Navigation Engine with Top-Left Poster Auto-Focus
+// D-Pad / Smart TV Remote Spatial Navigation & Keyboard Control Engine for BubbaFlix
 
 export const isTvDevice = () => {
   if (typeof window === "undefined") return false;
@@ -65,6 +64,37 @@ const focusAndScroll = (el) => {
   }
 };
 
+// Global TV Soft Keyboard Suppressor
+if (typeof document !== "undefined") {
+  document.addEventListener(
+    "focusin",
+    (e) => {
+      const target = e.target;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
+        // Prevent automatic TV soft keyboard pop-up unless user explicitly pressed Action button
+        if (!target.getAttribute("data-editing-active")) {
+          target.setAttribute("inputmode", "none");
+          target.setAttribute("readonly", "readonly");
+        }
+      }
+    },
+    true
+  );
+
+  document.addEventListener(
+    "focusout",
+    (e) => {
+      const target = e.target;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
+        target.removeAttribute("data-editing-active");
+        target.setAttribute("inputmode", "none");
+        target.setAttribute("readonly", "readonly");
+      }
+    },
+    true
+  );
+}
+
 // Focus the top-leftmost poster element when changing pages
 export const focusTopLeftPoster = () => {
   setTimeout(() => {
@@ -126,13 +156,22 @@ export const initDpadNavigation = () => {
     const code = e.keyCode;
     const activeEl = document.activeElement;
 
+    // Ignore spatial navigation if video player modal is active or if user is actively typing with open soft keyboard
     if (
       document.body.classList.contains("videoPlayerActive") ||
-      (activeEl && (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA") && activeEl.type === "text")
+      (activeEl && (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA") && activeEl.getAttribute("data-editing-active") === "true")
     ) {
+      if (key === "Escape" || key === "Back" || code === 27 || code === 10009 || code === 461 || code === 4) {
+        if (activeEl) {
+          activeEl.removeAttribute("data-editing-active");
+          activeEl.setAttribute("readonly", "readonly");
+          activeEl.blur();
+        }
+      }
       return;
     }
 
+    // Handle Smart TV Back Button
     if (key === "Escape" || key === "Back" || code === 27 || code === 10009 || code === 461 || code === 4) {
       if (window.location.pathname !== "/") {
         e.preventDefault();
@@ -141,9 +180,23 @@ export const initDpadNavigation = () => {
       }
     }
 
-    if (key === "Select" || code === 23 || code === 66) {
+    // D-Pad Action (Select / OK / Enter) Button Press
+    if (key === "Select" || code === 23 || code === 66 || (key === "Enter" && activeEl && activeEl.tagName === "INPUT")) {
       if (activeEl && activeEl !== document.body) {
-        if (activeEl.tagName !== "BUTTON" && activeEl.tagName !== "A" && activeEl.tagName !== "INPUT" && activeEl.tagName !== "SELECT") {
+        // If user pressed Select/Action button on a text input control -> Enable typing & activate soft keyboard
+        if (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA") {
+          e.preventDefault();
+          activeEl.setAttribute("data-editing-active", "true");
+          activeEl.removeAttribute("readonly");
+          activeEl.setAttribute("inputmode", "text");
+          activeEl.focus();
+          if (typeof window !== "undefined" && window.AndroidPlayer && typeof window.AndroidPlayer.showKeyboard === "function") {
+            window.AndroidPlayer.showKeyboard();
+          }
+          return;
+        }
+
+        if (activeEl.tagName !== "BUTTON" && activeEl.tagName !== "A" && activeEl.tagName !== "SELECT") {
           e.preventDefault();
           activeEl.click();
           return;
@@ -172,13 +225,12 @@ export const initDpadNavigation = () => {
     const r1 = activeEl.getBoundingClientRect();
     const c1 = { x: r1.left + r1.width / 2, y: r1.top + r1.height / 2 };
 
-    // 1. CAROUSEL & ROW HORIZONTAL NAVIGATION (Left & Right)
+    // 1. CAROUSEL & ROW DIRECT SIBLING NAVIGATION (Left & Right)
     const inRowContainer = activeEl.closest(".carouselItems") || activeEl.closest(".menuItems") || activeEl.closest(".navLinks") || activeEl.closest(".content");
     if (inRowContainer) {
       if (direction === "ArrowRight" && activeEl.nextElementSibling) {
         if (focusables.includes(activeEl.nextElementSibling)) {
           const rNext = activeEl.nextElementSibling.getBoundingClientRect();
-          // Ensure next element is roughly in same horizontal row
           if (Math.abs(rNext.top - r1.top) < r1.height * 0.7) {
             focusAndScroll(activeEl.nextElementSibling);
             return;
@@ -200,13 +252,11 @@ export const initDpadNavigation = () => {
     let candidates = [];
 
     if (direction === "ArrowDown") {
-      // Must be strictly below current item's bottom edge (or center)
       candidates = focusables.filter((el) => {
         const r2 = el.getBoundingClientRect();
         return r2.top >= r1.bottom - 15 || (r2.top > r1.top + r1.height * 0.5 && el !== activeEl);
       });
     } else if (direction === "ArrowUp") {
-      // Must be strictly above current item's top edge (or center)
       candidates = focusables.filter((el) => {
         const r2 = el.getBoundingClientRect();
         return r2.bottom <= r1.top + 15 || (r2.bottom < r1.bottom - r1.height * 0.5 && el !== activeEl);
@@ -225,12 +275,9 @@ export const initDpadNavigation = () => {
 
     if (candidates.length > 0) {
       if (direction === "ArrowDown") {
-        // Find the minimum vertical distance down to the next row
         const minTop = Math.min(...candidates.map((el) => el.getBoundingClientRect().top));
-        // Keep candidates in the closest row below (within 60px of minTop)
         const rowCandidates = candidates.filter((el) => el.getBoundingClientRect().top <= minTop + 60);
 
-        // Pick item in that row whose X center is closest to current item's X center
         rowCandidates.sort((a, b) => {
           const rA = a.getBoundingClientRect();
           const rB = b.getBoundingClientRect();
@@ -242,7 +289,6 @@ export const initDpadNavigation = () => {
         focusAndScroll(rowCandidates[0]);
         return;
       } else if (direction === "ArrowUp") {
-        // Find the maximum bottom coordinate (closest row above)
         const maxBottom = Math.max(...candidates.map((el) => el.getBoundingClientRect().bottom));
         const rowCandidates = candidates.filter((el) => el.getBoundingClientRect().bottom >= maxBottom - 60);
 
@@ -257,7 +303,6 @@ export const initDpadNavigation = () => {
         focusAndScroll(rowCandidates[0]);
         return;
       } else {
-        // Horizontal grid movement (ArrowRight / ArrowLeft)
         candidates.sort((a, b) => {
           const rA = a.getBoundingClientRect();
           const rB = b.getBoundingClientRect();
