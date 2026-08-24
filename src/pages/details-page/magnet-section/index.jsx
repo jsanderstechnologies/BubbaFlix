@@ -182,20 +182,12 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
                       </div>
                     </div>
 
-                    <div className="itemActions" style={{ display: "flex", gap: "8px" }}>
+                    <div className="itemActions">
                       <button
                         className="actionBtn play"
                         onClick={() => handlePlayStream(item, false)}
                       >
-                        <FiPlay /> Play Direct
-                      </button>
-                      <button
-                        className="actionBtn play transcode"
-                        style={{ background: "rgba(218, 47, 104, 0.2)", borderColor: "var(--pink)", color: "#ffffff" }}
-                        onClick={() => handlePlayStream(item, true)}
-                        title="Transcode stream on backend server for universal browser & device compatibility"
-                      >
-                        ⚡ Transcode
+                        <FiPlay /> Play
                       </button>
                     </div>
                   </div>
