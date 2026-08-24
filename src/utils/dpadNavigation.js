@@ -35,8 +35,16 @@ const FOCUSABLE_SELECTOR = [
 
 const getFocusableElements = () => {
   return Array.from(document.querySelectorAll(FOCUSABLE_SELECTOR)).filter((el) => {
-    // Exclude logo elements from D-Pad spatial navigation focus
-    if (el.classList.contains("logo") || el.classList.contains("navLogo") || el.closest(".logo") || el.closest(".navLogo")) {
+    // Exclude logo elements and carousel arrows from D-Pad spatial navigation focus
+    if (
+      el.classList.contains("logo") ||
+      el.classList.contains("navLogo") ||
+      el.closest(".logo") ||
+      el.closest(".navLogo") ||
+      el.classList.contains("arrow") ||
+      el.classList.contains("carouselLeftNav") ||
+      el.classList.contains("carouselRightNav")
+    ) {
       return false;
     }
     const rect = el.getBoundingClientRect();
@@ -250,12 +258,20 @@ export const initDpadNavigation = () => {
 
     // 2. ROW-BOUNDARY VERTICAL & HORIZONTAL NAVIGATION ENGINE
     let candidates = [];
+    const inTopNav = activeEl.closest(".topNav") || activeEl.closest(".header") || activeEl.closest(".navLinks") || activeEl.closest(".navSearch");
 
     if (direction === "ArrowDown") {
-      candidates = focusables.filter((el) => {
-        const r2 = el.getBoundingClientRect();
-        return r2.top >= r1.bottom - 15 || (r2.top > r1.top + r1.height * 0.5 && el !== activeEl);
-      });
+      if (inTopNav) {
+        // Exclude elements inside Top Navigation bar so ArrowDown moves DOWN into main content area
+        candidates = focusables.filter((el) => {
+          return !el.closest(".topNav") && !el.closest(".header") && !el.closest(".navLinks") && !el.closest(".navSearch");
+        });
+      } else {
+        candidates = focusables.filter((el) => {
+          const r2 = el.getBoundingClientRect();
+          return r2.top >= r1.bottom - 15 || (r2.top > r1.top + r1.height * 0.5 && el !== activeEl);
+        });
+      }
     } else if (direction === "ArrowUp") {
       candidates = focusables.filter((el) => {
         const r2 = el.getBoundingClientRect();
