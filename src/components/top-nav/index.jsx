@@ -33,20 +33,7 @@ const TopNav = () => {
 			<ContentWrapper>
 				<div className="topNavInner">
 					{/* App Logo */}
-					<div
-						className="navLogo"
-						tabIndex="0"
-						role="button"
-						aria-label="BubbaFlix Home"
-						onClick={() => navigate("/")}
-						onKeyDown={(e) => {
-							const code = e.keyCode;
-							if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
-								e.preventDefault();
-								navigate("/");
-							}
-						}}
-					>
+					<div className="navLogo">
 						<img src="/logo.svg" alt="BubbaFlix" />
 					</div>
 

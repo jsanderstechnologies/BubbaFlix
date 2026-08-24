@@ -1,5 +1,5 @@
 // D-Pad / Smart TV Remote Spatial Navigation Engine for BubbaFlix
-// Fluid 2D Spatial Navigation (Unrestricted directional traversal across all grids and layouts)
+// Predictable 2D Spatial Navigation with Top-Left Poster Auto-Focus on Page Change
 
 const FOCUSABLE_SELECTOR = [
   "a[href]",
@@ -8,10 +8,10 @@ const FOCUSABLE_SELECTOR = [
   "select:not([disabled])",
   "textarea:not([disabled])",
   '[tabindex="0"]:not([tabindex="-1"])',
-  ".logo",
   ".menuItem",
   ".headerIconBtn",
   ".movieCard",
+  ".posterBlock",
   ".carouselItem",
   ".themeCard",
   ".tabItem",
@@ -21,10 +21,15 @@ const FOCUSABLE_SELECTOR = [
   ".episodeItem",
   ".seasonCard",
   ".actionBtn",
+  ".navBtn",
 ].join(", ");
 
 const getFocusableElements = () => {
   return Array.from(document.querySelectorAll(FOCUSABLE_SELECTOR)).filter((el) => {
+    // Exclude logo elements from D-Pad spatial navigation focus
+    if (el.classList.contains("logo") || el.classList.contains("navLogo") || el.closest(".logo") || el.closest(".navLogo")) {
+      return false;
+    }
     const rect = el.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return false;
     const style = getComputedStyle(el);
@@ -50,8 +55,67 @@ const focusAndScroll = (el) => {
   }
 };
 
+// Focus the top-leftmost poster element when changing pages
+export const focusTopLeftPoster = () => {
+  setTimeout(() => {
+    // Prioritize poster elements on screen
+    const posters = Array.from(
+      document.querySelectorAll(".movieCard, .posterBlock, .carouselItem, .seasonCard, .episodeItem")
+    ).filter((el) => {
+      const rect = el.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return false;
+      const style = getComputedStyle(el);
+      return style.visibility !== "hidden" && style.display !== "none" && rect.top >= 0 && rect.top < window.innerHeight;
+    });
+
+    if (posters.length > 0) {
+      // Sort by top coordinate first (topmost), then by left (leftmost)
+      posters.sort((a, b) => {
+        const rA = a.getBoundingClientRect();
+        const rB = b.getBoundingClientRect();
+        const topDiff = rA.top - rB.top;
+        if (Math.abs(topDiff) > 50) return topDiff;
+        return rA.left - rB.left;
+      });
+
+      focusAndScroll(posters[0]);
+      return;
+    }
+
+    // Fallback to first focusable interactive element
+    const focusables = getFocusableElements();
+    if (focusables.length > 0) {
+      focusAndScroll(focusables[0]);
+    }
+  }, 300);
+};
+
 export const initDpadNavigation = () => {
   if (typeof window === "undefined") return;
+
+  // Auto-focus top-left poster on initial page load
+  focusTopLeftPoster();
+
+  // Watch for page route changes (URL popstate & history push state)
+  const handleRouteChange = () => {
+    focusTopLeftPoster();
+  };
+
+  window.addEventListener("popstate", handleRouteChange);
+
+  // Intercept history.pushState & replaceState to detect React Router navigation
+  const origPush = window.history.pushState;
+  const origReplace = window.history.replaceState;
+
+  window.history.pushState = function (...args) {
+    origPush.apply(this, args);
+    handleRouteChange();
+  };
+
+  window.history.replaceState = function (...args) {
+    origReplace.apply(this, args);
+    handleRouteChange();
+  };
 
   const handleKeyDown = (e) => {
     const key = e.key || e.keyCode;
@@ -100,14 +164,14 @@ export const initDpadNavigation = () => {
     const focusables = getFocusableElements();
     if (focusables.length === 0) return;
 
-    // If no valid active element, focus the first available item
+    // If no valid active element, focus the top-left poster item
     if (!activeEl || activeEl === document.body || !focusables.includes(activeEl)) {
-      focusAndScroll(focusables[0]);
+      focusTopLeftPoster();
       return;
     }
 
-    // 1. CAROUSEL HORIZONTAL DIRECT SIBLING NAVIGATION
-    const inCarousel = activeEl.closest(".carouselItems") || activeEl.closest(".menuItems");
+    // 1. CAROUSEL & ROW DIRECT SIBLING NAVIGATION
+    const inCarousel = activeEl.closest(".carouselItems") || activeEl.closest(".menuItems") || activeEl.closest(".navLinks");
     if (inCarousel) {
       if (direction === "ArrowRight" && activeEl.nextElementSibling) {
         if (focusables.includes(activeEl.nextElementSibling)) {
@@ -123,7 +187,7 @@ export const initDpadNavigation = () => {
       }
     }
 
-    // 2. UNRESTRICTED 2D SPATIAL NAVIGATION (No rigid grid-locks)
+    // 2. PREDICTABLE SPATIAL NAVIGATION (Row & Column Alignment Lock)
     const r1 = activeEl.getBoundingClientRect();
     const c1 = { x: r1.left + r1.width / 2, y: r1.top + r1.height / 2 };
 
@@ -141,36 +205,49 @@ export const initDpadNavigation = () => {
       let primaryDist = 0;
       let secondaryDist = 0;
       let isValidDirection = false;
+      let alignmentPenalty = 1.0;
 
       if (direction === "ArrowDown") {
-        if (c2.y > c1.y + 2 || r2.top >= r1.top + 5) {
+        if (r2.top >= r1.bottom - 10 || c2.y > c1.y + 10) {
           isValidDirection = true;
           primaryDist = Math.max(0, dy);
           secondaryDist = Math.abs(dx);
+
+          const isAligned = r2.left < r1.right && r2.right > r1.left;
+          if (isAligned) alignmentPenalty = 0.5;
         }
       } else if (direction === "ArrowUp") {
-        if (c2.y < c1.y - 2 || r2.bottom <= r1.bottom - 5) {
+        if (r2.bottom <= r1.top + 10 || c2.y < c1.y - 10) {
           isValidDirection = true;
           primaryDist = Math.max(0, -dy);
           secondaryDist = Math.abs(dx);
+
+          const isAligned = r2.left < r1.right && r2.right > r1.left;
+          if (isAligned) alignmentPenalty = 0.5;
         }
       } else if (direction === "ArrowRight") {
-        if (c2.x > c1.x + 2 || r2.left >= r1.left + 5) {
+        if (r2.left >= r1.right - 10 || c2.x > c1.x + 10) {
           isValidDirection = true;
           primaryDist = Math.max(0, dx);
           secondaryDist = Math.abs(dy);
+
+          const isAligned = r2.top < r1.bottom && r2.bottom > r1.top;
+          if (isAligned) alignmentPenalty = 0.5;
         }
       } else if (direction === "ArrowLeft") {
-        if (c2.x < c1.x - 2 || r2.right <= r1.right - 5) {
+        if (r2.right <= r1.left + 10 || c2.x < c1.x - 10) {
           isValidDirection = true;
           primaryDist = Math.max(0, -dx);
           secondaryDist = Math.abs(dy);
+
+          const isAligned = r2.top < r1.bottom && r2.bottom > r1.top;
+          if (isAligned) alignmentPenalty = 0.5;
         }
       }
 
       if (isValidDirection) {
-        // Weighted 2D spatial distance score: primary vector + 0.8x secondary projection
-        const score = primaryDist + secondaryDist * 0.8;
+        // Weighted 2D spatial distance score favoring aligned row/column items
+        const score = (primaryDist + secondaryDist * 3.0) * alignmentPenalty;
         if (score < minScore) {
           minScore = score;
           bestCandidate = candidate;
@@ -178,15 +255,17 @@ export const initDpadNavigation = () => {
       }
     }
 
-    // 3. FALLBACK FOR SECTION EDGES & NON-ALIGNED LAYOUTS
+    // 3. FALLBACK FOR SECTION BOUNDARIES
     if (!bestCandidate) {
       if (direction === "ArrowDown") {
         const belowCandidates = focusables.filter((el) => el.getBoundingClientRect().top >= r1.bottom - 5);
         if (belowCandidates.length > 0) {
           belowCandidates.sort((a, b) => {
-            const dA = Math.hypot(a.getBoundingClientRect().left - c1.x, a.getBoundingClientRect().top - c1.y);
-            const dB = Math.hypot(b.getBoundingClientRect().left - c1.x, b.getBoundingClientRect().top - c1.y);
-            return dA - dB;
+            const rA = a.getBoundingClientRect();
+            const rB = b.getBoundingClientRect();
+            const topDiff = rA.top - rB.top;
+            if (Math.abs(topDiff) > 50) return topDiff;
+            return Math.abs(rA.left - c1.x) - Math.abs(rB.left - c1.x);
           });
           bestCandidate = belowCandidates[0];
         }
@@ -194,22 +273,22 @@ export const initDpadNavigation = () => {
         const aboveCandidates = focusables.filter((el) => el.getBoundingClientRect().bottom <= r1.top + 5);
         if (aboveCandidates.length > 0) {
           aboveCandidates.sort((a, b) => {
-            const dA = Math.hypot(a.getBoundingClientRect().left - c1.x, a.getBoundingClientRect().top - c1.y);
-            const dB = Math.hypot(b.getBoundingClientRect().left - c1.x, b.getBoundingClientRect().top - c1.y);
-            return dA - dB;
+            const rA = a.getBoundingClientRect();
+            const rB = b.getBoundingClientRect();
+            const bottomDiff = rB.bottom - rA.bottom;
+            if (Math.abs(bottomDiff) > 50) return bottomDiff;
+            return Math.abs(rA.left - c1.x) - Math.abs(rB.left - c1.x);
           });
           bestCandidate = aboveCandidates[0];
         }
       } else if (direction === "ArrowRight") {
-        // Wrap to first element of section below if at far right edge
         const belowCandidates = focusables.filter((el) => el.getBoundingClientRect().top >= r1.bottom + 5);
         if (belowCandidates.length > 0) {
           belowCandidates.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
           bestCandidate = belowCandidates[0];
         }
       } else if (direction === "ArrowLeft") {
-        // Wrap to last element of section above if at far left edge
-        const aboveCandidates = focusables.filter((el) => el.getBoundingClientRect().top <= r1.top - 5);
+        const aboveCandidates = focusables.filter((el) => el.getBoundingClientRect().bottom <= r1.top - 5);
         if (aboveCandidates.length > 0) {
           aboveCandidates.sort((a, b) => b.getBoundingClientRect().right - a.getBoundingClientRect().right);
           bestCandidate = aboveCandidates[0];
@@ -226,5 +305,6 @@ export const initDpadNavigation = () => {
 
   return () => {
     window.removeEventListener("keydown", handleKeyDown, true);
+    window.removeEventListener("popstate", handleRouteChange);
   };
 };

@@ -68,14 +68,7 @@ const Header = () => {
 			className={`header ${mobileMenu ? "mobileView" : ""} ${show}`}
 		>
 			<ContentWrapper>
-				<div
-					className="logo"
-					tabIndex="0"
-					role="button"
-					aria-label="BubbaFlix Home"
-					onClick={() => handleNavigation("home")}
-					onKeyDown={(e) => handleKeyActivate(e, () => handleNavigation("home"))}
-				>
+				<div className="logo">
 					<img src="/logo.svg" alt="BubbaFlix" />
 				</div>
 
