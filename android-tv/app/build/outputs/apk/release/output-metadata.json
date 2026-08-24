@@ -11,9 +11,9 @@
       "type": "SINGLE",
       "filters": [],
       "attributes": [],
-      "versionCode": 1,
-      "versionName": "1.0.0",
-      "outputFile": "BubbaFlixTV-v1.0.0.apk"
+      "versionCode": 9,
+      "versionName": "0.0.9",
+      "outputFile": "BubbaFlixTV-v0.0.9.apk"
     }
   ],
   "elementType": "File"
