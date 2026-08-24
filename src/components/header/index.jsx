@@ -2,6 +2,7 @@
 import "./index.scss";
 import React, { useState, useEffect } from "react";
 import { HiOutlineSearch } from "react-icons/hi";
+import { AiFillStar } from "react-icons/ai";
 import { SlMenu } from "react-icons/sl";
 import { VscChromeClose } from "react-icons/vsc";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -45,6 +46,8 @@ const Header = () => {
 	const handleNavigation = (navigationType) => {
 		if (navigationType === "home") {
 			navigate("/");
+		} else if (navigationType === "favorites") {
+			navigate("/favorites");
 		} else if (navigationType === "movies") {
 			navigate("/explore/movie");
 		} else if (navigationType === "tvShows") {
@@ -73,6 +76,24 @@ const Header = () => {
 				</div>
 
 				<ul className="menuItems">
+					<li
+						className="menuItem"
+						tabIndex="0"
+						role="button"
+						onClick={() => handleNavigation("home")}
+						onKeyDown={(e) => handleKeyActivate(e, () => handleNavigation("home"))}
+					>
+						Home
+					</li>
+					<li
+						className="menuItem"
+						tabIndex="0"
+						role="button"
+						onClick={() => handleNavigation("favorites")}
+						onKeyDown={(e) => handleKeyActivate(e, () => handleNavigation("favorites"))}
+					>
+						<AiFillStar style={{ marginRight: 6, color: "#ffd700" }} /> Favorites
+					</li>
 					<li
 						className="menuItem"
 						tabIndex="0"

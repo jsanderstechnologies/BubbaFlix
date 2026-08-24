@@ -10,6 +10,7 @@ import Img from "../../../components/lazy-load";
 import PosterFallback from "../../../assets/no-poster.png";
 import VideoModal from "../../../components/video-modal";
 import WatchCheckmark from "../../../components/watch-checkmark";
+import FavoriteStar from "../../../components/favorite-star";
 import MagnetSection from "../magnet-section";
 import { PlayIcon } from "../../../components/play-btn";
 import "./index.scss";
@@ -103,6 +104,14 @@ const DetailsBanner = ({ video, crew }) => {
 										title={data?.title || data?.name}
 										mediaType={mediaType}
 										label="Watched"
+										size="lg"
+									/>
+
+									{/* Favorite Star Toggle Button */}
+									<FavoriteStar
+										item={data}
+										tmdbId={id}
+										mediaType={mediaType}
 										size="lg"
 									/>
 								</div>

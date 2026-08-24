@@ -8,6 +8,7 @@ import HomePage from "./pages/home-page";
 import DetailsPage from "./pages/details-page";
 import SearchResult from "./pages/search-result";
 import ExplorePage from "./pages/explore-page";
+import FavoritesPage from "./pages/favorites-page";
 import SettingsPage from "./pages/settings-page";
 import Page404 from "./pages/404-page";
 import Footer from "./components/footer";
@@ -55,6 +56,7 @@ const App = () => {
 		<BrowserRouter>
 			<Routes>
 				<Route path="/" element={<HomePage />} />
+				<Route path="/favorites" element={<FavoritesPage />} />
 				<Route path="/settings" element={<SettingsPage />} />
 				<Route path="/:mediaType/:id" element={<DetailsPage />} />
 				<Route path="/search/:query" element={<SearchResult />} />
