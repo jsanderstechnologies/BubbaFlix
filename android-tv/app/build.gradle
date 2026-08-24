@@ -24,8 +24,8 @@ android {
     }
 
     signingConfigs {
-        debug {
-            storeFile file('bubbaflix.keystore')
+        release {
+            storeFile file('bubbaflix.jks')
             storePassword 'bubbaflix123'
             keyAlias 'bubbaflix'
             keyPassword 'bubbaflix123'
@@ -36,9 +36,10 @@ android {
 
     buildTypes {
         debug {
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
         }
         release {
+            signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
