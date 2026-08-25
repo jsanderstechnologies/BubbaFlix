@@ -3810,6 +3810,7 @@ id browse_headers
 id browse_headers_dock
 id browse_headers_root
 id browse_title_group
+id btn_audio
 id btn_back
 id btn_ff_10
 id btn_ff_30

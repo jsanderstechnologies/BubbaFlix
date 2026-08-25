@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.SharedPreferences
+import android.graphics.Color
 import android.net.wifi.WifiManager
 import android.os.Bundle
 import android.view.Gravity
@@ -29,6 +30,7 @@ class MainActivity : AppCompatActivity() {
 
     private var customView: View? = null
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
+    private var isDialogShowing = false
 
     companion object {
         private const val PREFS_NAME = "BubbaFlixTVPrefs"
@@ -72,6 +74,7 @@ class MainActivity : AppCompatActivity() {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
+            setBackgroundColor(Color.parseColor("#0F1014"))
             isFocusable = true
             isFocusableInTouchMode = true
         }
@@ -101,6 +104,9 @@ class MainActivity : AppCompatActivity() {
         settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         settings.useWideViewPort = true
         settings.loadWithOverviewMode = true
+        settings.cacheMode = WebSettings.LOAD_DEFAULT
+
+        WebView.setWebContentsDebuggingEnabled(true)
 
         val defaultUa = settings.userAgentString
         settings.userAgentString = "$defaultUa BubbaFlixTV/1.0 (Android TV Smart Client)"
@@ -147,6 +153,26 @@ class MainActivity : AppCompatActivity() {
 
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                 super.onReceivedError(view, request, error)
+                if (request?.isForMainFrame == true) {
+                    runOnUiThread {
+                        Toast.makeText(this@MainActivity, "Connection Error: ${error?.description ?: "Unreachable"}. Open Server Settings.", Toast.LENGTH_LONG).show()
+                        if (!isDialogShowing) {
+                            promptForServerUrl()
+                        }
+                    }
+                }
+            }
+
+            override fun onReceivedHttpError(view: WebView?, request: WebResourceRequest?, errorResponse: WebResourceResponse?) {
+                super.onReceivedHttpError(view, request, errorResponse)
+                if (request?.isForMainFrame == true && (errorResponse?.statusCode ?: 200) >= 400) {
+                    runOnUiThread {
+                        Toast.makeText(this@MainActivity, "Server Error ${errorResponse?.statusCode}. Please check server address.", Toast.LENGTH_LONG).show()
+                        if (!isDialogShowing) {
+                            promptForServerUrl()
+                        }
+                    }
+                }
             }
         }
     }
@@ -160,7 +186,46 @@ class MainActivity : AppCompatActivity() {
             target = target.substring(0, target.length - 1)
         }
         prefs.edit().putString(KEY_SERVER_URL, target).apply()
-        webView.loadUrl(target)
+
+        // Test connectivity in background to prevent black screens if server is offline
+        thread {
+            var connected = false
+            try {
+                val conn = URL("$target/api/discover").openConnection() as HttpURLConnection
+                conn.connectTimeout = 3000
+                conn.readTimeout = 3000
+                conn.requestMethod = "GET"
+                if (conn.responseCode in 200..399) {
+                    connected = true
+                }
+                conn.disconnect()
+            } catch (e: Exception) {
+                // Fallback test to root URL
+                try {
+                    val rootConn = URL(target).openConnection() as HttpURLConnection
+                    rootConn.connectTimeout = 3000
+                    rootConn.readTimeout = 3000
+                    rootConn.requestMethod = "GET"
+                    if (rootConn.responseCode in 200..399) {
+                        connected = true
+                    }
+                    rootConn.disconnect()
+                } catch (ex: Exception) {
+                    connected = false
+                }
+            }
+
+            runOnUiThread {
+                if (connected) {
+                    webView.loadUrl(target)
+                } else {
+                    Toast.makeText(this@MainActivity, "Unable to reach $target. Select local server below:", Toast.LENGTH_LONG).show()
+                    if (!isDialogShowing) {
+                        promptForServerUrl()
+                    }
+                }
+            }
+        }
     }
 
     private fun discoverLocalServers(onDiscovered: (List<String>) -> Unit) {
@@ -191,7 +256,7 @@ class MainActivity : AppCompatActivity() {
                 // Ignore UDP timeout
             }
 
-            // 2. Probe default server & local gateway e.g. 192.168.1.50
+            // 2. Probe common subnet candidates
             val candidates = listOf(
                 DEFAULT_URL,
                 "http://192.168.1.50:5150",
@@ -221,6 +286,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun promptForServerUrl() {
+        if (isFinishing || isDestroyed) return
+        isDialogShowing = true
+
         runOnUiThread {
             val container = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
@@ -251,16 +319,6 @@ class MainActivity : AppCompatActivity() {
             }
             container.addView(labelInput)
 
-            // ONE-ROW RESTRICTED Server Address Input
-            val rowLayout = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                )
-            }
-
             val savedUrl = prefs.getString(KEY_SERVER_URL, DEFAULT_URL) ?: DEFAULT_URL
 
             val input = EditText(this).apply {
@@ -273,8 +331,16 @@ class MainActivity : AppCompatActivity() {
                 setSelection(text.length)
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f)
             }
-            rowLayout.addView(input)
 
+            val rowLayout = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            }
+            rowLayout.addView(input)
             container.addView(rowLayout)
 
             val dialog = AlertDialog.Builder(this)
@@ -283,6 +349,10 @@ class MainActivity : AppCompatActivity() {
                 .setPositiveButton("Connect", null)
                 .setNegativeButton("Cancel", null)
                 .create()
+
+            dialog.setOnDismissListener {
+                isDialogShowing = false
+            }
 
             dialog.setOnShowListener {
                 val connectBtn = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
@@ -299,7 +369,6 @@ class MainActivity : AppCompatActivity() {
 
                 connectBtn?.setOnClickListener { doConnect() }
 
-                // RETURN / ENTER key on soft keyboard or D-Pad remote triggers CONNECT action
                 input.setOnEditorActionListener { _, actionId, event ->
                     if (actionId == EditorInfo.IME_ACTION_GO ||
                         actionId == EditorInfo.IME_ACTION_DONE ||
@@ -351,6 +420,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun hideSystemUI() {
+        @Suppress("DEPRECATION")
         window.decorView.systemUiVisibility = (
             View.SYSTEM_UI_FLAG_FULLSCREEN
                 or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
@@ -378,7 +448,7 @@ class MainActivity : AppCompatActivity() {
             return true
         }
 
-        if (keyCode == KeyEvent.KEYCODE_MENU) {
+        if (keyCode == KeyEvent.KEYCODE_MENU || keyCode == KeyEvent.KEYCODE_SETTINGS) {
             promptForServerUrl()
             return true
         }

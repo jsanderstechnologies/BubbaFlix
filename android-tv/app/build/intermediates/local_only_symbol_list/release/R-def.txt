@@ -9,6 +9,7 @@ drawable player_overlay_gradient
 drawable player_seekbar_progress
 drawable player_seekbar_thumb
 drawable tv_banner
+id btn_audio
 id btn_back
 id btn_ff_10
 id btn_ff_30
