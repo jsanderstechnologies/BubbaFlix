@@ -2,10 +2,13 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const url = require("url");
+const dgram = require("dgram");
+const os = require("os");
 const { spawn } = require("child_process");
 
 // Internal Node settings server port inside Docker container (always 5000 for Nginx proxy)
 const PORT = 5000;
+const UDP_DISCOVERY_PORT = 5151;
 const SETTINGS_FILE = path.join(__dirname, "settings.json");
 const LOG_FILE = path.join(__dirname, "bubbaflix.log");
 
@@ -31,6 +34,61 @@ const logMessage = (msg, isError = false) => {
     // Ignore log file write errors
   }
 };
+
+// Get local network IPv4 address
+const getLocalIpAddress = () => {
+  const interfaces = os.networkInterfaces();
+  for (const name in interfaces) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === "IPv4" && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return "127.0.0.1";
+};
+
+// Start UDP Server Discovery Beacon
+const startUdpDiscovery = () => {
+  try {
+    const udpServer = dgram.createSocket({ type: "udp4", reuseAddr: true });
+
+    udpServer.on("error", (err) => {
+      logMessage(`UDP Discovery Error: ${err.message}`, true);
+    });
+
+    udpServer.on("message", (msg, rinfo) => {
+      const messageStr = msg.toString().trim();
+      if (messageStr.includes("BUBBAFLIX_DISCOVER")) {
+        const localIp = getLocalIpAddress();
+        const response = JSON.stringify({
+          service: "bubbaflix-server",
+          name: "BubbaFlix Media Server",
+          port: 5150,
+          ip: localIp,
+          url: `http://${localIp}:5150`
+        });
+        const replyBuf = Buffer.from(response);
+        udpServer.send(replyBuf, 0, replyBuf.length, rinfo.port, rinfo.address, (err) => {
+          if (err) logMessage(`Failed to send UDP discovery response: ${err.message}`, true);
+        });
+      }
+    });
+
+    udpServer.bind(UDP_DISCOVERY_PORT, () => {
+      try {
+        udpServer.setBroadcast(true);
+      } catch (e) {
+        // Ignore setBroadcast error on some platforms
+      }
+      logMessage(`[BubbaFlix Server] UDP Local Server Discovery Beacon running on port ${UDP_DISCOVERY_PORT}`);
+    });
+  } catch (err) {
+    logMessage(`[BubbaFlix Server] Failed to start UDP Discovery Beacon: ${err.message}`, true);
+  }
+};
+
+startUdpDiscovery();
 
 // Load environment variables for default server settings
 const getEnvDefaultSettings = () => {
@@ -60,51 +118,40 @@ const getEnvDefaultSettings = () => {
 const loadServerSettings = () => {
   const envDefaults = getEnvDefaultSettings();
   try {
-    const dir = path.dirname(SETTINGS_FILE);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-
     if (fs.existsSync(SETTINGS_FILE)) {
       const data = fs.readFileSync(SETTINGS_FILE, "utf8");
-      const loaded = JSON.parse(data);
-      const merged = { ...envDefaults, ...loaded };
+      const diskSettings = JSON.parse(data);
+      const merged = { ...envDefaults, ...diskSettings };
 
-      if ((!loaded.aiostreams_url || loaded.aiostreams_url === "https://aiostreams.elfhosted.com/") && envDefaults.aiostreams_url) {
-        merged.aiostreams_url = envDefaults.aiostreams_url;
-      }
-      if ((!loaded.simklClientId || loaded.simklClientId.trim() === "") && envDefaults.simklClientId) {
-        merged.simklClientId = envDefaults.simklClientId;
-      }
-      if ((!loaded.groqKey || loaded.groqKey.trim() === "") && envDefaults.groqKey) {
+      if (envDefaults.groqKey && (!merged.groqKey || merged.groqKey.trim() === "")) {
         merged.groqKey = envDefaults.groqKey;
       }
-      if ((!loaded.tmdbToken || loaded.tmdbToken.trim() === "") && envDefaults.tmdbToken) {
-        merged.tmdbToken = envDefaults.tmdbToken;
+      if (envDefaults.simklClientId && (!merged.simklClientId || merged.simklClientId.trim() === "")) {
+        merged.simklClientId = envDefaults.simklClientId;
+      }
+      if (!merged.tmdbToken || merged.tmdbToken.trim() === "") {
+        merged.tmdbToken = DEFAULT_TMDB_KEY;
       }
 
-      logMessage(`[Server Settings Loaded] Configured keys: AIOStreams=${!!merged.aiostreams_url}, SIMKL=${!!merged.simklClientId}, GROQ=${!!merged.groqKey}, TMDB=${!!merged.tmdbToken}`);
       return merged;
     }
   } catch (err) {
-    logMessage(`[Backend Settings Storage Error]: Failed to read settings.json: ${err.message}`, true);
+    logMessage(`Failed to read settings.json: ${err.message}`, true);
   }
-  logMessage(`[Server Settings Init] Using environment variable defaults.`);
-  return { ...envDefaults };
+  return envDefaults;
 };
 
-// Save settings to disk
-const saveServerSettings = (settingsData) => {
+// Write settings object to settings.json
+const saveServerSettings = (settings) => {
   try {
     const dir = path.dirname(SETTINGS_FILE);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
-    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settingsData, null, 2), "utf8");
-    logMessage("[Backend Settings Storage] Updated global settings.json on server disk.");
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2), "utf8");
     return true;
   } catch (err) {
-    logMessage(`[Backend Settings Storage Error]: Failed to save settings.json: ${err.message}`, true);
+    logMessage(`Failed to write settings.json: ${err.message}`, true);
     return false;
   }
 };
@@ -113,8 +160,6 @@ const sendJson = (res, statusCode, data) => {
   res.writeHead(statusCode, {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
   });
   res.end(JSON.stringify(data));
 };
@@ -132,6 +177,19 @@ const server = http.createServer((req, res) => {
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
     });
     return res.end();
+  }
+
+  // Local Network Server Discovery Endpoint
+  if ((pathname === "/api/discover" || pathname === "/api/discover/") && req.method === "GET") {
+    const localIp = getLocalIpAddress();
+    return sendJson(res, 200, {
+      status: "ok",
+      service: "bubbaflix-server",
+      name: "BubbaFlix Media Server",
+      port: 5150,
+      ip: localIp,
+      url: `http://${localIp}:5150`
+    });
   }
 
   // Health check endpoint
@@ -173,7 +231,6 @@ const server = http.createServer((req, res) => {
       "Access-Control-Allow-Origin": "*",
     });
 
-    // FFmpeg / VLC execution parameters for real-time MP4 streaming with H.264 video and stereo AAC audio
     const ffmpegArgs = [
       "-user_agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
       "-i", targetUrl,
@@ -181,56 +238,54 @@ const server = http.createServer((req, res) => {
       "-preset", "ultrafast",
       "-tune", "zerolatency",
       "-crf", "23",
-      "-maxrate", "4M",
-      "-bufsize", "8M",
       "-c:a", "aac",
       "-b:a", "192k",
       "-ac", "2",
-      "-f", "mp4",
       "-movflags", "frag_keyframe+empty_moov+default_base_moof",
+      "-f", "mp4",
       "pipe:1"
     ];
 
-    logMessage(`[Backend Transcoder Engine] Spawning real-time transcoder pipe...`);
-    const transcoderProcess = spawn("ffmpeg", ffmpegArgs);
+    logMessage(`[Backend Transcoder Engine] Spawning FFmpeg command: ffmpeg ${ffmpegArgs.join(" ")}`);
+    const ffmpegProcess = spawn("ffmpeg", ffmpegArgs);
 
-    // Pipe stdout directly to HTTP response
-    transcoderProcess.stdout.pipe(res);
+    ffmpegProcess.stdout.pipe(res);
 
-    transcoderProcess.stderr.on("data", (data) => {
-      const msg = data.toString().trim();
-      if (msg.includes("frame=") || msg.includes("Error") || msg.includes("warning")) {
-        // Output periodic stats to server log
+    ffmpegProcess.stderr.on("data", (data) => {
+      const logLine = data.toString();
+      if (logLine.includes("Error") || logLine.includes("failed") || logLine.includes("frame=")) {
+        logMessage(`[FFmpeg Log] ${logLine.trim()}`);
       }
     });
 
-    transcoderProcess.on("error", (err) => {
-      logMessage(`[Backend Transcoder Error] Failed to launch transcoder process: ${err.message}`, true);
+    ffmpegProcess.on("error", (err) => {
+      logMessage(`[Backend Transcoder Engine FFmpeg Error]: ${err.message}`, true);
+      if (!res.headersSent) {
+        sendJson(res, 500, { error: "Transcoder engine failed to spawn FFmpeg." });
+      }
     });
 
-    transcoderProcess.on("close", (code) => {
-      logMessage(`[Backend Transcoder Engine] Stream session terminated (Exit code: ${code})`);
-      logMessage(`====================================================`);
+    ffmpegProcess.on("close", (code) => {
+      logMessage(`[Backend Transcoder Engine] FFmpeg process terminated with exit code ${code}`);
+      if (!res.writableEnded) {
+        res.end();
+      }
     });
 
-    // Kill transcoder process immediately when client disconnects
     req.on("close", () => {
-      logMessage(`[Backend Transcoder Engine] Client disconnected stream. Terminating transcoder process.`);
-      try {
-        transcoderProcess.kill("SIGKILL");
-      } catch (e) {}
+      logMessage("[Backend Transcoder Engine] Client closed HTTP connection. Terminating FFmpeg process...");
+      ffmpegProcess.kill("SIGKILL");
     });
-
     return;
   }
 
-  // Server Settings GET API
+  // GET Settings API
   if (pathname === "/api/settings" && req.method === "GET") {
     const settings = loadServerSettings();
-    return sendJson(res, 200, { status: "success", settings });
+    return sendJson(res, 200, settings);
   }
 
-  // Server Settings POST API
+  // POST Settings API
   if (pathname === "/api/settings" && req.method === "POST") {
     let body = "";
     req.on("data", (chunk) => {
