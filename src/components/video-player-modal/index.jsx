@@ -17,6 +17,7 @@ import {
 } from "react-icons/fi";
 import { fetchDataFromAPI } from "../../utils/api";
 import { fetchOpenSubtitles, downloadAndConvertSubtitle } from "../../utils/subtitles";
+import { getWatchProgress, saveWatchProgress, clearWatchProgress, formatTimeDisplay } from "../../utils/watchProgress";
 import "./index.scss";
 
 const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, mediaType = "movie", seasonNum, episodeNum }) => {
@@ -63,6 +64,10 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
   const [activeVttUrl, setActiveVttUrl] = useState(null);
   const [subLoading, setSubLoading] = useState(false);
 
+  // Resume State
+  const [showResumeModal, setShowResumeModal] = useState(false);
+  const [resumeItem, setResumeItem] = useState(null);
+
   useEffect(() => {
     if (show) {
       const targetUrl = rawUrl || videoUrl || "";
@@ -83,6 +88,16 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
       setHasError(false);
       setErrorMessage("");
       resetControlsTimeout();
+
+      // Check for saved watch progress to prompt resume
+      const saved = getWatchProgress(tmdbId, mediaType, seasonNum, episodeNum);
+      if (saved && saved.currentTime > 15 && (saved.duration - saved.currentTime) > 60) {
+        setResumeItem(saved);
+        setShowResumeModal(true);
+      } else {
+        setShowResumeModal(false);
+        setResumeItem(null);
+      }
 
       // Focus main play button for remote D-Pad controls
       setTimeout(() => {
@@ -323,6 +338,19 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
         }
         const pct = Math.min(100, (maxBufferedEnd / dur) * 100);
         setBufferedPercent(pct);
+      }
+
+      // Save watch progress to localStorage
+      if (dur > 0 && v.currentTime >= 10 && tmdbId) {
+        saveWatchProgress({
+          tmdbId,
+          mediaType,
+          seasonNum,
+          episodeNum,
+          currentTime: v.currentTime,
+          duration: dur,
+          title
+        });
       }
     }
   };
@@ -615,6 +643,49 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
           </button>
         </div>
       </div>
+
+      {showResumeModal && resumeItem && (
+        <div className="resumeModalOverlay">
+          <div className="resumeCard">
+            <h3>Resume Playback</h3>
+            <p>
+              You were watching <strong>{resumeItem.title || title}</strong> at{" "}
+              <strong>{formatTimeDisplay(resumeItem.currentTime)}</strong>. Would you like to resume?
+            </p>
+            <div className="resumeActions">
+              <button
+                className="resumeBtnPrimary"
+                autoFocus
+                tabIndex="0"
+                onClick={() => {
+                  if (videoRef.current) {
+                    videoRef.current.currentTime = resumeItem.currentTime;
+                    videoRef.current.play();
+                    setIsPlaying(true);
+                  }
+                  setShowResumeModal(false);
+                }}
+              >
+                Resume ({formatTimeDisplay(resumeItem.currentTime)})
+              </button>
+              <button
+                className="resumeBtnSecondary"
+                tabIndex="0"
+                onClick={() => {
+                  if (videoRef.current) {
+                    videoRef.current.currentTime = 0;
+                    videoRef.current.play();
+                    setIsPlaying(true);
+                  }
+                  setShowResumeModal(false);
+                }}
+              >
+                Start from Beginning
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>,
     document.body
   );

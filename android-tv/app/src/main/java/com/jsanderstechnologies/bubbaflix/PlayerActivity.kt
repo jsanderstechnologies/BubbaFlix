@@ -271,6 +271,7 @@ class PlayerActivity : AppCompatActivity() {
                             btnPlayPause.setImageResource(
                                 if (playWhenReady) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
                             )
+                            checkAndPromptResume()
                         }
                     }
 
@@ -538,8 +539,72 @@ class PlayerActivity : AppCompatActivity() {
         return super.onKeyDown(keyCode, event)
     }
 
+    private var hasPromptedResume = false
+
+    private fun getProgressKey(): String {
+        val tmdbId = intent.getStringExtra(EXTRA_TMDB_ID)
+        val mediaType = intent.getStringExtra(EXTRA_MEDIA_TYPE) ?: "movie"
+        val videoUrl = intent.getStringExtra(EXTRA_VIDEO_URL) ?: ""
+        return if (!tmdbId.isNullOrEmpty()) "prog_${mediaType}_$tmdbId" else "prog_url_${videoUrl.hashCode()}"
+    }
+
+    private fun saveCurrentWatchProgress() {
+        val player = exoPlayer ?: return
+        val key = getProgressKey()
+        val pos = player.currentPosition
+        val dur = player.duration
+        val prefs = getSharedPreferences("BubbaFlixWatchProgress", Context.MODE_PRIVATE)
+
+        if (dur > 0) {
+            val pct = (pos.toDouble() / dur.toDouble()) * 100.0
+            if (pct >= 90.0 || (dur - pos) < 60000) {
+                prefs.edit().remove(key).apply()
+            } else if (pos >= 10000) {
+                prefs.edit().putLong(key, pos).apply()
+            }
+        }
+    }
+
+    private fun checkAndPromptResume() {
+        if (hasPromptedResume) return
+        hasPromptedResume = true
+
+        val player = exoPlayer ?: return
+        val key = getProgressKey()
+        val prefs = getSharedPreferences("BubbaFlixWatchProgress", Context.MODE_PRIVATE)
+        val savedPos = prefs.getLong(key, 0L)
+        val dur = player.duration
+
+        if (savedPos > 15000L && (dur <= 0 || (dur - savedPos) > 60000L)) {
+            player.pause()
+            val formattedTime = formatTime(savedPos)
+
+            AlertDialog.Builder(this)
+                .setTitle("Resume Playback")
+                .setMessage("You were watching at $formattedTime. Would you like to resume?")
+                .setPositiveButton("Resume ($formattedTime)") { _, _ ->
+                    player.seekTo(savedPos)
+                    player.play()
+                    resetControlsTimeout()
+                }
+                .setNegativeButton("Start from Beginning") { _, _ ->
+                    player.seekTo(0)
+                    player.play()
+                    resetControlsTimeout()
+                }
+                .setCancelable(false)
+                .show()
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        saveCurrentWatchProgress()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
+        saveCurrentWatchProgress()
         handler.removeCallbacks(updateProgressRunnable)
         handler.removeCallbacks(hideControlsRunnable)
         exoPlayer?.release()

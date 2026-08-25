@@ -4,6 +4,7 @@ import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 
+import { getWatchProgress } from "../../utils/watchProgress";
 import "./index.scss";
 import Img from "../lazy-load";
 import CircleRating from "../circle-rating";
@@ -19,6 +20,9 @@ const MovieCard = ({ data, fromSearch, mediaType }) => {
 	const posterUrl = data.poster_path
 		? posterBase + data.poster_path
 		: PosterFallback;
+
+	const prog = getWatchProgress(data.id, data.media_type || mediaType);
+	const progressPercent = prog?.progressPercent || 0;
 
 	const handleSelect = () => {
 		navigate(`/${data.media_type || mediaType}/${data.id}`);
@@ -40,6 +44,14 @@ const MovieCard = ({ data, fromSearch, mediaType }) => {
 		>
 			<div className="posterBlock">
 				<Img className="posterImg" src={posterUrl} />
+				{progressPercent > 0 && (
+					<div className="cardProgressBar">
+						<div
+							className="cardProgressFill"
+							style={{ width: `${progressPercent}%` }}
+						/>
+					</div>
+				)}
 				{!fromSearch && data.vote_average !== undefined && (
 					<React.Fragment>
 						<CircleRating rating={Number(data.vote_average).toFixed(1)} />
