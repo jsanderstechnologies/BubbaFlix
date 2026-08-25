@@ -268,6 +268,18 @@
               pointer-events: none;
             }
 
+            .bufferedTrack {
+              position: absolute;
+              top: 0;
+              left: 0;
+              height: 100%;
+              background: rgba(255, 255, 255, 0.45);
+              border-radius: 4px;
+              pointer-events: none;
+              z-index: 1;
+              transition: width 0.3s ease;
+            }
+
             .playedTrack {
               position: absolute;
               top: 0;

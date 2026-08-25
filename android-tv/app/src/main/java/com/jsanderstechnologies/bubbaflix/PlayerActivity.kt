@@ -419,14 +419,18 @@ class PlayerActivity : AppCompatActivity() {
         val player = exoPlayer ?: return
         val current = player.currentPosition
         val dur = player.duration
+        val buffered = player.bufferedPosition
 
         if (dur > 0) {
             val progress = ((current * 1000) / dur).toInt()
+            val secondaryProgress = ((buffered * 1000) / dur).toInt()
             seekBar.progress = progress
+            seekBar.secondaryProgress = secondaryProgress
             txtCurrentTime.text = formatTime(current)
             txtDuration.text = formatTime(dur)
         } else {
             seekBar.progress = 0
+            seekBar.secondaryProgress = 0
             txtCurrentTime.text = "00:00"
             txtDuration.text = "00:00"
         }

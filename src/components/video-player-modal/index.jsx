@@ -42,6 +42,7 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
   const [isPlaying, setIsPlaying] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [bufferedPercent, setBufferedPercent] = useState(0);
   const [controlsVisible, setControlsVisible] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -304,8 +305,25 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
 
   const handleTimeUpdate = () => {
     if (videoRef.current) {
-      setCurrentTime(videoRef.current.currentTime);
-      setDuration(videoRef.current.duration || 0);
+      const v = videoRef.current;
+      setCurrentTime(v.currentTime);
+      const dur = v.duration || 0;
+      setDuration(dur);
+
+      if (v.buffered && v.buffered.length > 0 && dur > 0) {
+        let maxBufferedEnd = 0;
+        for (let i = 0; i < v.buffered.length; i++) {
+          if (v.buffered.start(i) <= v.currentTime && v.currentTime <= v.buffered.end(i)) {
+            maxBufferedEnd = v.buffered.end(i);
+            break;
+          }
+        }
+        if (maxBufferedEnd === 0 && v.buffered.length > 0) {
+          maxBufferedEnd = v.buffered.end(v.buffered.length - 1);
+        }
+        const pct = Math.min(100, (maxBufferedEnd / dur) * 100);
+        setBufferedPercent(pct);
+      }
     }
   };
 
@@ -475,16 +493,27 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
       <div className="playerBottomBar">
         <div className="scrubberContainer">
           <span className="timeDisplay">{formatTime(currentTime)}</span>
-          <input
-            ref={scrubberRef}
-            type="range"
-            min={0}
-            max={duration || 100}
-            value={currentTime}
-            onChange={handleScrubberChange}
-            className="scrubberInput"
-            tabIndex="0"
-          />
+          <div className="scrubberWrapper">
+            <div className="trackBackground" />
+            <div
+              className="bufferedTrack"
+              style={{ width: `${bufferedPercent}%` }}
+            />
+            <div
+              className="playedTrack"
+              style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+            />
+            <input
+              ref={scrubberRef}
+              type="range"
+              min={0}
+              max={duration || 100}
+              value={currentTime}
+              onChange={handleScrubberChange}
+              className="timelineScrubber"
+              tabIndex="0"
+            />
+          </div>
           <span className="timeDisplay">{formatTime(duration)}</span>
         </div>
 
