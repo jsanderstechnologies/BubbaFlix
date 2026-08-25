@@ -84,20 +84,10 @@
 	.content {
 		display: flex;
 		flex-flow: row wrap;
-		gap: 20px;
+		gap: 12px;
 		margin-bottom: 50px;
-
-		.movieCard {
-			width: calc(50% - 10px);
-			@include md {
-				width: calc(25% - 15px);
-			}
-			@include lg {
-				width: calc(20% - 16px);
-			}
-			.posterBlock {
-				margin-bottom: 12px;
-			}
+		@include md {
+			gap: 14px;
 		}
 	}
 }

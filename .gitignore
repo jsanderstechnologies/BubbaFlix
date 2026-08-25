@@ -25,3 +25,8 @@ dist-ssr
 vite.config.js.timestamp*
 .gradle/
 *.lock
+android-tv/build/
+android-tv/app/build/
+android-tv/.gradle/
+android-tv/local.properties
+.gradle_cache/

@@ -7,7 +7,6 @@ import { getAioStreamsUrl, saveAioStreamsUrl, testAioStreamsConnection, DEFAULT_
 import { getSimklConfig, testSimklConnection } from "../../utils/simkl";
 import { getGroqApiKey } from "../../utils/groqFilter";
 import { getPremiumizeKey, savePremiumizeKey } from "../../utils/premiumize";
-import { isTvDevice, getSavedZoom, applyZoom } from "../../utils/zoom";
 import { updateServerSettings, fetchServerSettings, getServerUrl, saveServerUrl, testBackendServerHealth } from "../../utils/serverSettings";
 import { getApiConfiguration } from "../../store/homeSlice";
 import { THEMES, getSavedTheme, applyTheme } from "../../utils/theme";
@@ -24,10 +23,6 @@ const ALL_RESOLUTIONS = [
 const SettingsPage = () => {
   // Theme State
   const [activeTheme, setActiveTheme] = useState("dark-red");
-
-  // TV Zoom & Device State (Per-device client side only)
-  const [isTv, setIsTv] = useState(false);
-  const [zoomLevel, setZoomLevel] = useState(100);
 
   // Backend Server Address State (Per-device client side only)
   const [serverUrlState, setServerUrlState] = useState("");
@@ -74,11 +69,7 @@ const SettingsPage = () => {
   const dispatch = useDispatch();
 
   const loadAllSettings = async () => {
-    // 1. Per-device Zoom & Server Address
-    const tvDetected = isTvDevice();
-    setIsTv(tvDetected);
-    setZoomLevel(getSavedZoom());
-
+    // 1. Per-device Server Address
     const currentServer = getServerUrl();
     setServerUrlState(currentServer);
     setHasCustomServer(!!currentServer);
@@ -127,12 +118,6 @@ const SettingsPage = () => {
     setActiveTheme(themeId);
     applyTheme(themeId);
     updateServerSettings({ theme: themeId });
-  };
-
-  const handleZoomChange = (newLevel) => {
-    const validLevel = Math.min(140, Math.max(50, newLevel));
-    setZoomLevel(validLevel);
-    applyZoom(validLevel);
   };
 
   const handleSaveServerUrl = async (e) => {
@@ -360,72 +345,11 @@ const SettingsPage = () => {
         <div className="settingsContainer">
           <div className="settingsHeader">
             <h1 className="title">
-              {isTv ? <FiTv className="icon" /> : <FiKey className="icon" />} {isTv ? "TV Display & Server Settings" : "API & System Settings"}
+              <FiKey className="icon" /> API & System Settings
             </h1>
             <p className="subtitle">
-              {isTv
-                ? "Adjust screen zoom scale for this TV device, set your backend server address, and manage AIOStreams & SIMKL watch history credentials."
-                : "Centralized backend server configuration for AIOStreams streaming, SIMKL watch tracking, color themes, and stream resolution filters."}
+              Centralized backend server configuration for AIOStreams streaming, SIMKL watch tracking, color themes, and stream resolution filters.
             </p>
-          </div>
-
-          {/* TV & Streaming Device Screen Zoom Card */}
-          <div className="settingsCard">
-            <div className="cardHeader">
-              <h2><FiTv style={{ marginRight: 8 }} /> TV Screen Zoom & Display Scale</h2>
-              <span className="badge default">Per-Device Local Setting</span>
-            </div>
-            <p className="description">
-              Customize the UI scale and zoom level for 10ft TV viewing on Android TV, Google TV, Firestick, Apple TV, or Smart TV devices (saved independently on each device).
-            </p>
-            <div className="zoomControls">
-              <div className="zoomDisplay">
-                <span className="zoomLabel">Current TV Zoom Scale:</span>
-                <span className="zoomValue">{zoomLevel}%</span>
-              </div>
-              <div className="zoomButtons">
-                <button
-                  type="button"
-                  className="zoomBtn"
-                  onClick={() => handleZoomChange(Math.max(50, zoomLevel - 5))}
-                  disabled={zoomLevel <= 50}
-                  tabIndex="0"
-                >
-                  <FiMinus /> Zoom Out (-5%)
-                </button>
-                <button
-                  type="button"
-                  className="zoomBtn reset"
-                  onClick={() => handleZoomChange(100)}
-                  disabled={zoomLevel === 100}
-                  tabIndex="0"
-                >
-                  Reset to 100%
-                </button>
-                <button
-                  type="button"
-                  className="zoomBtn"
-                  onClick={() => handleZoomChange(Math.min(140, zoomLevel + 5))}
-                  disabled={zoomLevel >= 140}
-                  tabIndex="0"
-                >
-                  <FiPlus /> Zoom In (+5%)
-                </button>
-              </div>
-              <div className="presetButtons">
-                {[50, 65, 80, 90, 100, 110, 120, 130, 140].map((scale) => (
-                  <button
-                    key={scale}
-                    type="button"
-                    className={`presetBtn ${zoomLevel === scale ? "active" : ""}`}
-                    onClick={() => handleZoomChange(scale)}
-                    tabIndex="0"
-                  >
-                    {scale}%
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
 
           {/* AIOStreams Streaming Addon Card */}

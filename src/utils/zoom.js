@@ -23,28 +23,14 @@ export const isTvDevice = () => {
   return isAndroidTv || isFireTv || isAppleTv || isWebOS || isTizen || isGenericTv;
 };
 
-export const getSavedZoom = () => {
-  if (typeof window === "undefined") return 100;
-  const saved = localStorage.getItem("tv_zoom_scale");
-  return saved ? parseInt(saved, 10) : 100;
-};
-
-export const applyZoom = (scalePercent) => {
-  if (typeof window === "undefined") return;
-
-  const validScale = Math.min(140, Math.max(50, scalePercent || 100));
-  localStorage.setItem("tv_zoom_scale", validScale.toString());
-
-  const ratio = validScale / 100;
-
-  // Set root CSS variable for uniform component & poster scaling
-  document.documentElement.style.setProperty("--app-zoom", ratio.toString());
-
-  // Apply CSS zoom to documentElement and body so all poster cards, carousels, text, and grids scale proportionally
-  document.documentElement.style.zoom = ratio;
-  if (document.body) {
-    document.body.style.zoom = ratio;
+// Reset any legacy zoom CSS properties on launch
+if (typeof window !== "undefined") {
+  localStorage.removeItem("tv_zoom_scale");
+  if (document.documentElement) {
+    document.documentElement.style.removeProperty("zoom");
+    document.documentElement.style.removeProperty("--app-zoom");
   }
-
-  window.dispatchEvent(new Event("tv-zoom-updated"));
-};
+  if (document.body) {
+    document.body.style.removeProperty("zoom");
+  }
+}

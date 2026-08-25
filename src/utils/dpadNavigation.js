@@ -25,8 +25,6 @@ const FOCUSABLE_SELECTOR = [
   ".themeCard",
   ".tabItem",
   ".resOption",
-  ".presetBtn",
-  ".zoomBtn",
   ".episodeItem",
   ".seasonCard",
   ".actionBtn",

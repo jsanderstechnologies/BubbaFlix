@@ -1,5 +1,4 @@
-/* eslint-disable no-unused-vars */
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { fetchDataFromAPI } from "./utils/api";
 import { useDispatch, useSelector } from "react-redux";
 import { getApiConfiguration } from "./store/homeSlice";
@@ -12,21 +11,23 @@ import FavoritesPage from "./pages/favorites-page";
 import SettingsPage from "./pages/settings-page";
 import Page404 from "./pages/404-page";
 import Footer from "./components/footer";
+import SplashScreen from "./components/splash-screen";
 
 import { getSavedTheme, applyTheme } from "./utils/theme";
 import { initDpadNavigation } from "./utils/dpadNavigation";
 import { fetchUserSimklHistory } from "./utils/simkl";
-import { getSavedZoom, applyZoom } from "./utils/zoom";
 import { fetchServerSettings } from "./utils/serverSettings";
 
 const App = () => {
 	const dispatch = useDispatch();
 	const { url } = useSelector((state) => state.home);
+	const [showSplash, setShowSplash] = useState(() => {
+		return !sessionStorage.getItem("bubbaflix_splash_shown");
+	});
 
 	useEffect(() => {
 		const currentTheme = getSavedTheme();
 		applyTheme(currentTheme);
-		applyZoom(getSavedZoom());
 
 		// Pull global settings from backend server on startup
 		fetchServerSettings().then(() => {
@@ -39,6 +40,11 @@ const App = () => {
 			if (cleanupDpad) cleanupDpad();
 		};
 	}, []);
+
+	const handleSplashComplete = () => {
+		sessionStorage.setItem("bubbaflix_splash_shown", "true");
+		setShowSplash(false);
+	};
 
 	const fetchApiConfig = () => {
 		fetchDataFromAPI("/configuration").then((res) => {
@@ -53,18 +59,21 @@ const App = () => {
 	};
 
 	return (
-		<BrowserRouter>
-			<Routes>
-				<Route path="/" element={<HomePage />} />
-				<Route path="/favorites" element={<FavoritesPage />} />
-				<Route path="/settings" element={<SettingsPage />} />
-				<Route path="/:mediaType/:id" element={<DetailsPage />} />
-				<Route path="/search/:query" element={<SearchResult />} />
-				<Route path="/explore/:mediaType" element={<ExplorePage />} />
-				<Route path="*" element={<Page404 />} />
-			</Routes>
-			<Footer />
-		</BrowserRouter>
+		<>
+			{showSplash && <SplashScreen onComplete={handleSplashComplete} />}
+			<BrowserRouter>
+				<Routes>
+					<Route path="/" element={<HomePage />} />
+					<Route path="/favorites" element={<FavoritesPage />} />
+					<Route path="/settings" element={<SettingsPage />} />
+					<Route path="/:mediaType/:id" element={<DetailsPage />} />
+					<Route path="/search/:query" element={<SearchResult />} />
+					<Route path="/explore/:mediaType" element={<ExplorePage />} />
+					<Route path="*" element={<Page404 />} />
+				</Routes>
+				<Footer />
+			</BrowserRouter>
+		</>
 	);
 };
 
