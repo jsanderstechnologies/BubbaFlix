@@ -21,6 +21,8 @@ import java.net.DatagramSocket
 import java.net.InetAddress
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 
 class MainActivity : AppCompatActivity() {
@@ -200,7 +202,6 @@ class MainActivity : AppCompatActivity() {
                 }
                 conn.disconnect()
             } catch (e: Exception) {
-                // Fallback test to root URL
                 try {
                     val rootConn = URL(target).openConnection() as HttpURLConnection
                     rootConn.connectTimeout = 3000
@@ -232,10 +233,10 @@ class MainActivity : AppCompatActivity() {
         thread {
             val discoveredList = LinkedHashSet<String>()
 
-            // 1. Try UDP Broadcast Discovery on port 5151
+            // 1. UDP Broadcast Discovery on port 5151
             try {
                 val socket = DatagramSocket()
-                socket.soTimeout = 1500
+                socket.soTimeout = 1200
                 socket.broadcast = true
 
                 val message = "BUBBAFLIX_DISCOVER".toByteArray()
@@ -256,29 +257,43 @@ class MainActivity : AppCompatActivity() {
                 // Ignore UDP timeout
             }
 
-            // 2. Probe common subnet candidates
-            val candidates = listOf(
-                DEFAULT_URL,
-                "http://192.168.1.50:5150",
-                "http://192.168.1.1:5150",
-                "http://192.168.0.50:5150",
-                "http://192.168.0.1:5150",
-                "http://10.0.0.50:5150"
-            )
-
-            for (candidate in candidates) {
-                try {
-                    val conn = URL("$candidate/api/discover").openConnection() as HttpURLConnection
-                    conn.connectTimeout = 600
-                    conn.readTimeout = 600
-                    conn.requestMethod = "GET"
-                    if (conn.responseCode == 200) {
-                        discoveredList.add(candidate)
-                    }
-                    conn.disconnect()
-                } catch (e: Exception) {
-                    // Ignore unreachable candidate
+            // 2. Dynamic Parallel Subnet Fast-Scan on Port 5150
+            try {
+                var subnetPrefix = "192.168.1"
+                val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+                val dhcpInfo = wifiManager?.dhcpInfo
+                if (dhcpInfo != null && dhcpInfo.gateway != 0) {
+                    val g = dhcpInfo.gateway
+                    subnetPrefix = String.format("%d.%d.%d", g and 0xff, g shr 8 and 0xff, g shr 16 and 0xff)
                 }
+
+                val executor = Executors.newFixedThreadPool(32)
+                val futures = ArrayList<java.util.concurrent.Future<*>>()
+
+                for (i in 1..254) {
+                    val testUrl = "http://$subnetPrefix.$i:5150"
+                    futures.add(executor.submit {
+                        try {
+                            val conn = URL("$testUrl/api/discover").openConnection() as HttpURLConnection
+                            conn.connectTimeout = 400
+                            conn.readTimeout = 400
+                            conn.requestMethod = "GET"
+                            if (conn.responseCode == 200) {
+                                synchronized(discoveredList) {
+                                    discoveredList.add(testUrl)
+                                }
+                            }
+                            conn.disconnect()
+                        } catch (e: Exception) {
+                            // Unreachable
+                        }
+                    })
+                }
+
+                executor.shutdown()
+                executor.awaitTermination(2, TimeUnit.SECONDS)
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
 
             onDiscovered(discoveredList.toList())
