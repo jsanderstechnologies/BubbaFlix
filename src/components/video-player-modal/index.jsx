@@ -380,7 +380,7 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
   return createPortal(
     <div
       ref={containerRef}
-      className={`videoPlayerModal ${controlsVisible ? "controlsVisible" : "controlsHidden"}`}
+      className={`videoPlayerModal visible ${controlsVisible ? "controlsVisible" : "controlsHidden"}`}
       onMouseMove={resetControlsTimeout}
       onClick={resetControlsTimeout}
     >
