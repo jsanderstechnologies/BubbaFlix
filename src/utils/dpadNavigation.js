@@ -25,6 +25,8 @@ const FOCUSABLE_SELECTOR = [
   ".themeCard",
   ".tabItem",
   ".resOption",
+  ".presetBtn",
+  ".zoomBtn",
   ".episodeItem",
   ".seasonCard",
   ".actionBtn",
@@ -60,11 +62,21 @@ const focusAndScroll = (el) => {
   if (parentCarousel) {
     const itemLeft = el.offsetLeft;
     const itemWidth = el.offsetWidth;
+    const containerLeft = parentCarousel.scrollLeft;
     const containerWidth = parentCarousel.offsetWidth;
-    parentCarousel.scrollTo({
-      left: itemLeft - containerWidth / 2 + itemWidth / 2,
-      behavior: "smooth",
-    });
+
+    // Edge-aware carousel scrolling: prevent jumping to middle items
+    if (itemLeft + itemWidth > containerLeft + containerWidth - 40) {
+      parentCarousel.scrollTo({
+        left: itemLeft + itemWidth - containerWidth + 60,
+        behavior: "smooth",
+      });
+    } else if (itemLeft < containerLeft + 40) {
+      parentCarousel.scrollTo({
+        left: Math.max(0, itemLeft - 60),
+        behavior: "smooth",
+      });
+    }
   } else {
     el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
   }
@@ -77,7 +89,6 @@ if (typeof document !== "undefined") {
     (e) => {
       const target = e.target;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
-        // Prevent automatic TV soft keyboard pop-up unless user explicitly pressed Action button
         if (!target.getAttribute("data-editing-active")) {
           target.setAttribute("inputmode", "none");
           target.setAttribute("readonly", "readonly");
@@ -197,7 +208,6 @@ export const initDpadNavigation = () => {
     // D-Pad Action (Select / OK / Enter) Button Press
     if (key === "Select" || code === 23 || code === 66 || (key === "Enter" && activeEl && activeEl.tagName === "INPUT")) {
       if (activeEl && activeEl !== document.body) {
-        // If user pressed Select/Action button on a text input control -> Enable typing & activate soft keyboard
         if (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA") {
           e.preventDefault();
           activeEl.setAttribute("data-editing-active", "true");
@@ -268,7 +278,6 @@ export const initDpadNavigation = () => {
 
     if (direction === "ArrowDown") {
       if (inTopNav) {
-        // Exclude elements inside Top Navigation bar so ArrowDown moves DOWN into main content area
         candidates = focusables.filter((el) => {
           return !el.closest(".topNav") && !el.closest(".header") && !el.closest(".navLinks") && !el.closest(".navSearch");
         });

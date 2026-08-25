@@ -97,16 +97,31 @@
 	.carouselItems {
 		display: flex;
 		gap: 8px;
+		overflow-x: auto;
 		overflow-y: visible;
 		margin-right: -16px;
 		margin-left: -16px;
 		padding: 10px 16px;
+		scrollbar-width: none !important;
+		-ms-overflow-style: none !important;
+		&::-webkit-scrollbar {
+			display: none !important;
+			width: 0 !important;
+			height: 0 !important;
+		}
 		@include md {
 			gap: 12px;
 			overflow-x: auto;
 			overflow-y: visible;
 			margin: 0;
 			padding: 10px 4px;
+			scrollbar-width: none !important;
+			-ms-overflow-style: none !important;
+			&::-webkit-scrollbar {
+				display: none !important;
+				width: 0 !important;
+				height: 0 !important;
+			}
 		}
 		.carouselItem {
 			width: calc(33.333% - 8px);
