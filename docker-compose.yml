@@ -6,17 +6,15 @@ services:
     container_name: bubbaflix
     restart: unless-stopped
     ports:
-      - "${PORT:-5150}:80"
+      - "5150:80"
+    environment:
+      AIOSTREAMS_URL: "${AIOSTREAMS_URL:-https://aiostreams.elfhosted.com/}"
+      SIMKL_CLIENT_ID: "${SIMKL_CLIENT_ID:-}"
+      GROQ_API_KEY: "${GROQ_API_KEY:-}"
+      TMDB_READ_ACCESS_TOKEN: "${TMDB_READ_ACCESS_TOKEN:-}"
     labels:
       - "io.casaos.icon=https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/public/icon.svg"
       - "net.unraid.docker.icon=https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/public/icon.svg"
-      - "com.docker.desktop.extension.icon=https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/public/icon.svg"
-    environment:
-      # Enter your custom configured AIOStreams Addon Manifest URL (from https://aiostreams.elfhosted.com/stremio/configure)
-      - AIOSTREAMS_URL=${AIOSTREAMS_URL:-https://aiostreams.elfhosted.com/}
-      - SIMKL_CLIENT_ID=${SIMKL_CLIENT_ID:-}
-      - GROQ_API_KEY=${GROQ_API_KEY:-}
-      - TMDB_READ_ACCESS_TOKEN=${TMDB_READ_ACCESS_TOKEN:-}
     volumes:
       - bubbaflix-data:/app/server
 
