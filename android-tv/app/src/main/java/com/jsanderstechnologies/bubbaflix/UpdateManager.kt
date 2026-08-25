@@ -20,8 +20,11 @@ object UpdateManager {
 
     fun checkForUpdates(activity: Activity) {
         val client = OkHttpClient.Builder().build()
+        val cacheBusterUrl = "$VERSION_CHECK_URL?t=${System.currentTimeMillis()}"
         val request = Request.Builder()
-            .url(VERSION_CHECK_URL)
+            .url(cacheBusterUrl)
+            .header("Cache-Control", "no-cache, no-store, must-revalidate")
+            .header("Pragma", "no-cache")
             .build()
 
         client.newCall(request).enqueue(object : Callback {
@@ -40,7 +43,7 @@ object UpdateManager {
                     try {
                         val json = JSONObject(bodyStr)
                         val remoteVersionCode = json.optInt("versionCode", 0)
-                        val remoteVersionName = json.optString("versionName", "1.0.0")
+                        val remoteVersionName = json.optString("versionName", "1.0.1")
                         val apkUrl = json.optString("apkUrl", "")
                         val releaseNotes = json.optString("releaseNotes", "New performance and feature updates.")
 
@@ -84,7 +87,6 @@ object UpdateManager {
         val dialog = builder.create()
         dialog.show()
 
-        // Focus Update Now button for TV remote D-Pad controls
         dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.requestFocus()
     }
 
@@ -101,7 +103,12 @@ object UpdateManager {
         }
 
         val client = OkHttpClient.Builder().build()
-        val request = Request.Builder().url(apkUrl).build()
+        val downloadUrl = if (apkUrl.contains("?")) "$apkUrl&t=${System.currentTimeMillis()}" else "$apkUrl?t=${System.currentTimeMillis()}"
+        val request = Request.Builder()
+            .url(downloadUrl)
+            .header("Cache-Control", "no-cache, no-store, must-revalidate")
+            .header("Pragma", "no-cache")
+            .build()
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
