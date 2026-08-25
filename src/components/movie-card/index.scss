@@ -37,9 +37,10 @@
 	&:focus,
 	&:focus-visible {
 		outline: none !important;
+		position: relative;
+		z-index: 99 !important;
 		transform: scale(1.14) translateY(-6px) translateZ(0);
 		box-shadow: 0 16px 32px rgba(0, 0, 0, 0.8), 0 0 20px var(--pink) !important;
-		z-index: 50;
 	}
 	.posterBlock {
 		position: relative;

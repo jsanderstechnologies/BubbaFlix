@@ -85,7 +85,9 @@
 		display: flex;
 		flex-flow: row wrap;
 		gap: 12px;
-		margin-bottom: 50px;
+		padding: 16px 8px;
+		margin: -16px -8px 34px -8px;
+		overflow: visible;
 		@include md {
 			gap: 14px;
 		}

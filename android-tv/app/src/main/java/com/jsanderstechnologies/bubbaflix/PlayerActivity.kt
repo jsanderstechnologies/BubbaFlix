@@ -15,11 +15,14 @@ import android.widget.ImageView
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.TrackSelectionOverride
+import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
@@ -42,6 +45,7 @@ class PlayerActivity : AppCompatActivity() {
 
     private lateinit var controlsOverlay: View
     private lateinit var btnBack: Button
+    private lateinit var btnAudio: Button
     private lateinit var btnSubtitles: Button
     private lateinit var imgMediaLogo: ImageView
 
@@ -101,6 +105,7 @@ class PlayerActivity : AppCompatActivity() {
         playerView = findViewById(R.id.player_view)
         controlsOverlay = findViewById(R.id.controls_overlay)
         btnBack = findViewById(R.id.btn_back)
+        btnAudio = findViewById(R.id.btn_audio)
         btnSubtitles = findViewById(R.id.btn_subtitles)
         imgMediaLogo = findViewById(R.id.img_media_logo)
 
@@ -227,12 +232,12 @@ class PlayerActivity : AppCompatActivity() {
         // Aggressive Ahead-Buffering Engine to Prevent Video Freezing / Stuttering
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                60000,   // Min buffer before start/resume: 60 seconds (1 minute)
+                60000,   // Min buffer before start/resume: 60 seconds
                 300000,  // Max buffer ahead: 300 seconds (5 minutes ahead!)
                 2500,    // Buffer needed to start playback: 2.5 seconds
                 5000     // Buffer needed to resume after rebuffer: 5.0 seconds
             )
-            .setBackBuffer(30000, true) // Retain 30 seconds back-buffer for instant rewind
+            .setBackBuffer(30000, true)
             .build()
 
         playerView.setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
@@ -247,9 +252,10 @@ class PlayerActivity : AppCompatActivity() {
                 playerView.player = this
                 playerView.keepScreenOn = true
 
-                // Disable subtitles by default on launch per user request
+                // Default audio track to English ("en") & disable subtitles by default per user request
                 trackSelectionParameters = trackSelectionParameters
                     .buildUpon()
+                    .setPreferredAudioLanguage("en")
                     .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
                     .build()
 
@@ -286,6 +292,8 @@ class PlayerActivity : AppCompatActivity() {
     private fun setupControlClickListeners() {
         btnBack.setOnClickListener { finish() }
 
+        btnAudio.setOnClickListener { showAudioTrackSelectionDialog() }
+
         btnSubtitles.setOnClickListener { toggleSubtitles() }
 
         btnPlayPause.setOnClickListener {
@@ -308,6 +316,52 @@ class PlayerActivity : AppCompatActivity() {
         btnRewind10.setOnClickListener { seekRelative(-10000) }
         btnFF10.setOnClickListener { seekRelative(10000) }
         btnFF30.setOnClickListener { seekRelative(30000) }
+    }
+
+    @SuppressLint("UnsafeOptInUsageError")
+    private fun showAudioTrackSelectionDialog() {
+        resetControlsTimeout()
+        val player = exoPlayer ?: return
+        val tracks = player.currentTracks
+
+        val audioTrackOptions = ArrayList<Pair<Tracks.Group, Int>>()
+        val optionLabels = ArrayList<String>()
+
+        for (group in tracks.groups) {
+            if (group.type == C.TRACK_TYPE_AUDIO) {
+                val mediaTrackGroup = group.mediaTrackGroup
+                for (i in 0 until mediaTrackGroup.length) {
+                    val format = mediaTrackGroup.getFormat(i)
+                    val lang = if (!format.language.isNullOrEmpty()) Locale(format.language!!).displayLanguage else "Track ${audioTrackOptions.size + 1}"
+                    val label = format.label ?: lang
+                    val channels = if (format.channelCount > 0) "${format.channelCount}ch" else ""
+                    val isSelected = group.isTrackSelected(i)
+                    val prefix = if (isSelected) "✓ " else "   "
+
+                    audioTrackOptions.add(Pair(group, i))
+                    optionLabels.add("$prefix$label $channels (${format.sampleMimeType ?: "audio"})")
+                }
+            }
+        }
+
+        if (optionLabels.isEmpty()) {
+            Toast.makeText(this, "No alternative audio tracks found.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("🔊 Select Audio Track")
+            .setItems(optionLabels.toTypedArray()) { _, which ->
+                val (group, trackIndex) = audioTrackOptions[which]
+                val builder = player.trackSelectionParameters.buildUpon()
+                builder.setOverrideForType(
+                    TrackSelectionOverride(group.mediaTrackGroup, trackIndex)
+                )
+                player.trackSelectionParameters = builder.build()
+                Toast.makeText(this, "Audio Track Switched: ${optionLabels[which].replace("✓ ", "")}", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun toggleSubtitles() {
@@ -361,46 +415,49 @@ class PlayerActivity : AppCompatActivity() {
         })
     }
 
-    private fun seekRelative(millis: Long) {
-        resetControlsTimeout()
-        exoPlayer?.let {
-            val target = Math.max(0, Math.min(it.duration, it.currentPosition + millis))
-            it.seekTo(target)
-        }
-    }
-
     private fun updateProgress() {
-        exoPlayer?.let { player ->
-            val pos = player.currentPosition
-            val dur = player.duration
+        val player = exoPlayer ?: return
+        val current = player.currentPosition
+        val dur = player.duration
 
-            if (dur > 0 && !seekBar.isPressed) {
-                txtCurrentTime.text = formatTime(pos)
-                txtDuration.text = formatTime(dur)
-                val progress = ((pos.toDouble() / dur.toDouble()) * 1000).toInt()
-                seekBar.progress = progress
-            }
+        if (dur > 0) {
+            val progress = ((current * 1000) / dur).toInt()
+            seekBar.progress = progress
+            txtCurrentTime.text = formatTime(current)
+            txtDuration.text = formatTime(dur)
+        } else {
+            seekBar.progress = 0
+            txtCurrentTime.text = "00:00"
+            txtDuration.text = "00:00"
         }
     }
 
-    private fun formatTime(millis: Long): String {
-        if (millis <= 0) return "00:00"
-        val seconds = millis / 1000
-        val h = seconds / 3600
-        val m = (seconds % 3600) / 60
-        val s = seconds % 60
+    private fun seekRelative(offsetMs: Long) {
+        resetControlsTimeout()
+        exoPlayer?.let { player ->
+            val newPos = (player.currentPosition + offsetMs).coerceIn(0, player.duration)
+            player.seekTo(newPos)
+            updateProgress()
+        }
+    }
 
-        return if (h > 0) {
-            String.format(Locale.US, "%02d:%02d:%02d", h, m, s)
+    private fun formatTime(timeMs: Long): String {
+        val totalSec = (timeMs / 1000).toInt()
+        val sec = totalSec % 60
+        val min = (totalSec / 60) % 60
+        val hrs = totalSec / 3600
+
+        return if (hrs > 0) {
+            String.format(Locale.US, "%d:%02d:%02d", hrs, min, sec)
         } else {
-            String.format(Locale.US, "%02d:%02d", m, s)
+            String.format(Locale.US, "%02d:%02d", min, sec)
         }
     }
 
     private fun resetControlsTimeout() {
         showControls()
         handler.removeCallbacks(hideControlsRunnable)
-        handler.postDelayed(hideControlsRunnable, 4500)
+        handler.postDelayed(hideControlsRunnable, 5000)
     }
 
     private fun showControls() {
@@ -419,6 +476,7 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private fun hideSystemUI() {
+        @Suppress("DEPRECATION")
         window.decorView.systemUiVisibility = (
             View.SYSTEM_UI_FLAG_FULLSCREEN
                 or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
@@ -432,21 +490,47 @@ class PlayerActivity : AppCompatActivity() {
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         resetControlsTimeout()
 
-        if (keyCode == KeyEvent.KEYCODE_BACK) {
-            finish()
-            return true
+        when (keyCode) {
+            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+                if (!controlsVisible) {
+                    showControls()
+                    btnPlayPause.requestFocus()
+                    return true
+                }
+            }
+            KeyEvent.KEYCODE_DPAD_UP -> {
+                if (!controlsVisible) {
+                    showControls()
+                    btnPlayPause.requestFocus()
+                    return true
+                }
+            }
+            KeyEvent.KEYCODE_DPAD_DOWN -> {
+                if (!controlsVisible) {
+                    showControls()
+                    seekBar.requestFocus()
+                    return true
+                }
+            }
+            KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE -> {
+                btnPlayPause.performClick()
+                return true
+            }
+            KeyEvent.KEYCODE_MEDIA_REWIND -> {
+                btnRewind10.performClick()
+                return true
+            }
+            KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
+                btnFF10.performClick()
+                return true
+            }
+            KeyEvent.KEYCODE_BACK -> {
+                if (controlsVisible) {
+                    hideControls()
+                    return true
+                }
+            }
         }
-
-        if (keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE || keyCode == KeyEvent.KEYCODE_MEDIA_PLAY || keyCode == KeyEvent.KEYCODE_MEDIA_PAUSE) {
-            btnPlayPause.performClick()
-            return true
-        }
-
-        // Show controls overlay on any D-Pad directional navigation press without pausing playback
-        if (keyCode == KeyEvent.KEYCODE_DPAD_UP || keyCode == KeyEvent.KEYCODE_DPAD_DOWN || keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-            showControls()
-        }
-
         return super.onKeyDown(keyCode, event)
     }
 
@@ -456,5 +540,12 @@ class PlayerActivity : AppCompatActivity() {
         handler.removeCallbacks(hideControlsRunnable)
         exoPlayer?.release()
         exoPlayer = null
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            hideSystemUI()
+        }
     }
 }
