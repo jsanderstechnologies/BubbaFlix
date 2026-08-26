@@ -21,7 +21,7 @@ services:
       DISPATCHARR_URL: "${DISPATCHARR_URL:-http://192.168.10.3:9191}"
       DISPATCHARR_API_KEY: "${DISPATCHARR_API_KEY:-}"
     volumes:
-      - bubbaflix-data:/app/server
+      - bubbaflix-data:/app/data
 
 volumes:
   bubbaflix-data:

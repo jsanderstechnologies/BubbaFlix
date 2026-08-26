@@ -9,8 +9,9 @@ const { spawn } = require("child_process");
 // Internal Node settings server port inside Docker container (always 5000 for Nginx proxy)
 const PORT = 5000;
 const UDP_DISCOVERY_PORT = 5151;
-const SETTINGS_FILE = path.join(__dirname, "settings.json");
-const LOG_FILE = path.join(__dirname, "bubbaflix.log");
+const DATA_DIR = process.env.DATA_DIR || (fs.existsSync("/app/data") ? "/app/data" : __dirname);
+const SETTINGS_FILE = path.join(DATA_DIR, "settings.json");
+const LOG_FILE = path.join(DATA_DIR, "bubbaflix.log");
 
 const DEFAULT_TMDB_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmYjM3ODM3YzJiMDlkNzEyMDIwMDIxZjc0NGI5ZTQwNyIsInN1YiI6IjY0NjNlNzE5ZTNmYTJmMDEyNDQ3ODk1NCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.3Y0VloCdPlprLy-OMZQmqtZd4_Ti9GDfHo4SZXh3erU";
 
