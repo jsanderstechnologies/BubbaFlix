@@ -85,41 +85,41 @@ const SettingsPage = () => {
     // 2. Pull Centralized Backend Settings
     const serverSettings = await fetchServerSettings();
 
-    // 3. Populate state
-    const currentTheme = getSavedTheme();
+    // 3. Populate state directly from backend serverSettings
+    const currentTheme = serverSettings?.theme || getSavedTheme();
     setActiveTheme(currentTheme);
+    applyTheme(currentTheme);
 
-    const savedAio = getAioStreamsUrl();
-    setAioUrl(savedAio || DEFAULT_AIOSTREAMS_URL);
-    setHasAioCustom(!!savedAio && savedAio !== DEFAULT_AIOSTREAMS_URL);
+    const activeAio = serverSettings?.aiostreams_url || getAioStreamsUrl() || DEFAULT_AIOSTREAMS_URL;
+    setAioUrl(activeAio);
+    setHasAioCustom(!!activeAio && activeAio !== DEFAULT_AIOSTREAMS_URL);
 
-    const savedToken = localStorage.getItem("tmdb_token");
-    const active = getActiveTmdbToken();
-    setToken(savedToken || active || "");
-    setIsCustom(!!savedToken);
+    const activeToken = serverSettings?.tmdbToken !== undefined ? serverSettings.tmdbToken : (localStorage.getItem("tmdb_token") || getActiveTmdbToken() || "");
+    setToken(activeToken);
+    setIsCustom(!!activeToken);
 
-    const { clientId } = getSimklConfig();
-    setSimklClientId(clientId || serverSettings?.simklClientId || "");
-    setHasSimklCustom(!!(clientId || serverSettings?.simklClientId));
+    const activeSimkl = serverSettings?.simklClientId !== undefined ? serverSettings.simklClientId : (getSimklConfig().clientId || "");
+    setSimklClientId(activeSimkl);
+    setHasSimklCustom(!!activeSimkl);
 
-    const savedGroq = getGroqApiKey();
-    const activeGroq = savedGroq || serverSettings?.groqKey || "";
+    const activeGroq = serverSettings?.groqKey !== undefined ? serverSettings.groqKey : (getGroqApiKey() || "");
     setGroqKey(activeGroq);
     setHasGroqCustom(!!activeGroq);
 
-    const savedPrem = getPremiumizeKey();
-    const activePrem = savedPrem || serverSettings?.premiumizeKey || "";
+    const activePrem = serverSettings?.premiumizeKey !== undefined ? serverSettings.premiumizeKey : (getPremiumizeKey() || "");
     setPremiumizeKey(activePrem);
     setHasPremiumizeCustom(!!activePrem);
 
-    const savedRes = localStorage.getItem("stream_resolutions");
-    const savedExcludeLow = localStorage.getItem("stream_exclude_low_quality");
-    if (savedRes) setSelectedResolutions(JSON.parse(savedRes));
-    if (savedExcludeLow !== null) setExcludeLowQuality(JSON.parse(savedExcludeLow));
+    const activeDispatcharrUrl = serverSettings?.dispatcharrUrl ? sanitizeDispatcharrUrl(serverSettings.dispatcharrUrl) : getDispatcharrConfig().url;
+    const activeDispatcharrKey = serverSettings?.dispatcharrApiKey !== undefined ? serverSettings.dispatcharrApiKey : getDispatcharrConfig().apiKey;
+    setDispatcharrUrl(activeDispatcharrUrl);
+    setDispatcharrApiKey(activeDispatcharrKey);
 
-    const dispatcharrCfg = getDispatcharrConfig();
-    setDispatcharrUrl(dispatcharrCfg.url || serverSettings?.dispatcharrUrl || "http://192.168.10.3:9191");
-    setDispatcharrApiKey(dispatcharrCfg.apiKey || serverSettings?.dispatcharrApiKey || "");
+    const resConfig = serverSettings?.stream_resolutions || (localStorage.getItem("stream_resolutions") ? JSON.parse(localStorage.getItem("stream_resolutions")) : ["2160p", "1080p", "720p", "480p"]);
+    setSelectedResolutions(resConfig);
+
+    const excludeLowConfig = serverSettings?.stream_exclude_low_quality !== undefined ? serverSettings.stream_exclude_low_quality : (localStorage.getItem("stream_exclude_low_quality") !== null ? JSON.parse(localStorage.getItem("stream_exclude_low_quality")) : true);
+    setExcludeLowQuality(excludeLowConfig);
   };
 
   useEffect(() => {

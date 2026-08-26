@@ -32,7 +32,7 @@ export const fetchServerSettings = async () => {
     if (res.data?.status === "success" && res.data.settings) {
       const s = res.data.settings;
 
-      // Sync settings to client cache
+      // Sync all backend settings to client storage
       if (s.theme) {
         localStorage.setItem("bubbaflix_theme", s.theme);
         applyTheme(s.theme);
@@ -40,12 +40,25 @@ export const fetchServerSettings = async () => {
       if (s.aiostreams_url) {
         saveAioStreamsUrl(s.aiostreams_url);
       }
-      if (s.simklClientId) localStorage.setItem("simkl_client_id", s.simklClientId);
-      if (s.groqKey && s.groqKey.trim().length > 0) {
-        localStorage.setItem("groq_api_key", s.groqKey.trim());
+      if (s.simklClientId !== undefined) {
+        localStorage.setItem("simkl_client_id", (s.simklClientId || "").trim());
       }
-      if (s.tmdbToken && s.tmdbToken.trim().length > 0) {
-        localStorage.setItem("tmdb_token", s.tmdbToken.trim());
+      if (s.groqKey !== undefined) {
+        localStorage.setItem("groq_api_key", (s.groqKey || "").trim());
+      }
+      if (s.tmdbToken !== undefined) {
+        if (s.tmdbToken && s.tmdbToken.trim().length > 0) {
+          localStorage.setItem("tmdb_token", s.tmdbToken.trim());
+        } else {
+          localStorage.removeItem("tmdb_token");
+        }
+      }
+      if (s.premiumizeKey !== undefined) {
+        if (s.premiumizeKey && s.premiumizeKey.trim().length > 0) {
+          localStorage.setItem("premiumize_api_key", s.premiumizeKey.trim());
+        } else {
+          localStorage.removeItem("premiumize_api_key");
+        }
       }
       if (s.dispatcharrUrl) {
         let cleanUrl = s.dispatcharrUrl.trim().replace(/\/$/, "");
@@ -55,7 +68,9 @@ export const fetchServerSettings = async () => {
       if (s.dispatcharrApiKey !== undefined) {
         localStorage.setItem("dispatcharr_api_key", (s.dispatcharrApiKey || "").trim());
       }
-      if (s.stream_resolutions) localStorage.setItem("stream_resolutions", JSON.stringify(s.stream_resolutions));
+      if (s.stream_resolutions) {
+        localStorage.setItem("stream_resolutions", JSON.stringify(s.stream_resolutions));
+      }
       if (s.stream_exclude_low_quality !== undefined) {
         localStorage.setItem("stream_exclude_low_quality", JSON.stringify(s.stream_exclude_low_quality));
       }
