@@ -86,9 +86,15 @@ export const getDispatcharrStreamUrl = (channelOrId) => {
   }
 
   const authQuery = apiKey ? `?api_key=${encodeURIComponent(apiKey)}` : "";
+  const directProxyUrl = `${backend}/api/dispatcharr/proxy/ts/stream/${chId}/${authQuery}`;
 
-  // Always route Dispatcharr Live TV streams through backend proxy with trailing slash
-  return `${backend}/api/dispatcharr/proxy/ts/stream/${chId}/${authQuery}`;
+  // On Native Android TV app, ExoPlayer handles raw MPEG-TS natively
+  if (typeof window !== "undefined" && window.AndroidPlayer) {
+    return directProxyUrl;
+  }
+
+  // On Web Browsers, route through /api/transcode for instant HTML5 MP4 playback
+  return `${backend}/api/transcode?url=${encodeURIComponent(directProxyUrl)}`;
 };
 
 const getHeaders = (apiKey) => {

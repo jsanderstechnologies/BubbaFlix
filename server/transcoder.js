@@ -302,11 +302,11 @@ const server = http.createServer((req, res) => {
 
     const ffmpegArgs = [
       "-headers", headersStr,
+      "-fflags", "+genpts+nobuffer+discardcorrupt",
+      "-analyzeduration", "1000000",
+      "-probesize", "1000000",
       "-i", normalizedTargetUrl,
-      "-c:v", "libx264",
-      "-preset", "ultrafast",
-      "-tune", "zerolatency",
-      "-crf", "23",
+      "-c:v", "copy",
       "-c:a", "aac",
       "-b:a", "192k",
       "-ac", "2",
