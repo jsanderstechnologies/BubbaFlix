@@ -402,6 +402,12 @@ const SettingsPage = () => {
     }
   };
 
+  const isTvClient = typeof window !== "undefined" && (
+    !!window.AndroidPlayer ||
+    window.Android !== undefined ||
+    /TV|AndroidTV|GoogleTV|SmartTV|SMART-TV|NETTV|WebOS|Tizen|BraveTV/i.test(navigator.userAgent)
+  );
+
   return (
     <div className="settingsPage">
       <TopNav />
@@ -409,21 +415,162 @@ const SettingsPage = () => {
         <div className="settingsContainer">
           <div className="settingsHeader">
             <h1 className="title">
-              <FiKey className="icon" /> API & System Settings
+              <FiKey className="icon" /> Application Settings
             </h1>
             <p className="subtitle">
-              Centralized backend server configuration for AIOStreams streaming, SIMKL watch tracking, color themes, and stream resolution filters.
+              {isTvClient
+                ? "Configure your TV color theme, allowed stream resolutions, and quality release filters."
+                : "Centralized server configuration for AIOStreams streaming, SIMKL watch tracking, color themes, and stream resolution filters."}
             </p>
           </div>
 
-          {/* AIOStreams Streaming Addon Card */}
+          {/* Android TV Centralized Settings Banner */}
+          {isTvClient && (
+            <div className="settingsCard" style={{ background: "rgba(218, 47, 104, 0.1)", borderColor: "var(--pink)", marginBottom: 25 }}>
+              <div className="cardHeader">
+                <h2 style={{ color: "white" }}><FiServer style={{ marginRight: 8, color: "var(--pink)" }} /> Centralized Server Settings Active</h2>
+                <span className="badge custom">Backend Synced</span>
+              </div>
+              <p className="description" style={{ color: "#dddddd", fontSize: "14px", lineHeight: "1.6" }}>
+                Your Android TV app is automatically configured by your central BubbaFlix server (<code>{serverUrlState || "https://bubbaflix.sanders-technologies.net"}</code>). API tokens, Dispatcharr Live TV, AIOStreams Debrid, Premiumize, SIMKL, and Groq AI settings are managed globally on the server.
+              </p>
+            </div>
+          )}
+
+          {/* Color Theme Selector Card (Visible on ALL Clients) */}
           <div className="settingsCard">
             <div className="cardHeader">
-              <h2><FiCloudLightning style={{ marginRight: 8 }} /> AIOStreams Streaming Addon URL</h2>
-              <span className={`badge ${hasAioCustom ? "custom" : "default"}`}>
-                <FiServer style={{ marginRight: 4 }} /> {hasAioCustom ? "Custom AIOStreams Active" : "ElfHosted Default Active"}
-              </span>
+              <h2><FiSun style={{ marginRight: 8 }} /> Application Color Theme</h2>
+              <span className="badge custom"><FiServer style={{ marginRight: 4 }} /> Server Synced</span>
             </div>
+            <p className="description">
+              Select your preferred color theme for BubbaFlix, including Dark Red (Netflix Style). Synced across all client devices.
+            </p>
+            <div className="themeGrid">
+              {THEMES.map((theme) => (
+                <div
+                  key={theme.id}
+                  className={`themeCard ${activeTheme === theme.id ? "active" : ""}`}
+                  onClick={() => handleSelectTheme(theme.id)}
+                  tabIndex="0"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleSelectTheme(theme.id);
+                    }
+                  }}
+                >
+                  <div
+                    className="themePreview"
+                    style={{
+                      background: theme.bg,
+                      borderColor: activeTheme === theme.id ? theme.primary : "rgba(255,255,255,0.1)",
+                    }}
+                  >
+                    <div className="previewHeader" style={{ background: theme.bg2 }}>
+                      <div className="previewBadge" style={{ background: theme.gradient }} />
+                    </div>
+                    <div className="previewBody">
+                      <div className="previewDot" style={{ background: theme.primary }} />
+                      <div className="previewDot" style={{ background: theme.secondary }} />
+                    </div>
+                  </div>
+                  <div className="themeInfo">
+                    <span className="themeName">{theme.name}</span>
+                    <span className="themeDesc">{theme.description}</span>
+                  </div>
+                  {activeTheme === theme.id && (
+                    <div className="activeCheck">
+                      <FiCheckCircle />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Stream Resolution & CAM Exclusion Settings Card (Visible on ALL Clients) */}
+          <div className="settingsCard">
+            <div className="cardHeader">
+              <h2><FiSliders style={{ marginRight: 8 }} /> Stream Resolution & Quality Filters</h2>
+              <span className="badge custom"><FiServer style={{ marginRight: 4 }} /> Server Synced</span>
+            </div>
+            <p className="description">
+              Configure allowed resolutions and toggle CAM / HDTS low-quality release exclusions across all devices.
+            </p>
+            <form onSubmit={handleSaveStreamFilters} className="tokenForm">
+              <div className="inputGroup">
+                <label>ALLOWED_STREAM_RESOLUTIONS</label>
+                <div className="resolutionGrid">
+                  {ALL_RESOLUTIONS.map((res) => (
+                    <button
+                      key={res.id}
+                      type="button"
+                      className={`resOption ${selectedResolutions.includes(res.id) ? "selected" : ""}`}
+                      onClick={() => handleToggleResolution(res.id)}
+                      tabIndex="0"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleToggleResolution(res.id);
+                        }
+                      }}
+                    >
+                      <span className="checkbox">
+                        {selectedResolutions.includes(res.id) ? "✓" : ""}
+                      </span>
+                      <span className="resLabel">{res.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="inputGroup" style={{ marginTop: 20 }}>
+                <label>EXCLUDE_LOW_QUALITY_CAM_HDTS</label>
+                <div
+                  className={`qualityToggle ${excludeLowQuality ? "active" : ""}`}
+                  onClick={() => setExcludeLowQuality(!excludeLowQuality)}
+                  tabIndex="0"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setExcludeLowQuality(!excludeLowQuality);
+                    }
+                  }}
+                >
+                  <span className="toggleSwitch" />
+                  <span className="toggleLabel">
+                    {excludeLowQuality
+                      ? "Strictly Exclude CAM, HDCAM, Telesync, and HDTS Releases (Recommended)"
+                      : "Allow CAM and Low-Quality Releases"}
+                  </span>
+                </div>
+              </div>
+              {filterStatus && (
+                <div className={`statusBanner ${filterStatus.type}`}>
+                  {filterStatus.type === "success" && <FiCheckCircle />}
+                  {filterStatus.type === "error" && <FiXCircle />}
+                  <span>{filterStatus.text}</span>
+                </div>
+              )}
+              <div className="buttonGroup" style={{ marginTop: 20 }}>
+                <button type="submit" className="saveBtn">
+                  <FiSave /> Save Stream Preferences
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Centralized Server & API Configuration Cards (Hidden on TV Client, Only Visible on Web / Desktop) */}
+          {!isTvClient && (
+            <>
+              {/* AIOStreams Streaming Addon Card */}
+              <div className="settingsCard">
+                <div className="cardHeader">
+                  <h2><FiCloudLightning style={{ marginRight: 8 }} /> AIOStreams Streaming Addon URL</h2>
+                  <span className={`badge ${hasAioCustom ? "custom" : "default"}`}>
+                    <FiServer style={{ marginRight: 4 }} /> {hasAioCustom ? "Custom AIOStreams Active" : "ElfHosted Default Active"}
+                  </span>
+                </div>
 
             <p className="description">
               BubbaFlix uses AIOStreams (ElfHosted) to fetch torrents and resolve direct Premiumize streams without local client resolving.
@@ -890,77 +1037,8 @@ const SettingsPage = () => {
                   </div>
                 </form>
               </div>
-
-              {/* Stream Resolution & CAM Exclusion Settings Card */}
-              <div className="settingsCard">
-                <div className="cardHeader">
-                  <h2><FiSliders style={{ marginRight: 8 }} /> Stream Resolution & Quality Filters</h2>
-                  <span className="badge custom"><FiServer style={{ marginRight: 4 }} /> Server Synced</span>
-                </div>
-                <p className="description">
-                  Configure allowed resolutions and toggle CAM / HDTS low-quality release exclusions across all devices.
-                </p>
-                <form onSubmit={handleSaveStreamFilters} className="tokenForm">
-                  <div className="inputGroup">
-                    <label>ALLOWED_STREAM_RESOLUTIONS</label>
-                    <div className="resolutionGrid">
-                      {ALL_RESOLUTIONS.map((res) => (
-                        <button
-                          key={res.id}
-                          type="button"
-                          className={`resOption ${selectedResolutions.includes(res.id) ? "selected" : ""}`}
-                          onClick={() => handleToggleResolution(res.id)}
-                          tabIndex="0"
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              handleToggleResolution(res.id);
-                            }
-                          }}
-                        >
-                          <span className="checkbox">
-                            {selectedResolutions.includes(res.id) ? "✓" : ""}
-                          </span>
-                          <span className="resLabel">{res.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="inputGroup" style={{ marginTop: 20 }}>
-                    <label>EXCLUDE_LOW_QUALITY_CAM_HDTS</label>
-                    <div
-                      className={`qualityToggle ${excludeLowQuality ? "active" : ""}`}
-                      onClick={() => setExcludeLowQuality(!excludeLowQuality)}
-                      tabIndex="0"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          setExcludeLowQuality(!excludeLowQuality);
-                        }
-                      }}
-                    >
-                      <span className="toggleSwitch" />
-                      <span className="toggleLabel">
-                        {excludeLowQuality
-                          ? "Strictly Exclude CAM, HDCAM, Telesync, and HDTS Releases (Recommended)"
-                          : "Allow CAM and Low-Quality Releases"}
-                      </span>
-                    </div>
-                  </div>
-                  {filterStatus && (
-                    <div className={`statusBanner ${filterStatus.type}`}>
-                      {filterStatus.type === "success" && <FiCheckCircle />}
-                      {filterStatus.type === "error" && <FiXCircle />}
-                      <span>{filterStatus.text}</span>
-                    </div>
-                  )}
-                  <div className="buttonGroup" style={{ marginTop: 20 }}>
-                    <button type="submit" className="saveBtn">
-                      <FiSave /> Save Stream Preferences
-                    </button>
-                  </div>
-                </form>
-              </div>
+            </>
+          )}
         </div>
       </ContentWrapper>
     </div>

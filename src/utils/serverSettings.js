@@ -3,15 +3,20 @@ import { applyTheme } from "./theme";
 import { fetchUserSimklHistory } from "./simkl";
 import { saveAioStreamsUrl, DEFAULT_AIOSTREAMS_URL } from "./aiostreams";
 
+export const DEFAULT_SERVER_URL = "https://bubbaflix.sanders-technologies.net";
+
 export const getServerUrl = () => {
-  if (typeof window === "undefined") return "";
+  if (typeof window === "undefined") return DEFAULT_SERVER_URL;
   const saved = localStorage.getItem("bubbaflix_server_url");
   if (saved && saved.trim().length > 0) {
     let url = saved.trim();
     if (url.endsWith("/")) url = url.slice(0, -1);
     return url;
   }
-  return "";
+  if (window.location && window.location.origin && window.location.origin.startsWith("http") && !window.location.origin.includes("localhost")) {
+    return window.location.origin.replace(/\/$/, "");
+  }
+  return DEFAULT_SERVER_URL;
 };
 
 export const saveServerUrl = (url) => {
