@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FiTv,
@@ -7,7 +7,12 @@ import {
   FiTrash2,
   FiRefreshCw,
   FiClock,
-  FiSettings
+  FiSettings,
+  FiGrid,
+  FiList,
+  FiCalendar,
+  FiChevronLeft,
+  FiChevronRight
 } from "react-icons/fi";
 import {
   getDispatcharrConfigAsync,
@@ -22,9 +27,14 @@ import ContentWrapper from "../../components/content-wrapper";
 import TopNav from "../../components/top-nav";
 import "./index.scss";
 
+// EPG Grid Config
+const HOUR_WIDTH = 360; // 360px per 1 hour (180px per 30 min)
+const TOTAL_HOURS = 8; // Display 8 hours of timeline
+
 const LiveTvPage = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("channels"); // "channels", "recordings"
+  const [activeTab, setActiveTab] = useState("guide"); // "guide" (EPG Grid), "channels" (Card Grid), "recordings"
+  const [viewMode, setViewMode] = useState("epgGrid"); // "epgGrid", "cards"
 
   // Config State
   const [serverUrl, setServerUrl] = useState("");
@@ -34,6 +44,12 @@ const LiveTvPage = () => {
   const [epgData, setEpgData] = useState([]);
   const [recordings, setRecordings] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // EPG Timeline State
+  const [timeSlots, setTimeSlots] = useState([]);
+  const [timelineStart, setTimelineStart] = useState(new Date());
+  const [selectedProgram, setSelectedProgram] = useState(null);
+  const gridScrollRef = useRef(null);
 
   // Player Modal State
   const [showPlayer, setShowPlayer] = useState(false);
@@ -47,7 +63,34 @@ const LiveTvPage = () => {
       loadAllData();
     };
     initConfig();
+    generateTimeline();
   }, []);
+
+  const generateTimeline = (baseDate = new Date()) => {
+    // Start timeline 1 hour before current time, rounded down to nearest 30 mins
+    const start = new Date(baseDate);
+    start.setMinutes(start.getMinutes() < 30 ? 0 : 30, 0, 0);
+    start.setHours(start.getHours() - 1);
+    setTimelineStart(start);
+
+    const slots = [];
+    const numSlots = TOTAL_HOURS * 2; // 30-min increments
+    for (let i = 0; i < numSlots; i++) {
+      const slotTime = new Date(start.getTime() + i * 30 * 60 * 1000);
+      const hours = slotTime.getHours();
+      const minutes = slotTime.getMinutes();
+      const ampm = hours >= 12 ? "PM" : "AM";
+      const formattedHours = hours % 12 || 12;
+      const formattedMinutes = minutes < 10 ? `0${minutes}` : minutes;
+
+      slots.push({
+        time: slotTime,
+        label: `${formattedHours}:${formattedMinutes} ${ampm}`,
+        timestamp: slotTime.getTime()
+      });
+    }
+    setTimeSlots(slots);
+  };
 
   const loadAllData = async () => {
     setLoading(true);
@@ -68,7 +111,7 @@ const LiveTvPage = () => {
   };
 
   const handlePlayChannel = (channel) => {
-    const streamUrl = channel.stream_url || channel.url || `${serverUrl}/stream/${channel.id || channel.channel_id}`;
+    const streamUrl = channel.stream_url || channel.url || `${serverUrl}/proxy/ts/stream/${channel.id || channel.channel_id}`;
     setPlayerStreamUrl(streamUrl);
     setPlayerTitle(channel.name || `Channel ${channel.number || ""}`);
     setShowPlayer(true);
@@ -82,9 +125,10 @@ const LiveTvPage = () => {
   };
 
   const handleScheduleRecording = async (program) => {
+    if (!program) return;
     const success = await scheduleDispatcharrRecording(program);
     if (success) {
-      alert(`Scheduled recording for: ${program.title}`);
+      alert(`Scheduled recording for: ${program.title || program.name || "Program"}`);
       loadAllData();
     } else {
       alert("Failed to schedule recording with Dispatcharr server.");
@@ -102,6 +146,47 @@ const LiveTvPage = () => {
     }
   };
 
+  const handleJumpToNow = () => {
+    generateTimeline(new Date());
+    if (gridScrollRef.current) {
+      gridScrollRef.current.scrollLeft = 0;
+    }
+  };
+
+  const handleScrollGrid = (direction) => {
+    if (gridScrollRef.current) {
+      const scrollAmount = direction === "left" ? -400 : 400;
+      gridScrollRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
+    }
+  };
+
+  // Helper: Get programs for a specific channel within the timeline window
+  const getChannelPrograms = (channel) => {
+    const channelId = String(channel.id || channel.channel_id || channel.uuid || "");
+    const channelNum = String(channel.number || "");
+
+    // Filter EPG data matching this channel
+    let programs = epgData.filter((epg) => {
+      const epgChId = String(epg.channel_id || epg.channel || epg.tvg_id || "");
+      const epgChNum = String(epg.channel_number || epg.number || "");
+      return (channelId && epgChId === channelId) || (channelNum && epgChNum === channelNum);
+    });
+
+    if (programs.length === 0 && channel.current_program) {
+      programs = [channel.current_program];
+    }
+
+    return programs;
+  };
+
+  // Compute Current Time Red Line position
+  const now = new Date();
+  const timelineEnd = new Date(timelineStart.getTime() + TOTAL_HOURS * 60 * 60 * 1000);
+  const isNowInWindow = now >= timelineStart && now <= timelineEnd;
+  const nowOffsetPx = isNowInWindow
+    ? ((now.getTime() - timelineStart.getTime()) / (1000 * 60 * 60)) * HOUR_WIDTH
+    : -1;
+
   return (
     <div className="liveTvPage">
       <TopNav />
@@ -109,38 +194,74 @@ const LiveTvPage = () => {
         <div className="pageHeader">
           <div className="pageTitle">
             <FiTv className="titleIcon" />
-            <h1>Dispatcharr Live TV & DVR</h1>
+            <h1>Dispatcharr Live TV & EPG Guide</h1>
           </div>
           <div className="tabSelector">
             <button
-              className={`tabItem ${activeTab === "channels" ? "active" : ""}`}
-              onClick={() => setActiveTab("channels")}
+              className={`tabItem ${activeTab === "guide" ? "active" : ""}`}
+              onClick={() => setActiveTab("guide")}
               tabIndex="0"
             >
-              <FiTv /> Live Guide
+              <FiGrid /> TV Guide
             </button>
             <button
               className={`tabItem ${activeTab === "recordings" ? "active" : ""}`}
               onClick={() => setActiveTab("recordings")}
               tabIndex="0"
             >
-              <FiVideo /> Recordings ({recordings.length})
+              <FiVideo /> DVR Recordings ({recordings.length})
             </button>
           </div>
         </div>
 
-        {/* Channels & EPG Guide Tab */}
-        {activeTab === "channels" && (
+        {/* EPG TV Guide & Channels Tab */}
+        {activeTab === "guide" && (
           <div className="tabContent">
             <div className="sectionActionHeader">
-              <h2>Channels & Electronic Program Guide</h2>
-              <button className="refreshBtn" onClick={loadAllData} tabIndex="0">
-                <FiRefreshCw /> Refresh EPG
-              </button>
+              <div className="leftActions">
+                <h2>Electronic Program Guide</h2>
+                <div className="viewToggleBtns">
+                  <button
+                    className={`toggleBtn ${viewMode === "epgGrid" ? "active" : ""}`}
+                    onClick={() => setViewMode("epgGrid")}
+                    title="EPG Timeline Grid"
+                    tabIndex="0"
+                  >
+                    <FiGrid /> EPG Grid
+                  </button>
+                  <button
+                    className={`toggleBtn ${viewMode === "cards" ? "active" : ""}`}
+                    onClick={() => setViewMode("cards")}
+                    title="Channel Cards"
+                    tabIndex="0"
+                  >
+                    <FiList /> Channel Cards
+                  </button>
+                </div>
+              </div>
+
+              <div className="rightActions">
+                {viewMode === "epgGrid" && (
+                  <>
+                    <button className="navGridBtn" onClick={() => handleScrollGrid("left")} tabIndex="0" title="Scroll Left">
+                      <FiChevronLeft />
+                    </button>
+                    <button className="nowBtn" onClick={handleJumpToNow} tabIndex="0">
+                      <FiClock /> Jump to Now
+                    </button>
+                    <button className="navGridBtn" onClick={() => handleScrollGrid("right")} tabIndex="0" title="Scroll Right">
+                      <FiChevronRight />
+                    </button>
+                  </>
+                )}
+                <button className="refreshBtn" onClick={loadAllData} tabIndex="0">
+                  <FiRefreshCw /> Refresh Guide
+                </button>
+              </div>
             </div>
 
             {loading ? (
-              <div className="loadingNotice">Loading Dispatcharr Channels...</div>
+              <div className="loadingNotice">Loading Dispatcharr EPG Guide...</div>
             ) : channels.length === 0 ? (
               <div className="emptyState">
                 <FiTv style={{ fontSize: "48px", marginBottom: "16px", color: "var(--pink)" }} />
@@ -150,7 +271,122 @@ const LiveTvPage = () => {
                   <FiSettings style={{ marginRight: "6px" }} /> Configure in Settings Page
                 </button>
               </div>
+            ) : viewMode === "epgGrid" ? (
+              /* --- FULL INTERACTIVE EPG GRID TIMELINE --- */
+              <div className="epgGridContainer">
+                <div className="epgGridScrollWrapper" ref={gridScrollRef}>
+                  <div className="epgGridTable" style={{ width: `${220 + TOTAL_HOURS * HOUR_WIDTH}px` }}>
+                    {/* Timeline Header Row */}
+                    <div className="epgHeaderRow">
+                      <div className="channelColumnHeader">Channels ({channels.length})</div>
+                      <div className="timelineSlotsHeader" style={{ width: `${TOTAL_HOURS * HOUR_WIDTH}px` }}>
+                        {timeSlots.map((slot, sIdx) => (
+                          <div key={sIdx} className="timeSlotCell" style={{ width: `${HOUR_WIDTH / 2}px` }}>
+                            {slot.label}
+                          </div>
+                        ))}
+                        {/* Red NOW line */}
+                        {nowOffsetPx >= 0 && (
+                          <div className="nowLineIndicator" style={{ left: `${nowOffsetPx}px` }}>
+                            <span className="nowBadge">NOW</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Channel Rows */}
+                    <div className="epgRowsContainer">
+                      {channels.map((ch, idx) => {
+                        const channelProgs = getChannelPrograms(ch);
+                        return (
+                          <div key={ch.id || idx} className="epgChannelRow">
+                            {/* Sticky Left Channel Info */}
+                            <div className="channelCell" onClick={() => handlePlayChannel(ch)} tabIndex="0" title={`Watch ${ch.name}`}>
+                              <span className="chNum">{ch.number || idx + 1}</span>
+                              {ch.logo ? (
+                                <img src={ch.logo} alt={ch.name} className="chLogo" />
+                              ) : (
+                                <div className="chLogoPlaceholder">{ch.name?.substring(0, 3)}</div>
+                              )}
+                              <div className="chMeta">
+                                <span className="chName">{ch.name}</span>
+                              </div>
+                              <button className="chPlayIcon" onClick={(e) => { e.stopPropagation(); handlePlayChannel(ch); }} tabIndex="0">
+                                <FiPlay />
+                              </button>
+                            </div>
+
+                            {/* Timeline Programs Bar */}
+                            <div className="programsTimelineCell" style={{ width: `${TOTAL_HOURS * HOUR_WIDTH}px` }}>
+                              {nowOffsetPx >= 0 && <div className="nowLineRow" style={{ left: `${nowOffsetPx}px` }} />}
+
+                              {channelProgs.length > 0 ? (
+                                channelProgs.map((prog, pIdx) => {
+                                  const progStart = prog.start_time ? new Date(prog.start_time) : timelineStart;
+                                  const progEnd = prog.end_time ? new Date(prog.end_time) : new Date(timelineStart.getTime() + 2 * 60 * 60 * 1000);
+
+                                  // Calculate offset & width
+                                  const startDiffHours = (progStart.getTime() - timelineStart.getTime()) / (1000 * 60 * 60);
+                                  const durationHours = (progEnd.getTime() - progStart.getTime()) / (1000 * 60 * 60);
+
+                                  const leftPx = Math.max(0, startDiffHours * HOUR_WIDTH);
+                                  const widthPx = Math.max(80, durationHours * HOUR_WIDTH);
+                                  const isCurrentlyLive = now >= progStart && now <= progEnd;
+
+                                  return (
+                                    <div
+                                      key={prog.id || pIdx}
+                                      className={`programBlock ${isCurrentlyLive ? "isLive" : ""}`}
+                                      style={{ left: `${leftPx}px`, width: `${widthPx}px` }}
+                                      onClick={() => handlePlayChannel(ch)}
+                                      tabIndex="0"
+                                    >
+                                      <div className="progHeader">
+                                        <span className="progTitle">{prog.title || prog.name || ch.now_playing || "Live Program"}</span>
+                                        {isCurrentlyLive && <span className="liveBadge">LIVE</span>}
+                                      </div>
+                                      <div className="progTime">
+                                        {progStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {progEnd.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                      </div>
+                                      {prog.description && <div className="progDesc">{prog.description}</div>}
+                                      <div className="progActions">
+                                        <button className="quickPlayBtn" onClick={(e) => { e.stopPropagation(); handlePlayChannel(ch); }} tabIndex="0">
+                                          <FiPlay /> Watch Live
+                                        </button>
+                                        <button className="quickRecBtn" onClick={(e) => { e.stopPropagation(); handleScheduleRecording(prog); }} tabIndex="0" title="Record Program">
+                                          <FiVideo /> Record
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })
+                              ) : (
+                                <div
+                                  className="programBlock isLive fallbackBlock"
+                                  style={{ left: "0px", width: `${TOTAL_HOURS * HOUR_WIDTH}px` }}
+                                  onClick={() => handlePlayChannel(ch)}
+                                  tabIndex="0"
+                                >
+                                  <div className="progHeader">
+                                    <span className="progTitle">{ch.now_playing || ch.current_program?.title || "Live Stream Broadcast"}</span>
+                                    <span className="liveBadge">LIVE NOW</span>
+                                  </div>
+                                  <div className="progTime">Click to play channel stream live</div>
+                                  <button className="quickPlayBtn" onClick={(e) => { e.stopPropagation(); handlePlayChannel(ch); }} tabIndex="0">
+                                    <FiPlay /> Watch Live Channel
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
             ) : (
+              /* --- CHANNELS CARDS GRID VIEW --- */
               <div className="channelsGrid">
                 {channels.map((ch, idx) => (
                   <div key={ch.id || idx} className="channelCard" tabIndex="0">
@@ -250,7 +486,7 @@ const LiveTvPage = () => {
         )}
       </ContentWrapper>
 
-      {/* Video Player Modal for Channel / Recording Playback */}
+      {/* Integrated Web Video Player / Android TV Player Modal */}
       <VideoPlayerModal
         show={showPlayer}
         setShow={setShowPlayer}
