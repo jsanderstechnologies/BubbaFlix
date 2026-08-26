@@ -784,20 +784,50 @@
         flex: 1;
         overflow: hidden;
 
-        .recTitle {
-          font-size: 15px;
-          font-weight: 600;
-          margin: 0 0 4px 0;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
+        .recTitleHeader {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          margin-bottom: 4px;
+
+          .recTitle {
+            font-size: 15px;
+            font-weight: 700;
+            margin: 0;
+            color: white;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+
+          .ruleBadge {
+            font-size: 10px;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 10px;
+            letter-spacing: 0.5px;
+            flex-shrink: 0;
+
+            &.recurring {
+              background: rgba(129, 199, 132, 0.2);
+              border: 1px solid #81c784;
+              color: #81c784;
+            }
+
+            &.oneTime {
+              background: rgba(255, 183, 77, 0.2);
+              border: 1px solid #ffb74d;
+              color: #ffb74d;
+            }
+          }
         }
 
         .recMeta {
           display: flex;
           gap: 10px;
           font-size: 11px;
-          color: rgba(255, 255, 255, 0.6);
+          color: rgba(255, 255, 255, 0.7);
           margin-bottom: 4px;
 
           .recTime {

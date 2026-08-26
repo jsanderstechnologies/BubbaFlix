@@ -23,6 +23,7 @@ import {
   deleteDispatcharrRecording
 } from "../../utils/dispatcharr";
 import VideoPlayerModal from "../../components/video-player-modal";
+import RecordingModal from "../../components/recording-modal";
 import ContentWrapper from "../../components/content-wrapper";
 import TopNav from "../../components/top-nav";
 import "./index.scss";
@@ -48,13 +49,17 @@ const LiveTvPage = () => {
   // EPG Timeline State
   const [timeSlots, setTimeSlots] = useState([]);
   const [timelineStart, setTimelineStart] = useState(new Date());
-  const [selectedProgram, setSelectedProgram] = useState(null);
   const gridScrollRef = useRef(null);
 
   // Player Modal State
   const [showPlayer, setShowPlayer] = useState(false);
   const [playerStreamUrl, setPlayerStreamUrl] = useState("");
   const [playerTitle, setPlayerTitle] = useState("");
+
+  // DVR Recording Modal State
+  const [showRecModal, setShowRecModal] = useState(false);
+  const [recTargetProgram, setRecTargetProgram] = useState(null);
+  const [recTargetChannel, setRecTargetChannel] = useState(null);
 
   useEffect(() => {
     const initConfig = async () => {
@@ -67,7 +72,6 @@ const LiveTvPage = () => {
   }, []);
 
   const generateTimeline = (baseDate = new Date()) => {
-    // Start timeline 1 hour before current time, rounded down to nearest 30 mins
     const start = new Date(baseDate);
     start.setMinutes(start.getMinutes() < 30 ? 0 : 30, 0, 0);
     start.setHours(start.getHours() - 1);
@@ -124,11 +128,16 @@ const LiveTvPage = () => {
     setShowPlayer(true);
   };
 
-  const handleScheduleRecording = async (program) => {
-    if (!program) return;
-    const success = await scheduleDispatcharrRecording(program);
+  const handleOpenRecModal = (program, channel) => {
+    setRecTargetProgram(program);
+    setRecTargetChannel(channel);
+    setShowRecModal(true);
+  };
+
+  const handleConfirmSchedule = async (payload) => {
+    const success = await scheduleDispatcharrRecording(payload);
     if (success) {
-      alert(`Scheduled recording for: ${program.title || program.name || "Program"}`);
+      alert(`Successfully scheduled ${payload.type === "one_time" ? "one-time recording" : "recurring recording rule"} for: ${payload.title}`);
       loadAllData();
     } else {
       alert("Failed to schedule recording with Dispatcharr server.");
@@ -160,12 +169,10 @@ const LiveTvPage = () => {
     }
   };
 
-  // Helper: Get programs for a specific channel within the timeline window
   const getChannelPrograms = (channel) => {
     const channelId = String(channel.id || channel.channel_id || channel.uuid || "");
     const channelNum = String(channel.number || "");
 
-    // Filter EPG data matching this channel
     let programs = epgData.filter((epg) => {
       const epgChId = String(epg.channel_id || epg.channel || epg.tvg_id || "");
       const epgChNum = String(epg.channel_number || epg.number || "");
@@ -179,7 +186,6 @@ const LiveTvPage = () => {
     return programs;
   };
 
-  // Compute Current Time Red Line position
   const now = new Date();
   const timelineEnd = new Date(timelineStart.getTime() + TOTAL_HOURS * 60 * 60 * 1000);
   const isNowInWindow = now >= timelineStart && now <= timelineEnd;
@@ -214,7 +220,6 @@ const LiveTvPage = () => {
           </div>
         </div>
 
-        {/* EPG TV Guide & Channels Tab */}
         {activeTab === "guide" && (
           <div className="tabContent">
             <div className="sectionActionHeader">
@@ -272,11 +277,9 @@ const LiveTvPage = () => {
                 </button>
               </div>
             ) : viewMode === "epgGrid" ? (
-              /* --- FULL INTERACTIVE EPG GRID TIMELINE --- */
               <div className="epgGridContainer">
                 <div className="epgGridScrollWrapper" ref={gridScrollRef}>
                   <div className="epgGridTable" style={{ width: `${220 + TOTAL_HOURS * HOUR_WIDTH}px` }}>
-                    {/* Timeline Header Row */}
                     <div className="epgHeaderRow">
                       <div className="channelColumnHeader">Channels ({channels.length})</div>
                       <div className="timelineSlotsHeader" style={{ width: `${TOTAL_HOURS * HOUR_WIDTH}px` }}>
@@ -285,7 +288,6 @@ const LiveTvPage = () => {
                             {slot.label}
                           </div>
                         ))}
-                        {/* Red NOW line */}
                         {nowOffsetPx >= 0 && (
                           <div className="nowLineIndicator" style={{ left: `${nowOffsetPx}px` }}>
                             <span className="nowBadge">NOW</span>
@@ -294,13 +296,11 @@ const LiveTvPage = () => {
                       </div>
                     </div>
 
-                    {/* Channel Rows */}
                     <div className="epgRowsContainer">
                       {channels.map((ch, idx) => {
                         const channelProgs = getChannelPrograms(ch);
                         return (
                           <div key={ch.id || idx} className="epgChannelRow">
-                            {/* Sticky Left Channel Info */}
                             <div className="channelCell" onClick={() => handlePlayChannel(ch)} tabIndex="0" title={`Watch ${ch.name}`}>
                               <span className="chNum">{ch.number || idx + 1}</span>
                               {ch.logo ? (
@@ -316,7 +316,6 @@ const LiveTvPage = () => {
                               </button>
                             </div>
 
-                            {/* Timeline Programs Bar */}
                             <div className="programsTimelineCell" style={{ width: `${TOTAL_HOURS * HOUR_WIDTH}px` }}>
                               {nowOffsetPx >= 0 && <div className="nowLineRow" style={{ left: `${nowOffsetPx}px` }} />}
 
@@ -325,7 +324,6 @@ const LiveTvPage = () => {
                                   const progStart = prog.start_time ? new Date(prog.start_time) : timelineStart;
                                   const progEnd = prog.end_time ? new Date(prog.end_time) : new Date(timelineStart.getTime() + 2 * 60 * 60 * 1000);
 
-                                  // Calculate offset & width
                                   const startDiffHours = (progStart.getTime() - timelineStart.getTime()) / (1000 * 60 * 60);
                                   const durationHours = (progEnd.getTime() - progStart.getTime()) / (1000 * 60 * 60);
 
@@ -353,7 +351,7 @@ const LiveTvPage = () => {
                                         <button className="quickPlayBtn" onClick={(e) => { e.stopPropagation(); handlePlayChannel(ch); }} tabIndex="0">
                                           <FiPlay /> Watch Live
                                         </button>
-                                        <button className="quickRecBtn" onClick={(e) => { e.stopPropagation(); handleScheduleRecording(prog); }} tabIndex="0" title="Record Program">
+                                        <button className="quickRecBtn" onClick={(e) => { e.stopPropagation(); handleOpenRecModal(prog, ch); }} tabIndex="0" title="Record Program">
                                           <FiVideo /> Record
                                         </button>
                                       </div>
@@ -386,7 +384,6 @@ const LiveTvPage = () => {
                 </div>
               </div>
             ) : (
-              /* --- CHANNELS CARDS GRID VIEW --- */
               <div className="channelsGrid">
                 {channels.map((ch, idx) => (
                   <div key={ch.id || idx} className="channelCard" tabIndex="0">
@@ -410,16 +407,14 @@ const LiveTvPage = () => {
                       <button className="playBtn" onClick={() => handlePlayChannel(ch)} tabIndex="0">
                         <FiPlay /> Watch Live
                       </button>
-                      {ch.current_program && (
-                        <button
-                          className="recordBtn"
-                          onClick={() => handleScheduleRecording(ch.current_program)}
-                          tabIndex="0"
-                          title="Record Program"
-                        >
-                          <FiVideo /> Record
-                        </button>
-                      )}
+                      <button
+                        className="recordBtn"
+                        onClick={() => handleOpenRecModal(ch.current_program, ch)}
+                        tabIndex="0"
+                        title="Record Options"
+                      >
+                        <FiVideo /> Record Options
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -428,23 +423,22 @@ const LiveTvPage = () => {
           </div>
         )}
 
-        {/* DVR Recordings Tab */}
         {activeTab === "recordings" && (
           <div className="tabContent">
             <div className="sectionActionHeader">
-              <h2>Recorded Shows & Movies</h2>
+              <h2>Recorded Shows, Movies & Rules</h2>
               <button className="refreshBtn" onClick={loadAllData} tabIndex="0">
                 <FiRefreshCw /> Refresh Recordings
               </button>
             </div>
 
             {loading ? (
-              <div className="loadingNotice">Loading DVR Recordings...</div>
+              <div className="loadingNotice">Loading DVR Recordings & Rules...</div>
             ) : recordings.length === 0 ? (
               <div className="emptyState">
                 <FiVideo style={{ fontSize: "48px", marginBottom: "16px", color: "var(--pink)" }} />
                 <h3>No DVR Recordings Found</h3>
-                <p>Recordings scheduled via Dispatcharr will appear here for 1-click playback.</p>
+                <p>One-time recordings and recurring rules scheduled via Dispatcharr will appear here for 1-click playback.</p>
               </div>
             ) : (
               <div className="recordingsGrid">
@@ -456,25 +450,30 @@ const LiveTvPage = () => {
                       ) : (
                         <div className="recPlaceholder"><FiVideo /></div>
                       )}
-                      <button className="playOverlayBtn" onClick={() => handlePlayRecording(rec)} tabIndex="0">
+                      <button className="playOverlayBtn" onClick={() => handlePlayRecording(rec)} tabIndex="0" title="Play Recording">
                         <FiPlay />
                       </button>
                     </div>
 
                     <div className="recDetails">
-                      <h3 className="recTitle">{rec.title}</h3>
-                      <div className="recMeta">
-                        <span className="recTime"><FiClock /> {rec.duration || "Recorded"}</span>
-                        {rec.channel_name && <span className="recChannel">{rec.channel_name}</span>}
+                      <div className="recTitleHeader">
+                        <h3 className="recTitle">{rec.title}</h3>
+                        {rec.rule_badge && <span className={`ruleBadge ${rec.is_recurring ? "recurring" : "oneTime"}`}>{rec.rule_badge}</span>}
                       </div>
-                      <p className="recDesc">{rec.description}</p>
+
+                      <div className="recMeta">
+                        <span className="recTime"><FiClock /> {rec.formatted_date}</span>
+                        {rec.channel_display && <span className="recChannel"><FiTv /> {rec.channel_display}</span>}
+                      </div>
+
+                      {rec.description && <p className="recDesc">{rec.description}</p>}
                     </div>
 
                     <button
                       className="deleteRecBtn"
                       onClick={() => handleDeleteRecording(rec.id)}
                       tabIndex="0"
-                      title="Delete Recording"
+                      title="Delete Recording / Rule"
                     >
                       <FiTrash2 />
                     </button>
@@ -486,12 +485,19 @@ const LiveTvPage = () => {
         )}
       </ContentWrapper>
 
-      {/* Integrated Web Video Player / Android TV Player Modal */}
       <VideoPlayerModal
         show={showPlayer}
         setShow={setShowPlayer}
         videoUrl={playerStreamUrl}
         title={playerTitle}
+      />
+
+      <RecordingModal
+        show={showRecModal}
+        onClose={() => setShowRecModal(false)}
+        program={recTargetProgram}
+        channel={recTargetChannel}
+        onConfirm={handleConfirmSchedule}
       />
     </div>
   );

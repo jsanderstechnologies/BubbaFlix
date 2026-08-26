@@ -264,45 +264,64 @@ export const fetchDispatcharrEpg = async () => {
 };
 
 /**
- * Fetch recorded TV shows & movies from Dispatcharr DVR.
+ * Fetch recorded shows, movies, and recurring recording rules from Dispatcharr.
  */
 export const fetchDispatcharrRecordings = async () => {
   const { data, serverUrl, apiKey } = await fetchDispatcharrWithFallback([
     "/api/channels/recordings/",
+    "/api/channels/recurring-rules/",
     "/api/recordings/",
     "/output/m3u/recordings",
-    "/recordings/",
-    "/recordings"
+    "/recordings/"
   ]);
 
   return data.map((rec) => {
-    const authQuery = apiKey ? `?token=${encodeURIComponent(apiKey)}` : "";
+    const authQuery = apiKey ? `?api_key=${encodeURIComponent(apiKey)}` : "";
     let streamUrl = rec.stream_url || rec.url || rec.play_url || rec.file_path || "";
     if (!streamUrl && serverUrl && rec.id) {
-      streamUrl = `${serverUrl}/recordings/${rec.id}/stream${authQuery}`;
+      streamUrl = `${serverUrl}/api/channels/recordings/${rec.id}/file/${authQuery}`;
     }
+
+    // Extract exact program name, channel title, and date
+    const programName = rec.name || rec.title || rec.program_name || rec.custom_properties?.title || rec.custom_properties?.program_name || rec.channel_name || "DVR Recording";
+    const channelName = rec.channel_name || rec.channel?.name || (rec.channel ? `Channel ${rec.channel}` : "");
+    const startTimeStr = rec.start_time
+      ? (rec.start_time.includes("T")
+          ? new Date(rec.start_time).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+          : rec.start_time)
+      : "Scheduled Recording";
+
+    const isRecurring = !!rec.days_of_week || rec.rule_type === "recurring_slot" || rec.rule_type === "series";
+
     return {
       ...rec,
-      title: rec.title || rec.name || "DVR Recording",
+      title: programName,
+      channel_display: channelName,
+      formatted_date: startTimeStr,
+      is_recurring: isRecurring,
+      rule_badge: isRecurring ? (rec.rule_type === "series" ? "Series Rule" : "Recurring Time Slot") : "One-Time",
       stream_url: streamUrl
     };
   });
 };
 
 /**
- * Schedule a new recording in Dispatcharr.
+ * Schedule a new recording in Dispatcharr (Supports One-Time, Recurring Time Slot & Series Rules).
  */
-export const scheduleDispatcharrRecording = async (programData) => {
+export const scheduleDispatcharrRecording = async (payload) => {
   const { url, apiKey } = await getDispatcharrConfigAsync();
   const cleanServerUrl = sanitizeDispatcharrUrl(url);
   const proxyBase = getProxyBase();
   const headers = getHeaders(apiKey);
 
+  const isRecurring = payload.type === "recurring_slot" || payload.type === "series";
+  const endpoint = isRecurring ? "/api/channels/recurring-rules/" : "/api/channels/recordings/";
+
   const targets = [
-    `${cleanServerUrl}/api/recordings/`,
+    `${proxyBase}${endpoint}`,
+    `${cleanServerUrl}${endpoint}`,
     `${proxyBase}/api/recordings/`,
-    `${cleanServerUrl}/api/v1/recordings/`,
-    `${proxyBase}/api/v1/recordings/`
+    `${cleanServerUrl}/api/recordings/`
   ];
 
   for (const target of targets) {
@@ -311,9 +330,9 @@ export const scheduleDispatcharrRecording = async (programData) => {
       const res = await fetch(target, {
         method: "POST",
         headers,
-        body: JSON.stringify(programData)
+        body: JSON.stringify(payload)
       });
-      if (res.ok) return true;
+      if (res.ok || res.status === 201) return true;
     } catch (err) {
       // Continue to next target
     }
