@@ -47,6 +47,14 @@ export const fetchServerSettings = async () => {
       if (s.tmdbToken && s.tmdbToken.trim().length > 0) {
         localStorage.setItem("tmdb_token", s.tmdbToken.trim());
       }
+      if (s.dispatcharrUrl) {
+        let cleanUrl = s.dispatcharrUrl.trim().replace(/\/$/, "");
+        if (cleanUrl && !/^https?:\/\//i.test(cleanUrl)) cleanUrl = `http://${cleanUrl}`;
+        localStorage.setItem("dispatcharr_url", cleanUrl);
+      }
+      if (s.dispatcharrApiKey !== undefined) {
+        localStorage.setItem("dispatcharr_api_key", (s.dispatcharrApiKey || "").trim());
+      }
       if (s.stream_resolutions) localStorage.setItem("stream_resolutions", JSON.stringify(s.stream_resolutions));
       if (s.stream_exclude_low_quality !== undefined) {
         localStorage.setItem("stream_exclude_low_quality", JSON.stringify(s.stream_exclude_low_quality));
