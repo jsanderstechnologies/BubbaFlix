@@ -342,16 +342,21 @@ const server = http.createServer((req, res) => {
 
     try {
       const targetParsed = url.parse(targetDispatcharrUrl);
+      const isHttps = targetParsed.protocol === "https:";
+      const httpModule = isHttps ? require("https") : require("http");
+
       const headers = { ...req.headers, host: targetParsed.host };
+      delete headers["content-length"];
       if (apiKey) {
         headers["Authorization"] = `Bearer ${apiKey}`;
         headers["X-API-Key"] = apiKey;
       }
 
-      const proxyReq = http.request(targetDispatcharrUrl, {
+      const proxyReq = httpModule.request(targetDispatcharrUrl, {
         method: req.method,
         headers: headers,
-        timeout: 5000
+        rejectUnauthorized: false, // Allow local self-signed HTTPS certs
+        timeout: 8000
       }, (proxyRes) => {
         res.writeHead(proxyRes.statusCode, {
           ...proxyRes.headers,
