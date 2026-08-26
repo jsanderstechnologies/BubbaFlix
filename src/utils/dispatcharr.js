@@ -70,42 +70,75 @@ const getHeaders = (apiKey) => {
   return headers;
 };
 
+/**
+ * Universal JSON response normalizer for arrays, dictionaries, and nested objects
+ */
 const normalizeArray = (data) => {
   if (!data) return [];
   if (Array.isArray(data)) return data;
-  return (
-    data.results ||
-    data.channels ||
-    data.epg ||
-    data.events ||
-    data.recordings ||
-    data.data ||
-    data.items ||
-    data.streams ||
-    []
-  );
+
+  let obj = data;
+  if (obj.response && typeof obj.response === "object") obj = obj.response;
+  if (obj.data && typeof obj.data === "object" && !Array.isArray(obj.data)) obj = obj.data;
+
+  const candidates = [
+    obj.results,
+    obj.channels,
+    obj.epg,
+    obj.events,
+    obj.recordings,
+    obj.items,
+    obj.streams,
+    obj.data,
+    obj.programs
+  ];
+
+  for (const cand of candidates) {
+    if (Array.isArray(cand)) return cand;
+    if (cand && typeof cand === "object") {
+      const vals = Object.values(cand);
+      if (vals.length > 0) return vals;
+    }
+  }
+
+  if (typeof obj === "object" && obj !== null) {
+    const vals = Object.values(obj);
+    if (vals.length > 0) return vals;
+  }
+
+  return [];
 };
 
 const normalizeChannel = (ch, serverUrl, apiKey) => {
-  const authQuery = apiKey ? `?token=${encodeURIComponent(apiKey)}` : "";
-  const id = ch.id || ch.channel_id || ch.uuid || ch.number || Math.random().toString(36).substring(7);
-  const name = ch.name || ch.title || ch.display_name || `Channel ${ch.number || id}`;
+  if (typeof ch !== "object" || ch === null) {
+    return { id: String(ch), name: `Channel ${ch}`, stream_url: "" };
+  }
 
-  let streamUrl = ch.stream_url || ch.url || ch.play_url || ch.m3u8 || ch.hls_url || ch.stream || ch.link || "";
+  const authQuery = apiKey ? `?token=${encodeURIComponent(apiKey)}` : "";
+  const id = ch.id || ch.channel_id || ch.uuid || ch.number || ch.ch_id || ch.key || Math.random().toString(36).substring(7);
+  const name = ch.name || ch.title || ch.display_name || ch.channel_name || ch.callsign || `Channel ${ch.number || id}`;
+
+  let streamUrl = ch.stream_url || ch.url || ch.play_url || ch.m3u8 || ch.hls_url || ch.stream || ch.link || ch.stream_path || "";
   if (!streamUrl && serverUrl && id) {
     streamUrl = `${serverUrl}/stream/${id}${authQuery}`;
   } else if (streamUrl && apiKey && !streamUrl.includes("token=") && !streamUrl.includes("api_key=")) {
     streamUrl += streamUrl.includes("?") ? `&token=${encodeURIComponent(apiKey)}` : `?token=${encodeURIComponent(apiKey)}`;
   }
 
+  const program = ch.current_program || ch.now_playing || ch.epg_now || ch.program || ch.title || ch.event || null;
+  const programTitle = typeof program === "object" ? program?.title || program?.name || "Live Broadcast" : (typeof program === "string" ? program : "Live Broadcast");
+  const programDesc = typeof program === "object" ? program?.description || program?.summary || "No guide detail available" : "No guide detail available";
+
   return {
     ...ch,
     id,
     name,
     number: ch.number || ch.channel_number || ch.ch_number || "",
-    logo: ch.logo || ch.icon || ch.tvg_logo || ch.logo_url || "",
+    logo: ch.logo || ch.icon || ch.tvg_logo || ch.logo_url || ch.image || "",
     stream_url: streamUrl,
-    now_playing: ch.now_playing || ch.current_program?.title || ch.title || "Live Broadcast"
+    current_program: typeof program === "object" ? program : null,
+    now_playing: programTitle,
+    program_description: programDesc
   };
 };
 
@@ -156,14 +189,18 @@ const fetchDispatcharrWithFallback = async (endpointPaths) => {
 };
 
 /**
- * Fetch list of Live TV channels from Dispatcharr.
+ * Fetch list of Live TV channels from Dispatcharr (probes channels + EPG combined endpoints).
  */
 export const fetchDispatcharrChannels = async () => {
   const { data, serverUrl, apiKey } = await fetchDispatcharrWithFallback([
     "/api/channels/",
     "/api/v1/channels/",
+    "/api/epg/",
+    "/api/v1/epg/",
     "/api/channels",
     "/api/v1/channels",
+    "/api/epg",
+    "/api/v1/epg",
     "/channels/",
     "/channels"
   ]);
@@ -222,7 +259,7 @@ export const fetchDispatcharrRecordings = async () => {
  * Schedule a new recording in Dispatcharr.
  */
 export const scheduleDispatcharrRecording = async (programData) => {
-  const { url, apiKey } = getDispatcharrConfig();
+  const { url, apiKey } = await getDispatcharrConfigAsync();
   const cleanServerUrl = sanitizeDispatcharrUrl(url);
   const proxyBase = getProxyBase();
   const headers = getHeaders(apiKey);
@@ -254,7 +291,7 @@ export const scheduleDispatcharrRecording = async (programData) => {
  * Delete a recording from Dispatcharr DVR.
  */
 export const deleteDispatcharrRecording = async (recordingId) => {
-  const { url, apiKey } = getDispatcharrConfig();
+  const { url, apiKey } = await getDispatcharrConfigAsync();
   const cleanServerUrl = sanitizeDispatcharrUrl(url);
   const proxyBase = getProxyBase();
   const headers = getHeaders(apiKey);
