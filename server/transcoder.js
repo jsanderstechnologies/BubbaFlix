@@ -431,6 +431,13 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Manual Dispatcharr Auto-Sync Endpoint
+  if (cleanPath === "/api/dispatcharr/sync-now" || cleanPath === "/dispatcharr/sync-now") {
+    logMessage(`[Manual Auto-Sync] Triggered by [${initiator.initiatorComponent}] (${initiator.ip})`);
+    triggerDispatcharrSync();
+    return sendJson(res, 200, { status: "success", message: "Dispatcharr 2-hour automated playlist and EPG refresh triggered." });
+  }
+
   // Dispatcharr Proxy Endpoints for Live TV, Channels, EPG Guide, & Recordings
   if (cleanPath.startsWith("/api/dispatcharr") || cleanPath.startsWith("/dispatcharr")) {
     const settings = loadServerSettings();
@@ -540,9 +547,119 @@ process.on("unhandledRejection", (reason) => {
   logMessage(`[BubbaFlix Server Unhandled Rejection]: ${reason}`, true);
 });
 
+// Dispatcharr 2-Hour Automated Playlist & EPG Refresh Engine
+const triggerDispatcharrSync = async () => {
+  try {
+    const settings = loadServerSettings();
+    const dispatcharrUrl = (settings.dispatcharrUrl || "http://192.168.10.3:9191").replace(/\/$/, "");
+    let apiKey = settings.dispatcharrApiKey || "";
+
+    logMessage(`[Dispatcharr Auto-Sync] Requesting 2-Hour Playlist & EPG update on ${dispatcharrUrl}...`);
+
+    const headers = { "Content-Type": "application/json" };
+    if (apiKey) {
+      if (apiKey.startsWith("eyJ")) {
+        headers["Authorization"] = `Bearer ${apiKey}`;
+      } else {
+        headers["X-API-Key"] = apiKey;
+      }
+    }
+
+    const isHttps = dispatcharrUrl.startsWith("https:");
+    const httpModule = isHttps ? require("https") : require("http");
+
+    // 1. Trigger M3U Playlists Refresh (POST /api/m3u/refresh/)
+    try {
+      const m3uReq = httpModule.request(`${dispatcharrUrl}/api/m3u/refresh/`, {
+        method: "POST",
+        headers,
+        rejectUnauthorized: false,
+        timeout: 15000
+      }, (res) => {
+        logMessage(`[Dispatcharr Auto-Sync] M3U Playlist Refresh Triggered -> Status ${res.statusCode}`);
+      });
+      m3uReq.on("error", (e) => logMessage(`[Dispatcharr Auto-Sync] M3U Refresh Warning: ${e.message}`, true));
+      m3uReq.end();
+    } catch (e) {
+      logMessage(`[Dispatcharr Auto-Sync] M3U Refresh Error: ${e.message}`, true);
+    }
+
+    // 2. Trigger EPG Sources Import (POST /api/epg/import/)
+    try {
+      const sourcesReq = httpModule.request(`${dispatcharrUrl}/api/epg/sources/`, {
+        method: "GET",
+        headers,
+        rejectUnauthorized: false,
+        timeout: 15000
+      }, (res) => {
+        let body = "";
+        res.on("data", chunk => body += chunk);
+        res.on("end", () => {
+          try {
+            const data = JSON.parse(body);
+            const sources = Array.isArray(data) ? data : (data.results || []);
+            if (sources.length > 0) {
+              sources.forEach(source => {
+                const sourceId = source.id;
+                const importReq = httpModule.request(`${dispatcharrUrl}/api/epg/import/`, {
+                  method: "POST",
+                  headers,
+                  rejectUnauthorized: false,
+                  timeout: 15000
+                }, (impRes) => {
+                  logMessage(`[Dispatcharr Auto-Sync] EPG Import Triggered for Source #${sourceId} -> Status ${impRes.statusCode}`);
+                });
+                importReq.on("error", () => {});
+                importReq.write(JSON.stringify({ source_id: sourceId, source: sourceId }));
+                importReq.end();
+              });
+            } else {
+              const importReq = httpModule.request(`${dispatcharrUrl}/api/epg/import/`, {
+                method: "POST",
+                headers,
+                rejectUnauthorized: false,
+                timeout: 15000
+              }, (impRes) => {
+                logMessage(`[Dispatcharr Auto-Sync] Generic EPG Import Triggered -> Status ${impRes.statusCode}`);
+              });
+              importReq.on("error", () => {});
+              importReq.end();
+            }
+          } catch (e) {
+            const importReq = httpModule.request(`${dispatcharrUrl}/api/epg/import/`, {
+              method: "POST",
+              headers,
+              rejectUnauthorized: false,
+              timeout: 15000
+            }, (impRes) => {
+              logMessage(`[Dispatcharr Auto-Sync] EPG Import Triggered -> Status ${impRes.statusCode}`);
+            });
+            importReq.on("error", () => {});
+            importReq.end();
+          }
+        });
+      });
+      sourcesReq.on("error", (e) => logMessage(`[Dispatcharr Auto-Sync] EPG Sources Warning: ${e.message}`, true));
+      sourcesReq.end();
+    } catch (e) {
+      logMessage(`[Dispatcharr Auto-Sync] EPG Refresh Error: ${e.message}`, true);
+    }
+
+    return true;
+  } catch (err) {
+    logMessage(`[Dispatcharr Auto-Sync Exception]: ${err.message}`, true);
+    return false;
+  }
+};
+
+// Schedule 2-Hour Automated Sync (2 hours = 7,200,000 ms)
+const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+setInterval(triggerDispatcharrSync, TWO_HOURS_MS);
+
 server.listen(PORT, "0.0.0.0", () => {
   logMessage(`[BubbaFlix Backend Transcoder & Settings Engine] Pure Node Server listening on 0.0.0.0:${PORT}`);
   loadServerSettings();
+  setTimeout(triggerDispatcharrSync, 30000);
 });
 
 server.on("error", (err) => {
