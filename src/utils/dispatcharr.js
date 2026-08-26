@@ -76,6 +76,7 @@ const getHeaders = (apiKey) => {
   if (apiKey) {
     headers["Authorization"] = `Bearer ${apiKey}`;
     headers["X-API-Key"] = apiKey;
+    headers["ApiKey"] = apiKey;
   }
   return headers;
 };
@@ -124,7 +125,7 @@ const normalizeChannel = (ch, serverUrl, apiKey) => {
     return { id: String(ch), name: `Channel ${ch}`, stream_url: "" };
   }
 
-  const authQuery = apiKey ? `?token=${encodeURIComponent(apiKey)}` : "";
+  const authQuery = apiKey ? `?token=${encodeURIComponent(apiKey)}&api_key=${encodeURIComponent(apiKey)}` : "";
   const id = ch.id || ch.channel_id || ch.uuid || ch.number || ch.ch_id || ch.key || Math.random().toString(36).substring(7);
   const name = ch.name || ch.title || ch.display_name || ch.channel_name || ch.callsign || `Channel ${ch.number || id}`;
 
@@ -132,7 +133,7 @@ const normalizeChannel = (ch, serverUrl, apiKey) => {
   if (!streamUrl && serverUrl && id) {
     streamUrl = `${serverUrl}/stream/${id}${authQuery}`;
   } else if (streamUrl && apiKey && !streamUrl.includes("token=") && !streamUrl.includes("api_key=")) {
-    streamUrl += streamUrl.includes("?") ? `&token=${encodeURIComponent(apiKey)}` : `?token=${encodeURIComponent(apiKey)}`;
+    streamUrl += streamUrl.includes("?") ? `&token=${encodeURIComponent(apiKey)}&api_key=${encodeURIComponent(apiKey)}` : `?token=${encodeURIComponent(apiKey)}&api_key=${encodeURIComponent(apiKey)}`;
   }
 
   const program = ch.current_program || ch.now_playing || ch.epg_now || ch.program || ch.title || ch.event || null;
@@ -171,7 +172,7 @@ const fetchDispatcharrWithFallback = async (endpointPaths) => {
   const proxyBase = getProxyBase();
   const headers = getHeaders(apiKey);
 
-  const authQuery = apiKey ? `?token=${encodeURIComponent(apiKey)}` : "";
+  const authQuery = apiKey ? `?token=${encodeURIComponent(apiKey)}&api_key=${encodeURIComponent(apiKey)}` : "";
 
   // Strategy A: Direct fetch to user's Dispatcharr IP/URL
   if (cleanServerUrl) {
@@ -219,13 +220,14 @@ const fetchDispatcharrWithFallback = async (endpointPaths) => {
 export const fetchDispatcharrChannels = async () => {
   const { data, serverUrl, apiKey } = await fetchDispatcharrWithFallback([
     "/api/channels/",
+    "/api/channels/list",
+    "/api/channels/channels/",
+    "/output/m3u/",
+    "/output/m3u",
     "/api/v1/channels/",
+    "/api/channels",
     "/api/epg/",
     "/api/v1/epg/",
-    "/api/channels",
-    "/api/v1/channels",
-    "/api/epg",
-    "/api/v1/epg",
     "/channels/",
     "/channels"
   ]);
@@ -239,13 +241,13 @@ export const fetchDispatcharrChannels = async () => {
 export const fetchDispatcharrEpg = async () => {
   const { data } = await fetchDispatcharrWithFallback([
     "/api/epg/",
-    "/api/v1/epg/",
-    "/api/epg",
-    "/api/v1/epg",
     "/api/epg/events/",
-    "/api/v1/epg/events/",
+    "/output/epg/",
+    "/output/epg",
+    "/output/xmltv/",
+    "/output/xmltv",
+    "/api/v1/epg/",
     "/api/guide/",
-    "/api/v1/guide/",
     "/epg/",
     "/epg"
   ]);
@@ -258,10 +260,11 @@ export const fetchDispatcharrEpg = async () => {
  */
 export const fetchDispatcharrRecordings = async () => {
   const { data, serverUrl, apiKey } = await fetchDispatcharrWithFallback([
+    "/api/channels/recordings/",
     "/api/recordings/",
+    "/output/m3u/recordings",
     "/api/v1/recordings/",
     "/api/recordings",
-    "/api/v1/recordings",
     "/recordings/",
     "/recordings"
   ]);
