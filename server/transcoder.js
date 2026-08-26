@@ -450,7 +450,7 @@ const server = http.createServer((req, res) => {
   // Dispatcharr Proxy Endpoints for Live TV, Channels, EPG Guide, & Recordings
   if (cleanPath.startsWith("/api/dispatcharr") || cleanPath.startsWith("/dispatcharr")) {
     const settings = loadServerSettings();
-    const dispatcharrUrl = (settings.dispatcharrUrl || "http://192.168.1.100:9191").replace(/\/$/, "");
+    const dispatcharrUrl = (settings.dispatcharrUrl || "http://192.168.10.3:9191").replace(/\/$/, "");
     let apiKey = settings.dispatcharrApiKey || "";
 
     // Fallback: extract API Key from request headers or query parameters if not stored in server settings

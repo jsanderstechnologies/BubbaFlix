@@ -153,15 +153,20 @@ const normalizeChannel = (ch, serverUrl, apiKey) => {
     return { id: String(ch), name: `Channel ${ch}`, stream_url: "" };
   }
 
+  const backend = getServerUrl() || (typeof window !== "undefined" ? window.location.origin : "");
   const authQuery = apiKey ? `?token=${encodeURIComponent(apiKey)}&api_key=${encodeURIComponent(apiKey)}` : "";
   const id = ch.id || ch.channel_id || ch.uuid || ch.number || ch.ch_id || ch.key || Math.random().toString(36).substring(7);
   const name = ch.name || ch.title || ch.display_name || ch.channel_name || ch.callsign || `Channel ${ch.number || id}`;
 
+  let logo = ch.logo || ch.icon || ch.tvg_logo || ch.logo_url || ch.image || ch.icon_url || "";
+  if (logo && !logo.startsWith("http://") && !logo.startsWith("https://") && !logo.startsWith("data:")) {
+    const cleanLogo = logo.startsWith("/") ? logo : `/${logo}`;
+    logo = `${backend}/api/dispatcharr${cleanLogo}`;
+  }
+
   let streamUrl = ch.stream_url || ch.url || ch.play_url || ch.m3u8 || ch.hls_url || ch.stream || ch.link || ch.stream_path || "";
-  if (!streamUrl && serverUrl && id) {
-    streamUrl = `${serverUrl}/proxy/ts/stream/${id}${authQuery}`;
-  } else if (streamUrl && apiKey && !streamUrl.includes("token=") && !streamUrl.includes("api_key=")) {
-    streamUrl += streamUrl.includes("?") ? `&token=${encodeURIComponent(apiKey)}&api_key=${encodeURIComponent(apiKey)}` : `?token=${encodeURIComponent(apiKey)}&api_key=${encodeURIComponent(apiKey)}`;
+  if (!streamUrl && id) {
+    streamUrl = `${backend}/api/dispatcharr/proxy/ts/stream/${id}${authQuery}`;
   }
 
   const program = ch.current_program || ch.now_playing || ch.epg_now || ch.program || ch.title || ch.event || null;
@@ -173,7 +178,7 @@ const normalizeChannel = (ch, serverUrl, apiKey) => {
     id,
     name,
     number: ch.number || ch.channel_number || ch.ch_number || "",
-    logo: ch.logo || ch.icon || ch.tvg_logo || ch.logo_url || ch.image || "",
+    logo,
     stream_url: streamUrl,
     current_program: typeof program === "object" ? program : null,
     now_playing: programTitle,
