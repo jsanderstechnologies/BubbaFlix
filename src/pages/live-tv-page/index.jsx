@@ -13,6 +13,7 @@ import {
 import {
   getDispatcharrConfig,
   setDispatcharrConfig,
+  sanitizeDispatcharrUrl,
   fetchDispatcharrChannels,
   fetchDispatcharrEpg,
   fetchDispatcharrRecordings,
@@ -70,7 +71,9 @@ const LiveTvPage = () => {
 
   const handleSaveSettings = (e) => {
     e.preventDefault();
-    setDispatcharrConfig(serverUrl, apiKey);
+    const cleanUrl = sanitizeDispatcharrUrl(serverUrl);
+    setServerUrl(cleanUrl);
+    setDispatcharrConfig(cleanUrl, apiKey);
     setSaveStatus("Saved successfully!");
     setTimeout(() => setSaveStatus(""), 3000);
     loadAllData();

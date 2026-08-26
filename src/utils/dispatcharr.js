@@ -1,19 +1,32 @@
 import { getServerUrl, updateServerSettings } from "./serverSettings";
 
 /**
+ * Ensures Dispatcharr URL has a valid protocol prefix (e.g. http:// or https://)
+ */
+export const sanitizeDispatcharrUrl = (inputUrl) => {
+  let url = (inputUrl || "").trim().replace(/\/$/, "");
+  if (!url) return "";
+  if (!/^https?:\/\//i.test(url)) {
+    url = `http://${url}`;
+  }
+  return url;
+};
+
+/**
  * Dispatcharr API Service Utility for Live TV, Channels, EPG Guide & DVR Recordings.
  */
 export const getDispatcharrConfig = () => {
   if (typeof window === "undefined") return { url: "http://192.168.1.100:9191", apiKey: "" };
+  const rawUrl = localStorage.getItem("dispatcharr_url") || "http://192.168.1.100:9191";
   return {
-    url: localStorage.getItem("dispatcharr_url") || "http://192.168.1.100:9191",
+    url: sanitizeDispatcharrUrl(rawUrl),
     apiKey: localStorage.getItem("dispatcharr_api_key") || ""
   };
 };
 
 export const setDispatcharrConfig = (url, apiKey = "") => {
   if (typeof window === "undefined") return;
-  const cleanUrl = (url || "").trim().replace(/\/$/, "");
+  const cleanUrl = sanitizeDispatcharrUrl(url);
   const cleanKey = (apiKey || "").trim();
   localStorage.setItem("dispatcharr_url", cleanUrl);
   localStorage.setItem("dispatcharr_api_key", cleanKey);
@@ -42,7 +55,40 @@ const getHeaders = (apiKey) => {
 const normalizeArray = (data) => {
   if (!data) return [];
   if (Array.isArray(data)) return data;
-  return data.results || data.channels || data.epg || data.events || data.recordings || data.data || data.items || [];
+  return (
+    data.results ||
+    data.channels ||
+    data.epg ||
+    data.events ||
+    data.recordings ||
+    data.data ||
+    data.items ||
+    data.streams ||
+    []
+  );
+};
+
+const normalizeChannel = (ch, serverUrl, apiKey) => {
+  const authQuery = apiKey ? `?token=${encodeURIComponent(apiKey)}` : "";
+  const id = ch.id || ch.channel_id || ch.uuid || ch.number || Math.random().toString(36).substring(7);
+  const name = ch.name || ch.title || ch.display_name || `Channel ${ch.number || id}`;
+
+  let streamUrl = ch.stream_url || ch.url || ch.play_url || ch.m3u8 || ch.hls_url || ch.stream || ch.link || "";
+  if (!streamUrl && serverUrl && id) {
+    streamUrl = `${serverUrl}/stream/${id}${authQuery}`;
+  } else if (streamUrl && apiKey && !streamUrl.includes("token=") && !streamUrl.includes("api_key=")) {
+    streamUrl += streamUrl.includes("?") ? `&token=${encodeURIComponent(apiKey)}` : `?token=${encodeURIComponent(apiKey)}`;
+  }
+
+  return {
+    ...ch,
+    id,
+    name,
+    number: ch.number || ch.channel_number || ch.ch_number || "",
+    logo: ch.logo || ch.icon || ch.tvg_logo || ch.logo_url || "",
+    stream_url: streamUrl,
+    now_playing: ch.now_playing || ch.current_program?.title || ch.title || "Live Broadcast"
+  };
 };
 
 /**
@@ -50,7 +96,7 @@ const normalizeArray = (data) => {
  */
 const fetchDispatcharrWithFallback = async (endpointPaths) => {
   const { url, apiKey } = getDispatcharrConfig();
-  const cleanServerUrl = (url || "").replace(/\/$/, "");
+  const cleanServerUrl = sanitizeDispatcharrUrl(url);
   const proxyBase = getProxyBase();
   const headers = getHeaders(apiKey);
 
@@ -65,10 +111,10 @@ const fetchDispatcharrWithFallback = async (endpointPaths) => {
         if (res.ok) {
           const json = await res.json();
           const normalized = normalizeArray(json);
-          if (normalized.length > 0) return normalized;
+          if (normalized.length > 0) return { data: normalized, serverUrl: cleanServerUrl, apiKey };
         }
       } catch (err) {
-        // Direct fetch failed (e.g. CORS or network restriction), continue to proxy fallback
+        // Direct fetch failed, continue to proxy fallback
       }
     }
   }
@@ -81,21 +127,21 @@ const fetchDispatcharrWithFallback = async (endpointPaths) => {
       if (res.ok) {
         const json = await res.json();
         const normalized = normalizeArray(json);
-        if (normalized.length > 0) return normalized;
+        if (normalized.length > 0) return { data: normalized, serverUrl: cleanServerUrl, apiKey };
       }
     } catch (err) {
       console.warn(`[Dispatcharr Proxy Fetch Warning] ${path}:`, err.message);
     }
   }
 
-  return [];
+  return { data: [], serverUrl: cleanServerUrl, apiKey };
 };
 
 /**
  * Fetch list of Live TV channels from Dispatcharr.
  */
 export const fetchDispatcharrChannels = async () => {
-  return await fetchDispatcharrWithFallback([
+  const { data, serverUrl, apiKey } = await fetchDispatcharrWithFallback([
     "/api/channels/",
     "/api/v1/channels/",
     "/api/channels",
@@ -103,13 +149,15 @@ export const fetchDispatcharrChannels = async () => {
     "/channels/",
     "/channels"
   ]);
+
+  return data.map((ch) => normalizeChannel(ch, serverUrl, apiKey));
 };
 
 /**
  * Fetch EPG Guide data for channels.
  */
 export const fetchDispatcharrEpg = async () => {
-  return await fetchDispatcharrWithFallback([
+  const { data } = await fetchDispatcharrWithFallback([
     "/api/epg/",
     "/api/v1/epg/",
     "/api/epg",
@@ -121,13 +169,15 @@ export const fetchDispatcharrEpg = async () => {
     "/epg/",
     "/epg"
   ]);
+
+  return data;
 };
 
 /**
  * Fetch recorded TV shows & movies from Dispatcharr DVR.
  */
 export const fetchDispatcharrRecordings = async () => {
-  return await fetchDispatcharrWithFallback([
+  const { data, serverUrl, apiKey } = await fetchDispatcharrWithFallback([
     "/api/recordings/",
     "/api/v1/recordings/",
     "/api/recordings",
@@ -135,6 +185,19 @@ export const fetchDispatcharrRecordings = async () => {
     "/recordings/",
     "/recordings"
   ]);
+
+  return data.map((rec) => {
+    const authQuery = apiKey ? `?token=${encodeURIComponent(apiKey)}` : "";
+    let streamUrl = rec.stream_url || rec.url || rec.play_url || rec.file_path || "";
+    if (!streamUrl && serverUrl && rec.id) {
+      streamUrl = `${serverUrl}/recordings/${rec.id}/stream${authQuery}`;
+    }
+    return {
+      ...rec,
+      title: rec.title || rec.name || "DVR Recording",
+      stream_url: streamUrl
+    };
+  });
 };
 
 /**
@@ -142,7 +205,7 @@ export const fetchDispatcharrRecordings = async () => {
  */
 export const scheduleDispatcharrRecording = async (programData) => {
   const { url, apiKey } = getDispatcharrConfig();
-  const cleanServerUrl = (url || "").replace(/\/$/, "");
+  const cleanServerUrl = sanitizeDispatcharrUrl(url);
   const proxyBase = getProxyBase();
   const headers = getHeaders(apiKey);
 
@@ -174,7 +237,7 @@ export const scheduleDispatcharrRecording = async (programData) => {
  */
 export const deleteDispatcharrRecording = async (recordingId) => {
   const { url, apiKey } = getDispatcharrConfig();
-  const cleanServerUrl = (url || "").replace(/\/$/, "");
+  const cleanServerUrl = sanitizeDispatcharrUrl(url);
   const proxyBase = getProxyBase();
   const headers = getHeaders(apiKey);
 
