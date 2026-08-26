@@ -84,11 +84,13 @@
     display: flex;
     flex-flow: row wrap;
     gap: 8px;
-    padding: 16px 4px;
-    margin: -16px -4px 34px -4px;
+    padding: 24px 16px;
+    margin: -24px -16px 34px -16px;
     overflow: visible;
     @include md {
       gap: 12px;
+      padding: 24px 16px;
+      margin: -24px -16px 34px -16px;
     }
   }
 
