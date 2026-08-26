@@ -11,6 +11,7 @@ import { updateServerSettings, fetchServerSettings, getServerUrl, saveServerUrl,
 import { getApiConfiguration } from "../../store/homeSlice";
 import { THEMES, getSavedTheme, applyTheme } from "../../utils/theme";
 import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning, FiCheckSquare, FiTv, FiPlus, FiMinus, FiServer, FiInfo, FiExternalLink, FiCloud } from "react-icons/fi";
+import { getDispatcharrConfig, setDispatcharrConfig, sanitizeDispatcharrUrl } from "../../utils/dispatcharr";
 import "./index.scss";
 
 const ALL_RESOLUTIONS = [
@@ -35,6 +36,7 @@ const SettingsPage = () => {
   const [dispatcharrApiKey, setDispatcharrApiKey] = useState("");
   const [showDispatcharrKey, setShowDispatcharrKey] = useState(false);
   const [dispatcharrStatus, setDispatcharrStatus] = useState(null);
+  const [testingDispatcharr, setTestingDispatcharr] = useState(false);
 
   // AIOStreams State
   const [aioUrl, setAioUrl] = useState("");
@@ -126,25 +128,54 @@ const SettingsPage = () => {
 
   const handleSaveDispatcharr = async (e) => {
     e.preventDefault();
-    setDispatcharrConfig(dispatcharrUrl, dispatcharrApiKey);
-    await updateServerSettings({
-      dispatcharrUrl: dispatcharrUrl.trim(),
-      dispatcharrApiKey: dispatcharrApiKey.trim()
-    });
-    setDispatcharrStatus({ type: "success", text: "Dispatcharr Live TV configuration saved and synced to backend!" });
-    setTimeout(() => setDispatcharrStatus(null), 3500);
+    setTestingDispatcharr(true);
+    setDispatcharrStatus(null);
+    try {
+      const cleanUrl = sanitizeDispatcharrUrl(dispatcharrUrl);
+      const cleanKey = (dispatcharrApiKey || "").trim();
+      setDispatcharrUrl(cleanUrl);
+      setDispatcharrApiKey(cleanKey);
+
+      setDispatcharrConfig(cleanUrl, cleanKey);
+      await updateServerSettings({
+        dispatcharrUrl: cleanUrl,
+        dispatcharrApiKey: cleanKey
+      });
+
+      setDispatcharrStatus({
+        type: "success",
+        text: "Dispatcharr Live TV configuration saved and synced to backend!"
+      });
+    } catch (err) {
+      console.error("[Save Dispatcharr Error]:", err);
+      setDispatcharrStatus({
+        type: "error",
+        text: "Failed to save Dispatcharr configuration."
+      });
+    } finally {
+      setTestingDispatcharr(false);
+      setTimeout(() => setDispatcharrStatus(null), 3500);
+    }
   };
 
   const handleClearDispatcharr = async () => {
-    setDispatcharrUrl("");
-    setDispatcharrApiKey("");
-    setDispatcharrConfig("", "");
-    await updateServerSettings({
-      dispatcharrUrl: "",
-      dispatcharrApiKey: ""
-    });
-    setDispatcharrStatus({ type: "success", text: "Dispatcharr Live TV configuration cleared." });
-    setTimeout(() => setDispatcharrStatus(null), 3500);
+    setTestingDispatcharr(true);
+    setDispatcharrStatus(null);
+    try {
+      setDispatcharrUrl("");
+      setDispatcharrApiKey("");
+      setDispatcharrConfig("", "");
+      await updateServerSettings({
+        dispatcharrUrl: "",
+        dispatcharrApiKey: ""
+      });
+      setDispatcharrStatus({ type: "success", text: "Dispatcharr configuration cleared." });
+    } catch (err) {
+      setDispatcharrStatus({ type: "error", text: "Failed to clear configuration." });
+    } finally {
+      setTestingDispatcharr(false);
+      setTimeout(() => setDispatcharrStatus(null), 3500);
+    }
   };
 
   const handleSelectTheme = (themeId) => {
@@ -601,14 +632,15 @@ const SettingsPage = () => {
               )}
 
               <div className="buttonGroup">
-                <button type="submit" className="saveBtn">
-                  <FiSave /> Save Dispatcharr Config
+                <button type="submit" className="saveBtn" disabled={testingDispatcharr}>
+                  <FiSave /> {testingDispatcharr ? "Saving..." : "Save Dispatcharr Config"}
                 </button>
                 {dispatcharrUrl && (
                   <button
                     type="button"
                     className="clearBtn"
                     onClick={handleClearDispatcharr}
+                    disabled={testingDispatcharr}
                   >
                     Clear Config
                   </button>
