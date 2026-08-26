@@ -422,9 +422,9 @@ const server = http.createServer((req, res) => {
     const cleanSubPath = subPath.split("?")[0].replace(/\/$/, "");
 
     // Alias mapping for Dispatcharr Swagger OpenAPI endpoints
-    if (cleanSubPath === "/epg" || cleanSubPath === "/api/epg") {
+    if (cleanSubPath === "/epg" || cleanSubPath === "/api/epg" || cleanSubPath === "/output/epg" || cleanSubPath === "/output/xmltv") {
       subPath = subPath.replace(cleanSubPath, "/api/epg/programs");
-    } else if (cleanSubPath === "/channels" || cleanSubPath === "/api/channels") {
+    } else if (cleanSubPath === "/channels" || cleanSubPath === "/api/channels" || cleanSubPath === "/output/m3u") {
       subPath = subPath.replace(cleanSubPath, "/api/channels/channels");
     } else if (cleanSubPath === "/recordings" || cleanSubPath === "/api/recordings") {
       subPath = subPath.replace(cleanSubPath, "/api/channels/recordings");
