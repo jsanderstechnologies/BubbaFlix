@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { HiOutlineSearch, HiOutlineFilm } from "react-icons/hi";
 import { AiFillStar } from "react-icons/ai";
-import { FiSettings, FiHome, FiTv } from "react-icons/fi";
+import { FiSettings, FiHome, FiTv, FiInfo } from "react-icons/fi";
 import ContentWrapper from "../content-wrapper";
 import "./index.scss";
 
@@ -34,8 +34,8 @@ const TopNav = () => {
 			<ContentWrapper>
 				<div className="topNavInner">
 					{/* App Logo */}
-					<div className="navLogo">
-						<img src="/logo.svg" alt="BubbaFlix" />
+					<div className="navLogo" onClick={() => navigate("/")} style={{ cursor: "pointer" }}>
+						<img src="/tv_banner.png" alt="BubbaFlix TV" />
 					</div>
 
 					{/* Navigation Item Links */}
@@ -54,6 +54,22 @@ const TopNav = () => {
 						>
 							<FiHome className="navIcon" />
 							<span>Home</span>
+						</button>
+
+						<button
+							className={`navBtn ${isActive("/livetv")}`}
+							tabIndex="0"
+							onClick={() => navigate("/livetv")}
+							onKeyDown={(e) => {
+								const code = e.keyCode;
+								if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+									e.preventDefault();
+									navigate("/livetv");
+								}
+							}}
+						>
+							<FiTv className="navIcon" />
+							<span>Live TV</span>
 						</button>
 
 						<button
@@ -118,6 +134,22 @@ const TopNav = () => {
 						>
 							<FiSettings className="navIcon" />
 							<span>Settings</span>
+						</button>
+
+						<button
+							className={`navBtn ${isActive("/about")}`}
+							tabIndex="0"
+							onClick={() => navigate("/about")}
+							onKeyDown={(e) => {
+								const code = e.keyCode;
+								if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+									e.preventDefault();
+									navigate("/about");
+								}
+							}}
+						>
+							<FiInfo className="navIcon" />
+							<span>About</span>
 						</button>
 					</div>
 

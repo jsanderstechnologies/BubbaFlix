@@ -21,6 +21,7 @@ import {
 } from "../../utils/dispatcharr";
 import VideoPlayerModal from "../../components/video-player-modal";
 import ContentWrapper from "../../components/content-wrapper";
+import TopNav from "../../components/top-nav";
 import "./index.scss";
 
 const LiveTvPage = () => {
@@ -112,6 +113,7 @@ const LiveTvPage = () => {
 
   return (
     <div className="liveTvPage">
+      <TopNav />
       <ContentWrapper>
         <div className="pageHeader">
           <div className="pageTitle">

@@ -10,6 +10,7 @@ import {
   FiExternalLink
 } from "react-icons/fi";
 import ContentWrapper from "../../components/content-wrapper";
+import TopNav from "../../components/top-nav";
 import "./index.scss";
 
 const APP_VERSION = "v1.0.3";
@@ -62,6 +63,7 @@ const AboutPage = () => {
 
   return (
     <div className="aboutPage">
+      <TopNav />
       <ContentWrapper>
         <div className="aboutContainer">
           <div className="appHeaderCard">
