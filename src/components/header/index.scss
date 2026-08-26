@@ -62,9 +62,9 @@
 		list-style-type: none;
 		display: flex !important; /* Always display menu items for TV & Remote D-Pad Navigation */
 		align-items: center;
-		flex-wrap: nowrap;
-		flex-shrink: 0;
-		margin: 0;
+		justify-content: flex-end;
+		flex: 1;
+		margin: 0 0 0 12px;
 		padding: 0;
 		overflow-x: auto;
 		scrollbar-width: none; /* Firefox */
@@ -79,12 +79,13 @@
 			margin: 0 3px;
 			color: white;
 			font-weight: 600;
-			font-size: 14px;
+			font-size: 13.5px;
 			position: relative;
 			cursor: pointer;
 			border-radius: 8px;
-			padding: 4px 9px;
+			padding: 4px 8px;
 			white-space: nowrap;
+			flex-shrink: 0;
 			transition: transform 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
 
 			svg {
