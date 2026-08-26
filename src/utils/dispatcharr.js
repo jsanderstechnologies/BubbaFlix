@@ -280,7 +280,28 @@ export const fetchDispatcharrEpg = async () => {
     "/epg"
   ]);
 
-  return data;
+  if (!Array.isArray(data)) return [];
+
+  // Flatten programs if nested inside channel objects (e.g. from /api/epg/grid/)
+  const flatPrograms = [];
+  data.forEach((item) => {
+    if (!item) return;
+    if (Array.isArray(item.programs)) {
+      item.programs.forEach((p) => {
+        flatPrograms.push({
+          ...p,
+          channel: p.channel || item.id || item.channel_id || item.number,
+          channel_id: p.channel_id || p.channel || item.id || item.channel_id,
+          channel_number: p.channel_number || item.number || item.channel_number,
+          channel_name: item.name || item.title || ""
+        });
+      });
+    } else if (item.title || item.name || item.start_time || item.start || item.channel || item.channel_id) {
+      flatPrograms.push(item);
+    }
+  });
+
+  return flatPrograms.length > 0 ? flatPrograms : data;
 };
 
 /**

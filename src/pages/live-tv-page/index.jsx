@@ -152,7 +152,7 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
   const filteredChannels = useMemo(() => {
     const list = channels.filter((ch) => {
       const chName = (ch.name || "").toLowerCase();
-      const chNum = String(ch.number || "");
+      const chNum = String(ch.number || ch.channel_number || ch.ch_number || ch.id || "");
       const chGrp = (ch.group || ch.channel_group || ch.category || "").toLowerCase();
 
       const matchesSearch = !searchQuery || chName.includes(searchQuery.toLowerCase()) || chNum.includes(searchQuery);
@@ -162,9 +162,15 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
     });
 
     return list.sort((a, b) => {
-      const numA = parseFloat(a.number || a.channel_number || a.id || 0);
-      const numB = parseFloat(b.number || b.channel_number || b.id || 0);
-      return numA - numB;
+      const getNum = (ch) => {
+        const val = ch.number || ch.channel_number || ch.ch_number || ch.id;
+        const parsed = parseFloat(val);
+        return isNaN(parsed) ? 999999 : parsed;
+      };
+      const numA = getNum(a);
+      const numB = getNum(b);
+      if (numA !== numB) return numA - numB;
+      return String(a.name || "").localeCompare(String(b.name || ""));
     });
   }, [channels, searchQuery, selectedGroup]);
 
@@ -230,13 +236,33 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
   };
 
   const getChannelPrograms = (channel) => {
-    const channelId = String(channel.id || channel.channel_id || channel.uuid || "");
-    const channelNum = String(channel.number || "");
+    if (!channel) return [];
+    const channelId = String(channel.id ?? "");
+    const channelNum = String(channel.number || channel.channel_number || channel.ch_number || "");
+    const channelName = (channel.name || "").toLowerCase().trim();
 
     let programs = epgData.filter((epg) => {
-      const epgChId = String(epg.channel_id || epg.channel || epg.tvg_id || "");
-      const epgChNum = String(epg.channel_number || epg.number || "");
-      return (channelId && epgChId === channelId) || (channelNum && epgChNum === channelNum);
+      if (!epg) return false;
+
+      let epgChId = "";
+      let epgChNum = "";
+      let epgChName = "";
+
+      if (typeof epg.channel === "object" && epg.channel !== null) {
+        epgChId = String(epg.channel.id ?? "");
+        epgChNum = String(epg.channel.number || epg.channel.channel_number || "");
+        epgChName = (epg.channel.name || "").toLowerCase().trim();
+      } else {
+        epgChId = String(epg.channel_id ?? epg.channel ?? epg.tvg_id ?? "");
+        epgChNum = String(epg.channel_number || epg.number || epg.ch_number || "");
+        epgChName = (epg.channel_name || epg.display_name || "").toLowerCase().trim();
+      }
+
+      const matchId = channelId && epgChId === channelId;
+      const matchNum = channelNum && epgChNum === channelNum;
+      const matchName = channelName && epgChName && (epgChName === channelName || epgChName.includes(channelName) || channelName.includes(epgChName));
+
+      return matchId || matchNum || matchName;
     });
 
     if (programs.length === 0 && channel.current_program) {
@@ -244,6 +270,15 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
     }
 
     return programs;
+  };
+
+  const parseEpgTime = (val, fallback) => {
+    if (!val) return fallback;
+    if (typeof val === "number") {
+      return new Date(val > 1e11 ? val : val * 1000);
+    }
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? fallback : d;
   };
 
   const now = new Date();
@@ -424,8 +459,11 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
 
                               {channelProgs.length > 0 ? (
                                 channelProgs.map((prog, pIdx) => {
-                                  const progStart = prog.start_time ? new Date(prog.start_time) : timelineStart;
-                                  const progEnd = prog.end_time ? new Date(prog.end_time) : new Date(timelineStart.getTime() + 2 * 60 * 60 * 1000);
+                                  const rawStart = prog.start_time || prog.start || prog.start_at || prog.start_timestamp || prog.time_start || prog.startTime;
+                                  const rawEnd = prog.end_time || prog.end || prog.end_at || prog.end_timestamp || prog.time_end || prog.endTime;
+
+                                  const progStart = parseEpgTime(rawStart, timelineStart);
+                                  const progEnd = parseEpgTime(rawEnd, new Date(progStart.getTime() + 60 * 60 * 1000));
 
                                   const startDiffHours = (progStart.getTime() - timelineStart.getTime()) / (1000 * 60 * 60);
                                   const durationHours = (progEnd.getTime() - progStart.getTime()) / (1000 * 60 * 60);
