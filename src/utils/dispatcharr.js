@@ -80,13 +80,15 @@ export const getDispatcharrStreamUrl = (channelOrId) => {
   const backend = getServerUrl() || (typeof window !== "undefined" ? window.location.origin : "");
   const { apiKey } = getDispatcharrConfig();
 
-  let chId = channelOrId;
+  let chIdentifier = "";
   if (typeof channelOrId === "object" && channelOrId !== null) {
-    chId = channelOrId.id || channelOrId.channel_id || channelOrId.uuid || channelOrId.number || "";
+    chIdentifier = channelOrId.uuid || channelOrId.stream_id || channelOrId.id || channelOrId.channel_id || channelOrId.number || "";
+  } else {
+    chIdentifier = channelOrId;
   }
 
-  const authQuery = apiKey ? `?api_key=${encodeURIComponent(apiKey)}` : "";
-  const directProxyUrl = `${backend}/api/dispatcharr/proxy/ts/stream/${chId}/${authQuery}`;
+  const authQuery = apiKey ? `?token=${encodeURIComponent(apiKey)}` : "";
+  const directProxyUrl = `${backend}/api/dispatcharr/proxy/ts/stream/${chIdentifier}/${authQuery}`;
 
   // On Native Android TV app, ExoPlayer handles raw MPEG-TS natively
   if (typeof window !== "undefined" && window.AndroidPlayer) {
@@ -154,8 +156,9 @@ const normalizeChannel = (ch, serverUrl, apiKey) => {
   }
 
   const backend = getServerUrl() || (typeof window !== "undefined" ? window.location.origin : "");
-  const authQuery = apiKey ? `?token=${encodeURIComponent(apiKey)}&api_key=${encodeURIComponent(apiKey)}` : "";
-  const id = ch.id || ch.channel_id || ch.uuid || ch.number || ch.ch_id || ch.key || Math.random().toString(36).substring(7);
+  const authQuery = apiKey ? `?token=${encodeURIComponent(apiKey)}` : "";
+  const streamIdentifier = ch.uuid || ch.stream_id || ch.id || ch.channel_id || ch.number || Math.random().toString(36).substring(7);
+  const id = ch.id || ch.uuid || ch.channel_id || ch.number || streamIdentifier;
   const name = ch.name || ch.title || ch.display_name || ch.channel_name || ch.callsign || `Channel ${ch.number || id}`;
 
   let logo = ch.logo || ch.icon || ch.tvg_logo || ch.logo_url || ch.image || ch.icon_url || "";
@@ -165,8 +168,8 @@ const normalizeChannel = (ch, serverUrl, apiKey) => {
   }
 
   let streamUrl = ch.stream_url || ch.url || ch.play_url || ch.m3u8 || ch.hls_url || ch.stream || ch.link || ch.stream_path || "";
-  if (!streamUrl && id) {
-    streamUrl = `${backend}/api/dispatcharr/proxy/ts/stream/${id}${authQuery}`;
+  if (!streamUrl && streamIdentifier) {
+    streamUrl = `${backend}/api/dispatcharr/proxy/ts/stream/${streamIdentifier}/${authQuery}`;
   }
 
   const program = ch.current_program || ch.now_playing || ch.epg_now || ch.program || ch.title || ch.event || null;
@@ -176,6 +179,7 @@ const normalizeChannel = (ch, serverUrl, apiKey) => {
   return {
     ...ch,
     id,
+    uuid: ch.uuid || streamIdentifier,
     name,
     number: ch.number || ch.channel_number || ch.ch_number || "",
     logo,
