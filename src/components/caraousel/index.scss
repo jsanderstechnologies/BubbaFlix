@@ -3,6 +3,7 @@
 	margin-bottom: 50px;
 	.content-wrapper {
 		position: relative;
+		overflow: visible;
 	}
 	.carouselTitle {
 		font-size: 24px;
@@ -77,15 +78,15 @@
 				border-radius: 10px;
 				width: 100%;
 				aspect-ratio: 1 / 1.5;
-				margin-bottom: 16px;
+				margin-bottom: 14px;
 			}
 			.textBlock {
 				display: flex;
 				flex-direction: column;
 				.title {
 					width: 100%;
-					height: 18px;
-					margin-bottom: 6px;
+					height: 20px;
+					margin-bottom: 10px;
 				}
 				.date {
 					width: 75%;
@@ -99,9 +100,8 @@
 		gap: 8px;
 		overflow-x: auto;
 		overflow-y: visible;
-		margin-right: -16px;
-		margin-left: -16px;
-		padding: 10px 16px;
+		margin: -24px -16px;
+		padding: 24px 16px;
 		scrollbar-width: none !important;
 		-ms-overflow-style: none !important;
 		&::-webkit-scrollbar {
@@ -113,8 +113,8 @@
 			gap: 12px;
 			overflow-x: auto;
 			overflow-y: visible;
-			margin: 0;
-			padding: 10px 4px;
+			margin: -24px -16px;
+			padding: 24px 16px;
 			scrollbar-width: none !important;
 			-ms-overflow-style: none !important;
 			&::-webkit-scrollbar {
@@ -162,7 +162,8 @@
 				outline: none !important;
 				transform: scale(1.14) translateY(-6px) translateZ(0);
 				box-shadow: 0 16px 32px rgba(0, 0, 0, 0.8), 0 0 20px var(--pink) !important;
-				z-index: 50;
+				z-index: 99 !important;
+				position: relative;
 			}
 			.posterBlock {
 				position: relative;
