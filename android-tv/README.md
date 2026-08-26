@@ -1,4 +1,4 @@
-# BubbaFlix TV 📺 - Native Android TV, Google TV & Fire TV App (v1.0.0)
+# BubbaFlix TV 📺 - Native Android TV, Google TV & Fire TV App (v1.0.4)
 
 **BubbaFlix TV** is the official native Android application for Android TV, Google TV, Chromecast with Google TV, Nvidia Shield, and Amazon Fire TV devices.
 
@@ -21,15 +21,15 @@ You can install **BubbaFlix TV** directly on any Firestick, Android TV, or Googl
 
 ## 🌟 Key Features
 
+- 📡 **Dispatcharr Live TV & EPG Auto-Inheritance**: Automatically inherits your Dispatcharr Server URL and API Key from the backend server (`/api/settings`) on startup without typing on TV remotes!
+- 🔍 **Dedicated Search Page & Focus Retention**: Interactive `/search` page with category filters and input focus retention during typing.
+- 📦 **Single APK Build File Name**: Built directly to `BubbaFlixTV.apk` for clean Downloader deployment.
 - 📺 **ExoPlayer 5-Minute Ahead-Buffering Engine**: Tuned in `PlayerActivity.kt` with `DefaultLoadControl` to buffer up to 300 seconds (5 minutes) ahead during stream playback, eliminating freezing, stutters, and buffering loops on 4K / 1080p high-bitrate media.
-- 🚀 **Interactive OTA Update Checker**: Queries `version.json` on GitHub on launch and prompts the user with an interactive Yes/No update dialog whenever a new `versionCode` is published.
-- ⭐ **Favorites Section & Star Toggle**: Seamless D-Pad navigation across the new `/favorites` section and details screen star toggle buttons.
+- 🚀 **Interactive OTA Update Checker**: Queries `version.json` on GitHub on launch and prompts the user with an interactive update notification whenever a new `versionCode` is published.
+- ⭐ **Favorites Section & Star Toggle**: Seamless D-Pad navigation across the `/favorites` section and details screen star toggle buttons.
 - 🕹️ **Unlocked 2D Spatial Remote Control**: Automatic top-left poster focus on page change, non-navigable top logo, and smooth section-transition vertical navigation between carousel rows and top menu bar.
 - 📺 **Native Android TV Leanback Banner**: Displays on the home screen launcher of Android TV, Google TV, Nvidia Shield, and Fire TV devices (`LEANBACK_LAUNCHER`).
 - 🔐 **Signed Production Release APK (`bubbaflix.jks`)**: Signed with 2048-bit RSA JKS keystore (`V1 + V2 signatures`) to guarantee clean, error-free package installation across all Android versions.
-- 🎬 **Unified Web Video Player Integration**: Embedded player with TMDB title logo artwork, OpenSubtitles search, default-off subtitles, and D-Pad transport controls.
-- ⚙️ **Custom Server Address Prompt**: Connects seamlessly to any local network BubbaFlix backend server (e.g. `http://192.168.1.50:5150`).
-- ⚡ **Auto Fullscreen & System UI Hiding**: Automatically hides navigation and status bars for a true 10ft cinema experience.
 
 ---
 
@@ -50,7 +50,7 @@ $env:ANDROID_HOME = "F:\Android\Sdk"
 ```
 
 The compiled signed APK will be generated at:
-`android-tv/app/build/outputs/apk/release/BubbaFlixTV-v1.0.0.apk` (and copied to `BubbaFlixTV.apk` in root directory).
+`android-tv/app/build/outputs/apk/release/BubbaFlixTV.apk` (and copied to `BubbaFlixTV.apk` in the root directory).
 
 ---
 

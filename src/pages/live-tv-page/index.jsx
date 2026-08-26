@@ -1,20 +1,16 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   FiTv,
   FiPlay,
-  FiCalendar,
   FiVideo,
-  FiSettings,
   FiTrash2,
   FiRefreshCw,
-  FiCheck,
-  FiClock
+  FiClock,
+  FiSettings
 } from "react-icons/fi";
 import {
-  getDispatcharrConfig,
   getDispatcharrConfigAsync,
-  setDispatcharrConfig,
-  sanitizeDispatcharrUrl,
   fetchDispatcharrChannels,
   fetchDispatcharrEpg,
   fetchDispatcharrRecordings,
@@ -27,12 +23,11 @@ import TopNav from "../../components/top-nav";
 import "./index.scss";
 
 const LiveTvPage = () => {
-  const [activeTab, setActiveTab] = useState("channels"); // "channels", "schedule", "recordings", "settings"
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState("channels"); // "channels", "recordings"
 
   // Config State
   const [serverUrl, setServerUrl] = useState("");
-  const [apiKey, setApiKey] = useState("");
-  const [saveStatus, setSaveStatus] = useState("");
 
   // Data State
   const [channels, setChannels] = useState([]);
@@ -49,7 +44,6 @@ const LiveTvPage = () => {
     const initConfig = async () => {
       const cfg = await getDispatcharrConfigAsync();
       setServerUrl(cfg.url);
-      setApiKey(cfg.apiKey);
       loadAllData();
     };
     initConfig();
@@ -71,16 +65,6 @@ const LiveTvPage = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleSaveSettings = (e) => {
-    e.preventDefault();
-    const cleanUrl = sanitizeDispatcharrUrl(serverUrl);
-    setServerUrl(cleanUrl);
-    setDispatcharrConfig(cleanUrl, apiKey);
-    setSaveStatus("Saved successfully!");
-    setTimeout(() => setSaveStatus(""), 3000);
-    loadAllData();
   };
 
   const handlePlayChannel = (channel) => {
@@ -142,13 +126,6 @@ const LiveTvPage = () => {
             >
               <FiVideo /> Recordings ({recordings.length})
             </button>
-            <button
-              className={`tabItem ${activeTab === "settings" ? "active" : ""}`}
-              onClick={() => setActiveTab("settings")}
-              tabIndex="0"
-            >
-              <FiSettings /> Dispatcharr Config
-            </button>
           </div>
         </div>
 
@@ -168,9 +145,9 @@ const LiveTvPage = () => {
               <div className="emptyState">
                 <FiTv style={{ fontSize: "48px", marginBottom: "16px", color: "var(--pink)" }} />
                 <h3>No Dispatcharr Channels Found</h3>
-                <p>Connect your Dispatcharr server address below to stream Live TV and manage DVR recordings.</p>
-                <button className="setupBtn" onClick={() => setActiveTab("settings")} tabIndex="0">
-                  Configure Dispatcharr Server
+                <p>Configure your Dispatcharr server address and API key in the main Settings page to stream Live TV and manage DVR recordings.</p>
+                <button className="setupBtn" onClick={() => navigate("/settings")} tabIndex="0">
+                  <FiSettings style={{ marginRight: "6px" }} /> Configure in Settings Page
                 </button>
               </div>
             ) : (
@@ -269,50 +246,6 @@ const LiveTvPage = () => {
                 ))}
               </div>
             )}
-          </div>
-        )}
-
-        {/* Server Config Tab */}
-        {activeTab === "settings" && (
-          <div className="tabContent">
-            <div className="configCard">
-              <h2>Dispatcharr Live TV & DVR Connection</h2>
-              <p className="configDesc">
-                Connect your local Dispatcharr server IP and API key to enable Live TV channel guide streaming, EPG scheduling, and DVR recording playback.
-              </p>
-
-              <form onSubmit={handleSaveSettings} className="configForm">
-                <div className="inputGroup">
-                  <label>Dispatcharr Server URL (One Row):</label>
-                  <input
-                    type="url"
-                    value={serverUrl}
-                    onChange={(e) => setServerUrl(e.target.value)}
-                    placeholder="http://192.168.1.100:9191"
-                    required
-                    tabIndex="0"
-                  />
-                </div>
-
-                <div className="inputGroup">
-                  <label>API Key (Optional):</label>
-                  <input
-                    type="text"
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="Optional API key"
-                    tabIndex="0"
-                  />
-                </div>
-
-                <div className="formFooter">
-                  <button type="submit" className="saveBtn" tabIndex="0">
-                    <FiCheck /> Save Dispatcharr Config
-                  </button>
-                  {saveStatus && <span className="saveStatus">{saveStatus}</span>}
-                </div>
-              </form>
-            </div>
           </div>
         )}
       </ContentWrapper>

@@ -96,6 +96,8 @@ const getEnvDefaultSettings = () => {
   const defaultGroq = process.env.GROQ_API_KEY || process.env.GROQ_KEY || process.env.VITE_GROQ_API_KEY || "";
   const defaultSimkl = process.env.SIMKL_CLIENT_ID || process.env.VITE_SIMKL_CLIENT_ID || "";
   const defaultAio = process.env.AIOSTREAMS_URL || process.env.VITE_AIOSTREAMS_URL || "https://aiostreams.elfhosted.com/";
+  const defaultDispatcharrUrl = process.env.DISPATCHARR_URL || process.env.VITE_DISPATCHARR_URL || "http://192.168.1.100:9191";
+  const defaultDispatcharrApiKey = process.env.DISPATCHARR_API_KEY || process.env.VITE_DISPATCHARR_API_KEY || "";
   const defaultResolutions = process.env.STREAM_RESOLUTIONS
     ? process.env.STREAM_RESOLUTIONS.split(",").map((s) => s.trim())
     : ["2160p", "1080p", "720p", "480p"];
@@ -109,6 +111,8 @@ const getEnvDefaultSettings = () => {
     simklClientId: defaultSimkl,
     groqKey: defaultGroq,
     tmdbToken: defaultTmdb,
+    dispatcharrUrl: defaultDispatcharrUrl,
+    dispatcharrApiKey: defaultDispatcharrApiKey,
     stream_resolutions: defaultResolutions,
     stream_exclude_low_quality: defaultExcludeLow,
   };
@@ -128,6 +132,12 @@ const loadServerSettings = () => {
       }
       if (envDefaults.simklClientId && (!merged.simklClientId || merged.simklClientId.trim() === "")) {
         merged.simklClientId = envDefaults.simklClientId;
+      }
+      if (envDefaults.dispatcharrUrl && (!merged.dispatcharrUrl || merged.dispatcharrUrl.trim() === "" || merged.dispatcharrUrl === "http://192.168.1.100:9191")) {
+        merged.dispatcharrUrl = envDefaults.dispatcharrUrl;
+      }
+      if (envDefaults.dispatcharrApiKey && (!merged.dispatcharrApiKey || merged.dispatcharrApiKey.trim() === "")) {
+        merged.dispatcharrApiKey = envDefaults.dispatcharrApiKey;
       }
       if (!merged.tmdbToken || merged.tmdbToken.trim() === "") {
         merged.tmdbToken = DEFAULT_TMDB_KEY;
