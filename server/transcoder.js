@@ -274,18 +274,27 @@ const server = http.createServer((req, res) => {
       "Access-Control-Allow-Origin": "*",
     });
 
-    // Normalize stream target URL: enforce trailing slash for Dispatcharr proxy stream endpoints
-    let normalizedTargetUrl = targetUrl;
-    const urlParts = normalizedTargetUrl.split("?");
-    const basePath = urlParts[0];
-    const queryStr = urlParts[1] ? `?${urlParts[1]}` : "";
-
-    if (basePath.includes("/proxy/ts/stream/") && !basePath.endsWith("/")) {
-      normalizedTargetUrl = `${basePath}/${queryStr}`;
-    }
-
     const settings = loadServerSettings();
     const apiKey = settings.dispatcharrApiKey || parsedUrl.query.api_key || parsedUrl.query.token || "";
+    const dispatcharrBase = (settings.dispatcharrUrl || "http://192.168.10.3:9191").replace(/\/+$/, "");
+
+    // Normalize stream target URL: convert external proxy URLs to direct local Dispatcharr URLs for FFmpeg
+    let normalizedTargetUrl = targetUrl;
+    if (normalizedTargetUrl.includes("/proxy/ts/stream/")) {
+      const match = normalizedTargetUrl.match(/\/proxy\/ts\/stream\/([^/?]+)/);
+      if (match && match[1]) {
+        const streamId = match[1];
+        const authParam = apiKey ? `?token=${encodeURIComponent(apiKey)}&api_key=${encodeURIComponent(apiKey)}` : "";
+        normalizedTargetUrl = `${dispatcharrBase}/proxy/ts/stream/${streamId}/${authParam}`;
+      }
+    } else {
+      const urlParts = normalizedTargetUrl.split("?");
+      const basePath = urlParts[0].replace(/\/+$/, "");
+      const queryStr = urlParts[1] ? `?${urlParts[1]}` : "";
+      if (basePath.includes("/proxy/ts/stream/")) {
+        normalizedTargetUrl = `${basePath}/${queryStr}`;
+      }
+    }
 
     const headersStr = apiKey
       ? `X-API-Key: ${apiKey}\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)\r\n`
@@ -462,9 +471,10 @@ const server = http.createServer((req, res) => {
       subPath = subPath.replace(cleanSubPath, "/api/channels/channels/");
     } else if (cleanSubPath === "/recordings" || cleanSubPath === "/api/recordings") {
       subPath = subPath.replace(cleanSubPath, "/api/channels/recordings/");
-    } else if (cleanSubPath.startsWith("/proxy/ts/stream/") && !cleanSubPath.endsWith("/")) {
+    } else if (cleanSubPath.startsWith("/proxy/ts/stream/")) {
       const parts = subPath.split("?");
-      subPath = `${parts[0]}/` + (parts[1] ? `?${parts[1]}` : "");
+      const cleanBase = parts[0].replace(/\/+$/, "");
+      subPath = `${cleanBase}/` + (parts[1] ? `?${parts[1]}` : "");
     }
 
     const targetDispatcharrUrl = `${dispatcharrUrl}${subPath.startsWith("/") ? "" : "/"}${subPath}`;
