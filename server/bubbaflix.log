@@ -1,0 +1,5 @@
+[2026-08-26T14:03:20.425Z] [BubbaFlix Server] UDP Local Server Discovery Beacon running on port 5151
+[2026-08-26T14:03:20.478Z] [BubbaFlix Backend Transcoder & Settings Engine] Pure Node Server listening on 0.0.0.0:5000
+[2026-08-26T14:03:21.702Z] [HTTP Request] GET /api/dispatcharr/epg | Initiator: [Unknown Component] | Client IP: 127.0.0.1 | Referer: Direct Connection | User-Agent: Unknown Client
+[2026-08-26T14:03:21.889Z] [Dispatcharr Proxy] Initiated by [Unknown Component] (127.0.0.1) -> GET http://192.168.1.100:9191/api/epg/programs/
+[2026-08-26T14:03:31.947Z] [Dispatcharr Proxy Timeout Error] GET http://192.168.1.100:9191/api/epg/programs/ timed out after 10247ms for [Unknown Component] (127.0.0.1)

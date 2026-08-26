@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   bubbaflix:
+    build: .
     image: ghcr.io/jsanderstechnologies/bubbaflix:latest
     container_name: bubbaflix
     restart: unless-stopped
