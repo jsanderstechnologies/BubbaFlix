@@ -75,6 +75,15 @@ const LiveTvPage = () => {
   const [detailProgram, setDetailProgram] = useState(null);
   const [detailChannel, setDetailChannel] = useState(null);
 
+  // Recording Details Modal State (Dispatcharr Style)
+  const [showRecDetailsModal, setShowRecDetailsModal] = useState(false);
+  const [selectedRecording, setSelectedRecording] = useState(null);
+
+  const handleOpenRecDetailsModal = (rec) => {
+    setSelectedRecording(rec);
+    setShowRecDetailsModal(true);
+  };
+
   useEffect(() => {
     const initConfig = async () => {
       const cfg = await getDispatcharrConfigAsync();
@@ -555,14 +564,24 @@ const LiveTvPage = () => {
             ) : (
               <div className="recordingsGrid">
                 {recordings.map((rec, idx) => (
-                  <div key={rec.id || idx} className="recordingCard" tabIndex="0">
+                  <div
+                    key={rec.id || idx}
+                    className="recordingCard"
+                    onClick={() => handleOpenRecDetailsModal(rec)}
+                    tabIndex="0"
+                  >
                     <div className="recThumbnailBlock">
                       {rec.thumbnail ? (
                         <img src={rec.thumbnail} alt={rec.title} className="recThumbnail" />
                       ) : (
                         <div className="recPlaceholder"><FiVideo /></div>
                       )}
-                      <button className="playOverlayBtn" onClick={() => handlePlayRecording(rec)} tabIndex="0" title="Play Recording">
+                      <button
+                        className="playOverlayBtn"
+                        onClick={(e) => { e.stopPropagation(); handlePlayRecording(rec); }}
+                        tabIndex="0"
+                        title="Play Recording"
+                      >
                         <FiPlay />
                       </button>
                     </div>
@@ -583,7 +602,7 @@ const LiveTvPage = () => {
 
                     <button
                       className="deleteRecBtn"
-                      onClick={() => handleDeleteRecording(rec.id)}
+                      onClick={(e) => { e.stopPropagation(); handleDeleteRecording(rec.id); }}
                       tabIndex="0"
                       title="Delete Recording / Rule"
                     >
@@ -591,6 +610,15 @@ const LiveTvPage = () => {
                     </button>
                   </div>
                 ))}
+
+      {/* Recording Details Modal (Dispatcharr Style Full Metadata) */}
+      <RecordingDetailsModal
+        show={showRecDetailsModal}
+        onClose={() => setShowRecDetailsModal(false)}
+        recording={selectedRecording}
+        onPlay={handlePlayRecording}
+        onDelete={handleDeleteRecording}
+      />
               </div>
             )}
           </div>
