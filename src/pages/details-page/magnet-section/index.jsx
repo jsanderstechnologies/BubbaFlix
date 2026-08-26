@@ -148,22 +148,17 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
               <div className="loadingContainer">
                 <Spinner />
               </div>
-            ) : unconfigured ? (
+            ) : streams.length === 0 ? (
               <div className="unconfiguredNotice">
                 <FiAlertCircle className="icon" />
                 <div className="noticeText">
-                  <h4>AIOStreams Configuration Required</h4>
+                  <h4>No Stream Sources Found</h4>
                   <p>
-                    Configure your AIOStreams addon with your Premiumize account and torrent providers, then save your AIOStreams manifest URL in Settings.
+                    No stream links were returned for this title. You can retry querying AIOStreams or check your server configuration.
                   </p>
-                  <a
-                    href="https://aiostreams.elfhosted.com/stremio/configure"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="configBtn"
-                  >
-                    <FiExternalLink /> Configure AIOStreams Addon
-                  </a>
+                  <button className="configBtn" onClick={loadStreams} style={{ cursor: "pointer" }}>
+                    <FiRefreshCw style={{ marginRight: 6 }} /> Refresh Streams
+                  </button>
                 </div>
               </div>
             ) : (

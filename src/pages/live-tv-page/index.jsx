@@ -87,6 +87,7 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
 
   useEffect(() => {
     const initConfig = async () => {
+      await fetchServerSettings();
       const cfg = await getDispatcharrConfigAsync();
       setServerUrl(cfg.url);
       loadAllData();
@@ -397,14 +398,14 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
               <div className="emptyState">
                 <FiTv style={{ fontSize: "48px", marginBottom: "16px", color: "var(--pink)" }} />
                 <h3>No Matching Channels Found</h3>
-                <p>{searchQuery || selectedGroup !== "all" ? "Try clearing your search query or group filter." : "Configure your Dispatcharr server address and API key in Settings."}</p>
+                <p>{searchQuery || selectedGroup !== "all" ? "Try clearing your search query or group filter." : "No active channels were returned from your central Dispatcharr server."}</p>
                 {searchQuery || selectedGroup !== "all" ? (
                   <button className="setupBtn" onClick={() => { setSearchQuery(""); setSelectedGroup("all"); }} tabIndex="0">
                     Reset Filters
                   </button>
                 ) : (
-                  <button className="setupBtn" onClick={() => navigate("/settings")} tabIndex="0">
-                    <FiSettings style={{ marginRight: "6px" }} /> Configure in Settings Page
+                  <button className="setupBtn" onClick={loadAllData} tabIndex="0">
+                    <FiRefreshCw style={{ marginRight: "6px" }} /> Refresh Channels
                   </button>
                 )}
               </div>
