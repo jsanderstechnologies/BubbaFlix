@@ -26,8 +26,8 @@ export const sanitizeDispatcharrUrl = (inputUrl) => {
  * Dispatcharr API Service Utility for Live TV, Channels, EPG Guide & DVR Recordings.
  */
 export const getDispatcharrConfig = () => {
-  if (typeof window === "undefined") return { url: "http://192.168.1.100:9191", apiKey: "" };
-  const rawUrl = localStorage.getItem("dispatcharr_url") || "http://192.168.1.100:9191";
+  if (typeof window === "undefined") return { url: "http://192.168.10.3:9191", apiKey: "" };
+  const rawUrl = localStorage.getItem("dispatcharr_url") || "http://192.168.10.3:9191";
   return {
     url: sanitizeDispatcharrUrl(rawUrl),
     apiKey: localStorage.getItem("dispatcharr_api_key") || ""

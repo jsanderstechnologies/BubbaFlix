@@ -18,7 +18,7 @@ services:
       SIMKL_CLIENT_ID: "${SIMKL_CLIENT_ID:-}"
       GROQ_API_KEY: "${GROQ_API_KEY:-}"
       TMDB_READ_ACCESS_TOKEN: "${TMDB_READ_ACCESS_TOKEN:-}"
-      DISPATCHARR_URL: "${DISPATCHARR_URL:-http://192.168.1.100:9191}"
+      DISPATCHARR_URL: "${DISPATCHARR_URL:-http://192.168.10.3:9191}"
       DISPATCHARR_API_KEY: "${DISPATCHARR_API_KEY:-}"
     volumes:
       - bubbaflix-data:/app/server

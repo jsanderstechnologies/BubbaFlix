@@ -118,7 +118,7 @@ const SettingsPage = () => {
     if (savedExcludeLow !== null) setExcludeLowQuality(JSON.parse(savedExcludeLow));
 
     const dispatcharrCfg = getDispatcharrConfig();
-    setDispatcharrUrl(dispatcharrCfg.url || serverSettings?.dispatcharrUrl || "http://192.168.1.100:9191");
+    setDispatcharrUrl(dispatcharrCfg.url || serverSettings?.dispatcharrUrl || "http://192.168.10.3:9191");
     setDispatcharrApiKey(dispatcharrCfg.apiKey || serverSettings?.dispatcharrApiKey || "");
   };
 
