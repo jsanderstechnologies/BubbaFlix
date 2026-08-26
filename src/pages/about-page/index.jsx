@@ -16,7 +16,7 @@ import TopNav from "../../components/top-nav";
 import { getServerUrl } from "../../utils/serverSettings";
 import "./index.scss";
 
-const APP_VERSION = "v1.0.4";
+const APP_VERSION = "v1.0.0";
 const DOWNLOADER_CODE = "7862216";
 const GITHUB_REPO_URL = "https://github.com/jsanderstechnologies/BubbaFlix";
 
