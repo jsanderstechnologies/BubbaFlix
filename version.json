@@ -1,6 +1,6 @@
 {
-  "versionCode": 11,
-  "versionName": "1.0.1",
+  "versionCode": 12,
+  "versionName": "1.0.2",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.1 with Local Network Server Discovery, Single-Row Address Input, and Cache-Bypassing OTA Updates."
+  "releaseNotes": "BubbaFlix TV v1.0.2 with Automatic Volume Normalization & Dynamic Range Compression for sudden action volume spikes."
 }
