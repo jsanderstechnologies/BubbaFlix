@@ -1,4 +1,4 @@
-import { getBackendServerUrl } from "./serverSettings";
+import { getServerUrl } from "./serverSettings";
 
 /**
  * Dispatcharr API Service Utility for Live TV, Channels, EPG Guide & DVR Recordings.
@@ -19,7 +19,7 @@ export const setDispatcharrConfig = (url, apiKey = "") => {
 };
 
 const getProxyBase = () => {
-  const backend = getBackendServerUrl();
+  const backend = getServerUrl() || (typeof window !== "undefined" ? window.location.origin : "");
   return `${backend}/api/dispatcharr`;
 };
 
