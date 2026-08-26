@@ -9,6 +9,16 @@ export const sanitizeDispatcharrUrl = (inputUrl) => {
   if (!/^https?:\/\//i.test(url)) {
     url = `http://${url}`;
   }
+  try {
+    const parsed = new URL(url);
+    if (!parsed.port && parsed.hostname !== "localhost") {
+      url = `${parsed.protocol}//${parsed.hostname}:9191`;
+    }
+  } catch (e) {
+    if (!url.includes(":", 7)) {
+      url = `${url}:9191`;
+    }
+  }
   return url;
 };
 
