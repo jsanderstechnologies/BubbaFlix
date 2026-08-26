@@ -42,10 +42,10 @@
 		transition: transform 0.25s ease, filter 0.25s ease;
 
 		img {
-			height: 44px;
-			max-height: 44px;
+			height: 38px;
+			max-height: 38px;
 			width: auto;
-			max-width: 175px;
+			max-width: 145px;
 			object-fit: contain;
 			filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
 		}
@@ -66,24 +66,29 @@
 		flex-shrink: 0;
 		margin: 0;
 		padding: 0;
+		overflow-x: auto;
+		scrollbar-width: none; /* Firefox */
+		&::-webkit-scrollbar {
+			display: none; /* Chrome/Safari */
+		}
 
 		.menuItem {
 			height: 64px;
 			display: flex;
 			align-items: center;
-			margin: 0 8px;
+			margin: 0 3px;
 			color: white;
 			font-weight: 600;
-			font-size: 15px;
+			font-size: 14px;
 			position: relative;
 			cursor: pointer;
 			border-radius: 8px;
-			padding: 6px 14px;
+			padding: 4px 9px;
 			white-space: nowrap;
 			transition: transform 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
 
 			svg {
-				font-size: 18px;
+				font-size: 16px;
 			}
 
 			&:hover,
@@ -91,7 +96,7 @@
 			&:focus-visible {
 				color: var(--pink);
 				outline: none !important;
-				transform: scale(1.12) translateY(-2px);
+				transform: scale(1.08) translateY(-2px);
 				box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6), 0 0 15px var(--pink) !important;
 			}
 		}
