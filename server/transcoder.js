@@ -193,6 +193,7 @@ const getRequestInitiator = (req) => {
 };
 
 const sendJson = (res, statusCode, data) => {
+  if (res.headersSent) return;
   res.writeHead(statusCode, {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": "*",
@@ -483,21 +484,24 @@ const server = http.createServer((req, res) => {
         method: req.method,
         headers: headers,
         rejectUnauthorized: false, // Allow local self-signed HTTPS certs
-        timeout: 10000
+        timeout: 30000
       }, (proxyRes) => {
         const duration = Date.now() - startTime;
         logMessage(`[Dispatcharr Proxy Response] ${req.method} ${targetDispatcharrUrl} -> Status ${proxyRes.statusCode} (${duration}ms) | Initiator: [${initiator.initiatorComponent}] (${initiator.ip})`);
         if (proxyRes.statusCode >= 400) {
           logMessage(`[Dispatcharr HTTP Warning] ${req.method} ${targetDispatcharrUrl} returned HTTP ${proxyRes.statusCode} for [${initiator.initiatorComponent}] (${initiator.ip})`, true);
         }
-        res.writeHead(proxyRes.statusCode, {
-          ...proxyRes.headers,
-          "Access-Control-Allow-Origin": "*"
-        });
-        proxyRes.pipe(res);
+        if (!res.headersSent) {
+          res.writeHead(proxyRes.statusCode, {
+            ...proxyRes.headers,
+            "Access-Control-Allow-Origin": "*"
+          });
+          proxyRes.pipe(res);
+        }
       });
 
       proxyReq.on("error", (err) => {
+        if (res.headersSent) return;
         const duration = Date.now() - startTime;
         logMessage(`[Dispatcharr Proxy Network Error] ${req.method} ${targetDispatcharrUrl} failed (${duration}ms) for [${initiator.initiatorComponent}] (${initiator.ip}): ${err.message}`, true);
         sendJson(res, 502, { error: `Dispatcharr proxy error: ${err.message}`, targetUrl: targetDispatcharrUrl, dispatcharrUrl });
@@ -505,6 +509,7 @@ const server = http.createServer((req, res) => {
 
       proxyReq.on("timeout", () => {
         proxyReq.destroy();
+        if (res.headersSent) return;
         const duration = Date.now() - startTime;
         logMessage(`[Dispatcharr Proxy Timeout Error] ${req.method} ${targetDispatcharrUrl} timed out after ${duration}ms for [${initiator.initiatorComponent}] (${initiator.ip})`, true);
         sendJson(res, 504, { error: "Dispatcharr proxy request timed out", targetUrl: targetDispatcharrUrl, dispatcharrUrl });
