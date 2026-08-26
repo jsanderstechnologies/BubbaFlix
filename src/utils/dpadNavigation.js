@@ -164,6 +164,15 @@ export const initDpadNavigation = () => {
     focusTopLeftPoster();
   };
 
+  const handleFocusIn = (e) => {
+    const el = e.target;
+    if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")) {
+      el.removeAttribute("readonly");
+      el.setAttribute("data-editing-active", "true");
+    }
+  };
+
+  window.addEventListener("focusin", handleFocusIn, true);
   window.addEventListener("popstate", handleRouteChange);
 
   const origPush = window.history.pushState;
@@ -184,18 +193,21 @@ export const initDpadNavigation = () => {
     const code = e.keyCode;
     const activeEl = document.activeElement;
 
-    // Ignore spatial navigation if video player modal is active or if user is actively typing with open soft keyboard
-    if (
-      document.body.classList.contains("videoPlayerActive") ||
-      (activeEl && (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA") && activeEl.getAttribute("data-editing-active") === "true")
-    ) {
+    // Allow full keyboard typing if user is focused inside an input or textarea
+    if (activeEl && (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA")) {
       if (key === "Escape" || key === "Back" || code === 27 || code === 10009 || code === 461 || code === 4) {
-        if (activeEl) {
-          activeEl.removeAttribute("data-editing-active");
-          activeEl.setAttribute("readonly", "readonly");
-          activeEl.blur();
-        }
+        activeEl.removeAttribute("data-editing-active");
+        activeEl.blur();
+        return;
       }
+      // Do not block normal typing keys
+      if (key !== "ArrowUp" && key !== "ArrowDown" && code !== 38 && code !== 40 && code !== 19 && code !== 20) {
+        return;
+      }
+    }
+
+    // Ignore spatial navigation if video player modal is active
+    if (document.body.classList.contains("videoPlayerActive")) {
       return;
     }
 
@@ -378,6 +390,7 @@ export const initDpadNavigation = () => {
 
   return () => {
     window.removeEventListener("keydown", handleKeyDown, true);
+    window.removeEventListener("focusin", handleFocusIn, true);
     window.removeEventListener("popstate", handleRouteChange);
   };
 };
