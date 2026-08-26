@@ -33,6 +33,7 @@ const SettingsPage = () => {
   // Dispatcharr State
   const [dispatcharrUrl, setDispatcharrUrl] = useState("");
   const [dispatcharrApiKey, setDispatcharrApiKey] = useState("");
+  const [showDispatcharrKey, setShowDispatcharrKey] = useState(false);
   const [dispatcharrStatus, setDispatcharrStatus] = useState(null);
 
   // AIOStreams State
@@ -131,6 +132,18 @@ const SettingsPage = () => {
       dispatcharrApiKey: dispatcharrApiKey.trim()
     });
     setDispatcharrStatus({ type: "success", text: "Dispatcharr Live TV configuration saved and synced to backend!" });
+    setTimeout(() => setDispatcharrStatus(null), 3500);
+  };
+
+  const handleClearDispatcharr = async () => {
+    setDispatcharrUrl("");
+    setDispatcharrApiKey("");
+    setDispatcharrConfig("", "");
+    await updateServerSettings({
+      dispatcharrUrl: "",
+      dispatcharrApiKey: ""
+    });
+    setDispatcharrStatus({ type: "success", text: "Dispatcharr Live TV configuration cleared." });
     setTimeout(() => setDispatcharrStatus(null), 3500);
   };
 
@@ -533,42 +546,56 @@ const SettingsPage = () => {
           <div className="settingsCard">
             <div className="cardHeader">
               <h2><FiTv style={{ marginRight: 8 }} /> Dispatcharr Live TV & EPG Server</h2>
-              <span className="badge custom"><FiServer style={{ marginRight: 4 }} /> Server Synced</span>
+              <span className={`badge ${dispatcharrUrl ? "custom" : "default"}`}>
+                <FiServer style={{ marginRight: 4 }} /> {dispatcharrUrl ? "Dispatcharr Connected" : "Not Configured"}
+              </span>
             </div>
             <p className="description">
               Connect your local Dispatcharr server address for Live TV channels, EPG schedule guide, and DVR recording playback.
             </p>
-            <form onSubmit={handleSaveDispatcharr}>
+            <div className="apiInstruction">
+              <FiInfo style={{ marginRight: 6, verticalAlign: "middle" }} />
+              <strong>How to configure:</strong> Enter your Dispatcharr server URL (e.g. <code>http://192.168.1.100:9191</code>) and optional API Key below.
+            </div>
+            <form onSubmit={handleSaveDispatcharr} className="tokenForm" style={{ marginTop: 15 }}>
               <div className="inputGroup">
-                <label>Dispatcharr Server URL (One Row):</label>
-                <div className="inputWithIcon">
+                <label htmlFor="dispatcharrUrl">DISPATCHARR_SERVER_URL</label>
+                <div className="inputWrapper">
                   <input
-                    type="url"
+                    id="dispatcharrUrl"
+                    type="text"
                     value={dispatcharrUrl}
                     onChange={(e) => setDispatcharrUrl(e.target.value)}
                     placeholder="http://192.168.1.100:9191"
-                    required
-                    tabIndex="0"
                   />
                 </div>
               </div>
 
               <div className="inputGroup">
-                <label>API Key (Optional):</label>
-                <div className="inputWithIcon">
+                <label htmlFor="dispatcharrApiKey">DISPATCHARR_API_KEY</label>
+                <div className="inputWrapper">
                   <input
-                    type="text"
+                    id="dispatcharrApiKey"
+                    type={showDispatcharrKey ? "text" : "password"}
                     value={dispatcharrApiKey}
                     onChange={(e) => setDispatcharrApiKey(e.target.value)}
-                    placeholder="Optional Dispatcharr API Key"
-                    tabIndex="0"
+                    placeholder="Enter your Dispatcharr API key (optional)..."
                   />
+                  <button
+                    type="button"
+                    className="toggleVisibility"
+                    onClick={() => setShowDispatcharrKey(!showDispatcharrKey)}
+                    title={showDispatcharrKey ? "Hide Key" : "Show Key"}
+                  >
+                    {showDispatcharrKey ? <FiEyeOff /> : <FiEye />}
+                  </button>
                 </div>
               </div>
 
               {dispatcharrStatus && (
-                <div className={`statusMsg ${dispatcharrStatus.type}`}>
+                <div className={`statusBanner ${dispatcharrStatus.type}`}>
                   {dispatcharrStatus.type === "success" && <FiCheckCircle />}
+                  {dispatcharrStatus.type === "error" && <FiXCircle />}
                   <span>{dispatcharrStatus.text}</span>
                 </div>
               )}
@@ -577,6 +604,15 @@ const SettingsPage = () => {
                 <button type="submit" className="saveBtn">
                   <FiSave /> Save Dispatcharr Config
                 </button>
+                {dispatcharrUrl && (
+                  <button
+                    type="button"
+                    className="clearBtn"
+                    onClick={handleClearDispatcharr}
+                  >
+                    Clear Config
+                  </button>
+                )}
               </div>
             </form>
           </div>
