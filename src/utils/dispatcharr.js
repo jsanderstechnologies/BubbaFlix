@@ -153,9 +153,15 @@ const normalizeChannel = (ch, serverUrl, apiKey) => {
   };
 };
 
+let lastLoggedMsg = "";
 const reportClientLog = (message, level = "ERROR") => {
+  if (message === lastLoggedMsg) return;
+  lastLoggedMsg = message;
+  setTimeout(() => { lastLoggedMsg = ""; }, 10000);
+
   try {
-    fetch("/api/log", {
+    const backend = getServerUrl() || (typeof window !== "undefined" ? window.location.origin : "");
+    fetch(`${backend}/api/log`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message, level })
@@ -184,11 +190,9 @@ const fetchDispatcharrWithFallback = async (endpointPaths) => {
           const json = await res.json();
           const normalized = normalizeArray(json);
           if (normalized.length > 0) return { data: normalized, serverUrl: cleanServerUrl, apiKey };
-        } else {
-          reportClientLog(`[Dispatcharr Direct Fetch HTTP ${res.status}] ${fullUrl}`);
         }
       } catch (err) {
-        reportClientLog(`[Dispatcharr Direct Fetch Error] ${cleanServerUrl}${path}: ${err.message}`);
+        // Direct fetch failed, continue to proxy fallback
       }
     }
   }
@@ -202,15 +206,15 @@ const fetchDispatcharrWithFallback = async (endpointPaths) => {
         const json = await res.json();
         const normalized = normalizeArray(json);
         if (normalized.length > 0) return { data: normalized, serverUrl: cleanServerUrl, apiKey };
-      } else {
-        reportClientLog(`[Dispatcharr Proxy Fetch HTTP ${res.status}] ${proxyUrl}`);
       }
     } catch (err) {
-      reportClientLog(`[Dispatcharr Proxy Fetch Error] ${path}: ${err.message}`);
+      // Proxy fetch error
     }
   }
 
-  reportClientLog(`[Dispatcharr Connection Warning] All Dispatcharr endpoints returned empty or failed for URL: ${cleanServerUrl || "Not Configured"}`);
+  if (cleanServerUrl) {
+    reportClientLog(`[Dispatcharr Warning] Unable to reach Dispatcharr server at ${cleanServerUrl}`);
+  }
   return { data: [], serverUrl: cleanServerUrl, apiKey };
 };
 
