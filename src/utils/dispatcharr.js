@@ -131,7 +131,7 @@ const normalizeChannel = (ch, serverUrl, apiKey) => {
 
   let streamUrl = ch.stream_url || ch.url || ch.play_url || ch.m3u8 || ch.hls_url || ch.stream || ch.link || ch.stream_path || "";
   if (!streamUrl && serverUrl && id) {
-    streamUrl = `${serverUrl}/stream/${id}${authQuery}`;
+    streamUrl = `${serverUrl}/proxy/ts/stream/${id}${authQuery}`;
   } else if (streamUrl && apiKey && !streamUrl.includes("token=") && !streamUrl.includes("api_key=")) {
     streamUrl += streamUrl.includes("?") ? `&token=${encodeURIComponent(apiKey)}&api_key=${encodeURIComponent(apiKey)}` : `?token=${encodeURIComponent(apiKey)}&api_key=${encodeURIComponent(apiKey)}`;
   }
@@ -223,15 +223,15 @@ const fetchDispatcharrWithFallback = async (endpointPaths) => {
  */
 export const fetchDispatcharrChannels = async () => {
   const { data, serverUrl, apiKey } = await fetchDispatcharrWithFallback([
+    "/api/channels/channels/",
+    "/api/channels/summary/",
+    "/api/channels/groups/",
+    "/api/channels/streams/",
+    "/hdhr/lineup.json",
     "/api/channels/",
     "/api/channels/list",
-    "/api/channels/channels/",
     "/output/m3u/",
     "/output/m3u",
-    "/api/v1/channels/",
-    "/api/channels",
-    "/api/epg/",
-    "/api/v1/epg/",
     "/channels/",
     "/channels"
   ]);
@@ -244,14 +244,16 @@ export const fetchDispatcharrChannels = async () => {
  */
 export const fetchDispatcharrEpg = async () => {
   const { data } = await fetchDispatcharrWithFallback([
+    "/api/epg/programs/",
+    "/api/epg/grid/",
+    "/api/epg/current-programs/",
+    "/api/epg/epgdata/",
     "/api/epg/",
     "/api/epg/events/",
     "/output/epg/",
     "/output/epg",
     "/output/xmltv/",
     "/output/xmltv",
-    "/api/v1/epg/",
-    "/api/guide/",
     "/epg/",
     "/epg"
   ]);
@@ -267,8 +269,6 @@ export const fetchDispatcharrRecordings = async () => {
     "/api/channels/recordings/",
     "/api/recordings/",
     "/output/m3u/recordings",
-    "/api/v1/recordings/",
-    "/api/recordings",
     "/recordings/",
     "/recordings"
   ]);
