@@ -152,6 +152,16 @@ const normalizeChannel = (ch, serverUrl, apiKey) => {
   };
 };
 
+const reportClientLog = (message, level = "ERROR") => {
+  try {
+    fetch("/api/log", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, level })
+    }).catch(() => {});
+  } catch (e) {}
+};
+
 /**
  * Robust Multi-Endpoint Dispatcharr Fetcher (Direct + Backend Proxy Fallback)
  */
@@ -173,9 +183,11 @@ const fetchDispatcharrWithFallback = async (endpointPaths) => {
           const json = await res.json();
           const normalized = normalizeArray(json);
           if (normalized.length > 0) return { data: normalized, serverUrl: cleanServerUrl, apiKey };
+        } else {
+          reportClientLog(`[Dispatcharr Direct Fetch HTTP ${res.status}] ${fullUrl}`);
         }
       } catch (err) {
-        // Direct fetch failed, continue to proxy fallback
+        reportClientLog(`[Dispatcharr Direct Fetch Error] ${cleanServerUrl}${path}: ${err.message}`);
       }
     }
   }
@@ -189,12 +201,15 @@ const fetchDispatcharrWithFallback = async (endpointPaths) => {
         const json = await res.json();
         const normalized = normalizeArray(json);
         if (normalized.length > 0) return { data: normalized, serverUrl: cleanServerUrl, apiKey };
+      } else {
+        reportClientLog(`[Dispatcharr Proxy Fetch HTTP ${res.status}] ${proxyUrl}`);
       }
     } catch (err) {
-      console.warn(`[Dispatcharr Proxy Fetch Warning] ${path}:`, err.message);
+      reportClientLog(`[Dispatcharr Proxy Fetch Error] ${path}: ${err.message}`);
     }
   }
 
+  reportClientLog(`[Dispatcharr Connection Warning] All Dispatcharr endpoints returned empty or failed for URL: ${cleanServerUrl || "Not Configured"}`);
   return { data: [], serverUrl: cleanServerUrl, apiKey };
 };
 

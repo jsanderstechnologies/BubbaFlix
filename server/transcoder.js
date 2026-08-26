@@ -339,6 +339,24 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Client Error Logging Endpoint
+  if (pathname === "/api/log" && req.method === "POST") {
+    let body = "";
+    req.on("data", (chunk) => { body += chunk.toString(); });
+    req.on("end", () => {
+      try {
+        const payload = body ? JSON.parse(body) : {};
+        const level = payload.level || "ERROR";
+        const message = payload.message || payload.error || "Client Report";
+        logMessage(`[Client Log ${level}] ${message}`, level === "ERROR");
+        return sendJson(res, 200, { status: "logged" });
+      } catch (e) {
+        return sendJson(res, 400, { error: "Invalid log payload" });
+      }
+    });
+    return;
+  }
+
   // Version Check Proxy Endpoint
   if (pathname === "/api/version") {
     const https = require("https");
@@ -350,10 +368,12 @@ const server = http.createServer((req, res) => {
           const parsed = JSON.parse(body);
           sendJson(res, 200, parsed);
         } catch (e) {
+          logMessage(`[Version Check Error] Failed to parse GitHub version.json: ${e.message}`, true);
           sendJson(res, 200, { versionCode: 14, versionName: "1.0.4" });
         }
       });
-    }).on("error", () => {
+    }).on("error", (vErr) => {
+      logMessage(`[Version Check Network Error] Unable to fetch version.json from GitHub: ${vErr.message}`, true);
       sendJson(res, 200, { versionCode: 14, versionName: "1.0.4" });
     });
     return;
@@ -386,8 +406,12 @@ const server = http.createServer((req, res) => {
         method: req.method,
         headers: headers,
         rejectUnauthorized: false, // Allow local self-signed HTTPS certs
-        timeout: 8000
+        timeout: 10000
       }, (proxyRes) => {
+        logMessage(`[Dispatcharr Proxy Response] ${req.method} ${targetDispatcharrUrl} -> Status ${proxyRes.statusCode}`);
+        if (proxyRes.statusCode >= 400) {
+          logMessage(`[Dispatcharr HTTP Warning] ${req.method} ${targetDispatcharrUrl} returned HTTP ${proxyRes.statusCode}`, true);
+        }
         res.writeHead(proxyRes.statusCode, {
           ...proxyRes.headers,
           "Access-Control-Allow-Origin": "*"
@@ -396,8 +420,14 @@ const server = http.createServer((req, res) => {
       });
 
       proxyReq.on("error", (err) => {
-        logMessage(`[Dispatcharr Proxy Error]: ${err.message}`, true);
-        sendJson(res, 502, { error: `Dispatcharr proxy error: ${err.message}`, dispatcharrUrl });
+        logMessage(`[Dispatcharr Proxy Network Error] ${req.method} ${targetDispatcharrUrl} failed: ${err.message}`, true);
+        sendJson(res, 502, { error: `Dispatcharr proxy error: ${err.message}`, targetUrl: targetDispatcharrUrl, dispatcharrUrl });
+      });
+
+      proxyReq.on("timeout", () => {
+        proxyReq.destroy();
+        logMessage(`[Dispatcharr Proxy Timeout Error] ${req.method} ${targetDispatcharrUrl} timed out after 10,000ms`, true);
+        sendJson(res, 504, { error: "Dispatcharr proxy request timed out", targetUrl: targetDispatcharrUrl, dispatcharrUrl });
       });
 
       if (req.method === "POST" || req.method === "PUT" || req.method === "DELETE") {
@@ -406,6 +436,7 @@ const server = http.createServer((req, res) => {
         proxyReq.end();
       }
     } catch (err) {
+      logMessage(`[Dispatcharr Proxy Exception] Failed to initiate request: ${err.stack || err.message}`, true);
       sendJson(res, 500, { error: err.message });
     }
     return;
