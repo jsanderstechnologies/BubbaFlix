@@ -329,6 +329,53 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Dispatcharr Proxy Endpoints for Live TV, Channels, EPG Guide, & Recordings
+  if (pathname.startsWith("/api/dispatcharr")) {
+    const settings = getSettings();
+    const dispatcharrUrl = (settings.dispatcharrUrl || "http://192.168.1.100:9191").replace(/\/$/, "");
+    const apiKey = settings.dispatcharrApiKey || "";
+
+    const subPath = pathname.replace(/^\/api\/dispatcharr/, "") || "/";
+    const targetDispatcharrUrl = `${dispatcharrUrl}${subPath}${parsedUrl.search || ""}`;
+
+    logMessage(`[Dispatcharr Proxy] Forwarding ${req.method} request to ${targetDispatcharrUrl}`);
+
+    try {
+      const targetParsed = url.parse(targetDispatcharrUrl);
+      const headers = { ...req.headers, host: targetParsed.host };
+      if (apiKey) {
+        headers["Authorization"] = `Bearer ${apiKey}`;
+        headers["X-API-Key"] = apiKey;
+      }
+
+      const proxyReq = http.request(targetDispatcharrUrl, {
+        method: req.method,
+        headers: headers,
+        timeout: 5000
+      }, (proxyRes) => {
+        res.writeHead(proxyRes.statusCode, {
+          ...proxyRes.headers,
+          "Access-Control-Allow-Origin": "*"
+        });
+        proxyRes.pipe(res);
+      });
+
+      proxyReq.on("error", (err) => {
+        logMessage(`[Dispatcharr Proxy Error]: ${err.message}`, true);
+        sendJson(res, 502, { error: `Dispatcharr proxy error: ${err.message}`, dispatcharrUrl });
+      });
+
+      if (req.method === "POST" || req.method === "PUT" || req.method === "DELETE") {
+        req.pipe(proxyReq);
+      } else {
+        proxyReq.end();
+      }
+    } catch (err) {
+      sendJson(res, 500, { error: err.message });
+    }
+    return;
+  }
+
   return sendJson(res, 404, { error: "Endpoint not found." });
 });
 

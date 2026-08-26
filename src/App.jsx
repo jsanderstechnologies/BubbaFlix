@@ -18,6 +18,10 @@ import { initDpadNavigation } from "./utils/dpadNavigation";
 import { fetchUserSimklHistory } from "./utils/simkl";
 import { fetchServerSettings } from "./utils/serverSettings";
 
+import LiveTvPage from "./pages/live-tv-page";
+import AboutPage from "./pages/about-page";
+import TvInstallPrompt from "./components/tv-install-prompt";
+
 const App = () => {
 	const dispatch = useDispatch();
 	const { url } = useSelector((state) => state.home);
@@ -61,9 +65,12 @@ const App = () => {
 	return (
 		<>
 			{showSplash && <SplashScreen onComplete={handleSplashComplete} />}
+			<TvInstallPrompt />
 			<BrowserRouter>
 				<Routes>
 					<Route path="/" element={<HomePage />} />
+					<Route path="/livetv" element={<LiveTvPage />} />
+					<Route path="/about" element={<AboutPage />} />
 					<Route path="/favorites" element={<FavoritesPage />} />
 					<Route path="/settings" element={<SettingsPage />} />
 					<Route path="/:mediaType/:id" element={<DetailsPage />} />

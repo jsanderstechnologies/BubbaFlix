@@ -1,6 +1,6 @@
 {
-  "versionCode": 12,
-  "versionName": "1.0.2",
+  "versionCode": 13,
+  "versionName": "1.0.3",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.2 with Automatic Volume Normalization & Dynamic Range Compression for sudden action volume spikes."
+  "releaseNotes": "BubbaFlix TV v1.0.3 with Dispatcharr Live TV & EPG integration, About Screen with OTA Check, and Android TV Browser Installation Prompt."
 }

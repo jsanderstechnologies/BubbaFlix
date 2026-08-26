@@ -46,6 +46,8 @@ const Header = () => {
 	const handleNavigation = (navigationType) => {
 		if (navigationType === "home") {
 			navigate("/");
+		} else if (navigationType === "livetv") {
+			navigate("/livetv");
 		} else if (navigationType === "favorites") {
 			navigate("/favorites");
 		} else if (navigationType === "movies") {
@@ -54,6 +56,8 @@ const Header = () => {
 			navigate("/explore/tv");
 		} else if (navigationType === "settings") {
 			navigate("/settings");
+		} else if (navigationType === "about") {
+			navigate("/about");
 		}
 		setMobileMenu(false);
 	};
@@ -71,7 +75,7 @@ const Header = () => {
 			className={`header ${mobileMenu ? "mobileView" : ""} ${show}`}
 		>
 			<ContentWrapper>
-				<div className="logo">
+				<div className="logo" onClick={() => navigate("/")} style={{ cursor: "pointer" }}>
 					<img src="/logo.svg" alt="BubbaFlix" />
 				</div>
 
@@ -84,6 +88,15 @@ const Header = () => {
 						onKeyDown={(e) => handleKeyActivate(e, () => handleNavigation("home"))}
 					>
 						Home
+					</li>
+					<li
+						className="menuItem"
+						tabIndex="0"
+						role="button"
+						onClick={() => handleNavigation("livetv")}
+						onKeyDown={(e) => handleKeyActivate(e, () => handleNavigation("livetv"))}
+					>
+						Live TV
 					</li>
 					<li
 						className="menuItem"
@@ -121,6 +134,15 @@ const Header = () => {
 						title="Settings"
 					>
 						<FiSettings style={{ marginRight: 6 }} /> Settings
+					</li>
+					<li
+						className="menuItem"
+						tabIndex="0"
+						role="button"
+						onClick={() => handleNavigation("about")}
+						onKeyDown={(e) => handleKeyActivate(e, () => handleNavigation("about"))}
+					>
+						About
 					</li>
 					<li
 						className="menuItem searchIcon"
