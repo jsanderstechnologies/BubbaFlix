@@ -284,8 +284,8 @@ const server = http.createServer((req, res) => {
       const match = normalizedTargetUrl.match(/\/proxy\/ts\/stream\/([^/?]+)/);
       if (match && match[1]) {
         const streamId = match[1];
-        const authParam = apiKey ? `?token=${encodeURIComponent(apiKey)}&api_key=${encodeURIComponent(apiKey)}` : "";
-        normalizedTargetUrl = `${dispatcharrBase}/proxy/ts/stream/${streamId}/${authParam}`;
+        const authParam = apiKey ? `?token=${encodeURIComponent(apiKey)}` : "";
+        normalizedTargetUrl = `${dispatcharrBase}/proxy/ts/stream/${streamId}${authParam}`;
       }
     } else {
       const urlParts = normalizedTargetUrl.split("?");
@@ -478,7 +478,7 @@ const server = http.createServer((req, res) => {
     } else if (cleanSubPath.startsWith("/proxy/ts/stream/")) {
       const parts = subPath.split("?");
       const cleanBase = parts[0].replace(/\/+$/, "");
-      subPath = `${cleanBase}/` + (parts[1] ? `?${parts[1]}` : "");
+      subPath = `${cleanBase}` + (parts[1] ? `?${parts[1]}` : "");
     }
 
     const targetDispatcharrUrl = `${dispatcharrUrl}${subPath.startsWith("/") ? "" : "/"}${subPath}`;

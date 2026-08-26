@@ -88,7 +88,7 @@ export const getDispatcharrStreamUrl = (channelOrId) => {
   }
 
   const authQuery = apiKey ? `?token=${encodeURIComponent(apiKey)}` : "";
-  const directProxyUrl = `${backend}/api/dispatcharr/proxy/ts/stream/${chIdentifier}/${authQuery}`;
+  const directProxyUrl = `${backend}/api/dispatcharr/proxy/ts/stream/${chIdentifier}${authQuery}`;
 
   // On Native Android TV app, ExoPlayer handles raw MPEG-TS natively
   if (typeof window !== "undefined" && window.AndroidPlayer) {
@@ -169,7 +169,7 @@ const normalizeChannel = (ch, serverUrl, apiKey) => {
 
   let streamUrl = ch.stream_url || ch.url || ch.play_url || ch.m3u8 || ch.hls_url || ch.stream || ch.link || ch.stream_path || "";
   if (!streamUrl && streamIdentifier) {
-    streamUrl = `${backend}/api/dispatcharr/proxy/ts/stream/${streamIdentifier}/${authQuery}`;
+    streamUrl = `${backend}/api/dispatcharr/proxy/ts/stream/${streamIdentifier}${authQuery}`;
   }
 
   const program = ch.current_program || ch.now_playing || ch.epg_now || ch.program || ch.title || ch.event || null;
