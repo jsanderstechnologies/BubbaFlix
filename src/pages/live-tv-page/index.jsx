@@ -12,6 +12,7 @@ import {
 } from "react-icons/fi";
 import {
   getDispatcharrConfig,
+  getDispatcharrConfigAsync,
   setDispatcharrConfig,
   sanitizeDispatcharrUrl,
   fetchDispatcharrChannels,
@@ -45,10 +46,13 @@ const LiveTvPage = () => {
   const [playerTitle, setPlayerTitle] = useState("");
 
   useEffect(() => {
-    const cfg = getDispatcharrConfig();
-    setServerUrl(cfg.url);
-    setApiKey(cfg.apiKey);
-    loadAllData();
+    const initConfig = async () => {
+      const cfg = await getDispatcharrConfigAsync();
+      setServerUrl(cfg.url);
+      setApiKey(cfg.apiKey);
+      loadAllData();
+    };
+    initConfig();
   }, []);
 
   const loadAllData = async () => {

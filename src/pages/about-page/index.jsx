@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   FiInfo,
   FiGithub,
@@ -7,10 +7,13 @@ import {
   FiCheckCircle,
   FiTv,
   FiCpu,
-  FiExternalLink
+  FiExternalLink,
+  FiServer,
+  FiAlertCircle
 } from "react-icons/fi";
 import ContentWrapper from "../../components/content-wrapper";
 import TopNav from "../../components/top-nav";
+import { getServerUrl } from "../../utils/serverSettings";
 import "./index.scss";
 
 const APP_VERSION = "v1.0.4";
@@ -20,21 +23,63 @@ const GITHUB_REPO_URL = "https://github.com/jsanderstechnologies/BubbaFlix";
 const AboutPage = () => {
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateResult, setUpdateResult] = useState(null);
+  const [isTvApp, setIsTvApp] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const ua = navigator.userAgent || "";
+      const isTv =
+        ua.includes("BubbaFlixTV") ||
+        ua.includes("AndroidTV") ||
+        ua.includes("SmartTV") ||
+        ua.includes("GoogleTV") ||
+        ua.includes("CrKey") ||
+        ua.includes("AFT") ||
+        window.Android !== undefined ||
+        window.location.protocol === "file:";
+      setIsTvApp(isTv);
+    }
+  }, []);
 
   const handleCheckForUpdates = async () => {
     setCheckingUpdate(true);
     setUpdateResult(null);
 
+    const timestamp = Date.now();
+    const githubUrl = `https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/version.json?t=${timestamp}`;
+    const backendProxyUrl = `${getServerUrl()}/api/version?t=${timestamp}`;
+
+    let remoteData = null;
+
+    // Strategy 1: Direct GitHub CDN fetch
     try {
-      const timestamp = Date.now();
-      const res = await fetch(`https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/version.json?t=${timestamp}`, {
+      const res = await fetch(githubUrl, {
         cache: "no-store",
         headers: { "Cache-Control": "no-cache" }
       });
+      if (res.ok) {
+        remoteData = await res.json();
+      }
+    } catch (err) {
+      // Continue to Strategy 2
+    }
 
-      if (!res.ok) throw new Error("Failed to reach update server");
+    // Strategy 2: Backend proxy fetch if direct CDN failed or blocked by TV WebView
+    if (!remoteData) {
+      try {
+        const res = await fetch(backendProxyUrl, {
+          cache: "no-store",
+          headers: { "Cache-Control": "no-cache" }
+        });
+        if (res.ok) {
+          remoteData = await res.json();
+        }
+      } catch (err) {
+        // Both failed
+      }
+    }
 
-      const remoteData = await res.json();
+    if (remoteData) {
       const remoteVersionCode = remoteData.versionCode || 14;
       const currentVersionCode = 14;
 
@@ -51,14 +96,14 @@ const AboutPage = () => {
           message: `You are running the latest version of BubbaFlix TV (${APP_VERSION})!`
         });
       }
-    } catch (err) {
+    } else {
       setUpdateResult({
         hasUpdate: false,
-        error: "Unable to check for updates. Please check your internet connection."
+        error: "Unable to check for updates right now. Ensure your device is connected to the internet."
       });
-    } finally {
-      setCheckingUpdate(false);
     }
+
+    setCheckingUpdate(false);
   };
 
   return (
@@ -71,9 +116,9 @@ const AboutPage = () => {
               <FiTv className="appLogoIcon" />
             </div>
             <h1 className="appName">BubbaFlix TV</h1>
-            <span className="appBadge">{APP_VERSION} (Android TV & Web Client)</span>
+            <span className="appBadge">{APP_VERSION} ({isTvApp ? "Android TV Client" : "Self-Hosted Web Instance"})</span>
             <p className="appTagline">
-              The ultimate high-performance media streaming client for Movies, TV Shows, and Live TV.
+              The ultimate high-performance media streaming client for Movies, TV Series, and Live TV.
             </p>
           </div>
 
@@ -95,18 +140,30 @@ const AboutPage = () => {
                 </div>
 
                 <div className="updateActionArea">
-                  <button
-                    className="checkUpdateBtn"
-                    onClick={handleCheckForUpdates}
-                    disabled={checkingUpdate}
-                    tabIndex="0"
-                  >
-                    {checkingUpdate ? (
-                      <><FiRefreshCw className="spinIcon" /> Checking GitHub...</>
-                    ) : (
-                      <><FiRefreshCw /> Check for Updates</>
-                    )}
-                  </button>
+                  {isTvApp ? (
+                    <button
+                      className="checkUpdateBtn"
+                      onClick={handleCheckForUpdates}
+                      disabled={checkingUpdate}
+                      tabIndex="0"
+                    >
+                      {checkingUpdate ? (
+                        <><FiRefreshCw className="spinIcon" /> Checking GitHub...</>
+                      ) : (
+                        <><FiRefreshCw /> Check for Updates</>
+                      )}
+                    </button>
+                  ) : (
+                    <div className="webInstanceNotice">
+                      <FiServer className="noticeIcon" />
+                      <div>
+                        <strong>Self-Hosted Docker Web Client</strong>
+                        <p>
+                          Web instances are managed via server containers. To update your web client, pull the latest image via Portainer, Docker Compose, or Unraid.
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   {updateResult && (
                     <div className={`updateStatusBox ${updateResult.hasUpdate ? "hasUpdate" : "latest"}`}>
@@ -125,7 +182,9 @@ const AboutPage = () => {
                           </a>
                         </div>
                       ) : updateResult.error ? (
-                        <div className="statusError">{updateResult.error}</div>
+                        <div className="statusError">
+                          <FiAlertCircle /> {updateResult.error}
+                        </div>
                       ) : (
                         <div className="statusLatest">
                           <FiCheckCircle className="checkIcon" /> {updateResult.message}
@@ -179,11 +238,11 @@ const AboutPage = () => {
                 </div>
                 <div className="specItem">
                   <span className="specLabel">Live TV & DVR</span>
-                  <span className="specValue">Dispatcharr API Integration</span>
+                  <span className="specValue">Dispatcharr API & Backend Sync</span>
                 </div>
                 <div className="specItem">
                   <span className="specLabel">OTA Updater</span>
-                  <span className="specValue">Cache-Bypassing GitHub CDN</span>
+                  <span className="specValue">Dual-Channel GitHub CDN + Server Proxy</span>
                 </div>
               </div>
             </div>

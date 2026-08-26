@@ -329,6 +329,26 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Version Check Proxy Endpoint
+  if (pathname === "/api/version") {
+    const https = require("https");
+    https.get("https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/version.json", (vRes) => {
+      let body = "";
+      vRes.on("data", (chunk) => { body += chunk; });
+      vRes.on("end", () => {
+        try {
+          const parsed = JSON.parse(body);
+          sendJson(res, 200, parsed);
+        } catch (e) {
+          sendJson(res, 200, { versionCode: 14, versionName: "1.0.4" });
+        }
+      });
+    }).on("error", () => {
+      sendJson(res, 200, { versionCode: 14, versionName: "1.0.4" });
+    });
+    return;
+  }
+
   // Dispatcharr Proxy Endpoints for Live TV, Channels, EPG Guide, & Recordings
   if (pathname.startsWith("/api/dispatcharr")) {
     const settings = getSettings();

@@ -1,4 +1,4 @@
-import { getServerUrl, updateServerSettings } from "./serverSettings";
+import { getServerUrl, updateServerSettings, fetchServerSettings } from "./serverSettings";
 
 /**
  * Ensures Dispatcharr URL has a valid protocol prefix (e.g. http:// or https://)
@@ -22,6 +22,24 @@ export const getDispatcharrConfig = () => {
     url: sanitizeDispatcharrUrl(rawUrl),
     apiKey: localStorage.getItem("dispatcharr_api_key") || ""
   };
+};
+
+export const getDispatcharrConfigAsync = async () => {
+  try {
+    const serverSettings = await fetchServerSettings();
+    if (serverSettings && serverSettings.dispatcharrUrl) {
+      const cleanUrl = sanitizeDispatcharrUrl(serverSettings.dispatcharrUrl);
+      const cleanKey = (serverSettings.dispatcharrApiKey || "").trim();
+      if (typeof window !== "undefined") {
+        localStorage.setItem("dispatcharr_url", cleanUrl);
+        localStorage.setItem("dispatcharr_api_key", cleanKey);
+      }
+      return { url: cleanUrl, apiKey: cleanKey };
+    }
+  } catch (err) {
+    // Fallback to localStorage
+  }
+  return getDispatcharrConfig();
 };
 
 export const setDispatcharrConfig = (url, apiKey = "") => {
@@ -95,7 +113,7 @@ const normalizeChannel = (ch, serverUrl, apiKey) => {
  * Robust Multi-Endpoint Dispatcharr Fetcher (Direct + Backend Proxy Fallback)
  */
 const fetchDispatcharrWithFallback = async (endpointPaths) => {
-  const { url, apiKey } = getDispatcharrConfig();
+  const { url, apiKey } = await getDispatcharrConfigAsync();
   const cleanServerUrl = sanitizeDispatcharrUrl(url);
   const proxyBase = getProxyBase();
   const headers = getHeaders(apiKey);
