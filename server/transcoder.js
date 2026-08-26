@@ -421,13 +421,13 @@ const server = http.createServer((req, res) => {
     let subPath = rawPath.replace(/^\/api\/dispatcharr/, "").replace(/^\/dispatcharr/, "") || "/";
     const cleanSubPath = subPath.split("?")[0].replace(/\/$/, "");
 
-    // Alias mapping for Dispatcharr Swagger OpenAPI endpoints
+    // Alias mapping for Dispatcharr Swagger OpenAPI endpoints (Django requires trailing slashes)
     if (cleanSubPath === "/epg" || cleanSubPath === "/api/epg" || cleanSubPath === "/output/epg" || cleanSubPath === "/output/xmltv") {
-      subPath = subPath.replace(cleanSubPath, "/api/epg/programs");
+      subPath = subPath.replace(cleanSubPath, "/api/epg/programs/");
     } else if (cleanSubPath === "/channels" || cleanSubPath === "/api/channels" || cleanSubPath === "/output/m3u") {
-      subPath = subPath.replace(cleanSubPath, "/api/channels/channels");
+      subPath = subPath.replace(cleanSubPath, "/api/channels/channels/");
     } else if (cleanSubPath === "/recordings" || cleanSubPath === "/api/recordings") {
-      subPath = subPath.replace(cleanSubPath, "/api/channels/recordings");
+      subPath = subPath.replace(cleanSubPath, "/api/channels/recordings/");
     }
 
     const targetDispatcharrUrl = `${dispatcharrUrl}${subPath.startsWith("/") ? "" : "/"}${subPath}`;
