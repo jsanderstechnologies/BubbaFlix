@@ -20,7 +20,8 @@ import {
   fetchDispatcharrEpg,
   fetchDispatcharrRecordings,
   scheduleDispatcharrRecording,
-  deleteDispatcharrRecording
+  deleteDispatcharrRecording,
+  getDispatcharrStreamUrl
 } from "../../utils/dispatcharr";
 import VideoPlayerModal from "../../components/video-player-modal";
 import RecordingModal from "../../components/recording-modal";
@@ -115,14 +116,14 @@ const LiveTvPage = () => {
   };
 
   const handlePlayChannel = (channel) => {
-    const streamUrl = channel.stream_url || channel.url || `${serverUrl}/proxy/ts/stream/${channel.id || channel.channel_id}`;
+    const streamUrl = getDispatcharrStreamUrl(channel);
     setPlayerStreamUrl(streamUrl);
     setPlayerTitle(channel.name || `Channel ${channel.number || ""}`);
     setShowPlayer(true);
   };
 
   const handlePlayRecording = (rec) => {
-    const streamUrl = rec.stream_url || rec.url || `${serverUrl}/recordings/${rec.id}/stream`;
+    const streamUrl = rec.stream_url || getDispatcharrStreamUrl(rec);
     setPlayerStreamUrl(streamUrl);
     setPlayerTitle(rec.title || "DVR Recording");
     setShowPlayer(true);
