@@ -74,6 +74,7 @@ const App = () => {
 					<Route path="/favorites" element={<FavoritesPage />} />
 					<Route path="/settings" element={<SettingsPage />} />
 					<Route path="/:mediaType/:id" element={<DetailsPage />} />
+					<Route path="/search" element={<SearchResult />} />
 					<Route path="/search/:query" element={<SearchResult />} />
 					<Route path="/explore/:mediaType" element={<ExplorePage />} />
 					<Route path="*" element={<Page404 />} />

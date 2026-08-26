@@ -145,14 +145,13 @@ const Header = () => {
 						About
 					</li>
 					<li
-						className="menuItem searchIcon"
+						className="menuItem"
 						tabIndex="0"
 						role="button"
-						aria-label="Toggle Search"
-						onClick={openSearch}
-						onKeyDown={(e) => handleKeyActivate(e, openSearch)}
+						onClick={() => handleNavigation("search")}
+						onKeyDown={(e) => handleKeyActivate(e, () => handleNavigation("search"))}
 					>
-						<HiOutlineSearch style={{ cursor: "pointer" }} />
+						<HiOutlineSearch style={{ marginRight: 6 }} /> Search
 					</li>
 				</ul>
 

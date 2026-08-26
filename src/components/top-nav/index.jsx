@@ -137,6 +137,22 @@ const TopNav = () => {
 						</button>
 
 						<button
+							className={`navBtn ${isActive("/search")}`}
+							tabIndex="0"
+							onClick={() => navigate("/search")}
+							onKeyDown={(e) => {
+								const code = e.keyCode;
+								if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+									e.preventDefault();
+									navigate("/search");
+								}
+							}}
+						>
+							<HiOutlineSearch className="navIcon" />
+							<span>Search</span>
+						</button>
+
+						<button
 							className={`navBtn ${isActive("/about")}`}
 							tabIndex="0"
 							onClick={() => navigate("/about")}
@@ -150,33 +166,6 @@ const TopNav = () => {
 						>
 							<FiInfo className="navIcon" />
 							<span>About</span>
-						</button>
-					</div>
-
-					{/* Embedded Search Input */}
-					<div className="navSearch">
-						<input
-							type="text"
-							className="searchInput"
-							placeholder="Search movies & TV series..."
-							value={query}
-							onChange={(e) => setQuery(e.target.value)}
-							onKeyDown={handleSearch}
-							tabIndex="0"
-						/>
-						<button
-							className="searchBtn"
-							tabIndex="0"
-							onClick={handleSearchClick}
-							onKeyDown={(e) => {
-								const code = e.keyCode;
-								if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
-									e.preventDefault();
-									handleSearchClick();
-								}
-							}}
-						>
-							<HiOutlineSearch />
 						</button>
 					</div>
 				</div>
