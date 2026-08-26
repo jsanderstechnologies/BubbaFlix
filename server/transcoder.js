@@ -166,6 +166,31 @@ const saveServerSettings = (settings) => {
   }
 };
 
+// Helper to extract initiator details from request headers
+const getRequestInitiator = (req) => {
+  const ip = req.headers["x-forwarded-for"] || req.headers["x-real-ip"] || req.socket?.remoteAddress || "127.0.0.1";
+  const clientIp = ip.split(",")[0].trim();
+  const userAgent = req.headers["user-agent"] || "Unknown Client";
+  const referer = req.headers["referer"] || req.headers["origin"] || "Direct Connection";
+
+  let initiatorComponent = "Unknown Component";
+  if (referer.includes("/livetv")) {
+    initiatorComponent = "Live TV & EPG UI";
+  } else if (referer.includes("/settings")) {
+    initiatorComponent = "Settings Page UI";
+  } else if (referer.includes("/movie") || referer.includes("/tv")) {
+    initiatorComponent = "Video Player";
+  } else if (userAgent.includes("ExoPlayer") || userAgent.includes("VLC") || userAgent.includes("Stagefright")) {
+    initiatorComponent = "Android TV Video Engine";
+  } else if (userAgent.includes("BubbaFlixTV")) {
+    initiatorComponent = "BubbaFlix Android TV App";
+  } else if (userAgent.includes("Mozilla") || userAgent.includes("Chrome") || userAgent.includes("Safari")) {
+    initiatorComponent = "BubbaFlix Web Dashboard";
+  }
+
+  return { ip: clientIp, userAgent, referer, initiatorComponent };
+};
+
 const sendJson = (res, statusCode, data) => {
   res.writeHead(statusCode, {
     "Content-Type": "application/json",
@@ -175,11 +200,13 @@ const sendJson = (res, statusCode, data) => {
 };
 
 const server = http.createServer((req, res) => {
+  const startTime = Date.now();
   const parsedUrl = url.parse(req.url, true);
   const rawPath = parsedUrl.pathname || "/";
   const cleanPath = rawPath.length > 1 && rawPath.endsWith("/") ? rawPath.slice(0, -1) : rawPath;
+  const initiator = getRequestInitiator(req);
 
-  logMessage(`[HTTP Request] ${req.method} ${rawPath}`);
+  logMessage(`[HTTP Request] ${req.method} ${rawPath} | Initiator: [${initiator.initiatorComponent}] | Client IP: ${initiator.ip} | Referer: ${initiator.referer} | User-Agent: ${initiator.userAgent}`);
 
   if (req.method === "OPTIONS") {
     res.writeHead(204, {
@@ -193,6 +220,7 @@ const server = http.createServer((req, res) => {
   // Local Network Server Discovery Endpoint
   if ((cleanPath === "/api/discover" || cleanPath === "/discover") && req.method === "GET") {
     const localIp = getLocalIpAddress();
+    logMessage(`[Server Discovery] Responded to [${initiator.initiatorComponent}] (${initiator.ip})`);
     return sendJson(res, 200, {
       status: "ok",
       service: "bubbaflix-server",
@@ -205,6 +233,7 @@ const server = http.createServer((req, res) => {
 
   // Health check endpoint
   if ((cleanPath === "/api/transcode/health" || cleanPath === "/transcode/health") && req.method === "GET") {
+    logMessage(`[Health Check] Responded to [${initiator.initiatorComponent}] (${initiator.ip})`);
     return sendJson(res, 200, {
       status: "ok",
       service: "BubbaFlix VLC & FFmpeg Transcoder Engine",
@@ -217,12 +246,12 @@ const server = http.createServer((req, res) => {
     const targetUrl = parsedUrl.query.url;
 
     if (!targetUrl) {
-      logMessage("[Transcoder Engine Error] Request missing required 'url' parameter.", true);
+      logMessage(`[Transcoder Engine Error] Request from [${initiator.initiatorComponent}] (${initiator.ip}) missing required 'url' parameter.`, true);
       return sendJson(res, 400, { error: "Missing required query parameter: url" });
     }
 
     if (targetUrl.startsWith("magnet:")) {
-      logMessage("[Transcoder Engine Warning] Magnet link received. Direct P2P magnet transcoding requires Debrid.", true);
+      logMessage(`[Transcoder Engine Warning] Magnet link received from [${initiator.initiatorComponent}] (${initiator.ip}). Direct P2P magnet transcoding requires Debrid.`, true);
       res.writeHead(400, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
       return res.end(JSON.stringify({
         error: "Magnet torrent links require a Debrid account. Please configure your AIOStreams Debrid URL in Settings or select a direct HTTP stream."
@@ -230,8 +259,9 @@ const server = http.createServer((req, res) => {
     }
 
     logMessage(`====================================================`);
-    logMessage(`[Backend Transcoder Engine] Incoming stream transcode request`);
+    logMessage(`[Backend Transcoder Engine] Stream Transcode Initiated by [${initiator.initiatorComponent}] (${initiator.ip})`);
     logMessage(`[Backend Transcoder Engine] Stream Target: ${targetUrl}`);
+    logMessage(`[Backend Transcoder Engine] Client Referer: ${initiator.referer}`);
 
     res.writeHead(200, {
       "Content-Type": "video/mp4",
@@ -270,21 +300,21 @@ const server = http.createServer((req, res) => {
     });
 
     ffmpegProcess.on("error", (err) => {
-      logMessage(`[Backend Transcoder Engine FFmpeg Error]: ${err.message}`, true);
+      logMessage(`[Backend Transcoder Engine FFmpeg Error] Initiated by [${initiator.initiatorComponent}] (${initiator.ip}): ${err.message}`, true);
       if (!res.headersSent) {
         sendJson(res, 500, { error: "Transcoder engine failed to spawn FFmpeg." });
       }
     });
 
     ffmpegProcess.on("close", (code) => {
-      logMessage(`[Backend Transcoder Engine] FFmpeg process terminated with exit code ${code}`);
+      logMessage(`[Backend Transcoder Engine] FFmpeg process for [${initiator.initiatorComponent}] (${initiator.ip}) terminated with exit code ${code}`);
       if (!res.writableEnded) {
         res.end();
       }
     });
 
     req.on("close", () => {
-      logMessage("[Backend Transcoder Engine] Client closed HTTP connection. Terminating FFmpeg process...");
+      logMessage(`[Backend Transcoder Engine] Client [${initiator.initiatorComponent}] (${initiator.ip}) closed HTTP connection. Terminating FFmpeg process...`);
       ffmpegProcess.kill("SIGKILL");
     });
     return;
@@ -293,6 +323,7 @@ const server = http.createServer((req, res) => {
   // GET Settings API
   if ((cleanPath === "/api/settings" || cleanPath === "/settings") && req.method === "GET") {
     const settings = loadServerSettings();
+    logMessage(`[Settings GET] Served settings to [${initiator.initiatorComponent}] (${initiator.ip})`);
     return sendJson(res, 200, settings);
   }
 
@@ -322,18 +353,18 @@ const server = http.createServer((req, res) => {
 
         const saved = saveServerSettings(updatedSettings);
         if (saved) {
-          logMessage(`[Settings Updated] Successfully saved keys to settings.json.`);
+          logMessage(`[Settings Update Success] Initiated by [${initiator.initiatorComponent}] (${initiator.ip}) from ${initiator.referer} | Keys Updated: ${Object.keys(payload).join(", ")}`);
           return sendJson(res, 200, {
             status: "success",
             message: "Global server settings updated successfully.",
             settings: updatedSettings,
           });
         } else {
-          logMessage("[Settings Error] Failed to write settings.json to disk.", true);
+          logMessage(`[Settings Error] Initiated by [${initiator.initiatorComponent}] (${initiator.ip}) - Failed to write settings.json to disk.`, true);
           return sendJson(res, 500, { error: "Failed to persist settings on server storage." });
         }
       } catch (e) {
-        logMessage(`[Settings Error] Invalid JSON payload: ${e.message}`, true);
+        logMessage(`[Settings Error] Initiated by [${initiator.initiatorComponent}] (${initiator.ip}) - Invalid JSON payload: ${e.message}`, true);
         return sendJson(res, 400, { error: "Invalid JSON payload." });
       }
     });
@@ -349,7 +380,7 @@ const server = http.createServer((req, res) => {
         const payload = body ? JSON.parse(body) : {};
         const level = payload.level || "ERROR";
         const message = payload.message || payload.error || "Client Report";
-        logMessage(`[Client Log ${level}] ${message}`, level === "ERROR");
+        logMessage(`[Client Report ${level}] Sent by [${initiator.initiatorComponent}] (${initiator.ip}) | Referer: ${initiator.referer} | Details: ${message}`, level === "ERROR");
         return sendJson(res, 200, { status: "logged" });
       } catch (e) {
         return sendJson(res, 400, { error: "Invalid log payload" });
@@ -367,6 +398,7 @@ const server = http.createServer((req, res) => {
       vRes.on("end", () => {
         try {
           const parsed = JSON.parse(body);
+          logMessage(`[Version Check] Served version ${parsed.versionName} (v${parsed.versionCode}) to [${initiator.initiatorComponent}] (${initiator.ip})`);
           sendJson(res, 200, parsed);
         } catch (e) {
           logMessage(`[Version Check Error] Failed to parse GitHub version.json: ${e.message}`, true);
@@ -382,7 +414,7 @@ const server = http.createServer((req, res) => {
 
   // Dispatcharr Proxy Endpoints for Live TV, Channels, EPG Guide, & Recordings
   if (cleanPath.startsWith("/api/dispatcharr") || cleanPath.startsWith("/dispatcharr")) {
-    const settings = getSettings();
+    const settings = loadServerSettings();
     const dispatcharrUrl = (settings.dispatcharrUrl || "http://192.168.1.100:9191").replace(/\/$/, "");
     const apiKey = settings.dispatcharrApiKey || "";
 
@@ -400,7 +432,7 @@ const server = http.createServer((req, res) => {
 
     const targetDispatcharrUrl = `${dispatcharrUrl}${subPath.startsWith("/") ? "" : "/"}${subPath}`;
 
-    logMessage(`[Dispatcharr Proxy] Forwarding ${req.method} request to ${targetDispatcharrUrl}`);
+    logMessage(`[Dispatcharr Proxy] Initiated by [${initiator.initiatorComponent}] (${initiator.ip}) -> ${req.method} ${targetDispatcharrUrl}`);
 
     try {
       const targetParsed = url.parse(targetDispatcharrUrl);
@@ -420,9 +452,10 @@ const server = http.createServer((req, res) => {
         rejectUnauthorized: false, // Allow local self-signed HTTPS certs
         timeout: 10000
       }, (proxyRes) => {
-        logMessage(`[Dispatcharr Proxy Response] ${req.method} ${targetDispatcharrUrl} -> Status ${proxyRes.statusCode}`);
+        const duration = Date.now() - startTime;
+        logMessage(`[Dispatcharr Proxy Response] ${req.method} ${targetDispatcharrUrl} -> Status ${proxyRes.statusCode} (${duration}ms) | Initiator: [${initiator.initiatorComponent}] (${initiator.ip})`);
         if (proxyRes.statusCode >= 400) {
-          logMessage(`[Dispatcharr HTTP Warning] ${req.method} ${targetDispatcharrUrl} returned HTTP ${proxyRes.statusCode}`, true);
+          logMessage(`[Dispatcharr HTTP Warning] ${req.method} ${targetDispatcharrUrl} returned HTTP ${proxyRes.statusCode} for [${initiator.initiatorComponent}] (${initiator.ip})`, true);
         }
         res.writeHead(proxyRes.statusCode, {
           ...proxyRes.headers,
@@ -432,13 +465,15 @@ const server = http.createServer((req, res) => {
       });
 
       proxyReq.on("error", (err) => {
-        logMessage(`[Dispatcharr Proxy Network Error] ${req.method} ${targetDispatcharrUrl} failed: ${err.message}`, true);
+        const duration = Date.now() - startTime;
+        logMessage(`[Dispatcharr Proxy Network Error] ${req.method} ${targetDispatcharrUrl} failed (${duration}ms) for [${initiator.initiatorComponent}] (${initiator.ip}): ${err.message}`, true);
         sendJson(res, 502, { error: `Dispatcharr proxy error: ${err.message}`, targetUrl: targetDispatcharrUrl, dispatcharrUrl });
       });
 
       proxyReq.on("timeout", () => {
         proxyReq.destroy();
-        logMessage(`[Dispatcharr Proxy Timeout Error] ${req.method} ${targetDispatcharrUrl} timed out after 10,000ms`, true);
+        const duration = Date.now() - startTime;
+        logMessage(`[Dispatcharr Proxy Timeout Error] ${req.method} ${targetDispatcharrUrl} timed out after ${duration}ms for [${initiator.initiatorComponent}] (${initiator.ip})`, true);
         sendJson(res, 504, { error: "Dispatcharr proxy request timed out", targetUrl: targetDispatcharrUrl, dispatcharrUrl });
       });
 
@@ -448,12 +483,14 @@ const server = http.createServer((req, res) => {
         proxyReq.end();
       }
     } catch (err) {
-      logMessage(`[Dispatcharr Proxy Exception] Failed to initiate request: ${err.stack || err.message}`, true);
+      logMessage(`[Dispatcharr Proxy Exception] Initiated by [${initiator.initiatorComponent}] (${initiator.ip}) - Failed: ${err.stack || err.message}`, true);
       sendJson(res, 500, { error: err.message });
     }
     return;
   }
 
+  const duration = Date.now() - startTime;
+  logMessage(`[HTTP 404 Warning] Unmatched Route ${req.method} ${rawPath} (${duration}ms) | Client IP: ${initiator.ip} | Initiator: [${initiator.initiatorComponent}] | Referer: ${initiator.referer}`, true);
   return sendJson(res, 404, { error: "Endpoint not found." });
 });
 
