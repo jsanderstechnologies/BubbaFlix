@@ -664,15 +664,6 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
           </div>
         </div>
       </div>
-            onClick={toggleFullscreen}
-            tabIndex="0"
-            title="Fullscreen"
-          >
-            {isFullscreen ? <FiMinimize /> : <FiMaximize />}
-            <span className="btnText">{isFullscreen ? "Exit Fullscreen" : "Fullscreen"}</span>
-          </button>
-        </div>
-      </div>
 
       {showResumeModal && resumeItem && (
         <div className="resumeModalOverlay">
