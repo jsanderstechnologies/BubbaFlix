@@ -386,8 +386,19 @@ const server = http.createServer((req, res) => {
     const dispatcharrUrl = (settings.dispatcharrUrl || "http://192.168.1.100:9191").replace(/\/$/, "");
     const apiKey = settings.dispatcharrApiKey || "";
 
-    const subPath = rawPath.replace(/^\/api\/dispatcharr/, "").replace(/^\/dispatcharr/, "") || "/";
-    const targetDispatcharrUrl = `${dispatcharrUrl}${subPath}${parsedUrl.search || ""}`;
+    let subPath = rawPath.replace(/^\/api\/dispatcharr/, "").replace(/^\/dispatcharr/, "") || "/";
+    const cleanSubPath = subPath.split("?")[0].replace(/\/$/, "");
+
+    // Alias mapping for Dispatcharr Swagger OpenAPI endpoints
+    if (cleanSubPath === "/epg" || cleanSubPath === "/api/epg") {
+      subPath = subPath.replace(cleanSubPath, "/api/epg/programs");
+    } else if (cleanSubPath === "/channels" || cleanSubPath === "/api/channels") {
+      subPath = subPath.replace(cleanSubPath, "/api/channels/channels");
+    } else if (cleanSubPath === "/recordings" || cleanSubPath === "/api/recordings") {
+      subPath = subPath.replace(cleanSubPath, "/api/channels/recordings");
+    }
+
+    const targetDispatcharrUrl = `${dispatcharrUrl}${subPath.startsWith("/") ? "" : "/"}${subPath}`;
 
     logMessage(`[Dispatcharr Proxy] Forwarding ${req.method} request to ${targetDispatcharrUrl}`);
 
