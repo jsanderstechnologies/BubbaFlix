@@ -1,18 +1,21 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FiTv,
   FiPlay,
   FiVideo,
-  FiTrash2,
   FiRefreshCw,
+  FiTrash2,
   FiClock,
   FiSettings,
   FiGrid,
   FiList,
-  FiCalendar,
   FiChevronLeft,
-  FiChevronRight
+  FiChevronRight,
+  FiSearch,
+  FiFilter,
+  FiInfo,
+  FiX
 } from "react-icons/fi";
 import {
   getDispatcharrConfigAsync,
@@ -25,12 +28,13 @@ import {
 } from "../../utils/dispatcharr";
 import VideoPlayerModal from "../../components/video-player-modal";
 import RecordingModal from "../../components/recording-modal";
+import ProgramDetailModal from "../../components/program-detail-modal";
 import ContentWrapper from "../../components/content-wrapper";
 import TopNav from "../../components/top-nav";
 import "./index.scss";
 
 // EPG Grid Config
-const HOUR_WIDTH = 360; // 360px per 1 hour (180px per 30 min)
+const HOUR_WIDTH = 320; // 320px per 1 hour (160px per 30 min)
 const TOTAL_HOURS = 8; // Display 8 hours of timeline
 
 const LiveTvPage = () => {
@@ -47,6 +51,10 @@ const LiveTvPage = () => {
   const [recordings, setRecordings] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Search & Filter State (Dispatcharr Style)
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedGroup, setSelectedGroup] = useState("all");
+
   // EPG Timeline State
   const [timeSlots, setTimeSlots] = useState([]);
   const [timelineStart, setTimelineStart] = useState(new Date());
@@ -61,6 +69,11 @@ const LiveTvPage = () => {
   const [showRecModal, setShowRecModal] = useState(false);
   const [recTargetProgram, setRecTargetProgram] = useState(null);
   const [recTargetChannel, setRecTargetChannel] = useState(null);
+
+  // Program Detail Modal State (Dispatcharr Style)
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [detailProgram, setDetailProgram] = useState(null);
+  const [detailChannel, setDetailChannel] = useState(null);
 
   useEffect(() => {
     const initConfig = async () => {
@@ -115,6 +128,30 @@ const LiveTvPage = () => {
     }
   };
 
+  // Compute unique channel groups for filter dropdown
+  const channelGroups = useMemo(() => {
+    const groups = new Set();
+    channels.forEach((ch) => {
+      const grp = ch.group || ch.channel_group || ch.category;
+      if (grp) groups.add(grp);
+    });
+    return Array.from(groups).sort();
+  }, [channels]);
+
+  // Filter channels by search query and group
+  const filteredChannels = useMemo(() => {
+    return channels.filter((ch) => {
+      const chName = (ch.name || "").toLowerCase();
+      const chNum = String(ch.number || "");
+      const chGrp = (ch.group || ch.channel_group || ch.category || "").toLowerCase();
+
+      const matchesSearch = !searchQuery || chName.includes(searchQuery.toLowerCase()) || chNum.includes(searchQuery);
+      const matchesGroup = selectedGroup === "all" || chGrp === selectedGroup.toLowerCase();
+
+      return matchesSearch && matchesGroup;
+    });
+  }, [channels, searchQuery, selectedGroup]);
+
   const handlePlayChannel = (channel) => {
     const streamUrl = getDispatcharrStreamUrl(channel);
     setPlayerStreamUrl(streamUrl);
@@ -133,6 +170,12 @@ const LiveTvPage = () => {
     setRecTargetProgram(program);
     setRecTargetChannel(channel);
     setShowRecModal(true);
+  };
+
+  const handleOpenDetailModal = (program, channel) => {
+    setDetailProgram(program);
+    setDetailChannel(channel);
+    setShowDetailModal(true);
   };
 
   const handleConfirmSchedule = async (payload) => {
@@ -221,32 +264,63 @@ const LiveTvPage = () => {
           </div>
         </div>
 
+        {/* EPG TV Guide & Channels Tab */}
         {activeTab === "guide" && (
           <div className="tabContent">
-            <div className="sectionActionHeader">
-              <div className="leftActions">
-                <h2>Electronic Program Guide</h2>
-                <div className="viewToggleBtns">
-                  <button
-                    className={`toggleBtn ${viewMode === "epgGrid" ? "active" : ""}`}
-                    onClick={() => setViewMode("epgGrid")}
-                    title="EPG Timeline Grid"
-                    tabIndex="0"
-                  >
-                    <FiGrid /> EPG Grid
+            {/* Dispatcharr Filter & Control Bar */}
+            <div className="dispatcharrFilterBar">
+              <div className="searchBox">
+                <FiSearch className="searchIcon" />
+                <input
+                  type="text"
+                  placeholder="Search channel name or number..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="searchInput"
+                />
+                {searchQuery && (
+                  <button className="clearSearchBtn" onClick={() => setSearchQuery("")}>
+                    <FiX />
                   </button>
-                  <button
-                    className={`toggleBtn ${viewMode === "cards" ? "active" : ""}`}
-                    onClick={() => setViewMode("cards")}
-                    title="Channel Cards"
-                    tabIndex="0"
-                  >
-                    <FiList /> Channel Cards
-                  </button>
-                </div>
+                )}
               </div>
 
-              <div className="rightActions">
+              {channelGroups.length > 0 && (
+                <div className="groupSelectBox">
+                  <FiFilter className="filterIcon" />
+                  <select
+                    value={selectedGroup}
+                    onChange={(e) => setSelectedGroup(e.target.value)}
+                    className="groupSelect"
+                  >
+                    <option value="all">All Groups ({channels.length} channels)</option>
+                    {channelGroups.map((grp, gIdx) => (
+                      <option key={gIdx} value={grp}>{grp}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="viewToggleBtns">
+                <button
+                  className={`toggleBtn ${viewMode === "epgGrid" ? "active" : ""}`}
+                  onClick={() => setViewMode("epgGrid")}
+                  title="EPG Timeline Grid"
+                  tabIndex="0"
+                >
+                  <FiGrid /> Grid View
+                </button>
+                <button
+                  className={`toggleBtn ${viewMode === "cards" ? "active" : ""}`}
+                  onClick={() => setViewMode("cards")}
+                  title="Channel Cards"
+                  tabIndex="0"
+                >
+                  <FiList /> Card View
+                </button>
+              </div>
+
+              <div className="timelineActions">
                 {viewMode === "epgGrid" && (
                   <>
                     <button className="navGridBtn" onClick={() => handleScrollGrid("left")} tabIndex="0" title="Scroll Left">
@@ -261,34 +335,43 @@ const LiveTvPage = () => {
                   </>
                 )}
                 <button className="refreshBtn" onClick={loadAllData} tabIndex="0">
-                  <FiRefreshCw /> Refresh Guide
+                  <FiRefreshCw /> Refresh
                 </button>
               </div>
             </div>
 
             {loading ? (
               <div className="loadingNotice">Loading Dispatcharr EPG Guide...</div>
-            ) : channels.length === 0 ? (
+            ) : filteredChannels.length === 0 ? (
               <div className="emptyState">
                 <FiTv style={{ fontSize: "48px", marginBottom: "16px", color: "var(--pink)" }} />
-                <h3>No Dispatcharr Channels Found</h3>
-                <p>Configure your Dispatcharr server address and API key in the main Settings page to stream Live TV and manage DVR recordings.</p>
-                <button className="setupBtn" onClick={() => navigate("/settings")} tabIndex="0">
-                  <FiSettings style={{ marginRight: "6px" }} /> Configure in Settings Page
-                </button>
+                <h3>No Matching Channels Found</h3>
+                <p>{searchQuery || selectedGroup !== "all" ? "Try clearing your search query or group filter." : "Configure your Dispatcharr server address and API key in Settings."}</p>
+                {searchQuery || selectedGroup !== "all" ? (
+                  <button className="setupBtn" onClick={() => { setSearchQuery(""); setSelectedGroup("all"); }} tabIndex="0">
+                    Reset Filters
+                  </button>
+                ) : (
+                  <button className="setupBtn" onClick={() => navigate("/settings")} tabIndex="0">
+                    <FiSettings style={{ marginRight: "6px" }} /> Configure in Settings Page
+                  </button>
+                )}
               </div>
             ) : viewMode === "epgGrid" ? (
+              /* --- FULL DISPATCHARR INTERACTIVE EPG GRID TIMELINE --- */
               <div className="epgGridContainer">
                 <div className="epgGridScrollWrapper" ref={gridScrollRef}>
                   <div className="epgGridTable" style={{ width: `${220 + TOTAL_HOURS * HOUR_WIDTH}px` }}>
+                    {/* Timeline Header Row */}
                     <div className="epgHeaderRow">
-                      <div className="channelColumnHeader">Channels ({channels.length})</div>
+                      <div className="channelColumnHeader">Channels ({filteredChannels.length})</div>
                       <div className="timelineSlotsHeader" style={{ width: `${TOTAL_HOURS * HOUR_WIDTH}px` }}>
                         {timeSlots.map((slot, sIdx) => (
                           <div key={sIdx} className="timeSlotCell" style={{ width: `${HOUR_WIDTH / 2}px` }}>
                             {slot.label}
                           </div>
                         ))}
+                        {/* Red NOW line */}
                         {nowOffsetPx >= 0 && (
                           <div className="nowLineIndicator" style={{ left: `${nowOffsetPx}px` }}>
                             <span className="nowBadge">NOW</span>
@@ -297,11 +380,13 @@ const LiveTvPage = () => {
                       </div>
                     </div>
 
+                    {/* Channel Rows */}
                     <div className="epgRowsContainer">
-                      {channels.map((ch, idx) => {
+                      {filteredChannels.map((ch, idx) => {
                         const channelProgs = getChannelPrograms(ch);
                         return (
                           <div key={ch.id || idx} className="epgChannelRow">
+                            {/* Sticky Left Channel Info */}
                             <div className="channelCell" onClick={() => handlePlayChannel(ch)} tabIndex="0" title={`Watch ${ch.name}`}>
                               <span className="chNum">{ch.number || idx + 1}</span>
                               {ch.logo ? (
@@ -317,6 +402,7 @@ const LiveTvPage = () => {
                               </button>
                             </div>
 
+                            {/* Timeline Programs Bar */}
                             <div className="programsTimelineCell" style={{ width: `${TOTAL_HOURS * HOUR_WIDTH}px` }}>
                               {nowOffsetPx >= 0 && <div className="nowLineRow" style={{ left: `${nowOffsetPx}px` }} />}
 
@@ -329,31 +415,54 @@ const LiveTvPage = () => {
                                   const durationHours = (progEnd.getTime() - progStart.getTime()) / (1000 * 60 * 60);
 
                                   const leftPx = Math.max(0, startDiffHours * HOUR_WIDTH);
-                                  const widthPx = Math.max(80, durationHours * HOUR_WIDTH);
+                                  const widthPx = Math.max(70, durationHours * HOUR_WIDTH);
                                   const isCurrentlyLive = now >= progStart && now <= progEnd;
+
+                                  // Dispatcharr Live Progress Percentage
+                                  const totalDurationMs = progEnd.getTime() - progStart.getTime();
+                                  const elapsedMs = now.getTime() - progStart.getTime();
+                                  const progressPct = isCurrentlyLive && totalDurationMs > 0
+                                    ? Math.min(100, Math.max(0, (elapsedMs / totalDurationMs) * 100))
+                                    : 0;
+
+                                  const seasonEpStr = prog.season && prog.episode
+                                    ? `S${String(prog.season).padStart(2, '0')} E${String(prog.episode).padStart(2, '0')}`
+                                    : null;
 
                                   return (
                                     <div
                                       key={prog.id || pIdx}
                                       className={`programBlock ${isCurrentlyLive ? "isLive" : ""}`}
                                       style={{ left: `${leftPx}px`, width: `${widthPx}px` }}
-                                      onClick={() => handlePlayChannel(ch)}
+                                      onClick={() => handleOpenDetailModal(prog, ch)}
                                       tabIndex="0"
                                     >
                                       <div className="progHeader">
                                         <span className="progTitle">{prog.title || prog.name || ch.now_playing || "Live Program"}</span>
+                                        {seasonEpStr && <span className="seasonEpBadge">{seasonEpStr}</span>}
                                         {isCurrentlyLive && <span className="liveBadge">LIVE</span>}
                                       </div>
                                       <div className="progTime">
                                         {progStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {progEnd.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                       </div>
                                       {prog.description && <div className="progDesc">{prog.description}</div>}
+
+                                      {/* Dispatcharr Animated Live Progress Bar */}
+                                      {isCurrentlyLive && (
+                                        <div className="liveProgressBarTrack">
+                                          <div className="liveProgressBarInner" style={{ width: `${progressPct}%` }} />
+                                        </div>
+                                      )}
+
                                       <div className="progActions">
                                         <button className="quickPlayBtn" onClick={(e) => { e.stopPropagation(); handlePlayChannel(ch); }} tabIndex="0">
-                                          <FiPlay /> Watch Live
+                                          <FiPlay /> Watch
                                         </button>
                                         <button className="quickRecBtn" onClick={(e) => { e.stopPropagation(); handleOpenRecModal(prog, ch); }} tabIndex="0" title="Record Program">
                                           <FiVideo /> Record
+                                        </button>
+                                        <button className="quickInfoBtn" onClick={(e) => { e.stopPropagation(); handleOpenDetailModal(prog, ch); }} tabIndex="0" title="Details">
+                                          <FiInfo />
                                         </button>
                                       </div>
                                     </div>
@@ -385,8 +494,9 @@ const LiveTvPage = () => {
                 </div>
               </div>
             ) : (
+              /* --- CHANNELS CARDS GRID VIEW --- */
               <div className="channelsGrid">
-                {channels.map((ch, idx) => (
+                {filteredChannels.map((ch, idx) => (
                   <div key={ch.id || idx} className="channelCard" tabIndex="0">
                     <div className="channelHeader">
                       <span className="channelNumber">{ch.number || idx + 1}</span>
@@ -424,6 +534,7 @@ const LiveTvPage = () => {
           </div>
         )}
 
+        {/* DVR Recordings Tab */}
         {activeTab === "recordings" && (
           <div className="tabContent">
             <div className="sectionActionHeader">
@@ -486,19 +597,33 @@ const LiveTvPage = () => {
         )}
       </ContentWrapper>
 
+      {/* Integrated Web Video Player / Android TV Player Modal */}
       <VideoPlayerModal
         show={showPlayer}
         setShow={setShowPlayer}
         videoUrl={playerStreamUrl}
+        rawUrl={playerStreamUrl}
         title={playerTitle}
+        mediaType="tv"
       />
 
+      {/* DVR Recording Setup Modal (One-Time, Recurring Slot, Series Rules) */}
       <RecordingModal
         show={showRecModal}
         onClose={() => setShowRecModal(false)}
         program={recTargetProgram}
         channel={recTargetChannel}
         onConfirm={handleConfirmSchedule}
+      />
+
+      {/* Program Detail Modal (Dispatcharr EPG Style) */}
+      <ProgramDetailModal
+        show={showDetailModal}
+        onClose={() => setShowDetailModal(false)}
+        program={detailProgram}
+        channel={detailChannel}
+        onPlay={handlePlayChannel}
+        onRecord={handleOpenRecModal}
       />
     </div>
   );

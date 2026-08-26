@@ -72,67 +72,134 @@
     }
   }
 
-  .sectionActionHeader {
+  /* --- DISPATCHARR FILTER & CONTROL BAR --- */
+  .dispatcharrFilterBar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
+    gap: 12px;
+    background: #141b18;
+    border: 1px solid rgba(141, 175, 170, 0.2);
+    border-radius: 12px;
+    padding: 10px 16px;
     margin-bottom: 20px;
 
-    .leftActions {
+    .searchBox {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 8px;
+      background: #1b2421;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 20px;
+      padding: 6px 14px;
+      flex: 1;
+      min-width: 200px;
+      max-width: 320px;
 
-      h2 {
-        font-size: 20px;
-        font-weight: 600;
-        margin: 0;
+      .searchIcon {
+        color: #3ba882;
+        font-size: 16px;
       }
 
-      .viewToggleBtns {
+      .searchInput {
+        background: transparent;
+        border: none;
+        color: white;
+        font-size: 13px;
+        outline: none;
+        width: 100%;
+
+        &::placeholder {
+          color: rgba(255, 255, 255, 0.4);
+        }
+      }
+
+      .clearSearchBtn {
+        background: transparent;
+        border: none;
+        color: #aaaaaa;
+        cursor: pointer;
+        padding: 0;
         display: flex;
-        background: rgba(0, 0, 0, 0.4);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 20px;
-        padding: 3px;
+        align-items: center;
 
-        .toggleBtn {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          background: transparent;
-          border: none;
-          color: #aaaaaa;
-          padding: 5px 14px;
-          border-radius: 16px;
-          font-size: 13px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s ease;
-
-          &:hover {
-            color: white;
-          }
-
-          &.active {
-            background: var(--gradient);
-            color: white;
-            box-shadow: 0 2px 8px rgba(218, 47, 104, 0.4);
-          }
+        &:hover {
+          color: white;
         }
       }
     }
 
-    .rightActions {
+    .groupSelectBox {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
+      background: #1b2421;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 20px;
+      padding: 6px 14px;
+
+      .filterIcon {
+        color: #3ba882;
+        font-size: 15px;
+      }
+
+      .groupSelect {
+        background: transparent;
+        border: none;
+        color: white;
+        font-size: 13px;
+        outline: none;
+        cursor: pointer;
+
+        option {
+          background: #181920;
+          color: white;
+        }
+      }
+    }
+
+    .viewToggleBtns {
+      display: flex;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 20px;
+      padding: 3px;
+
+      .toggleBtn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: transparent;
+        border: none;
+        color: #aaaaaa;
+        padding: 5px 14px;
+        border-radius: 16px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover {
+          color: white;
+        }
+
+        &.active {
+          background: #3ba882;
+          color: white;
+          box-shadow: 0 2px 8px rgba(59, 168, 130, 0.4);
+        }
+      }
+    }
+
+    .timelineActions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
 
       .navGridBtn {
-        background: rgba(255, 255, 255, 0.1);
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
         color: white;
         width: 32px;
         height: 32px;
@@ -143,7 +210,7 @@
         cursor: pointer;
 
         &:hover {
-          background: rgba(255, 255, 255, 0.25);
+          background: rgba(255, 255, 255, 0.2);
         }
       }
 
@@ -151,8 +218,8 @@
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        background: rgba(218, 47, 104, 0.2);
-        border: 1px solid var(--pink);
+        background: rgba(59, 168, 130, 0.2);
+        border: 1px solid #3ba882;
         color: white;
         padding: 6px 14px;
         border-radius: 20px;
@@ -161,7 +228,7 @@
         cursor: pointer;
 
         &:hover {
-          background: var(--pink);
+          background: #3ba882;
         }
       }
 
@@ -169,18 +236,15 @@
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        background: rgba(255, 255, 255, 0.1);
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
         color: white;
         padding: 6px 14px;
         border-radius: 20px;
         font-size: 13px;
         cursor: pointer;
-        outline: none;
-        transition: background 0.2s ease;
 
-        &:hover,
-        &:focus {
+        &:hover {
           background: rgba(255, 255, 255, 0.2);
         }
       }
@@ -429,7 +493,7 @@
               display: flex;
               align-items: center;
               justify-content: space-between;
-              gap: 8px;
+              gap: 6px;
 
               .progTitle {
                 font-size: 13px;
@@ -438,6 +502,17 @@
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
+              }
+
+              .seasonEpBadge {
+                background: rgba(129, 199, 132, 0.2);
+                border: 1px solid #81c784;
+                color: #81c784;
+                font-size: 9px;
+                font-weight: 700;
+                padding: 1px 4px;
+                border-radius: 4px;
+                flex-shrink: 0;
               }
 
               .liveBadge {
@@ -464,9 +539,26 @@
               text-overflow: ellipsis;
             }
 
+            /* Dispatcharr Animated Live Progress Bar */
+            .liveProgressBarTrack {
+              width: 100%;
+              height: 3px;
+              background: rgba(255, 255, 255, 0.15);
+              border-radius: 2px;
+              overflow: hidden;
+              margin: 2px 0;
+
+              .liveProgressBarInner {
+                height: 100%;
+                background: linear-gradient(90deg, #3ba882, #ff2a6d);
+                border-radius: 2px;
+                transition: width 0.3s linear;
+              }
+            }
+
             .progActions {
               display: flex;
-              gap: 6px;
+              gap: 4px;
               opacity: 0;
               transition: opacity 0.2s ease;
 
@@ -496,6 +588,23 @@
                 align-items: center;
                 gap: 4px;
                 cursor: pointer;
+              }
+
+              .quickInfoBtn {
+                background: rgba(255, 255, 255, 0.2);
+                color: white;
+                border: none;
+                padding: 2px 6px;
+                border-radius: 4px;
+                font-size: 10px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+
+                &:hover {
+                  background: rgba(255, 255, 255, 0.35);
+                }
               }
             }
           }
