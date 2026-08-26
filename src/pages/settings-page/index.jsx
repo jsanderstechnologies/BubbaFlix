@@ -30,6 +30,11 @@ const SettingsPage = () => {
   const [testingServer, setTestingServer] = useState(false);
   const [hasCustomServer, setHasCustomServer] = useState(false);
 
+  // Dispatcharr State
+  const [dispatcharrUrl, setDispatcharrUrl] = useState("");
+  const [dispatcharrApiKey, setDispatcharrApiKey] = useState("");
+  const [dispatcharrStatus, setDispatcharrStatus] = useState(null);
+
   // AIOStreams State
   const [aioUrl, setAioUrl] = useState("");
   const [aioStatus, setAioStatus] = useState(null);
@@ -108,11 +113,26 @@ const SettingsPage = () => {
     const savedExcludeLow = localStorage.getItem("stream_exclude_low_quality");
     if (savedRes) setSelectedResolutions(JSON.parse(savedRes));
     if (savedExcludeLow !== null) setExcludeLowQuality(JSON.parse(savedExcludeLow));
+
+    const dispatcharrCfg = getDispatcharrConfig();
+    setDispatcharrUrl(dispatcharrCfg.url || serverSettings?.dispatcharrUrl || "http://192.168.1.100:9191");
+    setDispatcharrApiKey(dispatcharrCfg.apiKey || serverSettings?.dispatcharrApiKey || "");
   };
 
   useEffect(() => {
     loadAllSettings();
   }, []);
+
+  const handleSaveDispatcharr = async (e) => {
+    e.preventDefault();
+    setDispatcharrConfig(dispatcharrUrl, dispatcharrApiKey);
+    await updateServerSettings({
+      dispatcharrUrl: dispatcharrUrl.trim(),
+      dispatcharrApiKey: dispatcharrApiKey.trim()
+    });
+    setDispatcharrStatus({ type: "success", text: "Dispatcharr Live TV configuration saved and synced to backend!" });
+    setTimeout(() => setDispatcharrStatus(null), 3500);
+  };
 
   const handleSelectTheme = (themeId) => {
     setActiveTheme(themeId);
@@ -505,6 +525,58 @@ const SettingsPage = () => {
                     Clear Credentials
                   </button>
                 )}
+              </div>
+            </form>
+          </div>
+
+          {/* Dispatcharr Live TV & EPG Server Card */}
+          <div className="settingsCard">
+            <div className="cardHeader">
+              <h2><FiTv style={{ marginRight: 8 }} /> Dispatcharr Live TV & EPG Server</h2>
+              <span className="badge custom"><FiServer style={{ marginRight: 4 }} /> Server Synced</span>
+            </div>
+            <p className="description">
+              Connect your local Dispatcharr server address for Live TV channels, EPG schedule guide, and DVR recording playback.
+            </p>
+            <form onSubmit={handleSaveDispatcharr}>
+              <div className="inputGroup">
+                <label>Dispatcharr Server URL (One Row):</label>
+                <div className="inputWithIcon">
+                  <input
+                    type="url"
+                    value={dispatcharrUrl}
+                    onChange={(e) => setDispatcharrUrl(e.target.value)}
+                    placeholder="http://192.168.1.100:9191"
+                    required
+                    tabIndex="0"
+                  />
+                </div>
+              </div>
+
+              <div className="inputGroup">
+                <label>API Key (Optional):</label>
+                <div className="inputWithIcon">
+                  <input
+                    type="text"
+                    value={dispatcharrApiKey}
+                    onChange={(e) => setDispatcharrApiKey(e.target.value)}
+                    placeholder="Optional Dispatcharr API Key"
+                    tabIndex="0"
+                  />
+                </div>
+              </div>
+
+              {dispatcharrStatus && (
+                <div className={`statusMsg ${dispatcharrStatus.type}`}>
+                  {dispatcharrStatus.type === "success" && <FiCheckCircle />}
+                  <span>{dispatcharrStatus.text}</span>
+                </div>
+              )}
+
+              <div className="buttonGroup">
+                <button type="submit" className="saveBtn">
+                  <FiSave /> Save Dispatcharr Config
+                </button>
               </div>
             </form>
           </div>
