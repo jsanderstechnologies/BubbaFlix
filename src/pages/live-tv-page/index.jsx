@@ -148,7 +148,7 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
     return Array.from(groups).sort();
   }, [channels]);
 
-  // Filter and sort channels (Highest channel number first)
+  // Filter and sort channels (Lowest channel number first)
   const filteredChannels = useMemo(() => {
     const list = channels.filter((ch) => {
       const chName = (ch.name || "").toLowerCase();
@@ -164,7 +164,7 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
     return list.sort((a, b) => {
       const numA = parseFloat(a.number || a.channel_number || a.id || 0);
       const numB = parseFloat(b.number || b.channel_number || b.id || 0);
-      return numB - numA;
+      return numA - numB;
     });
   }, [channels, searchQuery, selectedGroup]);
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { FiTv, FiDownload, FiX, FiCheck } from "react-icons/fi";
+import { getServerUrl } from "../../utils/serverSettings";
 import "./index.scss";
 
 const APK_URL = "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk";
@@ -7,9 +8,26 @@ const DOWNLOADER_CODE = "7862216";
 
 const TvInstallPrompt = () => {
   const [showPrompt, setShowPrompt] = useState(false);
+  const [versionName, setVersionName] = useState("1.0.5");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+
+    // Fetch latest version.json dynamically
+    const fetchVersion = async () => {
+      try {
+        const timestamp = Date.now();
+        const serverUrl = getServerUrl() || "https://bubbaflix.sanders-technologies.net";
+        const res = await fetch(`${serverUrl}/api/version?t=${timestamp}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.versionName) setVersionName(data.versionName);
+        }
+      } catch (err) {
+        console.warn("[TvInstallPrompt] Unable to fetch live version.json:", err.message);
+      }
+    };
+    fetchVersion();
 
     // Check if running inside native Android App (window.AndroidPlayer exists when in native APK)
     const isNativeApp = !!window.AndroidPlayer;
@@ -72,7 +90,7 @@ const TvInstallPrompt = () => {
             className="downloadApkBtn"
             tabIndex="0"
           >
-            <FiDownload /> Download BubbaFlixTV.apk (v1.0.3)
+            <FiDownload /> Download BubbaFlixTV.apk (v{versionName})
           </a>
           <button className="continueBrowserBtn" onClick={handleDismiss} tabIndex="0">
             Continue in Browser
