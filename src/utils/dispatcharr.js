@@ -74,9 +74,11 @@ const getProxyBase = () => {
 const getHeaders = (apiKey) => {
   const headers = { "Content-Type": "application/json" };
   if (apiKey) {
-    headers["Authorization"] = `Bearer ${apiKey}`;
-    headers["X-API-Key"] = apiKey;
-    headers["ApiKey"] = apiKey;
+    if (apiKey.startsWith("eyJ")) {
+      headers["Authorization"] = `Bearer ${apiKey}`;
+    } else {
+      headers["X-API-Key"] = apiKey;
+    }
   }
   return headers;
 };
@@ -178,7 +180,7 @@ const fetchDispatcharrWithFallback = async (endpointPaths) => {
   const proxyBase = getProxyBase();
   const headers = getHeaders(apiKey);
 
-  const authQuery = apiKey ? `?token=${encodeURIComponent(apiKey)}&api_key=${encodeURIComponent(apiKey)}` : "";
+  const authQuery = apiKey ? `?api_key=${encodeURIComponent(apiKey)}` : "";
 
   // Strategy A: Direct fetch to user's Dispatcharr IP/URL
   if (cleanServerUrl) {

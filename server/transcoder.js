@@ -442,8 +442,12 @@ const server = http.createServer((req, res) => {
       const headers = { ...req.headers, host: targetParsed.host };
       delete headers["content-length"];
       if (apiKey) {
-        headers["Authorization"] = `Bearer ${apiKey}`;
-        headers["X-API-Key"] = apiKey;
+        if (apiKey.startsWith("eyJ")) {
+          headers["Authorization"] = `Bearer ${apiKey}`;
+        } else {
+          headers["X-API-Key"] = apiKey;
+          delete headers["authorization"];
+        }
       }
 
       const proxyReq = httpModule.request(targetDispatcharrUrl, {
