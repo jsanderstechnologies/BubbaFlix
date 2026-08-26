@@ -456,70 +456,81 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
       )}
 
       {/* Player Top Navigation Overlay */}
-      <div className="playerTopBar">
-        <button
-          ref={backBtnRef}
-          className="backBtn"
-          onClick={() => setShow(false)}
-          tabIndex="0"
-        >
-          <FiArrowLeft /> Back
-        </button>
+      <div className="playerHeader">
+        <div className="headerLeftGroup">
+          <button
+            ref={backBtnRef}
+            className="backBtn"
+            onClick={() => setShow(false)}
+            tabIndex="0"
+          >
+            <FiArrowLeft className="backIcon" /> Back
+          </button>
 
-        {mediaLogoUrl ? (
-          <img src={mediaLogoUrl} alt="Media Title Logo" className="mediaTitleLogo" />
-        ) : (
-          <h2 className="mediaTitleText">{title}</h2>
-        )}
+          {mediaLogoUrl ? (
+            <img src={mediaLogoUrl} alt="Media Title Logo" className="mediaLogo" />
+          ) : (
+            <h2 className="playerTitle">{title}</h2>
+          )}
+        </div>
       </div>
 
       {/* Center Transport Controls */}
       <div className="centerTransportControls">
         <button
           ref={rewind30BtnRef}
-          className="transportBtn"
+          className="transportBtn seek"
           onClick={() => seekRelative(-30)}
           tabIndex="0"
+          title="Rewind 30 Seconds"
         >
-          <FiRotateCcw /> 30s
+          <FiRotateCcw />
+          <span className="btnBadge">30s</span>
         </button>
         <button
           ref={rewind10BtnRef}
-          className="transportBtn"
+          className="transportBtn seek"
           onClick={() => seekRelative(-10)}
           tabIndex="0"
+          title="Rewind 10 Seconds"
         >
-          <FiRotateCcw /> 10s
+          <FiRotateCcw />
+          <span className="btnBadge">10s</span>
         </button>
         <button
           ref={mainPlayBtnRef}
-          className="mainPlayBtn"
+          className="transportBtn mainPlay"
           onClick={togglePlayPause}
           tabIndex="0"
+          title={isPlaying ? "Pause" : "Play"}
         >
-          {isPlaying ? <FiPause /> : <FiPlay />}
+          {isPlaying ? <FiPause className="playIcon" /> : <FiPlay className="playIcon" />}
         </button>
         <button
           ref={ff10BtnRef}
-          className="transportBtn"
+          className="transportBtn seek"
           onClick={() => seekRelative(10)}
           tabIndex="0"
+          title="Forward 10 Seconds"
         >
-          <FiRotateCw /> 10s
+          <FiRotateCw />
+          <span className="btnBadge">10s</span>
         </button>
         <button
           ref={ff30BtnRef}
-          className="transportBtn"
+          className="transportBtn seek"
           onClick={() => seekRelative(30)}
           tabIndex="0"
+          title="Forward 30 Seconds"
         >
-          <FiRotateCw /> 30s
+          <FiRotateCw />
+          <span className="btnBadge">30s</span>
         </button>
       </div>
 
       {/* Player Bottom Control Bar */}
-      <div className="playerBottomBar">
-        <div className="scrubberContainer">
+      <div className="playerFooter">
+        <div className="scrubberRow">
           <span className="timeDisplay">{formatTime(currentTime)}</span>
           <div className="scrubberWrapper">
             <div className="trackBackground" />
@@ -545,13 +556,13 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
           <span className="timeDisplay">{formatTime(duration)}</span>
         </div>
 
-        <div className="bottomControlsRight">
+        <div className="footerControlsRight">
           {/* Audio Track Selector */}
           {audioTracks.length > 0 && (
-            <div className="audioMenuContainer">
+            <div className="subtitlesContainer">
               <button
                 ref={audioBtnRef}
-                className={`controlIconBtn ${showAudioMenu ? "active" : ""}`}
+                className={`footerControlBtn ${showAudioMenu ? "active" : ""}`}
                 onClick={() => {
                   resetControlsTimeout();
                   setShowAudioMenu(!showAudioMenu);
@@ -561,16 +572,17 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
                 title="Select Audio Track"
               >
                 <FiVolume2 />
+                <span className="btnText">Audio</span>
               </button>
 
               {showAudioMenu && (
-                <div className="subtitlesDropdown">
-                  <div className="dropdownHeader">Audio Tracks</div>
-                  <div className="dropdownList">
+                <div className="subtitlesMenu">
+                  <div className="menuHeader">Audio Tracks</div>
+                  <div className="menuList">
                     {audioTracks.map((trk, idx) => (
                       <button
                         key={idx}
-                        className={`dropdownItem ${activeAudioIdx === idx ? "selected" : ""}`}
+                        className={`subOption ${activeAudioIdx === idx ? "selected" : ""}`}
                         onClick={() => selectAudioTrack(idx)}
                         tabIndex="0"
                       >
@@ -588,7 +600,7 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
           <div className="subtitlesContainer">
             <button
               ref={subtitlesBtnRef}
-              className={`controlIconBtn ${activeSubId !== "off" ? "active" : ""}`}
+              className={`footerControlBtn ${activeSubId !== "off" ? "active" : ""}`}
               onClick={() => {
                 resetControlsTimeout();
                 setShowSubMenu(!showSubMenu);
@@ -598,17 +610,18 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
               title="Subtitles"
             >
               <FiMessageSquare />
+              <span className="btnText">Subtitles</span>
             </button>
 
             {showSubMenu && (
-              <div className="subtitlesDropdown">
-                <div className="dropdownHeader">Subtitles</div>
+              <div className="subtitlesMenu">
+                <div className="menuHeader">Subtitles</div>
                 {subLoading ? (
-                  <div className="dropdownLoading">Searching subtitles...</div>
+                  <div className="subLoadingNotice">Searching subtitles...</div>
                 ) : (
-                  <div className="dropdownList">
+                  <div className="menuList">
                     <button
-                      className={`dropdownItem ${activeSubId === "off" ? "selected" : ""}`}
+                      className={`subOption ${activeSubId === "off" ? "selected" : ""}`}
                       onClick={() => selectSubtitleTrack("off")}
                       tabIndex="0"
                     >
@@ -618,7 +631,7 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
                     {subtitles.map((sub) => (
                       <button
                         key={sub.id}
-                        className={`dropdownItem ${activeSubId === sub.id ? "selected" : ""}`}
+                        className={`subOption ${activeSubId === sub.id ? "selected" : ""}`}
                         onClick={() => selectSubtitleTrack(sub)}
                         tabIndex="0"
                       >
@@ -634,12 +647,13 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
 
           <button
             ref={fullscreenBtnRef}
-            className="controlIconBtn"
+            className="footerControlBtn"
             onClick={toggleFullscreen}
             tabIndex="0"
             title="Fullscreen"
           >
             {isFullscreen ? <FiMinimize /> : <FiMaximize />}
+            <span className="btnText">{isFullscreen ? "Exit Fullscreen" : "Fullscreen"}</span>
           </button>
         </div>
       </div>
