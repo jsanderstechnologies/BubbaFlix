@@ -608,41 +608,15 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private var loudnessEnhancer: LoudnessEnhancer? = null
-    private var dynamicsProcessing: DynamicsProcessing? = null
 
     private fun setupAudioNormalization(audioSessionId: Int) {
         if (audioSessionId == C.AUDIO_SESSION_ID_UNSET || audioSessionId == 0) return
 
         try {
-            // 1. LoudnessEnhancer Normalization: Boost quiet dialogue (+1.2 dB target gain)
+            // LoudnessEnhancer Normalization: Normalizes dynamic range and boosts dialogue (+1.5 dB / 1500 mB target gain)
             if (loudnessEnhancer == null) {
                 loudnessEnhancer = LoudnessEnhancer(audioSessionId).apply {
-                    setTargetGain(1200) // +1.2 dB
-                    enabled = true
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-
-        try {
-            // 2. DynamicsProcessing Limiter: Clamp sudden explosions & music spikes (Android 9+ / API 28+)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && dynamicsProcessing == null) {
-                val config = DynamicsProcessing.Config.Builder(
-                    DynamicsProcessing.VARIANT_FAVOR_FREQUENCY_RESOLUTION,
-                    1,     // channel count
-                    true,  // preEq
-                    2,     // preEq band count
-                    true,  // mbc
-                    2,     // mbc band count
-                    true,  // postEq
-                    2,     // postEq band count
-                    true   // limiter
-                ).build()
-
-                dynamicsProcessing = DynamicsProcessing(audioSessionId, config).apply {
-                    val limiter = DynamicsProcessing.Limiter(true, true, 0, 1.0f, 50.0f, 10.0f, -6.0f, 0.0f)
-                    setLimiterAllChannelsTo(limiter)
+                    setTargetGain(1500)
                     enabled = true
                 }
             }
@@ -665,13 +639,6 @@ class PlayerActivity : AppCompatActivity() {
         try {
             loudnessEnhancer?.release()
             loudnessEnhancer = null
-        } catch (e: Exception) {}
-
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                dynamicsProcessing?.release()
-                dynamicsProcessing = null
-            }
         } catch (e: Exception) {}
 
         exoPlayer?.release()
