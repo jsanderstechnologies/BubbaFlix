@@ -23,7 +23,6 @@ const SearchResult = () => {
   const [data, setData] = useState(null);
   const [pageNum, setPageNum] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [isReadOnly, setIsReadOnly] = useState(false);
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -107,16 +106,6 @@ const SearchResult = () => {
     navigate(`/search/${encodeURIComponent(tag)}`, { replace: true });
   };
 
-  const handleKeySubmit = (e) => {
-    const code = e.keyCode;
-    if (e.key === "Enter" || code === 13 || code === 23 || code === 66) {
-      if (isReadOnly) {
-        e.preventDefault();
-        setIsReadOnly(false);
-      }
-    }
-  };
-
   return (
     <div className="searchResultsPage">
       <TopNav />
@@ -128,7 +117,7 @@ const SearchResult = () => {
             <p>Find thousands of movies, TV series, actors, and genres</p>
           </div>
 
-          <div className="searchInputWrapper" tabIndex="0">
+          <div className="searchInputWrapper">
             <HiOutlineSearch className="searchIcon" />
             <input
               ref={inputRef}
@@ -136,11 +125,7 @@ const SearchResult = () => {
               className="mainSearchInput"
               placeholder="Type movie or TV show title..."
               value={searchQuery}
-              readOnly={isReadOnly}
               onChange={handleInputChange}
-              onClick={() => setIsReadOnly(false)}
-              onBlur={() => setIsReadOnly(true)}
-              onKeyDown={handleKeySubmit}
               tabIndex="0"
               autoFocus
             />
@@ -202,11 +187,11 @@ const SearchResult = () => {
         </div>
 
         {/* Search Results Display Area */}
-        {loading && <Spinner initial={true} />}
-
-        {!loading && searchQuery.trim().length > 0 && (
+        {searchQuery.trim().length > 0 && (
           <>
-            {data?.results?.length > 0 ? (
+            {loading && !data ? (
+              <Spinner initial={true} />
+            ) : data?.results?.length > 0 ? (
               <>
                 <div className="resultsSummary">
                   Found {data?.total_results} {data?.total_results === 1 ? "result" : "results"} for &quot;{searchQuery}&quot;
@@ -232,10 +217,12 @@ const SearchResult = () => {
                 </InfiniteScroll>
               </>
             ) : (
-              <div className="noResultsBox">
-                <h3>No titles found for &quot;{searchQuery}&quot;</h3>
-                <p>Try searching for a different keyword, title, or genre.</p>
-              </div>
+              !loading && (
+                <div className="noResultsBox">
+                  <h3>No titles found for &quot;{searchQuery}&quot;</h3>
+                  <p>Try searching for a different keyword, title, or genre.</p>
+                </div>
+              )
             )}
           </>
         )}

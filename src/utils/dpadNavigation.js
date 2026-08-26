@@ -115,6 +115,17 @@ if (typeof document !== "undefined") {
 // Focus the top-leftmost poster element when changing pages
 export const focusTopLeftPoster = () => {
   setTimeout(() => {
+    const activeEl = document.activeElement;
+    if (
+      activeEl &&
+      (activeEl.tagName === "INPUT" ||
+        activeEl.tagName === "TEXTAREA" ||
+        activeEl.classList.contains("mainSearchInput") ||
+        activeEl.closest(".searchInputWrapper"))
+    ) {
+      return; // DO NOT STEAL FOCUS WHILE USER IS TYPING IN SEARCH OR INPUT FIELDS
+    }
+
     const posters = Array.from(
       document.querySelectorAll(".movieCard, .posterBlock, .carouselItem, .seasonCard, .episodeItem")
     ).filter((el) => {

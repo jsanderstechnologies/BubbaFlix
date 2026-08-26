@@ -11,14 +11,9 @@ export const getActiveTmdbToken = () => {
   return import.meta.env.VITE_APP_TMDB_KEY || DEFAULT_TMDB_TOKEN;
 };
 
-// Helper function to filter out non-English content and Anime/Animation
-const isEnglishAndNotAnime = (item) => {
+// Helper function to filter out Anime/Animation while preserving English & Western films (e.g. The Fifth Element, Leon The Professional)
+const isNotAnime = (item) => {
   if (!item || typeof item !== "object") return false;
-
-  // Must be English original language if language metadata exists
-  if (item.original_language && item.original_language !== "en") {
-    return false;
-  }
 
   // Must not be Animation (TMDB genre ID 16)
   if (Array.isArray(item.genre_ids) && item.genre_ids.includes(16)) {
@@ -53,7 +48,6 @@ export const fetchDataFromAPI = async (url, params) => {
 
     // Pre-filter on TMDB discover endpoints
     if (url.startsWith("/discover")) {
-      customParams.with_original_language = "en";
       customParams.without_genres = "16";
     }
 
@@ -63,7 +57,7 @@ export const fetchDataFromAPI = async (url, params) => {
     });
 
     if (data && Array.isArray(data.results)) {
-      data.results = data.results.filter(isEnglishAndNotAnime);
+      data.results = data.results.filter(isNotAnime);
     }
 
     return data;
