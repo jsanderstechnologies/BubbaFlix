@@ -70,6 +70,7 @@ const App = () => {
 				<Routes>
 					<Route path="/" element={<HomePage />} />
 					<Route path="/livetv" element={<LiveTvPage />} />
+					<Route path="/recordings" element={<LiveTvPage defaultTab="recordings" />} />
 					<Route path="/about" element={<AboutPage />} />
 					<Route path="/favorites" element={<FavoritesPage />} />
 					<Route path="/settings" element={<SettingsPage />} />

@@ -29,6 +29,7 @@ import {
 import VideoPlayerModal from "../../components/video-player-modal";
 import RecordingModal from "../../components/recording-modal";
 import ProgramDetailModal from "../../components/program-detail-modal";
+import RecordingDetailsModal from "../../components/recording-details-modal";
 import ContentWrapper from "../../components/content-wrapper";
 import TopNav from "../../components/top-nav";
 import "./index.scss";
@@ -37,9 +38,9 @@ import "./index.scss";
 const HOUR_WIDTH = 320; // 320px per 1 hour (160px per 30 min)
 const TOTAL_HOURS = 8; // Display 8 hours of timeline
 
-const LiveTvPage = () => {
+const LiveTvPage = ({ defaultTab = "guide" }) => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("guide"); // "guide" (EPG Grid), "channels" (Card Grid), "recordings"
+  const [activeTab, setActiveTab] = useState(defaultTab); // "guide" (EPG Grid), "channels" (Card Grid), "recordings"
   const [viewMode, setViewMode] = useState("epgGrid"); // "epgGrid", "cards"
 
   // Config State
@@ -147,9 +148,9 @@ const LiveTvPage = () => {
     return Array.from(groups).sort();
   }, [channels]);
 
-  // Filter channels by search query and group
+  // Filter and sort channels (Highest channel number first)
   const filteredChannels = useMemo(() => {
-    return channels.filter((ch) => {
+    const list = channels.filter((ch) => {
       const chName = (ch.name || "").toLowerCase();
       const chNum = String(ch.number || "");
       const chGrp = (ch.group || ch.channel_group || ch.category || "").toLowerCase();
@@ -158,6 +159,12 @@ const LiveTvPage = () => {
       const matchesGroup = selectedGroup === "all" || chGrp === selectedGroup.toLowerCase();
 
       return matchesSearch && matchesGroup;
+    });
+
+    return list.sort((a, b) => {
+      const numA = parseFloat(a.number || a.channel_number || a.id || 0);
+      const numB = parseFloat(b.number || b.channel_number || b.id || 0);
+      return numB - numA;
     });
   }, [channels, searchQuery, selectedGroup]);
 
@@ -610,15 +617,6 @@ const LiveTvPage = () => {
                     </button>
                   </div>
                 ))}
-
-      {/* Recording Details Modal (Dispatcharr Style Full Metadata) */}
-      <RecordingDetailsModal
-        show={showRecDetailsModal}
-        onClose={() => setShowRecDetailsModal(false)}
-        recording={selectedRecording}
-        onPlay={handlePlayRecording}
-        onDelete={handleDeleteRecording}
-      />
               </div>
             )}
           </div>
@@ -652,6 +650,15 @@ const LiveTvPage = () => {
         channel={detailChannel}
         onPlay={handlePlayChannel}
         onRecord={handleOpenRecModal}
+      />
+
+      {/* Recording Details Modal (Dispatcharr Style Full Metadata) */}
+      <RecordingDetailsModal
+        show={showRecDetailsModal}
+        onClose={() => setShowRecDetailsModal(false)}
+        recording={selectedRecording}
+        onPlay={handlePlayRecording}
+        onDelete={handleDeleteRecording}
       />
     </div>
   );

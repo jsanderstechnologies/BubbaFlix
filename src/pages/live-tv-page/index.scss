@@ -79,8 +79,8 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    background: #141b18;
-    border: 1px solid rgba(141, 175, 170, 0.2);
+    background: var(--black2);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 12px;
     padding: 10px 16px;
     margin-bottom: 20px;
@@ -89,7 +89,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      background: #1b2421;
+      background: var(--black3);
       border: 1px solid rgba(255, 255, 255, 0.12);
       border-radius: 20px;
       padding: 6px 14px;
@@ -98,7 +98,7 @@
       max-width: 320px;
 
       .searchIcon {
-        color: #3ba882;
+        color: var(--pink);
         font-size: 16px;
       }
 
@@ -134,13 +134,13 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      background: #1b2421;
+      background: var(--black3);
       border: 1px solid rgba(255, 255, 255, 0.12);
       border-radius: 20px;
       padding: 6px 14px;
 
       .filterIcon {
-        color: #3ba882;
+        color: var(--pink);
         font-size: 15px;
       }
 
@@ -185,9 +185,9 @@
         }
 
         &.active {
-          background: #3ba882;
+          background: var(--gradient);
           color: white;
-          box-shadow: 0 2px 8px rgba(59, 168, 130, 0.4);
+          box-shadow: 0 2px 8px rgba(218, 47, 104, 0.4);
         }
       }
     }
@@ -218,8 +218,8 @@
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        background: rgba(59, 168, 130, 0.2);
-        border: 1px solid #3ba882;
+        background: rgba(218, 47, 104, 0.2);
+        border: 1px solid var(--pink);
         color: white;
         padding: 6px 14px;
         border-radius: 20px;
@@ -228,7 +228,7 @@
         cursor: pointer;
 
         &:hover {
-          background: #3ba882;
+          background: var(--pink);
         }
       }
 
