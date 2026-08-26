@@ -273,9 +273,26 @@ const server = http.createServer((req, res) => {
       "Access-Control-Allow-Origin": "*",
     });
 
+    // Normalize stream target URL: enforce trailing slash for Dispatcharr proxy stream endpoints
+    let normalizedTargetUrl = targetUrl;
+    const urlParts = normalizedTargetUrl.split("?");
+    const basePath = urlParts[0];
+    const queryStr = urlParts[1] ? `?${urlParts[1]}` : "";
+
+    if (basePath.includes("/proxy/ts/stream/") && !basePath.endsWith("/")) {
+      normalizedTargetUrl = `${basePath}/${queryStr}`;
+    }
+
+    const settings = loadServerSettings();
+    const apiKey = settings.dispatcharrApiKey || parsedUrl.query.api_key || parsedUrl.query.token || "";
+
+    const headersStr = apiKey
+      ? `X-API-Key: ${apiKey}\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)\r\n`
+      : `User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)\r\n`;
+
     const ffmpegArgs = [
-      "-user_agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      "-i", targetUrl,
+      "-headers", headersStr,
+      "-i", normalizedTargetUrl,
       "-c:v", "libx264",
       "-preset", "ultrafast",
       "-tune", "zerolatency",
@@ -437,6 +454,9 @@ const server = http.createServer((req, res) => {
       subPath = subPath.replace(cleanSubPath, "/api/channels/channels/");
     } else if (cleanSubPath === "/recordings" || cleanSubPath === "/api/recordings") {
       subPath = subPath.replace(cleanSubPath, "/api/channels/recordings/");
+    } else if (cleanSubPath.startsWith("/proxy/ts/stream/") && !cleanSubPath.endsWith("/")) {
+      const parts = subPath.split("?");
+      subPath = `${parts[0]}/` + (parts[1] ? `?${parts[1]}` : "");
     }
 
     const targetDispatcharrUrl = `${dispatcharrUrl}${subPath.startsWith("/") ? "" : "/"}${subPath}`;

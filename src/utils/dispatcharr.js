@@ -73,31 +73,21 @@ export const getProxyBase = () => {
 
 /**
  * Universal Stream URL generator for Live TV channels & recordings.
- * Proxies through Node backend for HTTPS / mixed-content and CORS compatibility.
+ * Proxies through Node backend for HTTPS / mixed-content and CORS compatibility,
+ * feeding directly into the built-in video players without transcode overhead.
  */
 export const getDispatcharrStreamUrl = (channelOrId) => {
   const backend = getServerUrl() || (typeof window !== "undefined" ? window.location.origin : "");
   const { apiKey } = getDispatcharrConfig();
 
   let chId = channelOrId;
-  let rawUrl = "";
   if (typeof channelOrId === "object" && channelOrId !== null) {
     chId = channelOrId.id || channelOrId.channel_id || channelOrId.uuid || channelOrId.number || "";
-    rawUrl = channelOrId.stream_url || channelOrId.url || channelOrId.play_url || "";
   }
 
   const authQuery = apiKey ? `?api_key=${encodeURIComponent(apiKey)}` : "";
 
-  // If raw stream URL exists and is an external HTTP/HTTPS stream
-  if (rawUrl && (rawUrl.startsWith("http://") || rawUrl.startsWith("https://"))) {
-    // If running in web browser over HTTPS, proxy through Node /api/transcode for CORS & mixed-content compatibility
-    if (typeof window !== "undefined" && window.location.protocol === "https:" && rawUrl.startsWith("http://")) {
-      return `${backend}/api/transcode?url=${encodeURIComponent(rawUrl)}`;
-    }
-    return rawUrl;
-  }
-
-  // Fallback to Dispatcharr TS stream endpoint via backend proxy
+  // Always route Dispatcharr Live TV streams through backend proxy with trailing slash
   return `${backend}/api/dispatcharr/proxy/ts/stream/${chId}/${authQuery}`;
 };
 
