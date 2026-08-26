@@ -211,7 +211,7 @@ const fetchDispatcharrWithFallback = async (endpointPaths) => {
         if (res.ok) {
           const json = await res.json();
           const normalized = normalizeArray(json);
-          if (normalized.length > 0) return { data: normalized, serverUrl: cleanServerUrl, apiKey };
+          return { data: normalized, serverUrl: cleanServerUrl, apiKey };
         }
       } catch (err) {
         // Direct fetch failed, continue to proxy fallback
@@ -227,7 +227,7 @@ const fetchDispatcharrWithFallback = async (endpointPaths) => {
       if (res.ok) {
         const json = await res.json();
         const normalized = normalizeArray(json);
-        if (normalized.length > 0) return { data: normalized, serverUrl: cleanServerUrl, apiKey };
+        return { data: normalized, serverUrl: cleanServerUrl, apiKey };
       }
     } catch (err) {
       // Proxy fetch error
@@ -262,7 +262,7 @@ export const fetchDispatcharrChannels = async () => {
 };
 
 /**
- * Fetch EPG Guide data for channels.
+ * Fetch EPG Guide data from Dispatcharr.
  */
 export const fetchDispatcharrEpg = async () => {
   const { data } = await fetchDispatcharrWithFallback([
@@ -287,35 +287,53 @@ export const fetchDispatcharrEpg = async () => {
  * Fetch recorded shows, movies, and recurring recording rules from Dispatcharr.
  */
 export const fetchDispatcharrRecordings = async () => {
-  const { data, serverUrl, apiKey } = await fetchDispatcharrWithFallback([
+  const { data: recData, serverUrl, apiKey } = await fetchDispatcharrWithFallback([
     "/api/channels/recordings/",
-    "/api/channels/recurring-rules/",
     "/api/recordings/",
     "/output/m3u/recordings",
     "/recordings/"
   ]);
 
-  return data.map((rec) => {
+  const { data: ruleData } = await fetchDispatcharrWithFallback([
+    "/api/channels/recurring-rules/"
+  ]);
+
+  const combined = [...(recData || []), ...(ruleData || [])];
+
+  const seenIds = new Set();
+  const uniqueItems = combined.filter((item) => {
+    if (!item || !item.id) return true;
+    if (seenIds.has(item.id)) return false;
+    seenIds.add(item.id);
+    return true;
+  });
+
+  return uniqueItems.map((rec) => {
     const authQuery = apiKey ? `?api_key=${encodeURIComponent(apiKey)}` : "";
     let streamUrl = rec.stream_url || rec.url || rec.play_url || rec.file_path || "";
     if (!streamUrl && serverUrl && rec.id) {
       streamUrl = `${serverUrl}/api/channels/recordings/${rec.id}/file/${authQuery}`;
     }
 
-    // Extract exact program name, channel title, and date
-    const programName = rec.name || rec.title || rec.program_name || rec.custom_properties?.title || rec.custom_properties?.program_name || rec.channel_name || "DVR Recording";
-    const channelName = rec.channel_name || rec.channel?.name || (rec.channel ? `Channel ${rec.channel}` : "");
+    const customProps = rec.custom_properties || {};
+    const program = customProps.program || {};
+
+    const programName = rec.title || program.title || customProps.title || rec.name || rec.program_name || rec.channel_name || "DVR Recording";
+    const subTitle = program.sub_title || rec.sub_title || rec.episode_title || "";
+    const channelName = rec.channel_display || rec.channel_name || rec.channel?.name || customProps.channel_name || (rec.channel ? `Channel ${rec.channel}` : "TV Channel");
+
     const startTimeStr = rec.start_time
       ? (rec.start_time.includes("T")
           ? new Date(rec.start_time).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
           : rec.start_time)
       : "Scheduled Recording";
 
-    const isRecurring = !!rec.days_of_week || rec.rule_type === "recurring_slot" || rec.rule_type === "series";
+    const isRecurring = !!rec.days_of_week || rec.rule_type === "recurring_slot" || rec.rule_type === "series" || customProps?.rule?.type === "recurring";
 
     return {
       ...rec,
       title: programName,
+      sub_title: subTitle,
       channel_display: channelName,
       formatted_date: startTimeStr,
       is_recurring: isRecurring,
