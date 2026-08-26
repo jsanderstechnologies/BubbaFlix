@@ -416,7 +416,15 @@ const server = http.createServer((req, res) => {
   if (cleanPath.startsWith("/api/dispatcharr") || cleanPath.startsWith("/dispatcharr")) {
     const settings = loadServerSettings();
     const dispatcharrUrl = (settings.dispatcharrUrl || "http://192.168.1.100:9191").replace(/\/$/, "");
-    const apiKey = settings.dispatcharrApiKey || "";
+    let apiKey = settings.dispatcharrApiKey || "";
+
+    // Fallback: extract API Key from request headers or query parameters if not stored in server settings
+    if (!apiKey) {
+      apiKey = req.headers["x-api-key"] || parsedUrl.query.api_key || parsedUrl.query.token || "";
+      if (req.headers["authorization"] && req.headers["authorization"].startsWith("Bearer ")) {
+        apiKey = req.headers["authorization"].replace(/^Bearer\s+/i, "");
+      }
+    }
 
     let subPath = rawPath.replace(/^\/api\/dispatcharr/, "").replace(/^\/dispatcharr/, "") || "/";
     const cleanSubPath = subPath.split("?")[0].replace(/\/$/, "");
