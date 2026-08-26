@@ -191,7 +191,7 @@ const server = http.createServer((req, res) => {
   }
 
   // Local Network Server Discovery Endpoint
-  if (cleanPath === "/api/discover" && req.method === "GET") {
+  if ((cleanPath === "/api/discover" || cleanPath === "/discover") && req.method === "GET") {
     const localIp = getLocalIpAddress();
     return sendJson(res, 200, {
       status: "ok",
@@ -204,7 +204,7 @@ const server = http.createServer((req, res) => {
   }
 
   // Health check endpoint
-  if (cleanPath === "/api/transcode/health" && req.method === "GET") {
+  if ((cleanPath === "/api/transcode/health" || cleanPath === "/transcode/health") && req.method === "GET") {
     return sendJson(res, 200, {
       status: "ok",
       service: "BubbaFlix VLC & FFmpeg Transcoder Engine",
@@ -213,7 +213,7 @@ const server = http.createServer((req, res) => {
   }
 
   // Real-Time Transcoding & Remuxing Proxy Stream Endpoint
-  if (cleanPath === "/api/transcode" && req.method === "GET") {
+  if ((cleanPath === "/api/transcode" || cleanPath === "/transcode") && req.method === "GET") {
     const targetUrl = parsedUrl.query.url;
 
     if (!targetUrl) {
@@ -291,13 +291,13 @@ const server = http.createServer((req, res) => {
   }
 
   // GET Settings API
-  if (cleanPath === "/api/settings" && req.method === "GET") {
+  if ((cleanPath === "/api/settings" || cleanPath === "/settings") && req.method === "GET") {
     const settings = loadServerSettings();
     return sendJson(res, 200, settings);
   }
 
   // POST Settings API
-  if (cleanPath === "/api/settings" && req.method === "POST") {
+  if ((cleanPath === "/api/settings" || cleanPath === "/settings") && req.method === "POST") {
     let body = "";
     req.on("data", (chunk) => {
       body += chunk.toString();
@@ -341,7 +341,7 @@ const server = http.createServer((req, res) => {
   }
 
   // Client Error Logging Endpoint
-  if (cleanPath === "/api/log" && req.method === "POST") {
+  if ((cleanPath === "/api/log" || cleanPath === "/log") && req.method === "POST") {
     let body = "";
     req.on("data", (chunk) => { body += chunk.toString(); });
     req.on("end", () => {
@@ -359,7 +359,7 @@ const server = http.createServer((req, res) => {
   }
 
   // Version Check Proxy Endpoint
-  if (cleanPath === "/api/version" && req.method === "GET") {
+  if ((cleanPath === "/api/version" || cleanPath === "/version") && req.method === "GET") {
     const https = require("https");
     https.get("https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/version.json", (vRes) => {
       let body = "";
@@ -381,12 +381,12 @@ const server = http.createServer((req, res) => {
   }
 
   // Dispatcharr Proxy Endpoints for Live TV, Channels, EPG Guide, & Recordings
-  if (cleanPath.startsWith("/api/dispatcharr")) {
+  if (cleanPath.startsWith("/api/dispatcharr") || cleanPath.startsWith("/dispatcharr")) {
     const settings = getSettings();
     const dispatcharrUrl = (settings.dispatcharrUrl || "http://192.168.1.100:9191").replace(/\/$/, "");
     const apiKey = settings.dispatcharrApiKey || "";
 
-    const subPath = pathname.replace(/^\/api\/dispatcharr/, "") || "/";
+    const subPath = rawPath.replace(/^\/api\/dispatcharr/, "").replace(/^\/dispatcharr/, "") || "/";
     const targetDispatcharrUrl = `${dispatcharrUrl}${subPath}${parsedUrl.search || ""}`;
 
     logMessage(`[Dispatcharr Proxy] Forwarding ${req.method} request to ${targetDispatcharrUrl}`);
