@@ -1,6 +1,6 @@
 {
-  "versionCode": 13,
-  "versionName": "1.0.3",
+  "versionCode": 14,
+  "versionName": "1.0.4",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.3 with Dispatcharr Live TV & EPG integration, About Screen with OTA Check, and Android TV Browser Installation Prompt."
+  "releaseNotes": "BubbaFlix TV v1.0.4 with About screen crash fix, Dispatcharr Live TV multi-endpoint engine, and top navigation bar enhancements."
 }

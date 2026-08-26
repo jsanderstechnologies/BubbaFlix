@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   FiInfo,
   FiGithub,
@@ -13,7 +13,7 @@ import ContentWrapper from "../../components/content-wrapper";
 import TopNav from "../../components/top-nav";
 import "./index.scss";
 
-const APP_VERSION = "v1.0.3";
+const APP_VERSION = "v1.0.4";
 const DOWNLOADER_CODE = "7862216";
 const GITHUB_REPO_URL = "https://github.com/jsanderstechnologies/BubbaFlix";
 
@@ -35,13 +35,13 @@ const AboutPage = () => {
       if (!res.ok) throw new Error("Failed to reach update server");
 
       const remoteData = await res.json();
-      const remoteVersionCode = remoteData.versionCode || 13;
-      const currentVersionCode = 13;
+      const remoteVersionCode = remoteData.versionCode || 14;
+      const currentVersionCode = 14;
 
       if (remoteVersionCode > currentVersionCode) {
         setUpdateResult({
           hasUpdate: true,
-          remoteVersion: remoteData.versionName || "1.0.4",
+          remoteVersion: remoteData.versionName || "1.0.5",
           apkUrl: remoteData.apkUrl || `${GITHUB_REPO_URL}/raw/master/BubbaFlixTV.apk`,
           releaseNotes: remoteData.releaseNotes || "New features and performance improvements available."
         });
@@ -102,9 +102,9 @@ const AboutPage = () => {
                     tabIndex="0"
                   >
                     {checkingUpdate ? (
-                      <React.Fragment><FiRefreshCw className="spinIcon" /> Checking GitHub...</React.Fragment>
+                      <><FiRefreshCw className="spinIcon" /> Checking GitHub...</>
                     ) : (
-                      <React.Fragment><FiRefreshCw /> Check for Updates</React.Fragment>
+                      <><FiRefreshCw /> Check for Updates</>
                     )}
                   </button>
 
