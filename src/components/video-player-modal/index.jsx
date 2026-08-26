@@ -426,228 +426,244 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
   return createPortal(
     <div
       ref={containerRef}
-      className={`videoPlayerModal visible ${controlsVisible ? "controlsVisible" : "controlsHidden"}`}
+      className={`videoPlayerModal ${show ? "visible" : ""}`}
       onMouseMove={resetControlsTimeout}
       onClick={resetControlsTimeout}
     >
-      <video
-        ref={videoRef}
-        className="videoElement"
-        onTimeUpdate={handleTimeUpdate}
-        onEnded={() => setIsPlaying(false)}
-        playsInline
-      >
-        {activeVttUrl && (
-          <track
-            kind="subtitles"
-            src={activeVttUrl}
-            srcLang="en"
-            label="Selected Subtitles"
-            default
-          />
-        )}
-      </video>
-
-      {hasError && (
-        <div className="errorNotice">
-          <FiAlertTriangle className="errorIcon" />
-          <p>{errorMessage}</p>
-        </div>
-      )}
-
-      {/* Player Top Navigation Overlay */}
-      <div className="playerHeader">
-        <div className="headerLeftGroup">
-          <button
-            ref={backBtnRef}
-            className="backBtn"
-            onClick={() => setShow(false)}
-            tabIndex="0"
+      <div className="playerWindow">
+        <div className="videoWrapper">
+          <video
+            ref={videoRef}
+            className="videoElement"
+            onTimeUpdate={handleTimeUpdate}
+            onEnded={() => setIsPlaying(false)}
+            playsInline
           >
-            <FiArrowLeft className="backIcon" /> Back
-          </button>
-
-          {mediaLogoUrl ? (
-            <img src={mediaLogoUrl} alt="Media Title Logo" className="mediaLogo" />
-          ) : (
-            <h2 className="playerTitle">{title}</h2>
-          )}
+            {activeVttUrl && (
+              <track
+                kind="subtitles"
+                src={activeVttUrl}
+                srcLang="en"
+                label="Selected Subtitles"
+                default
+              />
+            )}
+          </video>
         </div>
-      </div>
 
-      {/* Center Transport Controls */}
-      <div className="centerTransportControls">
-        <button
-          ref={rewind30BtnRef}
-          className="transportBtn seek"
-          onClick={() => seekRelative(-30)}
-          tabIndex="0"
-          title="Rewind 30 Seconds"
-        >
-          <FiRotateCcw />
-          <span className="btnBadge">30s</span>
-        </button>
-        <button
-          ref={rewind10BtnRef}
-          className="transportBtn seek"
-          onClick={() => seekRelative(-10)}
-          tabIndex="0"
-          title="Rewind 10 Seconds"
-        >
-          <FiRotateCcw />
-          <span className="btnBadge">10s</span>
-        </button>
-        <button
-          ref={mainPlayBtnRef}
-          className="transportBtn mainPlay"
-          onClick={togglePlayPause}
-          tabIndex="0"
-          title={isPlaying ? "Pause" : "Play"}
-        >
-          {isPlaying ? <FiPause className="playIcon" /> : <FiPlay className="playIcon" />}
-        </button>
-        <button
-          ref={ff10BtnRef}
-          className="transportBtn seek"
-          onClick={() => seekRelative(10)}
-          tabIndex="0"
-          title="Forward 10 Seconds"
-        >
-          <FiRotateCw />
-          <span className="btnBadge">10s</span>
-        </button>
-        <button
-          ref={ff30BtnRef}
-          className="transportBtn seek"
-          onClick={() => seekRelative(30)}
-          tabIndex="0"
-          title="Forward 30 Seconds"
-        >
-          <FiRotateCw />
-          <span className="btnBadge">30s</span>
-        </button>
-      </div>
-
-      {/* Player Bottom Control Bar */}
-      <div className="playerFooter">
-        <div className="scrubberRow">
-          <span className="timeDisplay">{formatTime(currentTime)}</span>
-          <div className="scrubberWrapper">
-            <div className="trackBackground" />
-            <div
-              className="bufferedTrack"
-              style={{ width: `${bufferedPercent}%` }}
-            />
-            <div
-              className="playedTrack"
-              style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
-            />
-            <input
-              ref={scrubberRef}
-              type="range"
-              min={0}
-              max={duration || 100}
-              value={currentTime}
-              onChange={handleScrubberChange}
-              className="timelineScrubber"
-              tabIndex="0"
-            />
+        {hasError && (
+          <div className="errorNotice">
+            <FiAlertTriangle className="errorIcon" />
+            <p>{errorMessage}</p>
           </div>
-          <span className="timeDisplay">{formatTime(duration)}</span>
-        </div>
+        )}
 
-        <div className="footerControlsRight">
-          {/* Audio Track Selector */}
-          {audioTracks.length > 0 && (
-            <div className="subtitlesContainer">
+        {/* Player Controls Overlay */}
+        <div className={`controlsOverlay ${controlsVisible ? "visible" : ""}`}>
+          {/* Upper Left Header Bar: Back Button & TMDB Title Logo */}
+          <div className="playerHeader">
+            <div className="headerLeftGroup">
               <button
-                ref={audioBtnRef}
-                className={`footerControlBtn ${showAudioMenu ? "active" : ""}`}
-                onClick={() => {
-                  resetControlsTimeout();
-                  setShowAudioMenu(!showAudioMenu);
-                  setShowSubMenu(false);
-                }}
+                ref={backBtnRef}
+                className="backBtn"
+                onClick={() => setShow(false)}
                 tabIndex="0"
-                title="Select Audio Track"
               >
-                <FiVolume2 />
-                <span className="btnText">Audio</span>
+                <FiArrowLeft className="backIcon" /> Back
               </button>
 
-              {showAudioMenu && (
-                <div className="subtitlesMenu">
-                  <div className="menuHeader">Audio Tracks</div>
-                  <div className="menuList">
-                    {audioTracks.map((trk, idx) => (
-                      <button
-                        key={idx}
-                        className={`subOption ${activeAudioIdx === idx ? "selected" : ""}`}
-                        onClick={() => selectAudioTrack(idx)}
-                        tabIndex="0"
-                      >
-                        {activeAudioIdx === idx && <FiCheck className="checkIcon" />}
-                        <span>{trk.name || trk.lang || `Track ${idx + 1}`}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+              {mediaLogoUrl ? (
+                <img src={mediaLogoUrl} alt="Media Title Logo" className="mediaLogo" />
+              ) : (
+                <h2 className="playerTitle">{title}</h2>
               )}
             </div>
-          )}
+          </div>
 
-          {/* Subtitles Track Selector */}
-          <div className="subtitlesContainer">
+          {/* Center Transport Controls */}
+          <div className="centerTransportControls">
             <button
-              ref={subtitlesBtnRef}
-              className={`footerControlBtn ${activeSubId !== "off" ? "active" : ""}`}
-              onClick={() => {
-                resetControlsTimeout();
-                setShowSubMenu(!showSubMenu);
-                setShowAudioMenu(false);
-              }}
+              ref={rewind30BtnRef}
+              className="transportBtn seek"
+              onClick={() => seekRelative(-30)}
               tabIndex="0"
-              title="Subtitles"
+              title="Rewind 30 Seconds"
             >
-              <FiMessageSquare />
-              <span className="btnText">Subtitles</span>
+              <FiRotateCcw />
+              <span className="btnBadge">30s</span>
             </button>
+            <button
+              ref={rewind10BtnRef}
+              className="transportBtn seek"
+              onClick={() => seekRelative(-10)}
+              tabIndex="0"
+              title="Rewind 10 Seconds"
+            >
+              <FiRotateCcw />
+              <span className="btnBadge">10s</span>
+            </button>
+            <button
+              ref={mainPlayBtnRef}
+              className="transportBtn mainPlay"
+              onClick={togglePlayPause}
+              tabIndex="0"
+              title={isPlaying ? "Pause" : "Play"}
+            >
+              {isPlaying ? <FiPause className="playIcon" /> : <FiPlay className="playIcon" />}
+            </button>
+            <button
+              ref={ff10BtnRef}
+              className="transportBtn seek"
+              onClick={() => seekRelative(10)}
+              tabIndex="0"
+              title="Forward 10 Seconds"
+            >
+              <FiRotateCw />
+              <span className="btnBadge">10s</span>
+            </button>
+            <button
+              ref={ff30BtnRef}
+              className="transportBtn seek"
+              onClick={() => seekRelative(30)}
+              tabIndex="0"
+              title="Forward 30 Seconds"
+            >
+              <FiRotateCw />
+              <span className="btnBadge">30s</span>
+            </button>
+          </div>
 
-            {showSubMenu && (
-              <div className="subtitlesMenu">
-                <div className="menuHeader">Subtitles</div>
-                {subLoading ? (
-                  <div className="subLoadingNotice">Searching subtitles...</div>
-                ) : (
-                  <div className="menuList">
-                    <button
-                      className={`subOption ${activeSubId === "off" ? "selected" : ""}`}
-                      onClick={() => selectSubtitleTrack("off")}
-                      tabIndex="0"
-                    >
-                      {activeSubId === "off" && <FiCheck className="checkIcon" />}
-                      <span>Off</span>
-                    </button>
-                    {subtitles.map((sub) => (
-                      <button
-                        key={sub.id}
-                        className={`subOption ${activeSubId === sub.id ? "selected" : ""}`}
-                        onClick={() => selectSubtitleTrack(sub)}
-                        tabIndex="0"
-                      >
-                        {activeSubId === sub.id && <FiCheck className="checkIcon" />}
-                        <span>{sub.language} - {sub.fileName}</span>
-                      </button>
-                    ))}
+          {/* Player Bottom Control Bar */}
+          <div className="playerFooter">
+            <div className="scrubberRow">
+              <span className="timeDisplay">{formatTime(currentTime)}</span>
+              <div className="scrubberWrapper">
+                <div className="trackBackground" />
+                <div
+                  className="bufferedTrack"
+                  style={{ width: `${bufferedPercent}%` }}
+                />
+                <div
+                  className="playedTrack"
+                  style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+                />
+                <input
+                  ref={scrubberRef}
+                  type="range"
+                  min={0}
+                  max={duration || 100}
+                  value={currentTime}
+                  onChange={handleScrubberChange}
+                  className="timelineScrubber"
+                  tabIndex="0"
+                />
+              </div>
+              <span className="timeDisplay">{formatTime(duration)}</span>
+            </div>
+
+            <div className="footerControlsRight">
+              {/* Audio Track Selector */}
+              {audioTracks.length > 0 && (
+                <div className="subtitlesContainer">
+                  <button
+                    ref={audioBtnRef}
+                    className={`footerControlBtn ${showAudioMenu ? "active" : ""}`}
+                    onClick={() => {
+                      resetControlsTimeout();
+                      setShowAudioMenu(!showAudioMenu);
+                      setShowSubMenu(false);
+                    }}
+                    tabIndex="0"
+                    title="Select Audio Track"
+                  >
+                    <FiVolume2 />
+                    <span className="btnText">Audio</span>
+                  </button>
+
+                  {showAudioMenu && (
+                    <div className="subtitlesMenu">
+                      <div className="menuHeader">Audio Tracks</div>
+                      <div className="menuList">
+                        {audioTracks.map((trk, idx) => (
+                          <button
+                            key={idx}
+                            className={`subOption ${activeAudioIdx === idx ? "selected" : ""}`}
+                            onClick={() => selectAudioTrack(idx)}
+                            tabIndex="0"
+                          >
+                            {activeAudioIdx === idx && <FiCheck className="checkIcon" />}
+                            <span>{trk.name || trk.lang || `Track ${idx + 1}`}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Subtitles Track Selector */}
+              <div className="subtitlesContainer">
+                <button
+                  ref={subtitlesBtnRef}
+                  className={`footerControlBtn ${activeSubId !== "off" ? "active" : ""}`}
+                  onClick={() => {
+                    resetControlsTimeout();
+                    setShowSubMenu(!showSubMenu);
+                    setShowAudioMenu(false);
+                  }}
+                  tabIndex="0"
+                  title="Subtitles"
+                >
+                  <FiMessageSquare />
+                  <span className="btnText">Subtitles</span>
+                </button>
+
+                {showSubMenu && (
+                  <div className="subtitlesMenu">
+                    <div className="menuHeader">Subtitles</div>
+                    {subLoading ? (
+                      <div className="subLoadingNotice">Searching subtitles...</div>
+                    ) : (
+                      <div className="menuList">
+                        <button
+                          className={`subOption ${activeSubId === "off" ? "selected" : ""}`}
+                          onClick={() => selectSubtitleTrack("off")}
+                          tabIndex="0"
+                        >
+                          {activeSubId === "off" && <FiCheck className="checkIcon" />}
+                          <span>Off</span>
+                        </button>
+                        {subtitles.map((sub) => (
+                          <button
+                            key={sub.id}
+                            className={`subOption ${activeSubId === sub.id ? "selected" : ""}`}
+                            onClick={() => selectSubtitleTrack(sub)}
+                            tabIndex="0"
+                          >
+                            {activeSubId === sub.id && <FiCheck className="checkIcon" />}
+                            <span>{sub.language} - {sub.fileName}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            )}
-          </div>
 
-          <button
-            ref={fullscreenBtnRef}
-            className="footerControlBtn"
+              <button
+                ref={fullscreenBtnRef}
+                className="footerControlBtn"
+                onClick={toggleFullscreen}
+                tabIndex="0"
+                title="Fullscreen"
+              >
+                {isFullscreen ? <FiMinimize /> : <FiMaximize />}
+                <span className="btnText">{isFullscreen ? "Exit Fullscreen" : "Fullscreen"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
             onClick={toggleFullscreen}
             tabIndex="0"
             title="Fullscreen"
