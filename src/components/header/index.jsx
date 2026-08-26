@@ -76,7 +76,7 @@ const Header = () => {
 		>
 			<ContentWrapper>
 				<div className="logo" onClick={() => navigate("/")} style={{ cursor: "pointer" }}>
-					<img src="/logo.svg" alt="BubbaFlix" />
+					<img src="/tv_banner.png" alt="BubbaFlix TV" />
 				</div>
 
 				<ul className="menuItems">

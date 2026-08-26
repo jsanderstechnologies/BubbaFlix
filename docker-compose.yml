@@ -9,9 +9,9 @@ services:
       - "${PORT:-5150}:80"
       - "5151:5151/udp"
     labels:
-      - "io.casaos.icon=https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/public/icon.svg"
-      - "net.unraid.docker.icon=https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/public/icon.svg"
-      - "com.docker.desktop.extension.icon=https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/public/icon.svg"
+      - "io.casaos.icon=https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/public/tv_banner.png"
+      - "net.unraid.docker.icon=https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/public/tv_banner.png"
+      - "com.docker.desktop.extension.icon=https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/public/tv_banner.png"
     environment:
       AIOSTREAMS_URL: "${AIOSTREAMS_URL:-https://aiostreams.elfhosted.com/}"
       SIMKL_CLIENT_ID: "${SIMKL_CLIENT_ID:-}"
