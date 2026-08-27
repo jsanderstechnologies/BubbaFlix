@@ -15,8 +15,10 @@ import {
   FiSearch,
   FiFilter,
   FiInfo,
-  FiX
+  FiX,
+  FiCircle
 } from "react-icons/fi";
+import { fetchServerSettings } from "../../utils/serverSettings";
 import {
   getDispatcharrConfigAsync,
   fetchDispatcharrChannels,
@@ -97,7 +99,7 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
 
     // Auto-update and auto-populate EPG and DVR recordings every 5 minutes (300,000 ms)
     const interval = setInterval(() => {
-      loadAllData();
+      loadAllData(true);
     }, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
@@ -127,8 +129,8 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
     setTimeSlots(slots);
   };
 
-  const loadAllData = async () => {
-    setLoading(true);
+  const loadAllData = async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     try {
       const [chRes, epgRes, recRes] = await Promise.allSettled([
         fetchDispatcharrChannels(),
@@ -145,7 +147,7 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
     } catch (err) {
       console.error("[Live TV Load Error]:", err);
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
   };
 
