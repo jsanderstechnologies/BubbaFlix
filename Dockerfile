@@ -16,8 +16,8 @@ RUN npm run build
 # Stage 2: Serve application using Nginx + Native Node.js Backend + FFmpeg & VLC Transcoder Engine
 FROM nginx:alpine
 
-# Install Node.js runtime, FFmpeg, and VLC media engine for universal backend stream transcoding
-RUN apk add --no-cache nodejs ffmpeg vlc
+# Install Node.js runtime, FFmpeg, VLC media engine, and VAAPI/Intel hardware acceleration drivers
+RUN apk add --no-cache nodejs ffmpeg vlc libva-intel-driver intel-media-driver mesa-va-gallium
 
 WORKDIR /app
 
@@ -34,6 +34,6 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Copy compiled static HTML/JS/CSS output from build stage
 COPY --from=build /app/dist /usr/share/nginx/html
 
-EXPOSE 80 5000
+EXPOSE 5150 5000
 
 CMD ["/app/start.sh"]

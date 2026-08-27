@@ -7,7 +7,7 @@ services:
     container_name: bubbaflix
     restart: unless-stopped
     ports:
-      - "${PORT:-5150}:80"
+      - "${PORT:-5150}:5150"
       - "5151:5151/udp"
     labels:
       - "io.casaos.icon=https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/public/tv_banner.png"

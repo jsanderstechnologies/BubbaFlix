@@ -125,10 +125,9 @@ const AboutPage = () => {
       <ContentWrapper>
         <div className="aboutContainer">
           <div className="appHeaderCard">
-            <div className="logoBlock">
-              <FiTv className="appLogoIcon" />
+            <div className="aboutLogoWrapper">
+              <img src="/tv_banner.png" alt="BubbaFlix TV" className="aboutLogoImage" />
             </div>
-            <h1 className="appName">BubbaFlix TV</h1>
             <span className="appBadge">{APP_VERSION} ({isTvApp ? "Android TV Client" : "Self-Hosted Web Instance"})</span>
             <p className="appTagline">
               The ultimate high-performance media streaming client for Movies, TV Series, and Live TV.
