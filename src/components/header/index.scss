@@ -6,7 +6,7 @@
 	left: 0;
 	transform: translateY(0);
 	width: 100%;
-	height: 64px;
+	height: 76px;
 	z-index: 1000 !important;
 	display: flex;
 	align-items: center;
@@ -42,10 +42,10 @@
 		transition: transform 0.25s ease, filter 0.25s ease;
 
 		img {
-			height: 38px;
-			max-height: 38px;
+			height: 52px;
+			max-height: 54px;
 			width: auto;
-			max-width: 145px;
+			max-width: 220px;
 			object-fit: contain;
 			filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
 		}
