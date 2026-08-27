@@ -1,13 +1,17 @@
 .bubbaflixSplashStage {
   position: fixed;
-  inset: 0;
-  width: 100vw;
-  height: 100vh;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 300vw;
+  height: 300vh;
+  min-width: 300vmax;
+  min-height: 300vmax;
   background: radial-gradient(ellipse at center, #0a0000 0%, #000000 70%);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 999999;
+  z-index: 9999999;
   overflow: hidden;
   cursor: pointer;
   outline: none;

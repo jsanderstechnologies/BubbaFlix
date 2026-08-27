@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import "./index.scss";
 
 const SplashScreen = ({ onComplete }) => {
@@ -220,7 +221,9 @@ const SplashScreen = ({ onComplete }) => {
     };
   }, []);
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <div
       className={`bubbaflixSplashStage ${fading ? "fadingOut" : ""}`}
       onClick={() => {
@@ -254,7 +257,8 @@ const SplashScreen = ({ onComplete }) => {
       <div id="splashCaption" ref={captionRef}>
         BubbaFlix Streaming
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
