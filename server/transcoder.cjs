@@ -203,7 +203,8 @@ const sendJson = (res, statusCode, data) => {
 
 const server = http.createServer((req, res) => {
   const startTime = Date.now();
-  const parsedUrl = url.parse(req.url, true);
+  const parsedUrl = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+  parsedUrl.query = Object.fromEntries(parsedUrl.searchParams);
   const rawPath = parsedUrl.pathname || "/";
   const cleanPath = rawPath.length > 1 && rawPath.endsWith("/") ? rawPath.slice(0, -1) : rawPath;
   const initiator = getRequestInitiator(req);
@@ -646,7 +647,7 @@ const detectGpuCapabilities = () => {
       }
 
       try {
-        const targetParsed = url.parse(targetDispatcharrUrl);
+        const targetParsed = new URL(targetDispatcharrUrl);
         const isHttps = targetParsed.protocol === "https:";
         const httpModule = isHttps ? require("https") : require("http");
 
