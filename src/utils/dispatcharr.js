@@ -162,7 +162,9 @@ const normalizeChannel = (ch, serverUrl, apiKey) => {
   const name = ch.name || ch.title || ch.display_name || ch.channel_name || ch.callsign || `Channel ${ch.number || id}`;
 
   let logo = ch.logo || ch.icon || ch.tvg_logo || ch.logo_url || ch.image || ch.icon_url || "";
-  if (logo && !logo.startsWith("http://") && !logo.startsWith("https://") && !logo.startsWith("data:")) {
+  if (!logo && ch.logo_id) {
+    logo = `${backend}/api/dispatcharr/api/channels/logos/${ch.logo_id}/cache/`;
+  } else if (logo && !logo.startsWith("http://") && !logo.startsWith("https://") && !logo.startsWith("data:")) {
     const cleanLogo = logo.startsWith("/") ? logo : `/${logo}`;
     logo = `${backend}/api/dispatcharr${cleanLogo}`;
   }

@@ -239,31 +239,38 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
   const getChannelPrograms = (channel) => {
     if (!channel) return [];
     const channelId = String(channel.id ?? "");
-    const channelNum = String(channel.number || channel.channel_number || channel.ch_number || "");
+    const channelTvgId = String(channel.tvg_id || "").toLowerCase().trim();
+    const channelEpgDataId = String(channel.epg_data_id || "").toLowerCase().trim();
+    const channelNum = String(channel.number || channel.channel_number || channel.ch_number || "").toLowerCase().trim();
     const channelName = (channel.name || "").toLowerCase().trim();
 
     let programs = epgData.filter((epg) => {
       if (!epg) return false;
 
       let epgChId = "";
+      let epgTvgId = String(epg.tvg_id || "").toLowerCase().trim();
+      let epgEpgDataId = String(epg.epg_data_id || "").toLowerCase().trim();
       let epgChNum = "";
       let epgChName = "";
 
       if (typeof epg.channel === "object" && epg.channel !== null) {
         epgChId = String(epg.channel.id ?? "");
-        epgChNum = String(epg.channel.number || epg.channel.channel_number || "");
+        epgTvgId = epgTvgId || String(epg.channel.tvg_id || "").toLowerCase().trim();
+        epgChNum = String(epg.channel.number || epg.channel.channel_number || "").toLowerCase().trim();
         epgChName = (epg.channel.name || "").toLowerCase().trim();
       } else {
-        epgChId = String(epg.channel_id ?? epg.channel ?? epg.tvg_id ?? "");
-        epgChNum = String(epg.channel_number || epg.number || epg.ch_number || "");
+        epgChId = String(epg.channel_id ?? epg.channel ?? "");
+        epgChNum = String(epg.channel_number || epg.number || epg.ch_number || "").toLowerCase().trim();
         epgChName = (epg.channel_name || epg.display_name || "").toLowerCase().trim();
       }
 
-      const matchId = channelId && epgChId === channelId;
-      const matchNum = channelNum && epgChNum === channelNum;
+      const matchTvgId = channelTvgId && epgTvgId && channelTvgId === epgTvgId;
+      const matchEpgDataId = channelEpgDataId && epgEpgDataId && channelEpgDataId === epgEpgDataId;
+      const matchId = channelId && epgChId && channelId === epgChId;
+      const matchNum = channelNum && epgChNum && channelNum === epgChNum;
       const matchName = channelName && epgChName && (epgChName === channelName || epgChName.includes(channelName) || channelName.includes(epgChName));
 
-      return matchId || matchNum || matchName;
+      return matchTvgId || matchEpgDataId || matchId || matchNum || matchName;
     });
 
     if (programs.length === 0 && channel.current_program) {
