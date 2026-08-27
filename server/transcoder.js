@@ -233,12 +233,97 @@ const server = http.createServer((req, res) => {
     });
   }
 
+// GPU Hardware Acceleration Auto-Detection Engine
+let cachedGpuConfig = null;
+
+const detectGpuCapabilities = () => {
+  if (cachedGpuConfig) return cachedGpuConfig;
+
+  let encodersOutput = "";
+  let hwaccelsOutput = "";
+
+  try {
+    const { execSync } = require("child_process");
+    try {
+      encodersOutput = execSync("ffmpeg -encoders", { encoding: "utf8", timeout: 4000, stdio: ["pipe", "pipe", "ignore"] });
+    } catch (e) {
+      encodersOutput = "";
+    }
+    try {
+      hwaccelsOutput = execSync("ffmpeg -hwaccels", { encoding: "utf8", timeout: 4000, stdio: ["pipe", "pipe", "ignore"] });
+    } catch (e) {
+      hwaccelsOutput = "";
+    }
+
+    const hasNvenc = encodersOutput.includes("h264_nvenc");
+    const hasQsv = encodersOutput.includes("h264_qsv");
+    const hasAmf = encodersOutput.includes("h264_amf");
+    const hasVaapi = encodersOutput.includes("h264_vaapi");
+    const hasVideotoolbox = encodersOutput.includes("h264_videotoolbox");
+
+    let gpuType = "CPU Software (libx264)";
+    let encoder = "libx264";
+    let videoArgs = ["-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-crf", "23"];
+
+    if (hasNvenc && hwaccelsOutput.includes("cuda")) {
+      gpuType = "NVIDIA Hardware Acceleration (NVENC CUDA)";
+      encoder = "h264_nvenc";
+      videoArgs = ["-hwaccel", "cuda", "-c:v", "h264_nvenc", "-preset", "p1", "-tune", "ll"];
+    } else if (hasNvenc) {
+      gpuType = "NVIDIA Hardware Acceleration (NVENC)";
+      encoder = "h264_nvenc";
+      videoArgs = ["-c:v", "h264_nvenc", "-preset", "p1", "-tune", "ll"];
+    } else if (hasQsv && hwaccelsOutput.includes("qsv")) {
+      gpuType = "Intel QuickSync Hardware Acceleration (QSV)";
+      encoder = "h264_qsv";
+      videoArgs = ["-hwaccel", "qsv", "-c:v", "h264_qsv", "-preset", "veryfast"];
+    } else if (hasAmf) {
+      gpuType = "AMD Hardware Acceleration (AMF)";
+      encoder = "h264_amf";
+      videoArgs = ["-c:v", "h264_amf", "-quality", "speed"];
+    } else if (hasVaapi && hwaccelsOutput.includes("vaapi")) {
+      gpuType = "Linux Hardware Acceleration (VAAPI)";
+      encoder = "h264_vaapi";
+      videoArgs = ["-hwaccel", "vaapi", "-c:v", "h264_vaapi"];
+    } else if (hasVideotoolbox) {
+      gpuType = "Apple Hardware Acceleration (VideoToolbox)";
+      encoder = "h264_videotoolbox";
+      videoArgs = ["-c:v", "h264_videotoolbox", "-realtime", "true"];
+    }
+
+    cachedGpuConfig = {
+      enabled: encoder !== "libx264",
+      type: gpuType,
+      encoder: encoder,
+      videoArgs: videoArgs
+    };
+
+    logMessage(`[GPU Transcoder Engine] Auto-Detected Hardware Accelerator: ${gpuType} (${encoder})`);
+    return cachedGpuConfig;
+  } catch (err) {
+    cachedGpuConfig = {
+      enabled: false,
+      type: "CPU Software (libx264)",
+      encoder: "libx264",
+      videoArgs: ["-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-crf", "23"]
+    };
+    logMessage(`[GPU Transcoder Engine] GPU auto-detection fallback to CPU libx264: ${err.message}`);
+    return cachedGpuConfig;
+  }
+};
+
   // Health check endpoint
   if ((cleanPath === "/api/transcode/health" || cleanPath === "/transcode/health") && req.method === "GET") {
+    const gpuInfo = detectGpuCapabilities();
     logMessage(`[Health Check] Responded to [${initiator.initiatorComponent}] (${initiator.ip})`);
     return sendJson(res, 200, {
       status: "ok",
-      service: "BubbaFlix VLC & FFmpeg Transcoder Engine",
+      service: "BubbaFlix Transcoder Engine",
+      gpu_acceleration: {
+        enabled: gpuInfo.enabled,
+        type: gpuInfo.type,
+        encoder: gpuInfo.encoder
+      },
       capabilities: ["AC3", "EAC3", "TrueHD", "DTS", "DTS-HD", "FLAC", "HEVC", "AV1", "VP9", "H264", "MKV", "TS", "MP4"]
     });
   }
@@ -300,6 +385,8 @@ const server = http.createServer((req, res) => {
       ? `X-API-Key: ${apiKey}\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)\r\n`
       : `User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)\r\n`;
 
+    const gpuInfo = detectGpuCapabilities();
+
     const ffmpegArgs = [
       "-headers", headersStr,
       "-reconnect", "1",
@@ -307,10 +394,7 @@ const server = http.createServer((req, res) => {
       "-reconnect_streamed", "1",
       "-reconnect_delay_max", "2",
       "-i", normalizedTargetUrl,
-      "-c:v", "libx264",
-      "-preset", "ultrafast",
-      "-tune", "zerolatency",
-      "-crf", "23",
+      ...gpuInfo.videoArgs,
       "-c:a", "aac",
       "-b:a", "192k",
       "-ac", "2",
@@ -340,6 +424,15 @@ const server = http.createServer((req, res) => {
 
     ffmpegProcess.on("close", (code) => {
       logMessage(`[Backend Transcoder Engine] FFmpeg process for [${initiator.initiatorComponent}] (${initiator.ip}) terminated with exit code ${code}`);
+      if (code !== 0 && gpuInfo.enabled) {
+        logMessage(`[GPU Transcoder Engine Warning] GPU Encoder ${gpuInfo.encoder} exited with code ${code}. Reverting cached config to CPU libx264 fallback.`, true);
+        cachedGpuConfig = {
+          enabled: false,
+          type: "CPU Software (libx264)",
+          encoder: "libx264",
+          videoArgs: ["-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-crf", "23"]
+        };
+      }
       if (!res.writableEnded) {
         res.end();
       }

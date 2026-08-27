@@ -114,7 +114,8 @@ export const testBackendServerHealth = async (customServerUrl) => {
   try {
     const res = await axios.get(`${targetBase}/api/transcode/health`, { timeout: 5000 });
     if (res.data?.status === "ok") {
-      return { success: true, message: `Backend Server Connected! (${res.data.service || "BubbaFlix Engine"})` };
+      const gpuText = res.data?.gpu_acceleration?.type ? ` | Transcoder: ${res.data.gpu_acceleration.type}` : "";
+      return { success: true, message: `Backend Server Connected! (${res.data.service || "BubbaFlix Engine"}${gpuText})`, gpu: res.data?.gpu_acceleration };
     }
     return { success: false, message: "Server responded, but health status failed." };
   } catch (err) {
