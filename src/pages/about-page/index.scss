@@ -269,6 +269,16 @@
               border-radius: 10px;
               padding: 12px 14px;
 
+              &.highlightGpu {
+                background: rgba(218, 47, 104, 0.15);
+                border: 1px solid rgba(218, 47, 104, 0.4);
+
+                .gpuValue {
+                  color: #81c784;
+                  font-weight: 700;
+                }
+              }
+
               .specLabel {
                 display: block;
                 font-size: 11px;

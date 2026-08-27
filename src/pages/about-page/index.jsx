@@ -13,7 +13,7 @@ import {
 } from "react-icons/fi";
 import ContentWrapper from "../../components/content-wrapper";
 import TopNav from "../../components/top-nav";
-import { getServerUrl } from "../../utils/serverSettings";
+import { getServerUrl, testBackendServerHealth } from "../../utils/serverSettings";
 import "./index.scss";
 
 const APP_VERSION = "v1.0.0";
@@ -24,6 +24,7 @@ const AboutPage = () => {
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateResult, setUpdateResult] = useState(null);
   const [isTvApp, setIsTvApp] = useState(false);
+  const [gpuInfo, setGpuInfo] = useState(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -39,6 +40,18 @@ const AboutPage = () => {
         window.location.protocol === "file:";
       setIsTvApp(isTv);
     }
+
+    const fetchGpuInfo = async () => {
+      try {
+        const res = await testBackendServerHealth();
+        if (res && res.gpu) {
+          setGpuInfo(res.gpu);
+        }
+      } catch (e) {
+        // Continue with default placeholder
+      }
+    };
+    fetchGpuInfo();
   }, []);
 
   const handleCheckForUpdates = async () => {
@@ -228,6 +241,12 @@ const AboutPage = () => {
                 <h3>Client & Server Specifications</h3>
               </div>
               <div className="cardBody specGrid">
+                <div className="specItem highlightGpu">
+                  <span className="specLabel">Transcoder Hardware GPU</span>
+                  <span className="specValue gpuValue">
+                    {gpuInfo ? gpuInfo.type : "Auto-Detecting GPU Acceleration..."}
+                  </span>
+                </div>
                 <div className="specItem">
                   <span className="specLabel">Universal Native Player</span>
                   <span className="specValue">Android ExoPlayer + LoudnessEnhancer (v1.0.2+)</span>
