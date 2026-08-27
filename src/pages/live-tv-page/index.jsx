@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FiTv,
@@ -87,34 +87,29 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
     setShowRecDetailsModal(true);
   };
 
-  useEffect(() => {
-    window.refreshEpgAndRecordings = () => loadAllData(true);
-    const initConfig = async () => {
-      await fetchServerSettings();
-      const cfg = await getDispatcharrConfigAsync();
-      setServerUrl(cfg.url);
-      loadAllData();
-    };
-    initConfig();
-    generateTimeline();
+  const loadAllData = useCallback(async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
+    try {
+      const [chRes, epgRes, recRes] = await Promise.allSettled([
+        fetchDispatcharrChannels(),
+        fetchDispatcharrEpg(),
+        fetchDispatcharrRecordings()
+      ]);
+      const chData = chRes.status === "fulfilled" && Array.isArray(chRes.value) ? chRes.value : [];
+      const epgList = epgRes.status === "fulfilled" && Array.isArray(epgRes.value) ? epgRes.value : [];
+      const recList = recRes.status === "fulfilled" && Array.isArray(recRes.value) ? recRes.value : [];
 
-    // Auto-update and auto-populate EPG and DVR recordings every 5 minutes (300,000 ms)
-    const interval = setInterval(() => {
-      loadAllData(true);
-    }, 5 * 60 * 1000);
-
-    return () => {
-      delete window.refreshEpgAndRecordings;
-      clearInterval(interval);
-    };
+      setChannels(chData);
+      setEpgData(epgList);
+      setRecordings(recList);
+    } catch (err) {
+      console.error("[Live TV Load Error]:", err);
+    } finally {
+      if (!isSilent) setLoading(false);
+    }
   }, []);
 
-  useEffect(() => {
-    // Refresh channels, EPG, and DVR recordings whenever switching tabs (Grid, EPG, Recordings)
-    loadAllData(true);
-  }, [activeTab]);
-
-  const generateTimeline = (baseDate = new Date()) => {
+  const generateTimeline = useCallback((baseDate = new Date()) => {
     const start = new Date(baseDate);
     start.setMinutes(start.getMinutes() < 30 ? 0 : 30, 0, 0);
     start.setHours(start.getHours() - 1);
@@ -137,29 +132,34 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
       });
     }
     setTimeSlots(slots);
-  };
+  }, []);
 
-  const loadAllData = async (isSilent = false) => {
-    if (!isSilent) setLoading(true);
-    try {
-      const [chRes, epgRes, recRes] = await Promise.allSettled([
-        fetchDispatcharrChannels(),
-        fetchDispatcharrEpg(),
-        fetchDispatcharrRecordings()
-      ]);
-      const chData = chRes.status === "fulfilled" && Array.isArray(chRes.value) ? chRes.value : [];
-      const epgList = epgRes.status === "fulfilled" && Array.isArray(epgRes.value) ? epgRes.value : [];
-      const recList = recRes.status === "fulfilled" && Array.isArray(recRes.value) ? recRes.value : [];
+  useEffect(() => {
+    window.refreshEpgAndRecordings = () => loadAllData(true);
+    const initConfig = async () => {
+      await fetchServerSettings();
+      const cfg = await getDispatcharrConfigAsync();
+      setServerUrl(cfg.url);
+      loadAllData();
+    };
+    initConfig();
+    generateTimeline();
 
-      setChannels(chData);
-      setEpgData(epgList);
-      setRecordings(recList);
-    } catch (err) {
-      console.error("[Live TV Load Error]:", err);
-    } finally {
-      if (!isSilent) setLoading(false);
-    }
-  };
+    // Auto-update and auto-populate EPG and DVR recordings every 5 minutes (300,000 ms)
+    const interval = setInterval(() => {
+      loadAllData(true);
+    }, 5 * 60 * 1000);
+
+    return () => {
+      delete window.refreshEpgAndRecordings;
+      clearInterval(interval);
+    };
+  }, [loadAllData, generateTimeline]);
+
+  useEffect(() => {
+    // Refresh channels, EPG, and DVR recordings whenever switching tabs (Grid, EPG, Recordings)
+    loadAllData(true);
+  }, [activeTab, loadAllData]);
 
   // Compute unique channel groups for filter dropdown
   const channelGroups = useMemo(() => {
