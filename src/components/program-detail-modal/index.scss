@@ -109,6 +109,34 @@
             letter-spacing: 0.5px;
           }
 
+          .recBadge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 10px;
+            letter-spacing: 0.5px;
+
+            &.active {
+              background: #ff2a6d;
+              color: white;
+              box-shadow: 0 0 10px rgba(255, 42, 109, 0.7);
+
+              .pulseDot {
+                font-size: 8px;
+                color: white;
+              }
+            }
+
+            &.scheduled {
+              background: rgba(255, 183, 77, 0.2);
+              border: 1px solid #ffb74d;
+              color: #ffb74d;
+            }
+          }
+
           .seasonBadge {
             background: rgba(129, 199, 132, 0.2);
             border: 1px solid #81c784;

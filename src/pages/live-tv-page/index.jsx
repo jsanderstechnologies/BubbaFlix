@@ -201,6 +201,63 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
     setShowPlayer(true);
   };
 
+  const getRecordingStatusForProgram = (program, channel) => {
+    if (!recordings || recordings.length === 0 || !program) return null;
+
+    const progTitle = (program.title || program.name || "").trim().toLowerCase();
+    const progId = String(program.id || program.event_id || program.epg_id || "");
+    const chId = String(channel?.id || channel?.channel_id || channel?.number || program.channel || program.channel_id || "");
+    const chName = (channel?.name || channel?.title || program.channel_name || "").trim().toLowerCase();
+
+    const rawStart = program.start_time || program.start || program.start_at || program.start_timestamp || program.time_start || program.startTime;
+    const rawEnd = program.end_time || program.end || program.end_at || program.end_timestamp || program.time_end || program.endTime;
+
+    const progStartMs = rawStart ? new Date(rawStart).getTime() : null;
+    const progEndMs = rawEnd ? new Date(rawEnd).getTime() : (progStartMs ? progStartMs + 60 * 60 * 1000 : null);
+    const nowMs = Date.now();
+
+    for (const rec of recordings) {
+      const recId = String(rec.program_id || rec.epg_event_id || rec.event_id || rec.custom_properties?.program_id || "");
+      const recTitle = (rec.title || rec.name || rec.program_name || "").trim().toLowerCase();
+      const recChId = String(rec.channel || rec.channel_id || rec.channel_number || "");
+      const recChName = (rec.channel_display || rec.channel_name || "").trim().toLowerCase();
+
+      // Direct ID match
+      const isIdMatch = progId && recId && progId === recId;
+
+      // Title match
+      const isTitleMatch = progTitle && recTitle && (
+        progTitle === recTitle ||
+        progTitle.includes(recTitle) ||
+        recTitle.includes(progTitle)
+      );
+
+      // Channel match
+      const isChannelMatch = !chId || !recChId || chId === recChId || (chName && recChName && (chName.includes(recChName) || recChName.includes(chName)));
+
+      // Time match check
+      let isTimeMatch = true;
+      if (progStartMs && rec.start_time) {
+        const recStartMs = new Date(rec.start_time).getTime();
+        if (!isNaN(recStartMs)) {
+          isTimeMatch = Math.abs(progStartMs - recStartMs) < 15 * 60 * 1000;
+        }
+      }
+
+      if (isIdMatch || (isTitleMatch && isChannelMatch && (isTimeMatch || rec.is_recurring))) {
+        const recStatus = (rec.status || rec.custom_properties?.status || "").toLowerCase();
+        const isCurrentlyRecording = recStatus === "recording" || recStatus === "in_progress" || (progStartMs && progEndMs && nowMs >= progStartMs && nowMs <= progEndMs);
+
+        return {
+          recording: rec,
+          status: isCurrentlyRecording ? "recording" : "scheduled"
+        };
+      }
+    }
+
+    return null;
+  };
+
   const handleOpenRecModal = (program, channel) => {
     setRecTargetProgram(program);
     setRecTargetChannel(channel);
@@ -537,6 +594,10 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
                                   const widthPx = Math.max(70, durationHours * HOUR_WIDTH);
                                   const isCurrentlyLive = now >= progStart && now <= progEnd;
 
+                                  const recStatusObj = getRecordingStatusForProgram(prog, ch);
+                                  const isRecordingActive = recStatusObj?.status === "recording";
+                                  const isRecordingScheduled = recStatusObj?.status === "scheduled";
+
                                   // Dispatcharr Live Progress Percentage
                                   const totalDurationMs = progEnd.getTime() - progStart.getTime();
                                   const elapsedMs = now.getTime() - progStart.getTime();
@@ -551,7 +612,7 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
                                   return (
                                     <div
                                       key={prog.id || pIdx}
-                                      className={`programBlock ${isCurrentlyLive ? "isLive" : ""}`}
+                                      className={`programBlock ${isRecordingActive ? "isRecording" : isRecordingScheduled ? "isScheduled" : isCurrentlyLive ? "isLive" : ""}`}
                                       style={{ left: `${leftPx}px`, width: `${widthPx}px` }}
                                       onClick={() => handleOpenDetailModal(prog, ch)}
                                       tabIndex="0"
@@ -559,7 +620,13 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
                                       <div className="progHeader">
                                         <span className="progTitle">{prog.title || prog.name || ch.now_playing || "Live Program"}</span>
                                         {seasonEpStr && <span className="seasonEpBadge">{seasonEpStr}</span>}
-                                        {isCurrentlyLive && <span className="liveBadge">LIVE</span>}
+                                        {isRecordingActive ? (
+                                          <span className="recBadge active"><FiCircle className="pulseDot" /> REC</span>
+                                        ) : isRecordingScheduled ? (
+                                          <span className="recBadge scheduled"><FiCheck /> SCHEDULED</span>
+                                        ) : isCurrentlyLive ? (
+                                          <span className="liveBadge">LIVE</span>
+                                        ) : null}
                                       </div>
                                       <div className="progTime">
                                         {progStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {progEnd.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -575,15 +642,16 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
 
                                       <div className="progActions">
                                         <button
-                                          className="progActionBtn record"
+                                          className={`progActionBtn record ${isRecordingActive ? "isRecording" : isRecordingScheduled ? "isScheduled" : ""}`}
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             handleOpenRecModal(prog, ch);
                                           }}
-                                          title="Record with Dispatcharr DVR"
+                                          title={isRecordingActive ? "Recording Active" : isRecordingScheduled ? "Recording Scheduled" : "Record with Dispatcharr DVR"}
                                           tabIndex="0"
                                         >
-                                          <FiCircle style={{ fontSize: "10px", color: "#ff5252" }} /> Record
+                                          <FiCircle style={{ fontSize: "10px", color: isRecordingActive ? "#ff2a6d" : isRecordingScheduled ? "#ffb74d" : "#ff5252" }} />{" "}
+                                          {isRecordingActive ? "RECORDING" : isRecordingScheduled ? "SCHEDULED" : "Record"}
                                         </button>
                                       </div>
                                     </div>
@@ -737,6 +805,7 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
         onClose={() => setShowDetailModal(false)}
         program={detailProgram}
         channel={detailChannel}
+        recStatus={getRecordingStatusForProgram(detailProgram, detailChannel)}
         onPlay={handlePlayChannel}
         onRecord={handleOpenRecModal}
       />

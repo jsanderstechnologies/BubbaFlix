@@ -1,8 +1,8 @@
 import React from "react";
-import { FiTv, FiClock, FiCalendar, FiPlay, FiVideo, FiX, FiInfo } from "react-icons/fi";
+import { FiTv, FiClock, FiCalendar, FiPlay, FiVideo, FiX, FiInfo, FiCircle, FiCheck } from "react-icons/fi";
 import "./index.scss";
 
-const ProgramDetailModal = ({ show, onClose, program, channel, onPlay, onRecord }) => {
+const ProgramDetailModal = ({ show, onClose, program, channel, recStatus, onPlay, onRecord }) => {
   if (!show || !program) return null;
 
   const title = program.title || program.name || "Live Program";
@@ -51,7 +51,13 @@ const ProgramDetailModal = ({ show, onClose, program, channel, onPlay, onRecord 
             <h2>{title}</h2>
             <div className="subMeta">
               <span className="chName">{channelNum ? `Ch ${channelNum} — ` : ""}{channelName}</span>
-              {isCurrentlyLive && <span className="liveBadge">LIVE NOW</span>}
+              {recStatus?.status === "recording" ? (
+                <span className="recBadge active"><FiCircle className="pulseDot" /> RECORDING</span>
+              ) : recStatus?.status === "scheduled" ? (
+                <span className="recBadge scheduled"><FiCheck /> SCHEDULED</span>
+              ) : isCurrentlyLive ? (
+                <span className="liveBadge">LIVE NOW</span>
+              ) : null}
               {seasonEpStr && <span className="seasonBadge">{seasonEpStr}</span>}
             </div>
           </div>
