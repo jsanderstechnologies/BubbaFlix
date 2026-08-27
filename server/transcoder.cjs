@@ -677,7 +677,7 @@ const detectGpuCapabilities = () => {
           const duration = Date.now() - startTime;
           logMessage(`[Dispatcharr Proxy Response] ${req.method} ${targetDispatcharrUrl} -> Status ${proxyRes.statusCode} (${duration}ms) | Initiator: [${initiator.initiatorComponent}] (${initiator.ip})`);
 
-          if (proxyRes.statusCode < 400) {
+          if (proxyRes.statusCode < 500 && proxyRes.statusCode !== 408) {
             verifiedDispatcharrUrl = currentBaseUrl;
           } else if (candidateIdx < candidateUrls.length) {
             logMessage(`[Dispatcharr Proxy Target HTTP ${proxyRes.statusCode}] ${targetDispatcharrUrl}. Trying next candidate target...`, true);
