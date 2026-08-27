@@ -90,6 +90,7 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
 
   const loadAllData = useCallback(async (isSilent = false) => {
     if (!isSilent) setLoading(true);
+    reportClientLog(`[Live TV Fetch Initiated] Mode: ${isSilent ? "Background Auto-Refresh" : "Page/Tab Navigation"}`);
     try {
       const [chRes, epgRes, recRes] = await Promise.allSettled([
         fetchDispatcharrChannels(),
@@ -103,8 +104,10 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
       setChannels(chData);
       setEpgData(epgList);
       setRecordings(recList);
+      reportClientLog(`[Live TV Fetch Completed Successfully] Channels: ${chData.length}, EPG Programs: ${epgList.length}, DVR Recordings: ${recList.length}`);
     } catch (err) {
       console.error("[Live TV Load Error]:", err);
+      reportClientLog(`[Live TV Fetch Error] ${err.message}`, "ERROR");
     } finally {
       if (!isSilent) setLoading(false);
     }

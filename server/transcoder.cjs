@@ -614,7 +614,15 @@ const detectGpuCapabilities = () => {
 
     const targetDispatcharrUrl = `${dispatcharrUrl}${subPath.startsWith("/") ? "" : "/"}${subPath}`;
 
-    logMessage(`[Dispatcharr Proxy] Initiated by [${initiator.initiatorComponent}] (${initiator.ip}) -> ${req.method} ${targetDispatcharrUrl}`);
+    if (cleanSubPath.includes("/epg") || cleanSubPath.includes("/programs")) {
+      logMessage(`[EPG Guide Proxy Request] Initiated by [${initiator.initiatorComponent}] (${initiator.ip}) -> ${req.method} ${targetDispatcharrUrl}`);
+    } else if (cleanSubPath.includes("/recordings")) {
+      logMessage(`[DVR Recordings Proxy Request] Initiated by [${initiator.initiatorComponent}] (${initiator.ip}) -> ${req.method} ${targetDispatcharrUrl}`);
+    } else if (cleanSubPath.includes("/channels")) {
+      logMessage(`[Channels Grid Proxy Request] Initiated by [${initiator.initiatorComponent}] (${initiator.ip}) -> ${req.method} ${targetDispatcharrUrl}`);
+    } else {
+      logMessage(`[Dispatcharr Proxy Request] Initiated by [${initiator.initiatorComponent}] (${initiator.ip}) -> ${req.method} ${targetDispatcharrUrl}`);
+    }
 
     try {
       const targetParsed = url.parse(targetDispatcharrUrl);
