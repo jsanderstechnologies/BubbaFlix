@@ -110,14 +110,14 @@
           }
 
           .newBadge {
-            background: rgba(0, 230, 118, 0.2);
-            border: 1px solid #00e676;
-            color: #00e676;
+            background: #2196f3;
+            color: white;
             font-size: 10px;
             font-weight: 800;
             padding: 2px 8px;
             border-radius: 10px;
             letter-spacing: 0.5px;
+            box-shadow: 0 0 10px rgba(33, 150, 243, 0.5);
           }
 
           .recBadge {

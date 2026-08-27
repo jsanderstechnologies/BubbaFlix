@@ -282,15 +282,22 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
 
   const getCurrentProgramForChannel = (channel) => {
     if (!channel) return null;
-    const chId = String(channel.id || channel.channel_id || channel.number || "");
-    const chName = (channel.name || channel.title || "").trim().toLowerCase();
+    const chId = String(channel.id || channel.channel_id || channel.uuid || "").trim().toLowerCase();
+    const chNum = String(channel.number || channel.channel_number || "").trim();
+    const chName = (channel.name || channel.title || channel.callsign || "").trim().toLowerCase();
     const now = new Date();
 
     if (epgData && epgData.length > 0) {
       const channelPrograms = epgData.filter((p) => {
-        const pChId = String(p.channel_id || p.channel || p.channel_number || "");
-        const pChName = String(p.channel_name || "").trim().toLowerCase();
-        return (chId && pChId && chId === pChId) || (chName && pChName && (chName === pChName || chName.includes(pChName)));
+        const pChId = String(p.channel_id || p.channel || "").trim().toLowerCase();
+        const pChNum = String(p.channel_number || "").trim();
+        const pChName = String(p.channel_name || p.channel_title || "").trim().toLowerCase();
+
+        return (
+          (chId && pChId && (chId === pChId || chId.endsWith(pChId) || pChId.endsWith(chId))) ||
+          (chNum && pChNum && chNum === pChNum) ||
+          (chName && pChName && (chName === pChName || chName.includes(pChName) || pChName.includes(chName)))
+        );
       });
 
       const currentProg = channelPrograms.find((prog) => {
@@ -307,14 +314,17 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
     }
 
     if (channel.current_program) return channel.current_program;
-    if (channel.now_playing) {
+    if (channel.now_playing || channel.program_description) {
       return {
-        title: channel.now_playing,
-        description: channel.now_playing_desc || channel.description || "Live Broadcast"
+        title: channel.now_playing || channel.name || "Live Broadcast",
+        description: channel.program_description || channel.now_playing_desc || channel.description || "No guide detail available"
       };
     }
 
-    return null;
+    return {
+      title: channel.name || "Live Broadcast",
+      description: "No guide detail available"
+    };
   };
 
   const handleOpenRecModal = (program, channel) => {
