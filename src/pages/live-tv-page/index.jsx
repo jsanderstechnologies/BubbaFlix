@@ -88,6 +88,7 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
   };
 
   useEffect(() => {
+    window.refreshEpgAndRecordings = () => loadAllData(true);
     const initConfig = async () => {
       await fetchServerSettings();
       const cfg = await getDispatcharrConfigAsync();
@@ -101,8 +102,17 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
     const interval = setInterval(() => {
       loadAllData(true);
     }, 5 * 60 * 1000);
-    return () => clearInterval(interval);
+
+    return () => {
+      delete window.refreshEpgAndRecordings;
+      clearInterval(interval);
+    };
   }, []);
+
+  useEffect(() => {
+    // Refresh channels, EPG, and DVR recordings whenever switching tabs (Grid, EPG, Recordings)
+    loadAllData(true);
+  }, [activeTab]);
 
   const generateTimeline = (baseDate = new Date()) => {
     const start = new Date(baseDate);

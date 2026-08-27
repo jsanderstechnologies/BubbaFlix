@@ -108,6 +108,7 @@ class MainActivity : AppCompatActivity() {
         settings.loadWithOverviewMode = true
         settings.cacheMode = WebSettings.LOAD_NO_CACHE
 
+        webView.setInitialScale(80)
         WebView.setWebContentsDebuggingEnabled(true)
 
         val defaultUa = settings.userAgentString
@@ -151,6 +152,15 @@ class MainActivity : AppCompatActivity() {
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 return false
+            }
+
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                view?.evaluateJavascript(
+                    "document.body.style.zoom = '80%';" +
+                    "if (typeof window.refreshEpgAndRecordings === 'function') window.refreshEpgAndRecordings();",
+                    null
+                )
             }
 
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
@@ -469,6 +479,16 @@ class MainActivity : AppCompatActivity() {
         }
 
         return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        hideSystemUI()
+        webView.evaluateJavascript(
+            "document.body.style.zoom = '80%';" +
+            "if (typeof window.refreshEpgAndRecordings === 'function') window.refreshEpgAndRecordings();",
+            null
+        )
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
