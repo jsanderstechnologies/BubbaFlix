@@ -467,6 +467,21 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
     if (typeof val === "number") {
       return new Date(val > 1e11 ? val : val * 1000);
     }
+    if (typeof val === "string") {
+      const trimmed = val.trim();
+      if (/^\d{10,13}$/.test(trimmed)) {
+        const num = Number(trimmed);
+        return new Date(num > 1e11 ? num : num * 1000);
+      }
+      const xmltvMatch = trimmed.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
+      if (xmltvMatch) {
+        const [, y, m, d, h, min, s] = xmltvMatch;
+        return new Date(Date.UTC(+y, +m - 1, +d, +h, +min, +s));
+      }
+      const isoFormatted = trimmed.replace(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})/, "$1T$2");
+      const parsedIso = new Date(isoFormatted);
+      if (!isNaN(parsedIso.getTime())) return parsedIso;
+    }
     const d = new Date(val);
     return isNaN(d.getTime()) ? fallback : d;
   };

@@ -360,7 +360,7 @@ export const fetchDispatcharrEpg = async () => {
           channel_name: item.name || item.title || ""
         });
       });
-    } else if (item.title || item.name || item.start_time || item.start || item.channel || item.channel_id) {
+    } else if (typeof item === "object" && item !== null) {
       flatPrograms.push(item);
     }
   });
