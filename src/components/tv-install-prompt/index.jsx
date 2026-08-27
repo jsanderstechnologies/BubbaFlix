@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { FiTv, FiDownload, FiX, FiCheck } from "react-icons/fi";
 import { getServerUrl } from "../../utils/serverSettings";
+import versionData from "../../../version.json";
 import "./index.scss";
 
 const APK_URL = "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk";
@@ -8,7 +9,7 @@ const DOWNLOADER_CODE = "7862216";
 
 const TvInstallPrompt = () => {
   const [showPrompt, setShowPrompt] = useState(false);
-  const [versionName, setVersionName] = useState("1.0.5");
+  const [versionName, setVersionName] = useState(versionData?.versionName || "1.0.1");
 
   useEffect(() => {
     if (typeof window === "undefined") return;

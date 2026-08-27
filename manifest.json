@@ -1,7 +1,7 @@
 {
-  "name": "BubbaFlix",
+  "name": "BubbaFlix TV - Media & Live EPG Platform",
   "id": "bubbaflix",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "title": "BubbaFlix Streaming App",
   "description": "Modern movie and TV show streaming application built with React and TMDB integration.",
   "author": "jsanderstechnologies",

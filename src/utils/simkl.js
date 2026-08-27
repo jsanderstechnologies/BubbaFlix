@@ -1,9 +1,10 @@
 import axios from "axios";
 import { getServerUrl } from "./serverSettings";
+import versionData from "../../version.json";
 
 const APP_NAME = "BubbaFlix";
-const APP_VERSION = "1.0";
-const USER_AGENT = "BubbaFlix/1.0 (Smart TV Media App)";
+const APP_VERSION = versionData?.versionName || "1.0.1";
+const USER_AGENT = `BubbaFlix/${APP_VERSION} (Smart TV Media App)`;
 
 // Helper for rate-limiting POST requests to 1 request per second per SIMKL rules
 let lastPostTimestamp = 0;

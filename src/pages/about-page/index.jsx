@@ -14,9 +14,11 @@ import {
 import ContentWrapper from "../../components/content-wrapper";
 import TopNav from "../../components/top-nav";
 import { getServerUrl, testBackendServerHealth } from "../../utils/serverSettings";
+import versionData from "../../../version.json";
 import "./index.scss";
 
-const APP_VERSION = "v1.0.0";
+const APP_VERSION = `v${versionData?.versionName || "1.0.1"}`;
+const CURRENT_VERSION_CODE = versionData?.versionCode || 2;
 const DOWNLOADER_CODE = "7862216";
 const GITHUB_REPO_URL = "https://github.com/jsanderstechnologies/BubbaFlix";
 
@@ -93,13 +95,13 @@ const AboutPage = () => {
     }
 
     if (remoteData) {
-      const remoteVersionCode = remoteData.versionCode || 14;
-      const currentVersionCode = 14;
+      const remoteVersionCode = remoteData.versionCode || 2;
+      const currentVersionCode = CURRENT_VERSION_CODE;
 
       if (remoteVersionCode > currentVersionCode) {
         setUpdateResult({
           hasUpdate: true,
-          remoteVersion: remoteData.versionName || "1.0.5",
+          remoteVersion: remoteData.versionName || "1.0.1",
           apkUrl: remoteData.apkUrl || `${GITHUB_REPO_URL}/raw/master/BubbaFlixTV.apk`,
           releaseNotes: remoteData.releaseNotes || "New features and performance improvements available."
         });
