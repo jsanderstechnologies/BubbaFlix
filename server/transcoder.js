@@ -415,6 +415,8 @@ const detectGpuCapabilities = () => {
       "-reconnect_at_eof", "1",
       "-reconnect_streamed", "1",
       "-reconnect_delay_max", "2",
+      "-analyzeduration", "10000000",
+      "-probesize", "10000000",
       ...(gpuInfo.inputArgs || []),
       "-i", normalizedTargetUrl,
       ...(gpuInfo.outputArgs || []),
@@ -431,8 +433,20 @@ const detectGpuCapabilities = () => {
 
     ffmpegProcess.stdout.pipe(res);
 
+    let hasGpuDeviceError = false;
+
     ffmpegProcess.stderr.on("data", (data) => {
       const logLine = data.toString();
+      if (
+        logLine.includes("MFX session") ||
+        logLine.includes("Device creation failed") ||
+        logLine.includes("No device available") ||
+        logLine.includes("Hardware device setup failed") ||
+        logLine.includes("cuda") ||
+        logLine.includes("vaapi")
+      ) {
+        hasGpuDeviceError = true;
+      }
       if (logLine.includes("Error") || logLine.includes("failed") || logLine.includes("frame=")) {
         logMessage(`[FFmpeg Log] ${logLine.trim()}`);
       }
@@ -447,8 +461,8 @@ const detectGpuCapabilities = () => {
 
     ffmpegProcess.on("close", (code) => {
       logMessage(`[Backend Transcoder Engine] FFmpeg process for [${initiator.initiatorComponent}] (${initiator.ip}) terminated with exit code ${code}`);
-      if (code !== 0 && gpuInfo.enabled) {
-        logMessage(`[GPU Transcoder Engine Warning] GPU Encoder ${gpuInfo.encoder} exited with code ${code}. Reverting cached config to CPU libx264 fallback.`, true);
+      if (code !== 0 && gpuInfo.enabled && hasGpuDeviceError) {
+        logMessage(`[GPU Transcoder Engine Warning] GPU Hardware device error detected (exit code ${code}). Reverting cached config to CPU libx264 fallback.`, true);
         cachedGpuConfig = {
           enabled: false,
           type: "CPU Software (libx264)",
