@@ -34,6 +34,13 @@ const ProgramDetailModal = ({ show, onClose, program, channel, recStatus, onPlay
 
   const isCurrentlyLive = startDate && endDate && new Date() >= startDate && new Date() <= endDate;
 
+  const isNew = program.is_new === true || program.new === true || program.isNew === true || program.new_episode === true ||
+    (typeof program.flags === "string" && program.flags.toLowerCase().includes("new")) ||
+    (Array.isArray(program.flags) && program.flags.some((f) => String(f).toLowerCase().includes("new"))) ||
+    (typeof program.categories === "string" && program.categories.toLowerCase().includes("new")) ||
+    (Array.isArray(program.categories) && program.categories.some((c) => String(c).toLowerCase().includes("new"))) ||
+    program.previously_shown === false || program.previously_shown === "false" || program.new_release === true;
+
   return (
     <div className="programDetailModalOverlay" onClick={onClose}>
       <div className="programDetailModalContent" onClick={(e) => e.stopPropagation()} tabIndex="0">
@@ -51,6 +58,7 @@ const ProgramDetailModal = ({ show, onClose, program, channel, recStatus, onPlay
             <h2>{title}</h2>
             <div className="subMeta">
               <span className="chName">{channelNum ? `Ch ${channelNum} — ` : ""}{channelName}</span>
+              {isNew && <span className="newBadge">NEW EPISODE</span>}
               {recStatus?.status === "recording" ? (
                 <span className="recBadge active"><FiCircle className="pulseDot" /> RECORDING</span>
               ) : recStatus?.status === "scheduled" ? (

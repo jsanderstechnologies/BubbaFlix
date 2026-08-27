@@ -109,6 +109,17 @@
             letter-spacing: 0.5px;
           }
 
+          .newBadge {
+            background: rgba(0, 230, 118, 0.2);
+            border: 1px solid #00e676;
+            color: #00e676;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 10px;
+            letter-spacing: 0.5px;
+          }
+
           .recBadge {
             display: inline-flex;
             align-items: center;

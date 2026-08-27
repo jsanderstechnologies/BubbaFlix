@@ -258,6 +258,55 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
     return null;
   };
 
+  const isNewEpisode = (prog) => {
+    if (!prog) return false;
+    if (prog.is_new === true || prog.new === true || prog.isNew === true || prog.new_episode === true) return true;
+    if (typeof prog.flags === "string" && prog.flags.toLowerCase().includes("new")) return true;
+    if (Array.isArray(prog.flags) && prog.flags.some((f) => String(f).toLowerCase().includes("new"))) return true;
+    if (typeof prog.categories === "string" && prog.categories.toLowerCase().includes("new")) return true;
+    if (Array.isArray(prog.categories) && prog.categories.some((c) => String(c).toLowerCase().includes("new"))) return true;
+    if (prog.previously_shown === false || prog.previously_shown === "false") return true;
+    if (prog.new_release === true) return true;
+    return false;
+  };
+
+  const getCurrentProgramForChannel = (channel) => {
+    if (!channel) return null;
+    const chId = String(channel.id || channel.channel_id || channel.number || "");
+    const chName = (channel.name || channel.title || "").trim().toLowerCase();
+    const now = new Date();
+
+    if (epgData && epgData.length > 0) {
+      const channelPrograms = epgData.filter((p) => {
+        const pChId = String(p.channel_id || p.channel || p.channel_number || "");
+        const pChName = String(p.channel_name || "").trim().toLowerCase();
+        return (chId && pChId && chId === pChId) || (chName && pChName && (chName === pChName || chName.includes(pChName)));
+      });
+
+      const currentProg = channelPrograms.find((prog) => {
+        const rawStart = prog.start_time || prog.start || prog.start_at || prog.start_timestamp || prog.time_start || prog.startTime;
+        const rawEnd = prog.end_time || prog.end || prog.end_at || prog.end_timestamp || prog.time_end || prog.endTime;
+        if (!rawStart) return false;
+        const start = new Date(rawStart);
+        const end = rawEnd ? new Date(rawEnd) : new Date(start.getTime() + 60 * 60 * 1000);
+        return now >= start && now <= end;
+      });
+
+      if (currentProg) return currentProg;
+      if (channelPrograms.length > 0) return channelPrograms[0];
+    }
+
+    if (channel.current_program) return channel.current_program;
+    if (channel.now_playing) {
+      return {
+        title: channel.now_playing,
+        description: channel.now_playing_desc || channel.description || "Live Broadcast"
+      };
+    }
+
+    return null;
+  };
+
   const handleOpenRecModal = (program, channel) => {
     setRecTargetProgram(program);
     setRecTargetChannel(channel);
@@ -620,6 +669,7 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
                                       <div className="progHeader">
                                         <span className="progTitle">{prog.title || prog.name || ch.now_playing || "Live Program"}</span>
                                         {seasonEpStr && <span className="seasonEpBadge">{seasonEpStr}</span>}
+                                        {isNewEpisode(prog) && <span className="newBadge">NEW</span>}
                                         {isRecordingActive ? (
                                           <span className="recBadge active"><FiCircle className="pulseDot" /> REC</span>
                                         ) : isRecordingScheduled ? (
@@ -669,39 +719,68 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
             ) : (
               /* --- CHANNELS CARDS GRID VIEW --- */
               <div className="channelsGrid">
-                {filteredChannels.map((ch, idx) => (
-                  <div key={ch.id || idx} className="channelCard" tabIndex="0">
-                    <div className="channelHeader">
-                      <span className="channelNumber">{ch.number || idx + 1}</span>
-                      {ch.logo ? (
-                        <img src={ch.logo} alt={ch.name} className="channelLogo" />
-                      ) : (
-                        <div className="channelLogoPlaceholder">{ch.name?.substring(0, 3)}</div>
-                      )}
-                      <h3 className="channelName">{ch.name}</h3>
-                    </div>
+                {filteredChannels.map((ch, idx) => {
+                  const currentProg = getCurrentProgramForChannel(ch);
+                  const recStatusObj = getRecordingStatusForProgram(currentProg, ch);
+                  const isNew = isNewEpisode(currentProg);
+                  const isRecActive = recStatusObj?.status === "recording";
+                  const isRecScheduled = recStatusObj?.status === "scheduled";
 
-                    <div className="programInfo">
-                      <span className="nowPlayingLabel">NOW PLAYING</span>
-                      <h4 className="programTitle">{ch.current_program?.title || ch.now_playing || "Live Broadcast"}</h4>
-                      <p className="programDesc">{ch.current_program?.description || "No guide detail available"}</p>
-                    </div>
+                  const progTitle = currentProg?.title || currentProg?.name || ch.now_playing || "Live Broadcast";
+                  const progDesc = currentProg?.description || currentProg?.summary || ch.now_playing_desc || "No guide detail available";
+                  const seasonEpStr = currentProg?.season && currentProg?.episode
+                    ? `S${String(currentProg.season).padStart(2, '0')} E${String(currentProg.episode).padStart(2, '0')}`
+                    : (currentProg?.sub_title || null);
 
-                    <div className="cardActions">
-                      <button className="playBtn" onClick={() => handlePlayChannel(ch)} tabIndex="0">
-                        <FiPlay /> Watch Live
-                      </button>
-                      <button
-                        className="recordBtn"
-                        onClick={() => handleOpenRecModal(ch.current_program, ch)}
-                        tabIndex="0"
-                        title="Record Options"
-                      >
-                        <FiVideo /> Record Options
-                      </button>
+                  return (
+                    <div
+                      key={ch.id || idx}
+                      className={`channelCard ${isRecActive ? "isRecording" : isRecScheduled ? "isScheduled" : ""}`}
+                      tabIndex="0"
+                      onClick={() => handleOpenDetailModal(currentProg, ch)}
+                    >
+                      <div className="channelHeader">
+                        <span className="channelNumber">{ch.number || idx + 1}</span>
+                        {ch.logo ? (
+                          <img src={ch.logo} alt={ch.name} className="channelLogo" />
+                        ) : (
+                          <div className="channelLogoPlaceholder">{ch.name?.substring(0, 3)}</div>
+                        )}
+                        <h3 className="channelName">{ch.name}</h3>
+                      </div>
+
+                      <div className="programInfo">
+                        <div className="programInfoHeader">
+                          <span className="nowPlayingLabel">NOW PLAYING</span>
+                          {isNew && <span className="newBadge">NEW</span>}
+                          {isRecActive ? (
+                            <span className="recBadge active"><FiCircle className="pulseDot" /> REC</span>
+                          ) : isRecScheduled ? (
+                            <span className="recBadge scheduled"><FiCheck /> SCHEDULED</span>
+                          ) : null}
+                        </div>
+                        <h4 className="programTitle">
+                          {progTitle} {seasonEpStr && <span className="seasonEpInline">({seasonEpStr})</span>}
+                        </h4>
+                        <p className="programDesc">{progDesc}</p>
+                      </div>
+
+                      <div className="cardActions" onClick={(e) => e.stopPropagation()}>
+                        <button className="playBtn" onClick={() => handlePlayChannel(ch)} tabIndex="0">
+                          <FiPlay /> Watch Live
+                        </button>
+                        <button
+                          className={`recordBtn ${isRecActive ? "isRecording" : isRecScheduled ? "isScheduled" : ""}`}
+                          onClick={() => handleOpenRecModal(currentProg, ch)}
+                          tabIndex="0"
+                          title="Record Options"
+                        >
+                          <FiVideo /> {isRecActive ? "RECORDING" : isRecScheduled ? "SCHEDULED" : "Record Options"}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
