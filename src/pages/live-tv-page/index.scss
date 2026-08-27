@@ -242,12 +242,32 @@
         padding: 6px 14px;
         border-radius: 20px;
         font-size: 13px;
+        font-weight: 600;
         cursor: pointer;
+        transition: all 0.2s ease;
 
-        &:hover {
+        &:hover,
+        &:focus {
           background: rgba(255, 255, 255, 0.2);
+          border-color: var(--pink);
+          transform: scale(1.04);
+        }
+
+        &:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+          transform: none;
+        }
+
+        .spinIcon {
+          animation: refreshSpin 1s linear infinite;
         }
       }
+
+@keyframes refreshSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
     }
   }
 

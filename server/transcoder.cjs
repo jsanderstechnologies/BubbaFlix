@@ -648,25 +648,39 @@ const detectGpuCapabilities = () => {
         const isHttps = targetParsed.protocol === "https:";
         const httpModule = isHttps ? require("https") : require("http");
 
-        const headers = { ...req.headers, host: targetParsed.host };
-        delete headers["content-length"];
+        const proxyHeaders = {};
+        for (const key of Object.keys(req.headers)) {
+          const lower = key.toLowerCase();
+          if (lower !== "host" && lower !== "content-length" && lower !== "connection") {
+            proxyHeaders[key] = req.headers[key];
+          }
+        }
+        proxyHeaders["host"] = targetParsed.host;
+
         if (apiKey) {
           if (apiKey.startsWith("eyJ")) {
-            headers["Authorization"] = `Bearer ${apiKey}`;
+            proxyHeaders["authorization"] = `Bearer ${apiKey}`;
           } else {
-            headers["X-API-Key"] = apiKey;
-            delete headers["authorization"];
+            proxyHeaders["x-api-key"] = apiKey;
+            delete proxyHeaders["authorization"];
           }
         }
 
         const proxyReq = httpModule.request(targetDispatcharrUrl, {
           method: req.method,
-          headers: headers,
+          headers: proxyHeaders,
           rejectUnauthorized: false,
           timeout: 8000
         }, (proxyRes) => {
           const duration = Date.now() - startTime;
           logMessage(`[Dispatcharr Proxy Response] ${req.method} ${targetDispatcharrUrl} -> Status ${proxyRes.statusCode} (${duration}ms) | Initiator: [${initiator.initiatorComponent}] (${initiator.ip})`);
+
+          if (proxyRes.statusCode >= 400 && candidateIdx < candidateUrls.length) {
+            logMessage(`[Dispatcharr Proxy Target HTTP ${proxyRes.statusCode}] ${targetDispatcharrUrl}. Trying next candidate target...`, true);
+            tryNextCandidate();
+            return;
+          }
+
           if (!res.headersSent) {
             res.writeHead(proxyRes.statusCode, {
               ...proxyRes.headers,

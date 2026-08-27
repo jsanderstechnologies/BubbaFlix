@@ -88,6 +88,8 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
     setShowRecDetailsModal(true);
   };
 
+  const [refreshing, setRefreshing] = useState(false);
+
   const loadAllData = useCallback(async (isSilent = false) => {
     if (!isSilent) setLoading(true);
     reportClientLog(`[Live TV Fetch Initiated] Mode: ${isSilent ? "Background Auto-Refresh" : "Page/Tab Navigation"}`);
@@ -112,6 +114,14 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
       if (!isSilent) setLoading(false);
     }
   }, []);
+
+  const handleManualRefresh = useCallback(async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    reportClientLog("[User Action] Manual Refresh Button Clicked in Live TV / EPG / Recordings UI");
+    await loadAllData(false);
+    setRefreshing(false);
+  }, [refreshing, loadAllData]);
 
   const generateTimeline = useCallback((baseDate = new Date()) => {
     const start = new Date(baseDate);
@@ -560,8 +570,8 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
                     </button>
                   </>
                 )}
-                <button className="refreshBtn" onClick={loadAllData} tabIndex="0">
-                  <FiRefreshCw /> Refresh
+                <button className="refreshBtn" onClick={handleManualRefresh} disabled={refreshing || loading} tabIndex="0">
+                  <FiRefreshCw className={refreshing || loading ? "spinIcon" : ""} /> {refreshing || loading ? "Refreshing..." : "Refresh"}
                 </button>
               </div>
             </div>
@@ -817,8 +827,8 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
           <div className="tabContent">
             <div className="sectionActionHeader">
               <h2>Recorded Shows, Movies & Rules</h2>
-              <button className="refreshBtn" onClick={loadAllData} tabIndex="0">
-                <FiRefreshCw /> Refresh Recordings
+              <button className="refreshBtn" onClick={handleManualRefresh} disabled={refreshing || loading} tabIndex="0">
+                <FiRefreshCw className={refreshing || loading ? "spinIcon" : ""} /> {refreshing || loading ? "Refreshing..." : "Refresh Recordings"}
               </button>
             </div>
 
