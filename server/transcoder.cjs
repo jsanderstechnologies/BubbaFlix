@@ -263,39 +263,47 @@ const detectGpuCapabilities = () => {
 
     let gpuType = "CPU Software (libx264)";
     let encoder = "libx264";
-    let videoArgs = ["-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-crf", "23"];
+    let inputArgs = [];
+    let outputArgs = ["-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-crf", "23"];
 
     if (hasNvenc && hwaccelsOutput.includes("cuda")) {
       gpuType = "NVIDIA Hardware Acceleration (NVENC CUDA)";
       encoder = "h264_nvenc";
-      videoArgs = ["-hwaccel", "cuda", "-c:v", "h264_nvenc", "-preset", "p1", "-tune", "ll"];
+      inputArgs = ["-hwaccel", "cuda"];
+      outputArgs = ["-c:v", "h264_nvenc", "-preset", "p1", "-tune", "ll"];
     } else if (hasNvenc) {
       gpuType = "NVIDIA Hardware Acceleration (NVENC)";
       encoder = "h264_nvenc";
-      videoArgs = ["-c:v", "h264_nvenc", "-preset", "p1", "-tune", "ll"];
+      inputArgs = [];
+      outputArgs = ["-c:v", "h264_nvenc", "-preset", "p1", "-tune", "ll"];
     } else if (hasQsv && hwaccelsOutput.includes("qsv")) {
       gpuType = "Intel QuickSync Hardware Acceleration (QSV)";
       encoder = "h264_qsv";
-      videoArgs = ["-hwaccel", "qsv", "-c:v", "h264_qsv", "-preset", "veryfast"];
+      inputArgs = ["-hwaccel", "qsv"];
+      outputArgs = ["-c:v", "h264_qsv", "-preset", "veryfast"];
     } else if (hasAmf) {
       gpuType = "AMD Hardware Acceleration (AMF)";
       encoder = "h264_amf";
-      videoArgs = ["-c:v", "h264_amf", "-quality", "speed"];
+      inputArgs = [];
+      outputArgs = ["-c:v", "h264_amf", "-quality", "speed"];
     } else if (hasVaapi && hwaccelsOutput.includes("vaapi")) {
       gpuType = "Linux Hardware Acceleration (VAAPI)";
       encoder = "h264_vaapi";
-      videoArgs = ["-hwaccel", "vaapi", "-c:v", "h264_vaapi"];
+      inputArgs = ["-hwaccel", "vaapi"];
+      outputArgs = ["-c:v", "h264_vaapi"];
     } else if (hasVideotoolbox) {
       gpuType = "Apple Hardware Acceleration (VideoToolbox)";
       encoder = "h264_videotoolbox";
-      videoArgs = ["-c:v", "h264_videotoolbox", "-realtime", "true"];
+      inputArgs = [];
+      outputArgs = ["-c:v", "h264_videotoolbox", "-realtime", "true"];
     }
 
     cachedGpuConfig = {
       enabled: encoder !== "libx264",
       type: gpuType,
       encoder: encoder,
-      videoArgs: videoArgs
+      inputArgs: inputArgs,
+      outputArgs: outputArgs
     };
 
     logMessage(`[GPU Transcoder Engine] Auto-Detected Hardware Accelerator: ${gpuType} (${encoder})`);
@@ -305,7 +313,8 @@ const detectGpuCapabilities = () => {
       enabled: false,
       type: "CPU Software (libx264)",
       encoder: "libx264",
-      videoArgs: ["-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-crf", "23"]
+      inputArgs: [],
+      outputArgs: ["-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-crf", "23"]
     };
     logMessage(`[GPU Transcoder Engine] GPU auto-detection fallback to CPU libx264: ${err.message}`);
     return cachedGpuConfig;
@@ -361,24 +370,23 @@ const detectGpuCapabilities = () => {
 
     const settings = loadServerSettings();
     const apiKey = settings.dispatcharrApiKey || parsedUrl.query.api_key || parsedUrl.query.token || "";
-    const dispatcharrBase = (settings.dispatcharrUrl || "http://192.168.10.3:9191").replace(/\/+$/, "");
 
-    // Normalize stream target URL: convert external proxy URLs to direct local Dispatcharr URLs for FFmpeg
+    // Replace invalid relative or 127.0.0.1 host loopbacks in proxied Dispatcharr stream URLs
     let normalizedTargetUrl = targetUrl;
     if (normalizedTargetUrl.includes("/proxy/ts/stream/")) {
-      const match = normalizedTargetUrl.match(/\/proxy\/ts\/stream\/([^/?]+)/);
-      if (match && match[1]) {
+      const match = normalizedTargetUrl.match(/\/proxy\/ts\/stream\/([a-zA-Z0-9_-]+)/);
+      if (match) {
         const streamId = match[1];
-        const authParam = apiKey ? `?token=${encodeURIComponent(apiKey)}` : "";
-        normalizedTargetUrl = `${dispatcharrBase}/proxy/ts/stream/${streamId}${authParam}`;
+        const settings = loadServerSettings();
+        const dispatcharrUrl = (settings.dispatcharrUrl || "http://192.168.10.3:9191").replace(/\/$/, "");
+        const apiKey = settings.dispatcharrApiKey || "";
+        const authQuery = apiKey ? `&api_key=${encodeURIComponent(apiKey)}` : "";
+        normalizedTargetUrl = `${dispatcharrUrl}/proxy/ts/stream/${streamId}${authQuery.replace(/^&/, "?")}`;
       }
-    } else {
-      const urlParts = normalizedTargetUrl.split("?");
-      const basePath = urlParts[0].replace(/\/+$/, "");
-      const queryStr = urlParts[1] ? `?${urlParts[1]}` : "";
-      if (basePath.includes("/proxy/ts/stream/")) {
-        normalizedTargetUrl = `${basePath}/${queryStr}`;
-      }
+    } else if (normalizedTargetUrl.startsWith("/")) {
+      const settings = loadServerSettings();
+      const dispatcharrUrl = (settings.dispatcharrUrl || "http://192.168.10.3:9191").replace(/\/$/, "");
+      normalizedTargetUrl = `${dispatcharrUrl}${normalizedTargetUrl}`;
     }
 
     const headersStr = apiKey
@@ -393,8 +401,9 @@ const detectGpuCapabilities = () => {
       "-reconnect_at_eof", "1",
       "-reconnect_streamed", "1",
       "-reconnect_delay_max", "2",
+      ...(gpuInfo.inputArgs || []),
       "-i", normalizedTargetUrl,
-      ...gpuInfo.videoArgs,
+      ...(gpuInfo.outputArgs || []),
       "-c:a", "aac",
       "-b:a", "192k",
       "-ac", "2",
@@ -430,7 +439,8 @@ const detectGpuCapabilities = () => {
           enabled: false,
           type: "CPU Software (libx264)",
           encoder: "libx264",
-          videoArgs: ["-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-crf", "23"]
+          inputArgs: [],
+          outputArgs: ["-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-crf", "23"]
         };
       }
       if (!res.writableEnded) {
