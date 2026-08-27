@@ -94,7 +94,8 @@ export const isSimklWatched = ({ tmdbId, mediaType, seasonNum, episodeNum }) => 
 // SIMKL API Phase 1 & Phase 2 Compliant Sync Strategy
 export const fetchUserSimklHistory = async (forceManualSync = false) => {
   const { clientId } = getSimklConfig();
-  if (!clientId) return getSimklWatchCache();
+  const accessToken = typeof window !== "undefined" ? localStorage.getItem("simkl_access_token") : null;
+  if (!clientId || !accessToken) return getSimklWatchCache();
 
   if (typeof window !== "undefined" && !forceManualSync) {
     const lastSyncTime = localStorage.getItem("simkl_last_sync_time");
