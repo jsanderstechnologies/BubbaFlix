@@ -217,14 +217,22 @@ const fetchDispatcharrWithFallback = async (endpointPaths) => {
   const proxyBase = getProxyBase();
   const headers = getHeaders(apiKey);
 
-  const authQuery = apiKey ? `?api_key=${encodeURIComponent(apiKey)}` : "";
+  // Guarantee fresh data by disabling HTTP caching in WebView & browsers
+  headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
+  headers["Pragma"] = "no-cache";
+  headers["Expires"] = "0";
+
+  const timeStampParam = `_t=${Date.now()}`;
+  const authQuery = apiKey
+    ? `?api_key=${encodeURIComponent(apiKey)}&${timeStampParam}`
+    : `?${timeStampParam}`;
 
   // Strategy A: Direct fetch to user's Dispatcharr IP/URL
   if (cleanServerUrl) {
     for (const path of endpointPaths) {
       try {
         const fullUrl = `${cleanServerUrl}${path}${authQuery}`;
-        const res = await fetch(fullUrl, { method: "GET", headers });
+        const res = await fetch(fullUrl, { method: "GET", headers, cache: "no-store" });
         if (res.ok) {
           const contentType = res.headers.get("content-type") || "";
           if (contentType.includes("application/json") || contentType.includes("text/json")) {
@@ -245,7 +253,7 @@ const fetchDispatcharrWithFallback = async (endpointPaths) => {
   for (const path of endpointPaths) {
     try {
       const proxyUrl = `${proxyBase}${path}${authQuery}`;
-      const res = await fetch(proxyUrl, { method: "GET", headers });
+      const res = await fetch(proxyUrl, { method: "GET", headers, cache: "no-store" });
       if (res.ok) {
         const contentType = res.headers.get("content-type") || "";
         if (contentType.includes("application/json") || contentType.includes("text/json")) {

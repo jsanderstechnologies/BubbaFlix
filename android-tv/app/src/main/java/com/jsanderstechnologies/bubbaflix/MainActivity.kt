@@ -106,7 +106,7 @@ class MainActivity : AppCompatActivity() {
         settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         settings.useWideViewPort = true
         settings.loadWithOverviewMode = true
-        settings.cacheMode = WebSettings.LOAD_DEFAULT
+        settings.cacheMode = WebSettings.LOAD_NO_CACHE
 
         WebView.setWebContentsDebuggingEnabled(true)
 

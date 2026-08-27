@@ -813,6 +813,44 @@
         }
       }
     }
+  .sectionActionHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+
+    h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: white;
+      margin: 0;
+    }
+
+    .refreshBtn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--gradient);
+      border: none;
+      color: white;
+      padding: 10px 22px;
+      border-radius: 25px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      outline: none;
+      box-shadow: 0 4px 14px rgba(218, 47, 104, 0.4);
+      transition: all 0.2s ease;
+
+      &:hover,
+      &:focus,
+      &:focus-visible {
+        transform: scale(1.05);
+        box-shadow: 0 0 20px var(--pink), 0 4px 16px rgba(218, 47, 104, 0.6);
+      }
+    }
   }
 
   .recordingsGrid {
