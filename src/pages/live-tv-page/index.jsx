@@ -130,11 +130,15 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
   const loadAllData = async () => {
     setLoading(true);
     try {
-      const [chData, epgList, recList] = await Promise.all([
+      const [chRes, epgRes, recRes] = await Promise.allSettled([
         fetchDispatcharrChannels(),
         fetchDispatcharrEpg(),
         fetchDispatcharrRecordings()
       ]);
+      const chData = chRes.status === "fulfilled" && Array.isArray(chRes.value) ? chRes.value : [];
+      const epgList = epgRes.status === "fulfilled" && Array.isArray(epgRes.value) ? epgRes.value : [];
+      const recList = recRes.status === "fulfilled" && Array.isArray(recRes.value) ? recRes.value : [];
+
       setChannels(chData);
       setEpgData(epgList);
       setRecordings(recList);

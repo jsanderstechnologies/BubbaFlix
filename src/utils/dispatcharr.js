@@ -226,9 +226,14 @@ const fetchDispatcharrWithFallback = async (endpointPaths) => {
         const fullUrl = `${cleanServerUrl}${path}${authQuery}`;
         const res = await fetch(fullUrl, { method: "GET", headers });
         if (res.ok) {
-          const json = await res.json();
-          const normalized = normalizeArray(json);
-          return { data: normalized, serverUrl: cleanServerUrl, apiKey };
+          const contentType = res.headers.get("content-type") || "";
+          if (contentType.includes("application/json") || contentType.includes("text/json")) {
+            const json = await res.json();
+            const normalized = normalizeArray(json);
+            if (normalized && (Array.isArray(normalized) ? normalized.length > 0 : true)) {
+              return { data: normalized, serverUrl: cleanServerUrl, apiKey };
+            }
+          }
         }
       } catch (err) {
         // Direct fetch failed, continue to proxy fallback
@@ -242,9 +247,12 @@ const fetchDispatcharrWithFallback = async (endpointPaths) => {
       const proxyUrl = `${proxyBase}${path}${authQuery}`;
       const res = await fetch(proxyUrl, { method: "GET", headers });
       if (res.ok) {
-        const json = await res.json();
-        const normalized = normalizeArray(json);
-        return { data: normalized, serverUrl: cleanServerUrl, apiKey };
+        const contentType = res.headers.get("content-type") || "";
+        if (contentType.includes("application/json") || contentType.includes("text/json")) {
+          const json = await res.json();
+          const normalized = normalizeArray(json);
+          return { data: normalized, serverUrl: cleanServerUrl, apiKey };
+        }
       }
     } catch (err) {
       // Proxy fetch error
