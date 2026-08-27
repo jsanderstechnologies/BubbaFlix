@@ -68,10 +68,24 @@
 
             <ImageView
                 android:id="@+id/img_media_logo"
-                android:layout_width="220dp"
+                android:layout_width="140dp"
                 android:layout_height="48dp"
                 android:layout_marginStart="20dp"
                 android:scaleType="fitStart"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/txt_player_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:textColor="#FFFFFF"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:shadowColor="#80000000"
+                android:shadowDx="0"
+                android:shadowDy="2"
+                android:shadowRadius="6"
                 android:visibility="gone" />
 
             <View

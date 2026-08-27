@@ -51,6 +51,7 @@ class PlayerActivity : AppCompatActivity() {
     private lateinit var btnAudio: Button
     private lateinit var btnSubtitles: Button
     private lateinit var imgMediaLogo: ImageView
+    private lateinit var txtPlayerTitle: TextView
 
     private lateinit var btnRewind30: Button
     private lateinit var btnRewind10: Button
@@ -111,6 +112,7 @@ class PlayerActivity : AppCompatActivity() {
         btnAudio = findViewById(R.id.btn_audio)
         btnSubtitles = findViewById(R.id.btn_subtitles)
         imgMediaLogo = findViewById(R.id.img_media_logo)
+        txtPlayerTitle = findViewById(R.id.txt_player_title)
 
         btnRewind30 = findViewById(R.id.btn_rewind_30)
         btnRewind10 = findViewById(R.id.btn_rewind_10)
@@ -125,9 +127,17 @@ class PlayerActivity : AppCompatActivity() {
         txtErrorMsg = findViewById(R.id.txt_error_msg)
 
         val videoUrl = intent.getStringExtra(EXTRA_VIDEO_URL) ?: ""
+        val title = intent.getStringExtra(EXTRA_TITLE)
         val logoUrl = intent.getStringExtra(EXTRA_LOGO_URL)
         val tmdbId = intent.getStringExtra(EXTRA_TMDB_ID)
         val mediaType = intent.getStringExtra(EXTRA_MEDIA_TYPE) ?: "movie"
+
+        if (!title.isNullOrEmpty()) {
+            txtPlayerTitle.text = title
+            txtPlayerTitle.visibility = View.VISIBLE
+        } else {
+            txtPlayerTitle.visibility = View.GONE
+        }
 
         if (!logoUrl.isNullOrEmpty()) {
             loadLogoImage(logoUrl)

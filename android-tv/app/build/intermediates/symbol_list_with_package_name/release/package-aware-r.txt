@@ -4378,6 +4378,7 @@ id triangle
 id txt_current_time
 id txt_duration
 id txt_error_msg
+id txt_player_title
 id unchecked
 id uniform
 id unlabeled

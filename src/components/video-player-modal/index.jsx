@@ -22,7 +22,7 @@ import { fetchOpenSubtitles, downloadAndConvertSubtitle } from "../../utils/subt
 import { getWatchProgress, saveWatchProgress, clearWatchProgress, formatTimeDisplay } from "../../utils/watchProgress";
 import "./index.scss";
 
-const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, mediaType = "movie", seasonNum, episodeNum }) => {
+const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, mediaType = "movie", seasonNum, episodeNum, channelLogo }) => {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   const hideControlsTimeoutRef = useRef(null);
@@ -78,7 +78,7 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
       // Check if running inside Native Android TV App Client with Universal ExoPlayer
       if (typeof window !== "undefined" && window.AndroidPlayer && typeof window.AndroidPlayer.playStream === "function") {
         console.log("[Launching Native Universal Player Activity]:", targetUrl);
-        window.AndroidPlayer.playStream(targetUrl, title || "", mediaLogoUrl || "", tmdbId || "", mediaType || "movie");
+        window.AndroidPlayer.playStream(targetUrl, title || "", channelLogo || mediaLogoUrl || "", tmdbId || "", mediaType || "movie");
         setShow(false);
         return;
       }
@@ -490,7 +490,12 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
                 <FiArrowLeft className="backIcon" /> Back
               </button>
 
-              {mediaLogoUrl ? (
+              {channelLogo ? (
+                <div className="playerChannelLogoHeader">
+                  <img src={channelLogo} alt={title || "Channel Logo"} className="playerChannelLogo" />
+                  <h2 className="playerTitle">{title}</h2>
+                </div>
+              ) : mediaLogoUrl ? (
                 <img src={mediaLogoUrl} alt="Media Title Logo" className="mediaLogo" />
               ) : (
                 <h2 className="playerTitle">{title}</h2>

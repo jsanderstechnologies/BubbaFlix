@@ -20,6 +20,10 @@
         "source": "F:\\.gradle\\daemon\\8.4\\com.jsanderstechnologies.bubbaflix.app-main-38:\\drawable-xxhdpi\\tv_banner.png"
     },
     {
+        "merged": "com.jsanderstechnologies.bubbaflix.app-merged_res-37:/layout_activity_player.xml.flat",
+        "source": "com.jsanderstechnologies.bubbaflix.app-main-38:/layout/activity_player.xml"
+    },
+    {
         "merged": "F:\\.gradle\\daemon\\8.4\\com.jsanderstechnologies.bubbaflix.app-merged_res-37:\\drawable_btn_player_control_circle.xml.flat",
         "source": "F:\\.gradle\\daemon\\8.4\\com.jsanderstechnologies.bubbaflix.app-main-38:\\drawable\\btn_player_control_circle.xml"
     },
@@ -50,10 +54,6 @@
     {
         "merged": "F:\\.gradle\\daemon\\8.4\\com.jsanderstechnologies.bubbaflix.app-merged_res-37:\\layout_activity_player.xml.flat",
         "source": "F:\\.gradle\\daemon\\8.4\\com.jsanderstechnologies.bubbaflix.app-main-38:\\layout\\activity_player.xml"
-    },
-    {
-        "merged": "com.jsanderstechnologies.bubbaflix.app-merged_res-37:/drawable_player_seekbar_progress.xml.flat",
-        "source": "com.jsanderstechnologies.bubbaflix.app-main-38:/drawable/player_seekbar_progress.xml"
     },
     {
         "merged": "F:\\.gradle\\daemon\\8.4\\com.jsanderstechnologies.bubbaflix.app-merged_res-37:\\drawable_player_overlay_gradient.xml.flat",

@@ -29,6 +29,7 @@ id seek_bar
 id txt_current_time
 id txt_duration
 id txt_error_msg
+id txt_player_title
 layout activity_player
 string app_name
 string default_server_url

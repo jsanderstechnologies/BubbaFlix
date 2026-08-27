@@ -67,6 +67,7 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
   const [showPlayer, setShowPlayer] = useState(false);
   const [playerStreamUrl, setPlayerStreamUrl] = useState("");
   const [playerTitle, setPlayerTitle] = useState("");
+  const [playerChannelLogo, setPlayerChannelLogo] = useState("");
 
   // DVR Recording Modal State
   const [showRecModal, setShowRecModal] = useState(false);
@@ -201,6 +202,7 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
     const streamUrl = getDispatcharrStreamUrl(channel);
     setPlayerStreamUrl(streamUrl);
     setPlayerTitle(channel.name || `Channel ${channel.number || ""}`);
+    setPlayerChannelLogo(channel.logo || channel.icon || channel.tvg_logo || "");
     setShowPlayer(true);
   };
 
@@ -208,6 +210,7 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
     const streamUrl = rec.stream_url || getDispatcharrStreamUrl(rec);
     setPlayerStreamUrl(streamUrl);
     setPlayerTitle(rec.title || "DVR Recording");
+    setPlayerChannelLogo(rec.logo || rec.channel_logo || rec.channel_icon || "");
     setShowPlayer(true);
   };
 
@@ -886,6 +889,7 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
         videoUrl={playerStreamUrl}
         rawUrl={playerStreamUrl}
         title={playerTitle}
+        channelLogo={playerChannelLogo}
         mediaType="tv"
       />
 
