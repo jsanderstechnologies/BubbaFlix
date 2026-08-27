@@ -261,22 +261,36 @@ const detectGpuCapabilities = () => {
     const hasVaapi = encodersOutput.includes("h264_vaapi");
     const hasVideotoolbox = encodersOutput.includes("h264_videotoolbox");
 
+    // Runtime hardware device initialization probe helper
+    const probeHwDevice = (hwArg) => {
+      try {
+        const { execSync } = require("child_process");
+        execSync(`ffmpeg -hide_banner -loglevel error -init_hw_device ${hwArg} -f null -`, {
+          timeout: 2500,
+          stdio: ["ignore", "ignore", "ignore"]
+        });
+        return true;
+      } catch (e) {
+        return false;
+      }
+    };
+
     let gpuType = "CPU Software (libx264)";
     let encoder = "libx264";
     let inputArgs = [];
     let outputArgs = ["-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-crf", "23"];
 
-    if (hasNvenc && hwaccelsOutput.includes("cuda")) {
+    if (hasNvenc && hwaccelsOutput.includes("cuda") && probeHwDevice("cuda")) {
       gpuType = "NVIDIA Hardware Acceleration (NVENC CUDA)";
       encoder = "h264_nvenc";
       inputArgs = ["-hwaccel", "cuda"];
       outputArgs = ["-c:v", "h264_nvenc", "-preset", "p1", "-tune", "ll"];
-    } else if (hasNvenc) {
+    } else if (hasNvenc && probeHwDevice("cuda")) {
       gpuType = "NVIDIA Hardware Acceleration (NVENC)";
       encoder = "h264_nvenc";
       inputArgs = [];
       outputArgs = ["-c:v", "h264_nvenc", "-preset", "p1", "-tune", "ll"];
-    } else if (hasQsv && hwaccelsOutput.includes("qsv")) {
+    } else if (hasQsv && hwaccelsOutput.includes("qsv") && probeHwDevice("qsv=hw")) {
       gpuType = "Intel QuickSync Hardware Acceleration (QSV)";
       encoder = "h264_qsv";
       inputArgs = ["-hwaccel", "qsv"];
@@ -286,7 +300,7 @@ const detectGpuCapabilities = () => {
       encoder = "h264_amf";
       inputArgs = [];
       outputArgs = ["-c:v", "h264_amf", "-quality", "speed"];
-    } else if (hasVaapi && hwaccelsOutput.includes("vaapi")) {
+    } else if (hasVaapi && hwaccelsOutput.includes("vaapi") && probeHwDevice("vaapi=va:/dev/dri/renderD128")) {
       gpuType = "Linux Hardware Acceleration (VAAPI)";
       encoder = "h264_vaapi";
       inputArgs = ["-hwaccel", "vaapi"];
