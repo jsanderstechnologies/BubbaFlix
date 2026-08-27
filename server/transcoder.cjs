@@ -205,8 +205,9 @@ const server = http.createServer((req, res) => {
   const startTime = Date.now();
   const parsedUrl = new URL(req.url, `http://${req.headers.host || "localhost"}`);
   parsedUrl.query = Object.fromEntries(parsedUrl.searchParams);
-  const rawPath = parsedUrl.pathname || "/";
-  const cleanPath = rawPath.length > 1 && rawPath.endsWith("/") ? rawPath.slice(0, -1) : rawPath;
+  const rawPath = (parsedUrl.pathname || "/") + (parsedUrl.search || "");
+  const rawClean = parsedUrl.pathname || "/";
+  const cleanPath = rawClean.length > 1 && rawClean.endsWith("/") ? rawClean.slice(0, -1) : rawClean;
   const initiator = getRequestInitiator(req);
 
   logMessage(`[HTTP Request] ${req.method} ${rawPath} | Initiator: [${initiator.initiatorComponent}] | Client IP: ${initiator.ip} | Referer: ${initiator.referer} | User-Agent: ${initiator.userAgent}`);
@@ -671,7 +672,9 @@ const detectGpuCapabilities = () => {
             proxyHeaders["authorization"] = `Bearer ${apiKey}`;
           } else {
             proxyHeaders["x-api-key"] = apiKey;
-            delete proxyHeaders["authorization"];
+            if (!proxyHeaders["authorization"]) {
+              proxyHeaders["authorization"] = `Bearer ${apiKey}`;
+            }
           }
         }
 
