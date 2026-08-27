@@ -13,7 +13,9 @@ import {
   FiMessageSquare,
   FiVolume2,
   FiCheck,
-  FiAlertTriangle
+  FiAlertTriangle,
+  FiTv,
+  FiRadio
 } from "react-icons/fi";
 import { fetchDataFromAPI } from "../../utils/api";
 import { fetchOpenSubtitles, downloadAndConvertSubtitle } from "../../utils/subtitles";
@@ -43,6 +45,7 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
   const [isPlaying, setIsPlaying] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [maxBufferedTime, setMaxBufferedTime] = useState(0);
   const [bufferedPercent, setBufferedPercent] = useState(0);
   const [controlsVisible, setControlsVisible] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -318,6 +321,8 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
     }
   };
 
+  const isLiveStream = mediaType === "tv" || duration === Infinity || isNaN(duration);
+
   const handleTimeUpdate = () => {
     if (videoRef.current) {
       const v = videoRef.current;
@@ -325,7 +330,8 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
       const dur = v.duration || 0;
       setDuration(dur);
 
-      if (v.buffered && v.buffered.length > 0 && dur > 0) {
+      let maxBuf = v.currentTime;
+      if (v.buffered && v.buffered.length > 0) {
         let maxBufferedEnd = 0;
         for (let i = 0; i < v.buffered.length; i++) {
           if (v.buffered.start(i) <= v.currentTime && v.currentTime <= v.buffered.end(i)) {
@@ -336,12 +342,15 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
         if (maxBufferedEnd === 0 && v.buffered.length > 0) {
           maxBufferedEnd = v.buffered.end(v.buffered.length - 1);
         }
-        const pct = Math.min(100, (maxBufferedEnd / dur) * 100);
+        maxBuf = Math.max(v.currentTime, maxBufferedEnd);
+        const totalLength = isLiveStream ? maxBuf : dur;
+        const pct = totalLength > 0 ? Math.min(100, (maxBufferedEnd / totalLength) * 100) : 0;
         setBufferedPercent(pct);
       }
+      setMaxBufferedTime(maxBuf);
 
-      // Save watch progress to localStorage
-      if (dur > 0 && v.currentTime >= 10 && tmdbId) {
+      // Save watch progress to localStorage if not Live TV
+      if (!isLiveStream && dur > 0 && v.currentTime >= 10 && tmdbId) {
         saveWatchProgress({
           tmdbId,
           mediaType,
@@ -370,10 +379,19 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
   const seekRelative = (seconds) => {
     resetControlsTimeout();
     if (!videoRef.current) return;
-    videoRef.current.currentTime = Math.min(
-      Math.max(0, videoRef.current.currentTime + seconds),
-      duration || 0
-    );
+    const v = videoRef.current;
+    const maxSeek = isLiveStream ? Math.max(v.currentTime, maxBufferedTime) : (duration || 0);
+    const target = Math.min(Math.max(0, v.currentTime + seconds), maxSeek);
+    v.currentTime = target;
+  };
+
+  const jumpToLive = () => {
+    resetControlsTimeout();
+    if (!videoRef.current) return;
+    const target = Math.max(0, maxBufferedTime - 0.5);
+    videoRef.current.currentTime = target;
+    videoRef.current.play().catch(() => {});
+    setIsPlaying(true);
   };
 
   const handleScrubberChange = (e) => {
@@ -545,20 +563,49 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
                 />
                 <div
                   className="playedTrack"
-                  style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+                  style={{
+                    width: `${
+                      (isLiveStream ? maxBufferedTime : duration) > 0
+                        ? (currentTime / (isLiveStream ? maxBufferedTime : duration)) * 100
+                        : 0
+                    }%`
+                  }}
                 />
                 <input
                   ref={scrubberRef}
                   type="range"
                   min={0}
-                  max={duration || 100}
+                  max={isLiveStream ? Math.max(10, maxBufferedTime) : (duration || 100)}
                   value={currentTime}
                   onChange={handleScrubberChange}
                   className="timelineScrubber"
                   tabIndex="0"
                 />
               </div>
-              <span className="timeDisplay">{formatTime(duration)}</span>
+              {isLiveStream ? (() => {
+                const behindLiveSecs = Math.max(0, maxBufferedTime - currentTime);
+                return behindLiveSecs > 4 ? (
+                  <button
+                    className="liveBadgeBtn behind"
+                    onClick={jumpToLive}
+                    title="Jump back to Live broadcast"
+                    tabIndex="0"
+                  >
+                    <span className="pulseDot" /> GO TO LIVE (-{formatTime(behindLiveSecs)})
+                  </button>
+                ) : (
+                  <button
+                    className="liveBadgeBtn live"
+                    onClick={jumpToLive}
+                    title="Watching Live Broadcast"
+                    tabIndex="0"
+                  >
+                    <span className="pulseDot live" /> ● LIVE
+                  </button>
+                );
+              })() : (
+                <span className="timeDisplay">{formatTime(duration)}</span>
+              )}
             </div>
 
             <div className="footerControlsRight">

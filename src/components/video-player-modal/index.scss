@@ -249,6 +249,55 @@
             min-width: 65px;
           }
 
+          .liveBadgeBtn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            outline: none;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(8px);
+
+            &.live {
+              background: rgba(76, 175, 80, 0.15);
+              border-color: rgba(76, 175, 80, 0.4);
+              color: #4caf50;
+            }
+
+            &.behind {
+              background: rgba(218, 47, 104, 0.2);
+              border-color: var(--pink);
+              color: #ffffff;
+              box-shadow: 0 0 12px rgba(218, 47, 104, 0.4);
+
+              &:hover,
+              &:focus,
+              &:focus-visible {
+                background: var(--pink);
+                transform: scale(1.08);
+                box-shadow: 0 0 18px var(--pink);
+              }
+            }
+
+            .pulseDot {
+              width: 8px;
+              height: 8px;
+              border-radius: 50%;
+              background: #ff5252;
+              display: inline-block;
+
+              &.live {
+                background: #4caf50;
+              }
+            }
+          }
+
           .scrubberWrapper {
             position: relative;
             flex: 1;

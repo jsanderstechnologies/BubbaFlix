@@ -428,11 +428,38 @@ class PlayerActivity : AppCompatActivity() {
 
     private fun updateProgress() {
         val player = exoPlayer ?: return
+        val isLive = player.isCurrentMediaItemLive || intent.getStringExtra(EXTRA_MEDIA_TYPE) == "tv"
         val current = player.currentPosition
         val dur = player.duration
         val buffered = player.bufferedPosition
 
-        if (dur > 0) {
+        if (isLive) {
+            val liveEdge = player.duration.coerceAtLeast(player.bufferedPosition.coerceAtLeast(current))
+            val behindMs = (liveEdge - current).coerceAtLeast(0L)
+
+            if (liveEdge > 0) {
+                val progress = ((current * 1000) / liveEdge).toInt()
+                val secondaryProgress = ((buffered * 1000) / liveEdge).toInt()
+                seekBar.progress = progress
+                seekBar.secondaryProgress = secondaryProgress
+            } else {
+                seekBar.progress = 1000
+            }
+
+            txtCurrentTime.text = formatTime(current)
+            if (behindMs > 4000L) {
+                txtDuration.text = "GO TO LIVE (-${formatTime(behindMs)})"
+                txtDuration.setTextColor(android.graphics.Color.parseColor("#DA2F68"))
+                txtDuration.setOnClickListener {
+                    player.seekToDefaultPosition()
+                    player.playWhenReady = true
+                    resetControlsTimeout()
+                }
+            } else {
+                txtDuration.text = "● LIVE"
+                txtDuration.setTextColor(android.graphics.Color.parseColor("#4CAF50"))
+            }
+        } else if (dur > 0) {
             val progress = ((current * 1000) / dur).toInt()
             val secondaryProgress = ((buffered * 1000) / dur).toInt()
             seekBar.progress = progress
@@ -450,7 +477,9 @@ class PlayerActivity : AppCompatActivity() {
     private fun seekRelative(offsetMs: Long) {
         resetControlsTimeout()
         exoPlayer?.let { player ->
-            val newPos = (player.currentPosition + offsetMs).coerceIn(0, player.duration)
+            val isLive = player.isCurrentMediaItemLive || intent.getStringExtra(EXTRA_MEDIA_TYPE) == "tv"
+            val maxPos = if (isLive) player.bufferedPosition.coerceAtLeast(player.currentPosition) else player.duration.coerceAtLeast(0L)
+            val newPos = (player.currentPosition + offsetMs).coerceIn(0L, if (maxPos > 0) maxPos else Long.MAX_VALUE)
             player.seekTo(newPos)
             updateProgress()
         }
