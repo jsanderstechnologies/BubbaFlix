@@ -599,6 +599,12 @@ const detectGpuCapabilities = () => {
     }
 
     let subPath = rawPath.replace(/^\/api\/dispatcharr/, "").replace(/^\/dispatcharr/, "") || "/";
+    if (subPath.includes("?")) {
+      const parts = subPath.split("?");
+      const base = parts[0];
+      const queries = parts.slice(1).filter(Boolean).join("&");
+      subPath = `${base}?${queries}`;
+    }
     const cleanSubPath = subPath.split("?")[0].replace(/\/$/, "");
 
     // Alias mapping for Dispatcharr Swagger OpenAPI endpoints (Django requires trailing slashes)

@@ -171,10 +171,20 @@ const fetchDispatcharrWithFallback = async (endpointPaths) => {
   headers["Pragma"] = "no-cache";
   headers["Expires"] = "0";
 
-  const timeStampParam = `_t=${Date.now()}`;
-  const authQuery = apiKey
-    ? `?api_key=${encodeURIComponent(apiKey)}&${timeStampParam}`
-    : `?${timeStampParam}`;
+  const buildUrlWithParams = (baseUrl, endpointPath) => {
+    const cleanEndpoint = endpointPath.startsWith("/") ? endpointPath : `/${endpointPath}`;
+    const fullTarget = `${baseUrl.replace(/\/$/, "")}${cleanEndpoint}`;
+    try {
+      const u = new URL(fullTarget);
+      if (apiKey) u.searchParams.set("api_key", apiKey);
+      u.searchParams.set("_t", String(Date.now()));
+      return u.toString();
+    } catch (e) {
+      const sep = fullTarget.includes("?") ? "&" : "?";
+      const q = apiKey ? `${sep}api_key=${encodeURIComponent(apiKey)}&_t=${Date.now()}` : `${sep}_t=${Date.now()}`;
+      return `${fullTarget}${q}`;
+    }
+  };
 
   const isHttpsPage = typeof window !== "undefined" && window.location.protocol === "https:";
   const isHttpTarget = cleanServerUrl.startsWith("http://");
@@ -186,7 +196,7 @@ const fetchDispatcharrWithFallback = async (endpointPaths) => {
     for (const path of endpointPaths) {
       if (!directServerReachable) break;
       try {
-        const fullUrl = `${cleanServerUrl}${path}${authQuery}`;
+        const fullUrl = buildUrlWithParams(cleanServerUrl, path);
         const res = await fetchWithTimeout(fullUrl, { method: "GET", headers, cache: "no-store" }, 2500);
         if (res.ok) {
           const contentType = res.headers.get("content-type") || "";
@@ -209,8 +219,7 @@ const fetchDispatcharrWithFallback = async (endpointPaths) => {
   // Strategy B: Proxy fetch via Node backend server /api/dispatcharr proxy
   for (const path of endpointPaths) {
     try {
-      const cleanPath = path.startsWith("/") ? path : `/${path}`;
-      const proxyUrl = `${proxyBase}${cleanPath}${authQuery}`;
+      const proxyUrl = buildUrlWithParams(proxyBase, path);
       const res = await fetchWithTimeout(proxyUrl, { method: "GET", headers, cache: "no-store" }, 5000);
       if (res.ok) {
         const contentType = res.headers.get("content-type") || "";
