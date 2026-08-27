@@ -119,8 +119,13 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
     if (refreshing) return;
     setRefreshing(true);
     reportClientLog("[User Action] Manual Refresh Button Clicked in Live TV / EPG / Recordings UI");
-    await loadAllData(false);
-    setRefreshing(false);
+    try {
+      await loadAllData(false);
+    } catch (err) {
+      console.error("[Refresh Error]:", err);
+    } finally {
+      setRefreshing(false);
+    }
   }, [refreshing, loadAllData]);
 
   const generateTimeline = useCallback((baseDate = new Date()) => {

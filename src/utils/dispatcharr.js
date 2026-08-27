@@ -139,6 +139,22 @@ const normalizeArray = (data) => {
 };
 
 /**
+ * Fetch helper with strict AbortController timeout to prevent hanging requests
+ */
+const fetchWithTimeout = async (url, options = {}, timeoutMs = 5000) => {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(id);
+    return res;
+  } catch (err) {
+    clearTimeout(id);
+    throw err;
+  }
+};
+
+/**
  * Robust Multi-Endpoint Dispatcharr Fetcher (Direct + Backend Proxy Fallback)
  */
 const fetchDispatcharrWithFallback = async (endpointPaths) => {
@@ -166,7 +182,7 @@ const fetchDispatcharrWithFallback = async (endpointPaths) => {
     for (const path of endpointPaths) {
       try {
         const fullUrl = `${cleanServerUrl}${path}${authQuery}`;
-        const res = await fetch(fullUrl, { method: "GET", headers, cache: "no-store" });
+        const res = await fetchWithTimeout(fullUrl, { method: "GET", headers, cache: "no-store" }, 4000);
         if (res.ok) {
           const contentType = res.headers.get("content-type") || "";
           if (contentType.includes("application/json") || contentType.includes("text/json")) {
@@ -188,7 +204,7 @@ const fetchDispatcharrWithFallback = async (endpointPaths) => {
     try {
       const cleanPath = path.startsWith("/") ? path : `/${path}`;
       const proxyUrl = `${proxyBase}/api/dispatcharr${cleanPath}${authQuery}`;
-      const res = await fetch(proxyUrl, { method: "GET", headers, cache: "no-store" });
+      const res = await fetchWithTimeout(proxyUrl, { method: "GET", headers, cache: "no-store" }, 5000);
       if (res.ok) {
         const contentType = res.headers.get("content-type") || "";
         if (contentType.includes("application/json") || contentType.includes("text/json")) {

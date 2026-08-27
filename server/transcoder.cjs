@@ -235,6 +235,7 @@ const server = http.createServer((req, res) => {
 
 // GPU Hardware Acceleration Auto-Detection Engine
 let cachedGpuConfig = null;
+let verifiedDispatcharrUrl = null;
 
 const detectGpuCapabilities = () => {
   if (cachedGpuConfig) return cachedGpuConfig;
@@ -613,6 +614,7 @@ const detectGpuCapabilities = () => {
     }
 
     const candidateUrls = [
+      verifiedDispatcharrUrl,
       rawDispatcharrUrl,
       "http://127.0.0.1:9191",
       "http://localhost:9191",
@@ -670,12 +672,16 @@ const detectGpuCapabilities = () => {
           method: req.method,
           headers: proxyHeaders,
           rejectUnauthorized: false,
-          timeout: 8000
+          timeout: 3000
         }, (proxyRes) => {
           const duration = Date.now() - startTime;
           logMessage(`[Dispatcharr Proxy Response] ${req.method} ${targetDispatcharrUrl} -> Status ${proxyRes.statusCode} (${duration}ms) | Initiator: [${initiator.initiatorComponent}] (${initiator.ip})`);
 
-          if (proxyRes.statusCode >= 400 && candidateIdx < candidateUrls.length) {
+          if (proxyRes.statusCode < 400) {
+            verifiedDispatcharrUrl = currentBaseUrl; // Save verified working target URL globally
+          }
+
+          if (proxyRes.statusCode >= 400 && proxyRes.statusCode !== 404 && candidateIdx < candidateUrls.length) {
             logMessage(`[Dispatcharr Proxy Target HTTP ${proxyRes.statusCode}] ${targetDispatcharrUrl}. Trying next candidate target...`, true);
             tryNextCandidate();
             return;
@@ -697,7 +703,7 @@ const detectGpuCapabilities = () => {
 
         proxyReq.on("timeout", () => {
           proxyReq.destroy();
-          logMessage(`[Dispatcharr Proxy Target Timeout] ${targetDispatcharrUrl} timed out (8s). Trying next candidate...`, true);
+          logMessage(`[Dispatcharr Proxy Target Timeout] ${targetDispatcharrUrl} timed out (3s). Trying next candidate...`, true);
           tryNextCandidate();
         });
 
