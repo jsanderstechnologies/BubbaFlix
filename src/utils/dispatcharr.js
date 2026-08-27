@@ -9,6 +9,12 @@ export const sanitizeDispatcharrUrl = (inputUrl) => {
   if (!/^https?:\/\//i.test(url)) {
     url = `http://${url}`;
   }
+  try {
+    const parsed = new URL(url);
+    if (!parsed.port && (parsed.hostname === "localhost" || /^(\d{1,3}\.){3}\d{1,3}$/.test(parsed.hostname))) {
+      url = `${parsed.protocol}//${parsed.hostname}:9191`;
+    }
+  } catch (e) {}
   return url;
 };
 
@@ -58,7 +64,7 @@ export const setDispatcharrConfig = (url, apiKey = "") => {
 
 export const getProxyBase = () => {
   const backend = getServerUrl() || (typeof window !== "undefined" ? window.location.origin : "");
-  return backend.replace(/\/$/, "");
+  return `${backend.replace(/\/$/, "")}/api/dispatcharr`;
 };
 
 /**
@@ -173,12 +179,8 @@ const fetchDispatcharrWithFallback = async (endpointPaths) => {
     ? `?api_key=${encodeURIComponent(apiKey)}&${timeStampParam}`
     : `?${timeStampParam}`;
 
-  const isHttpsPage = typeof window !== "undefined" && window.location.protocol === "https:";
-  const isHttpTarget = cleanServerUrl.startsWith("http://");
-  const skipDirectFetch = isHttpsPage && isHttpTarget;
-
-  // Strategy A: Direct fetch to user's Dispatcharr IP/URL (Skip if HTTPS page calling HTTP target to avoid Mixed Content block)
-  if (cleanServerUrl && !skipDirectFetch) {
+  // Strategy A: Direct fetch to user's Dispatcharr IP/URL
+  if (cleanServerUrl) {
     for (const path of endpointPaths) {
       try {
         const fullUrl = `${cleanServerUrl}${path}${authQuery}`;
@@ -203,7 +205,7 @@ const fetchDispatcharrWithFallback = async (endpointPaths) => {
   for (const path of endpointPaths) {
     try {
       const cleanPath = path.startsWith("/") ? path : `/${path}`;
-      const proxyUrl = `${proxyBase}/api/dispatcharr${cleanPath}${authQuery}`;
+      const proxyUrl = `${proxyBase}${cleanPath}${authQuery}`;
       const res = await fetchWithTimeout(proxyUrl, { method: "GET", headers, cache: "no-store" }, 5000);
       if (res.ok) {
         const contentType = res.headers.get("content-type") || "";
