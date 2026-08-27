@@ -30,69 +30,90 @@ export const saveServerUrl = (url) => {
   }
 };
 
-export const fetchServerSettings = async () => {
-  try {
-    const baseUrl = getServerUrl();
-    const res = await axios.get(`${baseUrl}/api/settings`, { timeout: 6000 });
-    if (res.data?.status === "success" && res.data.settings) {
-      const s = res.data.settings;
+let cachedServerSettings = null;
+let lastSettingsFetchTime = 0;
+let pendingSettingsPromise = null;
 
-      // Sync all backend settings to client storage
-      if (s.theme) {
-        localStorage.setItem("bubbaflix_theme", s.theme);
-        applyTheme(s.theme);
-      }
-      if (s.aiostreams_url) {
-        saveAioStreamsUrl(s.aiostreams_url);
-      }
-      if (s.simklClientId !== undefined) {
-        localStorage.setItem("simkl_client_id", (s.simklClientId || "").trim());
-      }
-      if (s.groqKey !== undefined) {
-        localStorage.setItem("groq_api_key", (s.groqKey || "").trim());
-      }
-      if (s.tmdbToken !== undefined) {
-        if (s.tmdbToken && s.tmdbToken.trim().length > 0) {
-          localStorage.setItem("tmdb_token", s.tmdbToken.trim());
-        } else {
-          localStorage.removeItem("tmdb_token");
-        }
-      }
-      if (s.premiumizeKey !== undefined) {
-        if (s.premiumizeKey && s.premiumizeKey.trim().length > 0) {
-          localStorage.setItem("premiumize_api_key", s.premiumizeKey.trim());
-        } else {
-          localStorage.removeItem("premiumize_api_key");
-        }
-      }
-      if (s.dispatcharrUrl) {
-        let cleanUrl = s.dispatcharrUrl.trim().replace(/\/$/, "");
-        if (cleanUrl && !/^https?:\/\//i.test(cleanUrl)) cleanUrl = `http://${cleanUrl}`;
-        localStorage.setItem("dispatcharr_url", cleanUrl);
-      }
-      if (s.dispatcharrApiKey !== undefined) {
-        localStorage.setItem("dispatcharr_api_key", (s.dispatcharrApiKey || "").trim());
-      }
-      if (s.stream_resolutions) {
-        localStorage.setItem("stream_resolutions", JSON.stringify(s.stream_resolutions));
-      }
-      if (s.stream_exclude_low_quality !== undefined) {
-        localStorage.setItem("stream_exclude_low_quality", JSON.stringify(s.stream_exclude_low_quality));
-      }
-
-      console.log("[Server Settings Sync] Successfully pulled backend server settings.");
-
-      // Sync SIMKL account watch history if SIMKL Client ID is configured
-      if (s.simklClientId) {
-        fetchUserSimklHistory();
-      }
-
-      return s;
-    }
-  } catch (err) {
-    console.warn("[Server Settings Sync Warning]: Unable to pull server settings. Operating in cached mode.", err.message);
+export const fetchServerSettings = async (forceRefresh = false) => {
+  const now = Date.now();
+  if (!forceRefresh && cachedServerSettings && now - lastSettingsFetchTime < 30000) {
+    return cachedServerSettings;
   }
-  return null;
+  if (pendingSettingsPromise) {
+    return pendingSettingsPromise;
+  }
+
+  pendingSettingsPromise = (async () => {
+    try {
+      const baseUrl = getServerUrl();
+      const res = await axios.get(`${baseUrl}/api/settings`, { timeout: 6000 });
+      if (res.data?.status === "success" && res.data.settings) {
+        const s = res.data.settings;
+        cachedServerSettings = s;
+        lastSettingsFetchTime = Date.now();
+        return s;
+      }
+    } catch (err) {
+      console.warn("[Server Settings Sync Warning]: Unable to pull server settings. Operating in cached mode.", err.message);
+    } finally {
+      pendingSettingsPromise = null;
+    }
+    return cachedServerSettings;
+  })();
+
+  const s = await pendingSettingsPromise;
+  if (s) {
+    // Sync all backend settings to client storage
+    if (s.theme) {
+      localStorage.setItem("bubbaflix_theme", s.theme);
+      applyTheme(s.theme);
+    }
+    if (s.aiostreams_url) {
+      saveAioStreamsUrl(s.aiostreams_url);
+    }
+    if (s.simklClientId !== undefined) {
+      localStorage.setItem("simkl_client_id", (s.simklClientId || "").trim());
+    }
+    if (s.groqKey !== undefined) {
+      localStorage.setItem("groq_api_key", (s.groqKey || "").trim());
+    }
+    if (s.tmdbToken !== undefined) {
+      if (s.tmdbToken && s.tmdbToken.trim().length > 0) {
+        localStorage.setItem("tmdb_token", s.tmdbToken.trim());
+      } else {
+        localStorage.removeItem("tmdb_token");
+      }
+    }
+    if (s.premiumizeKey !== undefined) {
+      if (s.premiumizeKey && s.premiumizeKey.trim().length > 0) {
+        localStorage.setItem("premiumize_api_key", s.premiumizeKey.trim());
+      } else {
+        localStorage.removeItem("premiumize_api_key");
+      }
+    }
+    if (s.dispatcharrUrl) {
+      let cleanUrl = s.dispatcharrUrl.trim().replace(/\/$/, "");
+      if (cleanUrl && !/^https?:\/\//i.test(cleanUrl)) cleanUrl = `http://${cleanUrl}`;
+      localStorage.setItem("dispatcharr_url", cleanUrl);
+    }
+    if (s.dispatcharrApiKey !== undefined) {
+      localStorage.setItem("dispatcharr_api_key", (s.dispatcharrApiKey || "").trim());
+    }
+    if (s.stream_resolutions) {
+      localStorage.setItem("stream_resolutions", JSON.stringify(s.stream_resolutions));
+    }
+    if (s.stream_exclude_low_quality !== undefined) {
+      localStorage.setItem("stream_exclude_low_quality", JSON.stringify(s.stream_exclude_low_quality));
+    }
+
+    console.log("[Server Settings Sync] Successfully pulled backend server settings.");
+
+    // Sync SIMKL account watch history if SIMKL Client ID is configured
+    if (s.simklClientId) {
+      fetchUserSimklHistory();
+    }
+  }
+  return s || cachedServerSettings;
 };
 
 export const updateServerSettings = async (settingsPartial) => {
