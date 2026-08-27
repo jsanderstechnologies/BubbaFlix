@@ -130,15 +130,12 @@ const normalizeArray = (data) => {
 
   for (const cand of candidates) {
     if (Array.isArray(cand)) return cand;
-    if (cand && typeof cand === "object") {
+    if (cand && typeof cand === "object" && cand !== null) {
       const vals = Object.values(cand);
-      if (vals.length > 0) return vals;
+      if (vals.length > 0 && typeof vals[0] === "object" && vals[0] !== null) {
+        return vals;
+      }
     }
-  }
-
-  if (typeof obj === "object" && obj !== null) {
-    const vals = Object.values(obj);
-    if (vals.length > 0) return vals;
   }
 
   return [];
@@ -298,6 +295,8 @@ const reportClientLog = (message, level = "ERROR") => {
  */
 export const fetchDispatcharrChannels = async () => {
   const { data, serverUrl, apiKey } = await fetchDispatcharrWithFallback([
+    "/api/channels/channels/?page_size=1000",
+    "/api/channels/summary/?page_size=1000",
     "/api/channels/channels/",
     "/api/channels/summary/",
     "/api/channels/groups/",
@@ -319,6 +318,9 @@ export const fetchDispatcharrChannels = async () => {
  */
 export const fetchDispatcharrEpg = async () => {
   const { data } = await fetchDispatcharrWithFallback([
+    "/api/epg/programs/?page_size=1000",
+    "/api/epg/grid/?page_size=1000",
+    "/api/epg/current-programs/?page_size=1000",
     "/api/epg/programs/",
     "/api/epg/grid/",
     "/api/epg/current-programs/",
@@ -362,6 +364,7 @@ export const fetchDispatcharrEpg = async () => {
  */
 export const fetchDispatcharrRecordings = async () => {
   const { data: recData, serverUrl, apiKey } = await fetchDispatcharrWithFallback([
+    "/api/channels/recordings/?page_size=1000",
     "/api/channels/recordings/",
     "/api/recordings/",
     "/output/m3u/recordings",
@@ -369,6 +372,7 @@ export const fetchDispatcharrRecordings = async () => {
   ]);
 
   const { data: ruleData } = await fetchDispatcharrWithFallback([
+    "/api/channels/recurring-rules/?page_size=1000",
     "/api/channels/recurring-rules/"
   ]);
 
