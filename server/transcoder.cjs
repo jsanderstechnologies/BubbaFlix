@@ -585,7 +585,7 @@ const detectGpuCapabilities = () => {
   // Dispatcharr Proxy Endpoints for Live TV, Channels, EPG Guide, & Recordings
   if (cleanPath.startsWith("/api/dispatcharr") || cleanPath.startsWith("/dispatcharr")) {
     const settings = loadServerSettings();
-    const dispatcharrUrl = (settings.dispatcharrUrl || "http://192.168.10.3:9191").replace(/\/$/, "");
+    const rawDispatcharrUrl = (settings.dispatcharrUrl || "http://192.168.10.3:9191").replace(/\/$/, "");
     let apiKey = settings.dispatcharrApiKey || "";
 
     // Fallback: extract API Key from request headers or query parameters if not stored in server settings
@@ -612,78 +612,93 @@ const detectGpuCapabilities = () => {
       subPath = `${cleanBase}` + (parts[1] ? `?${parts[1]}` : "");
     }
 
-    const targetDispatcharrUrl = `${dispatcharrUrl}${subPath.startsWith("/") ? "" : "/"}${subPath}`;
+    const candidateUrls = [
+      rawDispatcharrUrl,
+      "http://127.0.0.1:9191",
+      "http://localhost:9191",
+      "http://192.168.1.50:9191",
+      "http://192.168.10.3:9191"
+    ].filter((u, i, self) => u && self.indexOf(u) === i);
 
-    if (cleanSubPath.includes("/epg") || cleanSubPath.includes("/programs")) {
-      logMessage(`[EPG Guide Proxy Request] Initiated by [${initiator.initiatorComponent}] (${initiator.ip}) -> ${req.method} ${targetDispatcharrUrl}`);
-    } else if (cleanSubPath.includes("/recordings")) {
-      logMessage(`[DVR Recordings Proxy Request] Initiated by [${initiator.initiatorComponent}] (${initiator.ip}) -> ${req.method} ${targetDispatcharrUrl}`);
-    } else if (cleanSubPath.includes("/channels")) {
-      logMessage(`[Channels Grid Proxy Request] Initiated by [${initiator.initiatorComponent}] (${initiator.ip}) -> ${req.method} ${targetDispatcharrUrl}`);
-    } else {
-      logMessage(`[Dispatcharr Proxy Request] Initiated by [${initiator.initiatorComponent}] (${initiator.ip}) -> ${req.method} ${targetDispatcharrUrl}`);
-    }
+    let candidateIdx = 0;
 
-    try {
-      const targetParsed = url.parse(targetDispatcharrUrl);
-      const isHttps = targetParsed.protocol === "https:";
-      const httpModule = isHttps ? require("https") : require("http");
-
-      const headers = { ...req.headers, host: targetParsed.host };
-      delete headers["content-length"];
-      if (apiKey) {
-        if (apiKey.startsWith("eyJ")) {
-          headers["Authorization"] = `Bearer ${apiKey}`;
-        } else {
-          headers["X-API-Key"] = apiKey;
-          delete headers["authorization"];
-        }
-      }
-
-      const proxyReq = httpModule.request(targetDispatcharrUrl, {
-        method: req.method,
-        headers: headers,
-        rejectUnauthorized: false, // Allow local self-signed HTTPS certs
-        timeout: 30000
-      }, (proxyRes) => {
-        const duration = Date.now() - startTime;
-        logMessage(`[Dispatcharr Proxy Response] ${req.method} ${targetDispatcharrUrl} -> Status ${proxyRes.statusCode} (${duration}ms) | Initiator: [${initiator.initiatorComponent}] (${initiator.ip})`);
-        if (proxyRes.statusCode >= 400) {
-          logMessage(`[Dispatcharr HTTP Warning] ${req.method} ${targetDispatcharrUrl} returned HTTP ${proxyRes.statusCode} for [${initiator.initiatorComponent}] (${initiator.ip})`, true);
-        }
+    const tryNextCandidate = () => {
+      if (candidateIdx >= candidateUrls.length) {
         if (!res.headersSent) {
-          res.writeHead(proxyRes.statusCode, {
-            ...proxyRes.headers,
-            "Access-Control-Allow-Origin": "*"
-          });
-          proxyRes.pipe(res);
+          sendJson(res, 502, { error: "All Dispatcharr proxy targets unreachable.", candidates: candidateUrls });
         }
-      });
-
-      proxyReq.on("error", (err) => {
-        if (res.headersSent) return;
-        const duration = Date.now() - startTime;
-        logMessage(`[Dispatcharr Proxy Network Error] ${req.method} ${targetDispatcharrUrl} failed (${duration}ms) for [${initiator.initiatorComponent}] (${initiator.ip}): ${err.message}`, true);
-        sendJson(res, 502, { error: `Dispatcharr proxy error: ${err.message}`, targetUrl: targetDispatcharrUrl, dispatcharrUrl });
-      });
-
-      proxyReq.on("timeout", () => {
-        proxyReq.destroy();
-        if (res.headersSent) return;
-        const duration = Date.now() - startTime;
-        logMessage(`[Dispatcharr Proxy Timeout Error] ${req.method} ${targetDispatcharrUrl} timed out after ${duration}ms for [${initiator.initiatorComponent}] (${initiator.ip})`, true);
-        sendJson(res, 504, { error: "Dispatcharr proxy request timed out", targetUrl: targetDispatcharrUrl, dispatcharrUrl });
-      });
-
-      if (req.method === "POST" || req.method === "PUT" || req.method === "DELETE") {
-        req.pipe(proxyReq);
-      } else {
-        proxyReq.end();
+        return;
       }
-    } catch (err) {
-      logMessage(`[Dispatcharr Proxy Exception] Initiated by [${initiator.initiatorComponent}] (${initiator.ip}) - Failed: ${err.stack || err.message}`, true);
-      sendJson(res, 500, { error: err.message });
-    }
+
+      const currentBaseUrl = candidateUrls[candidateIdx++];
+      const targetDispatcharrUrl = `${currentBaseUrl}${subPath.startsWith("/") ? "" : "/"}${subPath}`;
+
+      if (cleanSubPath.includes("/epg") || cleanSubPath.includes("/programs")) {
+        logMessage(`[EPG Guide Proxy Request] Initiated by [${initiator.initiatorComponent}] (${initiator.ip}) -> ${req.method} ${targetDispatcharrUrl}`);
+      } else if (cleanSubPath.includes("/recordings")) {
+        logMessage(`[DVR Recordings Proxy Request] Initiated by [${initiator.initiatorComponent}] (${initiator.ip}) -> ${req.method} ${targetDispatcharrUrl}`);
+      } else if (cleanSubPath.includes("/channels")) {
+        logMessage(`[Channels Grid Proxy Request] Initiated by [${initiator.initiatorComponent}] (${initiator.ip}) -> ${req.method} ${targetDispatcharrUrl}`);
+      } else {
+        logMessage(`[Dispatcharr Proxy Request] Initiated by [${initiator.initiatorComponent}] (${initiator.ip}) -> ${req.method} ${targetDispatcharrUrl}`);
+      }
+
+      try {
+        const targetParsed = url.parse(targetDispatcharrUrl);
+        const isHttps = targetParsed.protocol === "https:";
+        const httpModule = isHttps ? require("https") : require("http");
+
+        const headers = { ...req.headers, host: targetParsed.host };
+        delete headers["content-length"];
+        if (apiKey) {
+          if (apiKey.startsWith("eyJ")) {
+            headers["Authorization"] = `Bearer ${apiKey}`;
+          } else {
+            headers["X-API-Key"] = apiKey;
+            delete headers["authorization"];
+          }
+        }
+
+        const proxyReq = httpModule.request(targetDispatcharrUrl, {
+          method: req.method,
+          headers: headers,
+          rejectUnauthorized: false,
+          timeout: 8000
+        }, (proxyRes) => {
+          const duration = Date.now() - startTime;
+          logMessage(`[Dispatcharr Proxy Response] ${req.method} ${targetDispatcharrUrl} -> Status ${proxyRes.statusCode} (${duration}ms) | Initiator: [${initiator.initiatorComponent}] (${initiator.ip})`);
+          if (!res.headersSent) {
+            res.writeHead(proxyRes.statusCode, {
+              ...proxyRes.headers,
+              "Access-Control-Allow-Origin": "*"
+            });
+            proxyRes.pipe(res);
+          }
+        });
+
+        proxyReq.on("error", (err) => {
+          logMessage(`[Dispatcharr Proxy Target Warning] ${targetDispatcharrUrl} failed: ${err.message}. Trying next candidate...`, true);
+          tryNextCandidate();
+        });
+
+        proxyReq.on("timeout", () => {
+          proxyReq.destroy();
+          logMessage(`[Dispatcharr Proxy Target Timeout] ${targetDispatcharrUrl} timed out (8s). Trying next candidate...`, true);
+          tryNextCandidate();
+        });
+
+        if (req.method === "POST" || req.method === "PUT" || req.method === "DELETE") {
+          req.pipe(proxyReq);
+        } else {
+          proxyReq.end();
+        }
+      } catch (e) {
+        logMessage(`[Dispatcharr Proxy Exception] ${e.message}. Trying next candidate...`, true);
+        tryNextCandidate();
+      }
+    };
+
+    tryNextCandidate();
     return;
   }
 

@@ -157,8 +157,12 @@ const fetchDispatcharrWithFallback = async (endpointPaths) => {
     ? `?api_key=${encodeURIComponent(apiKey)}&${timeStampParam}`
     : `?${timeStampParam}`;
 
-  // Strategy A: Direct fetch to user's Dispatcharr IP/URL
-  if (cleanServerUrl) {
+  const isHttpsPage = typeof window !== "undefined" && window.location.protocol === "https:";
+  const isHttpTarget = cleanServerUrl.startsWith("http://");
+  const skipDirectFetch = isHttpsPage && isHttpTarget;
+
+  // Strategy A: Direct fetch to user's Dispatcharr IP/URL (Skip if HTTPS page calling HTTP target to avoid Mixed Content block)
+  if (cleanServerUrl && !skipDirectFetch) {
     for (const path of endpointPaths) {
       try {
         const fullUrl = `${cleanServerUrl}${path}${authQuery}`;
@@ -168,7 +172,7 @@ const fetchDispatcharrWithFallback = async (endpointPaths) => {
           if (contentType.includes("application/json") || contentType.includes("text/json")) {
             const json = await res.json();
             const normalized = normalizeArray(json);
-            if (Array.isArray(normalized)) {
+            if (Array.isArray(normalized) && normalized.length > 0) {
               return { data: normalized, serverUrl: cleanServerUrl, apiKey };
             }
           }
