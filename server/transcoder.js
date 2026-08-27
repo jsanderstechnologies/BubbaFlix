@@ -752,6 +752,22 @@ const triggerDispatcharrSync = async () => {
       logMessage(`[Dispatcharr Auto-Sync] EPG Refresh Error: ${e.message}`, true);
     }
 
+    // 3. Trigger DVR Recordings Auto-Refresh & Warm-Up Query (GET /api/dvr/recordings/)
+    try {
+      const dvrReq = httpModule.request(`${dispatcharrUrl}/api/dvr/recordings/`, {
+        method: "GET",
+        headers,
+        rejectUnauthorized: false,
+        timeout: 15000
+      }, (res) => {
+        logMessage(`[Dispatcharr Auto-Sync] DVR Recordings Query & Populate Warm-Up -> Status ${res.statusCode}`);
+      });
+      dvrReq.on("error", (e) => logMessage(`[Dispatcharr Auto-Sync] DVR Recordings Warning: ${e.message}`, true));
+      dvrReq.end();
+    } catch (e) {
+      logMessage(`[Dispatcharr Auto-Sync] DVR Recordings Error: ${e.message}`, true);
+    }
+
     return true;
   } catch (err) {
     logMessage(`[Dispatcharr Auto-Sync Exception]: ${err.message}`, true);
@@ -766,7 +782,8 @@ setInterval(triggerDispatcharrSync, TWO_HOURS_MS);
 server.listen(PORT, "0.0.0.0", () => {
   logMessage(`[BubbaFlix Backend Transcoder & Settings Engine] Pure Node Server listening on 0.0.0.0:${PORT}`);
   loadServerSettings();
-  setTimeout(triggerDispatcharrSync, 30000);
+  // Auto-Update and Auto-Populate EPG & DVR Recordings IMMEDIATELY on server startup (1 second delay)
+  setTimeout(triggerDispatcharrSync, 1000);
 });
 
 server.on("error", (err) => {

@@ -94,6 +94,12 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
     };
     initConfig();
     generateTimeline();
+
+    // Auto-update and auto-populate EPG and DVR recordings every 5 minutes (300,000 ms)
+    const interval = setInterval(() => {
+      loadAllData();
+    }, 5 * 60 * 1000);
+    return () => clearInterval(interval);
   }, []);
 
   const generateTimeline = (baseDate = new Date()) => {
