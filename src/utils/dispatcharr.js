@@ -179,12 +179,18 @@ const fetchDispatcharrWithFallback = async (endpointPaths) => {
     ? `?api_key=${encodeURIComponent(apiKey)}&${timeStampParam}`
     : `?${timeStampParam}`;
 
-  // Strategy A: Direct fetch to user's Dispatcharr IP/URL
-  if (cleanServerUrl) {
+  const isHttpsPage = typeof window !== "undefined" && window.location.protocol === "https:";
+  const isHttpTarget = cleanServerUrl.startsWith("http://");
+  const skipDirectFetch = isHttpsPage && isHttpTarget;
+
+  // Strategy A: Direct fetch to user's Dispatcharr IP/URL (Skip on HTTPS origins calling HTTP targets to prevent Mixed Content Block)
+  if (cleanServerUrl && !skipDirectFetch) {
+    let directServerReachable = true;
     for (const path of endpointPaths) {
+      if (!directServerReachable) break;
       try {
         const fullUrl = `${cleanServerUrl}${path}${authQuery}`;
-        const res = await fetchWithTimeout(fullUrl, { method: "GET", headers, cache: "no-store" }, 4000);
+        const res = await fetchWithTimeout(fullUrl, { method: "GET", headers, cache: "no-store" }, 2500);
         if (res.ok) {
           const contentType = res.headers.get("content-type") || "";
           if (contentType.includes("application/json") || contentType.includes("text/json")) {
@@ -196,7 +202,9 @@ const fetchDispatcharrWithFallback = async (endpointPaths) => {
           }
         }
       } catch (err) {
-        // Direct fetch failed, continue to proxy fallback
+        // Direct fetch failed or network error, server is unreachable directly from client. Break Strategy A immediately!
+        directServerReachable = false;
+        break;
       }
     }
   }
