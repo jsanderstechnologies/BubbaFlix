@@ -9,16 +9,6 @@ export const sanitizeDispatcharrUrl = (inputUrl) => {
   if (!/^https?:\/\//i.test(url)) {
     url = `http://${url}`;
   }
-  try {
-    const parsed = new URL(url);
-    if (!parsed.port && parsed.hostname !== "localhost") {
-      url = `${parsed.protocol}//${parsed.hostname}:9191`;
-    }
-  } catch (e) {
-    if (!url.includes(":", 7)) {
-      url = `${url}:9191`;
-    }
-  }
   return url;
 };
 
@@ -68,13 +58,11 @@ export const setDispatcharrConfig = (url, apiKey = "") => {
 
 export const getProxyBase = () => {
   const backend = getServerUrl() || (typeof window !== "undefined" ? window.location.origin : "");
-  return `${backend}/api/dispatcharr`;
+  return backend.replace(/\/$/, "");
 };
 
 /**
- * Universal Stream URL generator for Live TV channels & recordings.
- * Proxies through Node backend for HTTPS / mixed-content and CORS compatibility,
- * feeding directly into the built-in video players without transcode overhead.
+ * Get direct stream URL for channel or proxy stream
  */
 export const getDispatcharrStreamUrl = (channelOrId) => {
   const backend = getServerUrl() || (typeof window !== "undefined" ? window.location.origin : "");
@@ -150,6 +138,71 @@ const normalizeArray = (data) => {
   return [];
 };
 
+/**
+ * Robust Multi-Endpoint Dispatcharr Fetcher (Direct + Backend Proxy Fallback)
+ */
+const fetchDispatcharrWithFallback = async (endpointPaths) => {
+  const { url, apiKey } = await getDispatcharrConfigAsync();
+  const cleanServerUrl = sanitizeDispatcharrUrl(url);
+  const proxyBase = getProxyBase();
+  const headers = getHeaders(apiKey);
+
+  // Guarantee fresh data by disabling HTTP caching in WebView & browsers
+  headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
+  headers["Pragma"] = "no-cache";
+  headers["Expires"] = "0";
+
+  const timeStampParam = `_t=${Date.now()}`;
+  const authQuery = apiKey
+    ? `?api_key=${encodeURIComponent(apiKey)}&${timeStampParam}`
+    : `?${timeStampParam}`;
+
+  // Strategy A: Direct fetch to user's Dispatcharr IP/URL
+  if (cleanServerUrl) {
+    for (const path of endpointPaths) {
+      try {
+        const fullUrl = `${cleanServerUrl}${path}${authQuery}`;
+        const res = await fetch(fullUrl, { method: "GET", headers, cache: "no-store" });
+        if (res.ok) {
+          const contentType = res.headers.get("content-type") || "";
+          if (contentType.includes("application/json") || contentType.includes("text/json")) {
+            const json = await res.json();
+            const normalized = normalizeArray(json);
+            if (Array.isArray(normalized)) {
+              return { data: normalized, serverUrl: cleanServerUrl, apiKey };
+            }
+          }
+        }
+      } catch (err) {
+        // Direct fetch failed, continue to proxy fallback
+      }
+    }
+  }
+
+  // Strategy B: Proxy fetch via Node backend server /api/dispatcharr proxy
+  for (const path of endpointPaths) {
+    try {
+      const cleanPath = path.startsWith("/") ? path : `/${path}`;
+      const proxyUrl = `${proxyBase}/api/dispatcharr${cleanPath}${authQuery}`;
+      const res = await fetch(proxyUrl, { method: "GET", headers, cache: "no-store" });
+      if (res.ok) {
+        const contentType = res.headers.get("content-type") || "";
+        if (contentType.includes("application/json") || contentType.includes("text/json")) {
+          const json = await res.json();
+          const normalized = normalizeArray(json);
+          if (Array.isArray(normalized)) {
+            return { data: normalized, serverUrl: cleanServerUrl, apiKey };
+          }
+        }
+      }
+    } catch (err) {
+      // Proxy fetch error
+    }
+  }
+
+  return { data: [], serverUrl: cleanServerUrl, apiKey };
+};
+
 const normalizeChannel = (ch, serverUrl, apiKey) => {
   if (typeof ch !== "object" || ch === null) {
     return { id: String(ch), name: `Channel ${ch}`, stream_url: "" };
@@ -208,70 +261,7 @@ const reportClientLog = (message, level = "ERROR") => {
   } catch (e) {}
 };
 
-/**
- * Robust Multi-Endpoint Dispatcharr Fetcher (Direct + Backend Proxy Fallback)
- */
-const fetchDispatcharrWithFallback = async (endpointPaths) => {
-  const { url, apiKey } = await getDispatcharrConfigAsync();
-  const cleanServerUrl = sanitizeDispatcharrUrl(url);
-  const proxyBase = getProxyBase();
-  const headers = getHeaders(apiKey);
 
-  // Guarantee fresh data by disabling HTTP caching in WebView & browsers
-  headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
-  headers["Pragma"] = "no-cache";
-  headers["Expires"] = "0";
-
-  const timeStampParam = `_t=${Date.now()}`;
-  const authQuery = apiKey
-    ? `?api_key=${encodeURIComponent(apiKey)}&${timeStampParam}`
-    : `?${timeStampParam}`;
-
-  // Strategy A: Direct fetch to user's Dispatcharr IP/URL
-  if (cleanServerUrl) {
-    for (const path of endpointPaths) {
-      try {
-        const fullUrl = `${cleanServerUrl}${path}${authQuery}`;
-        const res = await fetch(fullUrl, { method: "GET", headers, cache: "no-store" });
-        if (res.ok) {
-          const contentType = res.headers.get("content-type") || "";
-          if (contentType.includes("application/json") || contentType.includes("text/json")) {
-            const json = await res.json();
-            const normalized = normalizeArray(json);
-            if (normalized && (Array.isArray(normalized) ? normalized.length > 0 : true)) {
-              return { data: normalized, serverUrl: cleanServerUrl, apiKey };
-            }
-          }
-        }
-      } catch (err) {
-        // Direct fetch failed, continue to proxy fallback
-      }
-    }
-  }
-
-  // Strategy B: Proxy fetch via Node transcoder backend
-  for (const path of endpointPaths) {
-    try {
-      const proxyUrl = `${proxyBase}${path}${authQuery}`;
-      const res = await fetch(proxyUrl, { method: "GET", headers, cache: "no-store" });
-      if (res.ok) {
-        const contentType = res.headers.get("content-type") || "";
-        if (contentType.includes("application/json") || contentType.includes("text/json")) {
-          const json = await res.json();
-          const normalized = normalizeArray(json);
-          return { data: normalized, serverUrl: cleanServerUrl, apiKey };
-        }
-      }
-    } catch (err) {
-      // Proxy fetch error
-    }
-  }
-
-  if (cleanServerUrl) {
-    reportClientLog(`[Dispatcharr Warning] Unable to reach Dispatcharr server at ${cleanServerUrl}`);
-  }
-  return { data: [], serverUrl: cleanServerUrl, apiKey };
-};
 
 /**
  * Fetch list of Live TV channels from Dispatcharr (probes channels + EPG combined endpoints).

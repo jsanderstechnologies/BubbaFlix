@@ -565,12 +565,12 @@ const detectGpuCapabilities = () => {
           sendJson(res, 200, parsed);
         } catch (e) {
           logMessage(`[Version Check Error] Failed to parse GitHub version.json: ${e.message}`, true);
-          sendJson(res, 200, { versionCode: 14, versionName: "1.0.4" });
+          sendJson(res, 200, { versionCode: 2, versionName: "1.0.1" });
         }
       });
     }).on("error", (vErr) => {
       logMessage(`[Version Check Network Error] Unable to fetch version.json from GitHub: ${vErr.message}`, true);
-      sendJson(res, 200, { versionCode: 14, versionName: "1.0.4" });
+      sendJson(res, 200, { versionCode: 2, versionName: "1.0.1" });
     });
     return;
   }
