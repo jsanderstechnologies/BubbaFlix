@@ -228,6 +228,29 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
     }
   };
 
+  const handleShiftTimeline = (hours) => {
+    const newStart = new Date(timelineStart.getTime() + hours * 60 * 60 * 1000);
+    setTimelineStart(newStart);
+
+    const slots = [];
+    const numSlots = TOTAL_HOURS * 2;
+    for (let i = 0; i < numSlots; i++) {
+      const slotTime = new Date(newStart.getTime() + i * 30 * 60 * 1000);
+      const h = slotTime.getHours();
+      const m = slotTime.getMinutes();
+      const ampm = h >= 12 ? "PM" : "AM";
+      const formattedHours = h % 12 || 12;
+      const formattedMinutes = m < 10 ? `0${m}` : m;
+
+      slots.push({
+        time: slotTime,
+        label: `${formattedHours}:${formattedMinutes} ${ampm}`,
+        timestamp: slotTime.getTime()
+      });
+    }
+    setTimeSlots(slots);
+  };
+
   const handleJumpToNow = () => {
     generateTimeline(new Date());
     if (gridScrollRef.current) {
@@ -388,14 +411,14 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
               <div className="timelineActions">
                 {viewMode === "epgGrid" && (
                   <>
-                    <button className="navGridBtn" onClick={() => handleScrollGrid("left")} tabIndex="0" title="Scroll Left">
-                      <FiChevronLeft />
+                    <button className="navGridBtn" onClick={() => handleShiftTimeline(-6)} tabIndex="0" title="Go Back 6 Hours">
+                      <FiChevronLeft /> -6h
                     </button>
                     <button className="nowBtn" onClick={handleJumpToNow} tabIndex="0">
                       <FiClock /> Jump to Now
                     </button>
-                    <button className="navGridBtn" onClick={() => handleScrollGrid("right")} tabIndex="0" title="Scroll Right">
-                      <FiChevronRight />
+                    <button className="navGridBtn" onClick={() => handleShiftTimeline(6)} tabIndex="0" title="Go Forward 6 Hours">
+                      +6h <FiChevronRight />
                     </button>
                   </>
                 )}
@@ -471,8 +494,26 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
                             <div className="programsTimelineCell" style={{ width: `${TOTAL_HOURS * HOUR_WIDTH}px` }}>
                               {nowOffsetPx >= 0 && <div className="nowLineRow" style={{ left: `${nowOffsetPx}px` }} />}
 
-                              {channelProgs.length > 0 ? (
-                                channelProgs.map((prog, pIdx) => {
+                              {(() => {
+                                const visiblePrograms = channelProgs.filter((prog) => {
+                                  const rawStart = prog.start_time || prog.start || prog.start_at || prog.start_timestamp || prog.time_start || prog.startTime;
+                                  const rawEnd = prog.end_time || prog.end || prog.end_at || prog.end_timestamp || prog.time_end || prog.endTime;
+                                  const progStart = parseEpgTime(rawStart, timelineStart);
+                                  const progEnd = parseEpgTime(rawEnd, new Date(progStart.getTime() + 60 * 60 * 1000));
+                                  return progStart < timelineEnd && progEnd > timelineStart;
+                                });
+
+                                if (visiblePrograms.length === 0) {
+                                  return (
+                                    <div className="programBlock emptyProgram" style={{ left: "0px", width: `${TOTAL_HOURS * HOUR_WIDTH}px` }}>
+                                      <div className="progHeader">
+                                        <span className="progTitle">No EPG detail for this timeframe</span>
+                                      </div>
+                                    </div>
+                                  );
+                                }
+
+                                return visiblePrograms.map((prog, pIdx) => {
                                   const rawStart = prog.start_time || prog.start || prog.start_at || prog.start_timestamp || prog.time_start || prog.startTime;
                                   const rawEnd = prog.end_time || prog.end || prog.end_at || prog.end_timestamp || prog.time_end || prog.endTime;
 
@@ -480,9 +521,13 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
                                   const progEnd = parseEpgTime(rawEnd, new Date(progStart.getTime() + 60 * 60 * 1000));
 
                                   const startDiffHours = (progStart.getTime() - timelineStart.getTime()) / (1000 * 60 * 60);
-                                  const durationHours = (progEnd.getTime() - progStart.getTime()) / (1000 * 60 * 60);
+                                  const endDiffHours = (progEnd.getTime() - timelineStart.getTime()) / (1000 * 60 * 60);
 
-                                  const leftPx = Math.max(0, startDiffHours * HOUR_WIDTH);
+                                  const effectiveStartHours = Math.max(0, startDiffHours);
+                                  const effectiveEndHours = Math.min(TOTAL_HOURS, endDiffHours);
+                                  const durationHours = Math.max(0.25, effectiveEndHours - effectiveStartHours);
+
+                                  const leftPx = effectiveStartHours * HOUR_WIDTH;
                                   const widthPx = Math.max(70, durationHours * HOUR_WIDTH);
                                   const isCurrentlyLive = now >= progStart && now <= progEnd;
 
@@ -523,36 +568,22 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
                                       )}
 
                                       <div className="progActions">
-                                        <button className="quickPlayBtn" onClick={(e) => { e.stopPropagation(); handlePlayChannel(ch); }} tabIndex="0">
-                                          <FiPlay /> Watch
-                                        </button>
-                                        <button className="quickRecBtn" onClick={(e) => { e.stopPropagation(); handleOpenRecModal(prog, ch); }} tabIndex="0" title="Record Program">
-                                          <FiVideo /> Record
-                                        </button>
-                                        <button className="quickInfoBtn" onClick={(e) => { e.stopPropagation(); handleOpenDetailModal(prog, ch); }} tabIndex="0" title="Details">
-                                          <FiInfo />
+                                        <button
+                                          className="progActionBtn record"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleOpenRecModal(prog, ch);
+                                          }}
+                                          title="Record with Dispatcharr DVR"
+                                          tabIndex="0"
+                                        >
+                                          <FiCircle style={{ fontSize: "10px", color: "#ff5252" }} /> Record
                                         </button>
                                       </div>
                                     </div>
                                   );
-                                })
-                              ) : (
-                                <div
-                                  className="programBlock isLive fallbackBlock"
-                                  style={{ left: "0px", width: `${TOTAL_HOURS * HOUR_WIDTH}px` }}
-                                  onClick={() => handlePlayChannel(ch)}
-                                  tabIndex="0"
-                                >
-                                  <div className="progHeader">
-                                    <span className="progTitle">{ch.now_playing || ch.current_program?.title || "Live Stream Broadcast"}</span>
-                                    <span className="liveBadge">LIVE NOW</span>
-                                  </div>
-                                  <div className="progTime">Click to play channel stream live</div>
-                                  <button className="quickPlayBtn" onClick={(e) => { e.stopPropagation(); handlePlayChannel(ch); }} tabIndex="0">
-                                    <FiPlay /> Watch Live Channel
-                                  </button>
-                                </div>
-                              )}
+                                });
+                              })()}
                             </div>
                           </div>
                         );
