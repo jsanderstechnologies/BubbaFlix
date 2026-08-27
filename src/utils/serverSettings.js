@@ -47,8 +47,9 @@ export const fetchServerSettings = async (forceRefresh = false) => {
     try {
       const baseUrl = getServerUrl();
       const res = await axios.get(`${baseUrl}/api/settings`, { timeout: 6000 });
-      if (res.data?.status === "success" && res.data.settings) {
-        const s = res.data.settings;
+      const payload = res.data;
+      const s = payload?.settings || (payload && (payload.dispatcharrUrl || payload.theme || payload.dispatcharrApiKey !== undefined) ? payload : null);
+      if (s) {
         cachedServerSettings = s;
         lastSettingsFetchTime = Date.now();
         return s;

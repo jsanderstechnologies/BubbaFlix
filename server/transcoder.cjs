@@ -489,7 +489,7 @@ const detectGpuCapabilities = () => {
   if ((cleanPath === "/api/settings" || cleanPath === "/settings") && req.method === "GET") {
     const settings = loadServerSettings();
     logMessage(`[Settings GET] Served settings to [${initiator.initiatorComponent}] (${initiator.ip})`);
-    return sendJson(res, 200, settings);
+    return sendJson(res, 200, { status: "success", settings, ...settings });
   }
 
   // POST Settings API
