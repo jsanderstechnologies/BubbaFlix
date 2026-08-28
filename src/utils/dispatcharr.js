@@ -333,21 +333,16 @@ export const fetchDispatcharrChannels = async () => {
  */
 export const fetchDispatcharrEpg = async () => {
   const { data } = await fetchDispatcharrWithFallback([
-    "/api/epg/programs/?page_size=1000",
     "/api/epg/grid/?page_size=1000",
-    "/api/epg/current-programs/?page_size=1000",
-    "/api/epg/programs/",
     "/api/epg/grid/",
-    "/api/epg/current-programs/",
-    "/api/epg/epgdata/",
-    "/api/epg/",
-    "/api/epg/events/",
+    "/api/epg/programs/?page_size=1000",
+    "/api/epg/programs/",
+    "/api/epg/current-programs/?page_size=1000",
+    "/api/epg/epgdata/?page_size=1000",
+    "/api/epg/events/?page_size=1000",
     "/output/epg/",
-    "/output/epg",
     "/output/xmltv/",
-    "/output/xmltv",
-    "/epg/",
-    "/epg"
+    "/epg/"
   ]);
 
   if (!Array.isArray(data)) return [];
@@ -363,7 +358,8 @@ export const fetchDispatcharrEpg = async () => {
           channel: p.channel || item.id || item.channel_id || item.number,
           channel_id: p.channel_id || p.channel || item.id || item.channel_id,
           channel_number: p.channel_number || item.number || item.channel_number,
-          channel_name: item.name || item.title || ""
+          channel_name: item.name || item.title || "",
+          tvg_id: p.tvg_id || item.tvg_id || item.epg_data_id || ""
         });
       });
     } else if (typeof item === "object" && item !== null) {

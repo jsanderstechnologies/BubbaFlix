@@ -455,6 +455,10 @@ const LiveTvPage = ({ defaultTab = "guide" }) => {
       return matchTvgId || matchEpgDataId || matchId || matchNum || matchName;
     });
 
+    if (programs.length === 0 && Array.isArray(channel.programs) && channel.programs.length > 0) {
+      programs = channel.programs;
+    }
+
     if (programs.length === 0 && channel.current_program) {
       programs = [channel.current_program];
     }
