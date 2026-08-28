@@ -11,7 +11,6 @@ import { updateServerSettings, fetchServerSettings, getServerUrl, saveServerUrl,
 import { getApiConfiguration } from "../../store/homeSlice";
 import { THEMES, getSavedTheme, applyTheme } from "../../utils/theme";
 import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning, FiCheckSquare, FiTv, FiPlus, FiMinus, FiServer, FiInfo, FiExternalLink, FiCloud } from "react-icons/fi";
-import { getDispatcharrConfig, setDispatcharrConfig, sanitizeDispatcharrUrl } from "../../utils/dispatcharr";
 import "./index.scss";
 
 const ALL_RESOLUTIONS = [
@@ -30,13 +29,6 @@ const SettingsPage = () => {
   const [serverStatus, setServerStatus] = useState(null);
   const [testingServer, setTestingServer] = useState(false);
   const [hasCustomServer, setHasCustomServer] = useState(false);
-
-  // Dispatcharr State
-  const [dispatcharrUrl, setDispatcharrUrl] = useState("");
-  const [dispatcharrApiKey, setDispatcharrApiKey] = useState("");
-  const [showDispatcharrKey, setShowDispatcharrKey] = useState(false);
-  const [dispatcharrStatus, setDispatcharrStatus] = useState(null);
-  const [testingDispatcharr, setTestingDispatcharr] = useState(false);
 
   // AIOStreams State
   const [aioUrl, setAioUrl] = useState("");
@@ -110,11 +102,6 @@ const SettingsPage = () => {
     setPremiumizeKey(activePrem);
     setHasPremiumizeCustom(!!activePrem);
 
-    const activeDispatcharrUrl = serverSettings?.dispatcharrUrl ? sanitizeDispatcharrUrl(serverSettings.dispatcharrUrl) : getDispatcharrConfig().url;
-    const activeDispatcharrKey = serverSettings?.dispatcharrApiKey !== undefined ? serverSettings.dispatcharrApiKey : getDispatcharrConfig().apiKey;
-    setDispatcharrUrl(activeDispatcharrUrl);
-    setDispatcharrApiKey(activeDispatcharrKey);
-
     const resConfig = serverSettings?.stream_resolutions || (localStorage.getItem("stream_resolutions") ? JSON.parse(localStorage.getItem("stream_resolutions")) : ["2160p", "1080p", "720p", "480p"]);
     setSelectedResolutions(resConfig);
 
@@ -125,58 +112,6 @@ const SettingsPage = () => {
   useEffect(() => {
     loadAllSettings();
   }, []);
-
-  const handleSaveDispatcharr = async (e) => {
-    e.preventDefault();
-    setTestingDispatcharr(true);
-    setDispatcharrStatus(null);
-    try {
-      const cleanUrl = sanitizeDispatcharrUrl(dispatcharrUrl);
-      const cleanKey = (dispatcharrApiKey || "").trim();
-      setDispatcharrUrl(cleanUrl);
-      setDispatcharrApiKey(cleanKey);
-
-      setDispatcharrConfig(cleanUrl, cleanKey);
-      await updateServerSettings({
-        dispatcharrUrl: cleanUrl,
-        dispatcharrApiKey: cleanKey
-      });
-
-      setDispatcharrStatus({
-        type: "success",
-        text: "Dispatcharr Live TV configuration saved and synced to backend!"
-      });
-    } catch (err) {
-      console.error("[Save Dispatcharr Error]:", err);
-      setDispatcharrStatus({
-        type: "error",
-        text: "Failed to save Dispatcharr configuration."
-      });
-    } finally {
-      setTestingDispatcharr(false);
-      setTimeout(() => setDispatcharrStatus(null), 3500);
-    }
-  };
-
-  const handleClearDispatcharr = async () => {
-    setTestingDispatcharr(true);
-    setDispatcharrStatus(null);
-    try {
-      setDispatcharrUrl("");
-      setDispatcharrApiKey("");
-      setDispatcharrConfig("", "");
-      await updateServerSettings({
-        dispatcharrUrl: "",
-        dispatcharrApiKey: ""
-      });
-      setDispatcharrStatus({ type: "success", text: "Dispatcharr configuration cleared." });
-    } catch (err) {
-      setDispatcharrStatus({ type: "error", text: "Failed to clear configuration." });
-    } finally {
-      setTestingDispatcharr(false);
-      setTimeout(() => setDispatcharrStatus(null), 3500);
-    }
-  };
 
   const handleSelectTheme = (themeId) => {
     setActiveTheme(themeId);
@@ -714,82 +649,6 @@ const SettingsPage = () => {
                     onClick={handleClearSimkl}
                   >
                     Clear Credentials
-                  </button>
-                )}
-              </div>
-            </form>
-          </div>
-
-          {/* Dispatcharr Live TV & EPG Server Card */}
-          <div className="settingsCard">
-            <div className="cardHeader">
-              <h2><FiTv style={{ marginRight: 8 }} /> Dispatcharr Live TV & EPG Server</h2>
-              <span className={`badge ${dispatcharrUrl ? "custom" : "default"}`}>
-                <FiServer style={{ marginRight: 4 }} /> {dispatcharrUrl ? "Dispatcharr Connected" : "Not Configured"}
-              </span>
-            </div>
-            <p className="description">
-              Connect your local Dispatcharr server address for Live TV channels, EPG schedule guide, and DVR recording playback.
-            </p>
-            <div className="apiInstruction">
-              <FiInfo style={{ marginRight: 6, verticalAlign: "middle" }} />
-              <strong>How to configure:</strong> Enter your Dispatcharr server URL (e.g. <code>http://192.168.1.100:9191</code>) and optional API Key below.
-            </div>
-            <form onSubmit={handleSaveDispatcharr} className="tokenForm" style={{ marginTop: 15 }}>
-              <div className="inputGroup">
-                <label htmlFor="dispatcharrUrl">DISPATCHARR_SERVER_URL</label>
-                <div className="inputWrapper">
-                  <input
-                    id="dispatcharrUrl"
-                    type="text"
-                    value={dispatcharrUrl}
-                    onChange={(e) => setDispatcharrUrl(e.target.value)}
-                    placeholder="http://192.168.1.100:9191"
-                  />
-                </div>
-              </div>
-
-              <div className="inputGroup">
-                <label htmlFor="dispatcharrApiKey">DISPATCHARR_API_KEY</label>
-                <div className="inputWrapper">
-                  <input
-                    id="dispatcharrApiKey"
-                    type={showDispatcharrKey ? "text" : "password"}
-                    value={dispatcharrApiKey}
-                    onChange={(e) => setDispatcharrApiKey(e.target.value)}
-                    placeholder="Enter your Dispatcharr API key (optional)..."
-                  />
-                  <button
-                    type="button"
-                    className="toggleVisibility"
-                    onClick={() => setShowDispatcharrKey(!showDispatcharrKey)}
-                    title={showDispatcharrKey ? "Hide Key" : "Show Key"}
-                  >
-                    {showDispatcharrKey ? <FiEyeOff /> : <FiEye />}
-                  </button>
-                </div>
-              </div>
-
-              {dispatcharrStatus && (
-                <div className={`statusBanner ${dispatcharrStatus.type}`}>
-                  {dispatcharrStatus.type === "success" && <FiCheckCircle />}
-                  {dispatcharrStatus.type === "error" && <FiXCircle />}
-                  <span>{dispatcharrStatus.text}</span>
-                </div>
-              )}
-
-              <div className="buttonGroup">
-                <button type="submit" className="saveBtn" disabled={testingDispatcharr}>
-                  <FiSave /> {testingDispatcharr ? "Saving..." : "Save Dispatcharr Config"}
-                </button>
-                {dispatcharrUrl && (
-                  <button
-                    type="button"
-                    className="clearBtn"
-                    onClick={handleClearDispatcharr}
-                    disabled={testingDispatcharr}
-                  >
-                    Clear Config
                   </button>
                 )}
               </div>

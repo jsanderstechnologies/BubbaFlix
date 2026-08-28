@@ -57,19 +57,19 @@ const TopNav = () => {
 						</button>
 
 						<button
-							className={`navBtn ${isActive("/livetv")}`}
+							className={`navBtn ${isActive("/search")}`}
 							tabIndex="0"
-							onClick={() => navigate("/livetv")}
+							onClick={() => navigate("/search")}
 							onKeyDown={(e) => {
 								const code = e.keyCode;
 								if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
 									e.preventDefault();
-									navigate("/livetv");
+									navigate("/search");
 								}
 							}}
 						>
-							<FiTv className="navIcon" />
-							<span>Live TV</span>
+							<HiOutlineSearch className="navIcon" />
+							<span>Search</span>
 						</button>
 
 						<button
@@ -134,22 +134,6 @@ const TopNav = () => {
 						>
 							<FiSettings className="navIcon" />
 							<span>Settings</span>
-						</button>
-
-						<button
-							className={`navBtn ${isActive("/search")}`}
-							tabIndex="0"
-							onClick={() => navigate("/search")}
-							onKeyDown={(e) => {
-								const code = e.keyCode;
-								if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
-									e.preventDefault();
-									navigate("/search");
-								}
-							}}
-						>
-							<HiOutlineSearch className="navIcon" />
-							<span>Search</span>
 						</button>
 
 						<button

@@ -18,7 +18,6 @@ import { initDpadNavigation } from "./utils/dpadNavigation";
 import { fetchUserSimklHistory } from "./utils/simkl";
 import { fetchServerSettings } from "./utils/serverSettings";
 
-import LiveTvPage from "./pages/live-tv-page";
 import AboutPage from "./pages/about-page";
 import TvInstallPrompt from "./components/tv-install-prompt";
 
@@ -69,8 +68,6 @@ const App = () => {
 			<BrowserRouter>
 				<Routes>
 					<Route path="/" element={<HomePage />} />
-					<Route path="/livetv" element={<LiveTvPage />} />
-					<Route path="/recordings" element={<LiveTvPage defaultTab="recordings" />} />
 					<Route path="/about" element={<AboutPage />} />
 					<Route path="/favorites" element={<FavoritesPage />} />
 					<Route path="/settings" element={<SettingsPage />} />

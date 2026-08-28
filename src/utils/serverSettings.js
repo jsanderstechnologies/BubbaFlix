@@ -92,14 +92,6 @@ export const fetchServerSettings = async (forceRefresh = false) => {
         localStorage.removeItem("premiumize_api_key");
       }
     }
-    if (s.dispatcharrUrl) {
-      let cleanUrl = s.dispatcharrUrl.trim().replace(/\/$/, "");
-      if (cleanUrl && !/^https?:\/\//i.test(cleanUrl)) cleanUrl = `http://${cleanUrl}`;
-      localStorage.setItem("dispatcharr_url", cleanUrl);
-    }
-    if (s.dispatcharrApiKey !== undefined) {
-      localStorage.setItem("dispatcharr_api_key", (s.dispatcharrApiKey || "").trim());
-    }
     if (s.stream_resolutions) {
       localStorage.setItem("stream_resolutions", JSON.stringify(s.stream_resolutions));
     }

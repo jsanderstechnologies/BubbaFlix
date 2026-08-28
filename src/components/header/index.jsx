@@ -46,8 +46,8 @@ const Header = () => {
 	const handleNavigation = (navigationType) => {
 		if (navigationType === "home") {
 			navigate("/");
-		} else if (navigationType === "livetv") {
-			navigate("/livetv");
+		} else if (navigationType === "search") {
+			navigate("/search");
 		} else if (navigationType === "favorites") {
 			navigate("/favorites");
 		} else if (navigationType === "movies") {
@@ -93,10 +93,10 @@ const Header = () => {
 						className="menuItem"
 						tabIndex="0"
 						role="button"
-						onClick={() => handleNavigation("livetv")}
-						onKeyDown={(e) => handleKeyActivate(e, () => handleNavigation("livetv"))}
+						onClick={() => handleNavigation("search")}
+						onKeyDown={(e) => handleKeyActivate(e, () => handleNavigation("search"))}
 					>
-						Live TV
+						<HiOutlineSearch style={{ marginRight: 6 }} /> Search
 					</li>
 					<li
 						className="menuItem"
@@ -143,15 +143,6 @@ const Header = () => {
 						onKeyDown={(e) => handleKeyActivate(e, () => handleNavigation("about"))}
 					>
 						About
-					</li>
-					<li
-						className="menuItem"
-						tabIndex="0"
-						role="button"
-						onClick={() => handleNavigation("search")}
-						onKeyDown={(e) => handleKeyActivate(e, () => handleNavigation("search"))}
-					>
-						<HiOutlineSearch style={{ marginRight: 6 }} /> Search
 					</li>
 				</ul>
 
