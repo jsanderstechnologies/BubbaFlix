@@ -217,6 +217,7 @@ const fetchDispatcharrWithFallback = async (endpointPaths) => {
   }
 
   // Strategy B: Proxy fetch via Node backend server /api/dispatcharr proxy
+  let firstValidArray = null;
   for (const path of endpointPaths) {
     try {
       const proxyUrl = buildUrlWithParams(proxyBase, path);
@@ -227,7 +228,12 @@ const fetchDispatcharrWithFallback = async (endpointPaths) => {
           const json = await res.json();
           const normalized = normalizeArray(json);
           if (Array.isArray(normalized)) {
-            return { data: normalized, serverUrl: cleanServerUrl, apiKey };
+            if (normalized.length > 0) {
+              return { data: normalized, serverUrl: cleanServerUrl, apiKey };
+            }
+            if (!firstValidArray) {
+              firstValidArray = normalized;
+            }
           }
         }
       }
@@ -236,7 +242,7 @@ const fetchDispatcharrWithFallback = async (endpointPaths) => {
     }
   }
 
-  return { data: [], serverUrl: cleanServerUrl, apiKey };
+  return { data: firstValidArray || [], serverUrl: cleanServerUrl, apiKey };
 };
 
 const normalizeChannel = (ch, serverUrl, apiKey) => {
