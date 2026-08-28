@@ -97,8 +97,6 @@ const getEnvDefaultSettings = () => {
   const defaultGroq = process.env.GROQ_API_KEY || process.env.GROQ_KEY || process.env.VITE_GROQ_API_KEY || "";
   const defaultSimkl = process.env.SIMKL_CLIENT_ID || process.env.VITE_SIMKL_CLIENT_ID || "";
   const defaultAio = process.env.AIOSTREAMS_URL || process.env.VITE_AIOSTREAMS_URL || "https://aiostreams.elfhosted.com/";
-  const defaultDispatcharrUrl = process.env.DISPATCHARR_URL || process.env.VITE_DISPATCHARR_URL || "http://192.168.10.3:9191";
-  const defaultDispatcharrApiKey = process.env.DISPATCHARR_API_KEY || process.env.VITE_DISPATCHARR_API_KEY || "";
   const defaultResolutions = process.env.STREAM_RESOLUTIONS
     ? process.env.STREAM_RESOLUTIONS.split(",").map((s) => s.trim())
     : ["2160p", "1080p", "720p", "480p"];
@@ -112,8 +110,6 @@ const getEnvDefaultSettings = () => {
     simklClientId: defaultSimkl,
     groqKey: defaultGroq,
     tmdbToken: defaultTmdb,
-    dispatcharrUrl: defaultDispatcharrUrl,
-    dispatcharrApiKey: defaultDispatcharrApiKey,
     stream_resolutions: defaultResolutions,
     stream_exclude_low_quality: defaultExcludeLow,
   };
@@ -133,12 +129,6 @@ const loadServerSettings = () => {
       }
       if (envDefaults.simklClientId && (!merged.simklClientId || merged.simklClientId.trim() === "")) {
         merged.simklClientId = envDefaults.simklClientId;
-      }
-      if (envDefaults.dispatcharrUrl && (!merged.dispatcharrUrl || merged.dispatcharrUrl.trim() === "" || merged.dispatcharrUrl === "http://192.168.1.100:9191")) {
-        merged.dispatcharrUrl = envDefaults.dispatcharrUrl;
-      }
-      if (envDefaults.dispatcharrApiKey && (!merged.dispatcharrApiKey || merged.dispatcharrApiKey.trim() === "")) {
-        merged.dispatcharrApiKey = envDefaults.dispatcharrApiKey;
       }
       if (!merged.tmdbToken || merged.tmdbToken.trim() === "") {
         merged.tmdbToken = DEFAULT_TMDB_KEY;
@@ -203,9 +193,11 @@ const sendJson = (res, statusCode, data) => {
 
 const server = http.createServer((req, res) => {
   const startTime = Date.now();
-  const parsedUrl = url.parse(req.url, true);
-  const rawPath = parsedUrl.pathname || "/";
-  const cleanPath = rawPath.length > 1 && rawPath.endsWith("/") ? rawPath.slice(0, -1) : rawPath;
+  const parsedUrl = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+  parsedUrl.query = Object.fromEntries(parsedUrl.searchParams);
+  const rawPath = (parsedUrl.pathname || "/") + (parsedUrl.search || "");
+  const rawClean = parsedUrl.pathname || "/";
+  const cleanPath = rawClean.length > 1 && rawClean.endsWith("/") ? rawClean.slice(0, -1) : rawClean;
   const initiator = getRequestInitiator(req);
 
   logMessage(`[HTTP Request] ${req.method} ${rawPath} | Initiator: [${initiator.initiatorComponent}] | Client IP: ${initiator.ip} | Referer: ${initiator.referer} | User-Agent: ${initiator.userAgent}`);
@@ -235,6 +227,7 @@ const server = http.createServer((req, res) => {
 
 // GPU Hardware Acceleration Auto-Detection Engine
 let cachedGpuConfig = null;
+let verifiedDispatcharrUrl = null;
 
 const detectGpuCapabilities = () => {
   if (cachedGpuConfig) return cachedGpuConfig;
@@ -382,30 +375,8 @@ const detectGpuCapabilities = () => {
       "Access-Control-Allow-Origin": "*",
     });
 
-    const settings = loadServerSettings();
-    const apiKey = settings.dispatcharrApiKey || parsedUrl.query.api_key || parsedUrl.query.token || "";
-
-    // Replace invalid relative or 127.0.0.1 host loopbacks in proxied Dispatcharr stream URLs
-    let normalizedTargetUrl = targetUrl;
-    if (normalizedTargetUrl.includes("/proxy/ts/stream/")) {
-      const match = normalizedTargetUrl.match(/\/proxy\/ts\/stream\/([a-zA-Z0-9_-]+)/);
-      if (match) {
-        const streamId = match[1];
-        const settings = loadServerSettings();
-        const dispatcharrUrl = (settings.dispatcharrUrl || "http://192.168.10.3:9191").replace(/\/$/, "");
-        const apiKey = settings.dispatcharrApiKey || "";
-        const authQuery = apiKey ? `&api_key=${encodeURIComponent(apiKey)}` : "";
-        normalizedTargetUrl = `${dispatcharrUrl}/proxy/ts/stream/${streamId}${authQuery.replace(/^&/, "?")}`;
-      }
-    } else if (normalizedTargetUrl.startsWith("/")) {
-      const settings = loadServerSettings();
-      const dispatcharrUrl = (settings.dispatcharrUrl || "http://192.168.10.3:9191").replace(/\/$/, "");
-      normalizedTargetUrl = `${dispatcharrUrl}${normalizedTargetUrl}`;
-    }
-
-    const headersStr = apiKey
-      ? `X-API-Key: ${apiKey}\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)\r\n`
-      : `User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)\r\n`;
+    const normalizedTargetUrl = targetUrl;
+    const headersStr = `User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)\r\n`;
 
     const gpuInfo = detectGpuCapabilities();
 
@@ -487,7 +458,7 @@ const detectGpuCapabilities = () => {
   if ((cleanPath === "/api/settings" || cleanPath === "/settings") && req.method === "GET") {
     const settings = loadServerSettings();
     logMessage(`[Settings GET] Served settings to [${initiator.initiatorComponent}] (${initiator.ip})`);
-    return sendJson(res, 200, settings);
+    return sendJson(res, 200, { status: "success", settings, ...settings });
   }
 
   // POST Settings API
@@ -565,117 +536,13 @@ const detectGpuCapabilities = () => {
           sendJson(res, 200, parsed);
         } catch (e) {
           logMessage(`[Version Check Error] Failed to parse GitHub version.json: ${e.message}`, true);
-          sendJson(res, 200, { versionCode: 14, versionName: "1.0.4" });
+          sendJson(res, 200, { versionCode: 2, versionName: "1.0.1" });
         }
       });
     }).on("error", (vErr) => {
       logMessage(`[Version Check Network Error] Unable to fetch version.json from GitHub: ${vErr.message}`, true);
-      sendJson(res, 200, { versionCode: 14, versionName: "1.0.4" });
+      sendJson(res, 200, { versionCode: 2, versionName: "1.0.1" });
     });
-    return;
-  }
-
-  // Manual Dispatcharr Auto-Sync Endpoint
-  if (cleanPath === "/api/dispatcharr/sync-now" || cleanPath === "/dispatcharr/sync-now") {
-    logMessage(`[Manual Auto-Sync] Triggered by [${initiator.initiatorComponent}] (${initiator.ip})`);
-    triggerDispatcharrSync();
-    return sendJson(res, 200, { status: "success", message: "Dispatcharr 2-hour automated playlist and EPG refresh triggered." });
-  }
-
-  // Dispatcharr Proxy Endpoints for Live TV, Channels, EPG Guide, & Recordings
-  if (cleanPath.startsWith("/api/dispatcharr") || cleanPath.startsWith("/dispatcharr")) {
-    const settings = loadServerSettings();
-    const dispatcharrUrl = (settings.dispatcharrUrl || "http://192.168.10.3:9191").replace(/\/$/, "");
-    let apiKey = settings.dispatcharrApiKey || "";
-
-    // Fallback: extract API Key from request headers or query parameters if not stored in server settings
-    if (!apiKey) {
-      apiKey = req.headers["x-api-key"] || parsedUrl.query.api_key || parsedUrl.query.token || "";
-      if (req.headers["authorization"] && req.headers["authorization"].startsWith("Bearer ")) {
-        apiKey = req.headers["authorization"].replace(/^Bearer\s+/i, "");
-      }
-    }
-
-    let subPath = rawPath.replace(/^\/api\/dispatcharr/, "").replace(/^\/dispatcharr/, "") || "/";
-    const cleanSubPath = subPath.split("?")[0].replace(/\/$/, "");
-
-    // Alias mapping for Dispatcharr Swagger OpenAPI endpoints (Django requires trailing slashes)
-    if (cleanSubPath === "/epg" || cleanSubPath === "/api/epg" || cleanSubPath === "/output/epg" || cleanSubPath === "/output/xmltv") {
-      subPath = subPath.replace(cleanSubPath, "/api/epg/programs/");
-    } else if (cleanSubPath === "/channels" || cleanSubPath === "/api/channels" || cleanSubPath === "/output/m3u") {
-      subPath = subPath.replace(cleanSubPath, "/api/channels/channels/");
-    } else if (cleanSubPath === "/recordings" || cleanSubPath === "/api/recordings") {
-      subPath = subPath.replace(cleanSubPath, "/api/channels/recordings/");
-    } else if (cleanSubPath.startsWith("/proxy/ts/stream/")) {
-      const parts = subPath.split("?");
-      const cleanBase = parts[0].replace(/\/+$/, "");
-      subPath = `${cleanBase}` + (parts[1] ? `?${parts[1]}` : "");
-    }
-
-    const targetDispatcharrUrl = `${dispatcharrUrl}${subPath.startsWith("/") ? "" : "/"}${subPath}`;
-
-    logMessage(`[Dispatcharr Proxy] Initiated by [${initiator.initiatorComponent}] (${initiator.ip}) -> ${req.method} ${targetDispatcharrUrl}`);
-
-    try {
-      const targetParsed = url.parse(targetDispatcharrUrl);
-      const isHttps = targetParsed.protocol === "https:";
-      const httpModule = isHttps ? require("https") : require("http");
-
-      const headers = { ...req.headers, host: targetParsed.host };
-      delete headers["content-length"];
-      if (apiKey) {
-        if (apiKey.startsWith("eyJ")) {
-          headers["Authorization"] = `Bearer ${apiKey}`;
-        } else {
-          headers["X-API-Key"] = apiKey;
-          delete headers["authorization"];
-        }
-      }
-
-      const proxyReq = httpModule.request(targetDispatcharrUrl, {
-        method: req.method,
-        headers: headers,
-        rejectUnauthorized: false, // Allow local self-signed HTTPS certs
-        timeout: 30000
-      }, (proxyRes) => {
-        const duration = Date.now() - startTime;
-        logMessage(`[Dispatcharr Proxy Response] ${req.method} ${targetDispatcharrUrl} -> Status ${proxyRes.statusCode} (${duration}ms) | Initiator: [${initiator.initiatorComponent}] (${initiator.ip})`);
-        if (proxyRes.statusCode >= 400) {
-          logMessage(`[Dispatcharr HTTP Warning] ${req.method} ${targetDispatcharrUrl} returned HTTP ${proxyRes.statusCode} for [${initiator.initiatorComponent}] (${initiator.ip})`, true);
-        }
-        if (!res.headersSent) {
-          res.writeHead(proxyRes.statusCode, {
-            ...proxyRes.headers,
-            "Access-Control-Allow-Origin": "*"
-          });
-          proxyRes.pipe(res);
-        }
-      });
-
-      proxyReq.on("error", (err) => {
-        if (res.headersSent) return;
-        const duration = Date.now() - startTime;
-        logMessage(`[Dispatcharr Proxy Network Error] ${req.method} ${targetDispatcharrUrl} failed (${duration}ms) for [${initiator.initiatorComponent}] (${initiator.ip}): ${err.message}`, true);
-        sendJson(res, 502, { error: `Dispatcharr proxy error: ${err.message}`, targetUrl: targetDispatcharrUrl, dispatcharrUrl });
-      });
-
-      proxyReq.on("timeout", () => {
-        proxyReq.destroy();
-        if (res.headersSent) return;
-        const duration = Date.now() - startTime;
-        logMessage(`[Dispatcharr Proxy Timeout Error] ${req.method} ${targetDispatcharrUrl} timed out after ${duration}ms for [${initiator.initiatorComponent}] (${initiator.ip})`, true);
-        sendJson(res, 504, { error: "Dispatcharr proxy request timed out", targetUrl: targetDispatcharrUrl, dispatcharrUrl });
-      });
-
-      if (req.method === "POST" || req.method === "PUT" || req.method === "DELETE") {
-        req.pipe(proxyReq);
-      } else {
-        proxyReq.end();
-      }
-    } catch (err) {
-      logMessage(`[Dispatcharr Proxy Exception] Initiated by [${initiator.initiatorComponent}] (${initiator.ip}) - Failed: ${err.stack || err.message}`, true);
-      sendJson(res, 500, { error: err.message });
-    }
     return;
   }
 
@@ -692,136 +559,9 @@ process.on("unhandledRejection", (reason) => {
   logMessage(`[BubbaFlix Server Unhandled Rejection]: ${reason}`, true);
 });
 
-// Dispatcharr 2-Hour Automated Playlist & EPG Refresh Engine
-const triggerDispatcharrSync = async () => {
-  try {
-    const settings = loadServerSettings();
-    const dispatcharrUrl = (settings.dispatcharrUrl || "http://192.168.10.3:9191").replace(/\/$/, "");
-    let apiKey = settings.dispatcharrApiKey || "";
-
-    logMessage(`[Dispatcharr Auto-Sync] Requesting 2-Hour Playlist & EPG update on ${dispatcharrUrl}...`);
-
-    const headers = { "Content-Type": "application/json" };
-    if (apiKey) {
-      if (apiKey.startsWith("eyJ")) {
-        headers["Authorization"] = `Bearer ${apiKey}`;
-      } else {
-        headers["X-API-Key"] = apiKey;
-      }
-    }
-
-    const isHttps = dispatcharrUrl.startsWith("https:");
-    const httpModule = isHttps ? require("https") : require("http");
-
-    // 1. Trigger M3U Playlists Refresh (POST /api/m3u/refresh/)
-    try {
-      const m3uReq = httpModule.request(`${dispatcharrUrl}/api/m3u/refresh/`, {
-        method: "POST",
-        headers,
-        rejectUnauthorized: false,
-        timeout: 15000
-      }, (res) => {
-        logMessage(`[Dispatcharr Auto-Sync] M3U Playlist Refresh Triggered -> Status ${res.statusCode}`);
-      });
-      m3uReq.on("error", (e) => logMessage(`[Dispatcharr Auto-Sync] M3U Refresh Warning: ${e.message}`, true));
-      m3uReq.end();
-    } catch (e) {
-      logMessage(`[Dispatcharr Auto-Sync] M3U Refresh Error: ${e.message}`, true);
-    }
-
-    // 2. Trigger EPG Sources Import (POST /api/epg/import/)
-    try {
-      const sourcesReq = httpModule.request(`${dispatcharrUrl}/api/epg/sources/`, {
-        method: "GET",
-        headers,
-        rejectUnauthorized: false,
-        timeout: 15000
-      }, (res) => {
-        let body = "";
-        res.on("data", chunk => body += chunk);
-        res.on("end", () => {
-          try {
-            const data = JSON.parse(body);
-            const sources = Array.isArray(data) ? data : (data.results || []);
-            if (sources.length > 0) {
-              sources.forEach(source => {
-                const sourceId = source.id;
-                const importReq = httpModule.request(`${dispatcharrUrl}/api/epg/import/`, {
-                  method: "POST",
-                  headers,
-                  rejectUnauthorized: false,
-                  timeout: 15000
-                }, (impRes) => {
-                  logMessage(`[Dispatcharr Auto-Sync] EPG Import Triggered for Source #${sourceId} -> Status ${impRes.statusCode}`);
-                });
-                importReq.on("error", () => {});
-                importReq.write(JSON.stringify({ source_id: sourceId, source: sourceId }));
-                importReq.end();
-              });
-            } else {
-              const importReq = httpModule.request(`${dispatcharrUrl}/api/epg/import/`, {
-                method: "POST",
-                headers,
-                rejectUnauthorized: false,
-                timeout: 15000
-              }, (impRes) => {
-                logMessage(`[Dispatcharr Auto-Sync] Generic EPG Import Triggered -> Status ${impRes.statusCode}`);
-              });
-              importReq.on("error", () => {});
-              importReq.end();
-            }
-          } catch (e) {
-            const importReq = httpModule.request(`${dispatcharrUrl}/api/epg/import/`, {
-              method: "POST",
-              headers,
-              rejectUnauthorized: false,
-              timeout: 15000
-            }, (impRes) => {
-              logMessage(`[Dispatcharr Auto-Sync] EPG Import Triggered -> Status ${impRes.statusCode}`);
-            });
-            importReq.on("error", () => {});
-            importReq.end();
-          }
-        });
-      });
-      sourcesReq.on("error", (e) => logMessage(`[Dispatcharr Auto-Sync] EPG Sources Warning: ${e.message}`, true));
-      sourcesReq.end();
-    } catch (e) {
-      logMessage(`[Dispatcharr Auto-Sync] EPG Refresh Error: ${e.message}`, true);
-    }
-
-    // 3. Trigger DVR Recordings Auto-Refresh & Warm-Up Query (GET /api/dvr/recordings/)
-    try {
-      const dvrReq = httpModule.request(`${dispatcharrUrl}/api/dvr/recordings/`, {
-        method: "GET",
-        headers,
-        rejectUnauthorized: false,
-        timeout: 15000
-      }, (res) => {
-        logMessage(`[Dispatcharr Auto-Sync] DVR Recordings Query & Populate Warm-Up -> Status ${res.statusCode}`);
-      });
-      dvrReq.on("error", (e) => logMessage(`[Dispatcharr Auto-Sync] DVR Recordings Warning: ${e.message}`, true));
-      dvrReq.end();
-    } catch (e) {
-      logMessage(`[Dispatcharr Auto-Sync] DVR Recordings Error: ${e.message}`, true);
-    }
-
-    return true;
-  } catch (err) {
-    logMessage(`[Dispatcharr Auto-Sync Exception]: ${err.message}`, true);
-    return false;
-  }
-};
-
-// Schedule 2-Hour Automated Sync (2 hours = 7,200,000 ms)
-const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
-setInterval(triggerDispatcharrSync, TWO_HOURS_MS);
-
 server.listen(PORT, "0.0.0.0", () => {
   logMessage(`[BubbaFlix Backend Transcoder & Settings Engine] Pure Node Server listening on 0.0.0.0:${PORT}`);
   loadServerSettings();
-  // Auto-Update and Auto-Populate EPG & DVR Recordings IMMEDIATELY on server startup (1 second delay)
-  setTimeout(triggerDispatcharrSync, 1000);
 });
 
 server.on("error", (err) => {
