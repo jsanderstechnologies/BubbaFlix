@@ -214,20 +214,34 @@ export const fetchDispatcharrRecordings = async () => {
 export const createOneTimeRecording = async ({ programId, channelId, title, startTime, endTime }) => {
   try {
     const baseUrl = getProxyBaseUrl();
+    const parsedChannelId = Number(channelId) || channelId;
+    const parsedProgramId = Number(programId) || null;
+
     const payload = {
-      program_id: programId,
-      channel: channelId,
       title: title || "Recorded Program",
       start_time: startTime,
       end_time: endTime,
     };
+
+    if (parsedChannelId !== undefined && parsedChannelId !== null) {
+      payload.channel = parsedChannelId;
+    }
+    if (parsedProgramId !== undefined && parsedProgramId !== null) {
+      payload.program_id = parsedProgramId;
+    }
+
     const res = await axios.post(`${baseUrl}/api/channels/recordings/`, payload, { timeout: 10000 });
     return { success: true, data: res.data };
   } catch (err) {
     console.error("[Dispatcharr API] Failed to create one-time recording:", err);
+    const errDetail = err.response?.data
+      ? typeof err.response.data === "object"
+        ? JSON.stringify(err.response.data)
+        : err.response.data
+      : err.message;
     return {
       success: false,
-      message: err.response?.data?.detail || err.response?.data?.message || err.message || "Failed to schedule recording.",
+      message: errDetail || "Failed to schedule recording.",
     };
   }
 };
@@ -238,19 +252,31 @@ export const createOneTimeRecording = async ({ programId, channelId, title, star
 export const createSeriesRecordingRule = async ({ programTitle, channelId, tvgId }) => {
   try {
     const baseUrl = getProxyBaseUrl();
+    const parsedChannelId = Number(channelId) || channelId;
+
     const payload = {
       title: programTitle,
-      channel: channelId,
-      tvg_id: tvgId,
       record_all: true,
     };
-    const res = await axios.post(`${baseUrl}/api/channels/recordings/`, payload, { timeout: 10000 });
+    if (parsedChannelId !== undefined && parsedChannelId !== null) {
+      payload.channel = parsedChannelId;
+    }
+    if (tvgId) {
+      payload.tvg_id = tvgId;
+    }
+
+    const res = await axios.post(`${baseUrl}/api/channels/series-rules/`, payload, { timeout: 10000 });
     return { success: true, data: res.data };
   } catch (err) {
     console.error("[Dispatcharr API] Failed to create series recording rule:", err);
+    const errDetail = err.response?.data
+      ? typeof err.response.data === "object"
+        ? JSON.stringify(err.response.data)
+        : err.response.data
+      : err.message;
     return {
       success: false,
-      message: err.response?.data?.detail || err.response?.data?.message || err.message || "Failed to schedule series recording.",
+      message: errDetail || "Failed to schedule series recording.",
     };
   }
 };

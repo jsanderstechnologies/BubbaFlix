@@ -254,9 +254,11 @@ const LiveTvPage = () => {
   const handleScheduleOneTime = async (prog) => {
     setActionLoading(true);
     setActionStatus(null);
+    const rawCh = prog.channel || prog.channel_id || prog.channelObj?.id || prog.channelObj?.number;
+    const channelId = typeof rawCh === "object" ? rawCh.id || rawCh.number : rawCh;
     const res = await createOneTimeRecording({
-      programId: prog.id,
-      channelId: prog.channel || prog.channel_id,
+      programId: prog.id || prog.program_id,
+      channelId,
       title: prog.title,
       startTime: prog.start_time,
       endTime: prog.end_time,
@@ -274,10 +276,12 @@ const LiveTvPage = () => {
   const handleScheduleSeries = async (prog) => {
     setActionLoading(true);
     setActionStatus(null);
+    const rawCh = prog.channel || prog.channel_id || prog.channelObj?.id || prog.channelObj?.number;
+    const channelId = typeof rawCh === "object" ? rawCh.id || rawCh.number : rawCh;
     const res = await createSeriesRecordingRule({
       programTitle: prog.title,
-      channelId: prog.channel || prog.channel_id,
-      tvgId: prog.tvg_id,
+      channelId,
+      tvgId: prog.tvg_id || prog.channelObj?.tvg_id,
     });
     setActionLoading(false);
 
