@@ -20,11 +20,14 @@ const enforcePostRateLimit = async () => {
 
 export const getSimklConfig = () => {
   let clientId = "";
+  let clientSecret = "";
   if (typeof window !== "undefined") {
     clientId = localStorage.getItem("simkl_client_id") || "";
+    clientSecret = localStorage.getItem("simkl_client_secret") || "";
   }
   return {
     clientId: (clientId && clientId.trim()) || import.meta.env.VITE_SIMKL_CLIENT_ID || "",
+    clientSecret: (clientSecret && clientSecret.trim()) || import.meta.env.VITE_SIMKL_CLIENT_SECRET || "",
   };
 };
 

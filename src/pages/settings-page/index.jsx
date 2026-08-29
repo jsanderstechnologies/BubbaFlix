@@ -51,6 +51,8 @@ const SettingsPage = () => {
 
   // SIMKL State
   const [simklClientId, setSimklClientId] = useState("");
+  const [simklClientSecret, setSimklClientSecret] = useState("");
+  const [showSimklSecret, setShowSimklSecret] = useState(false);
   const [simklStatus, setSimklStatus] = useState(null);
   const [hasSimklCustom, setHasSimklCustom] = useState(false);
   const [testingSimkl, setTestingSimkl] = useState(false);
@@ -96,6 +98,8 @@ const SettingsPage = () => {
 
     const activeSimkl = serverSettings?.simklClientId !== undefined ? serverSettings.simklClientId : (getSimklConfig().clientId || "");
     setSimklClientId(activeSimkl);
+    const activeSimklSecret = serverSettings?.simklClientSecret !== undefined ? serverSettings.simklClientSecret : (getSimklConfig().clientSecret || "");
+    setSimklClientSecret(activeSimklSecret);
     setHasSimklCustom(!!activeSimkl);
 
     const activeGroq = serverSettings?.groqKey !== undefined ? serverSettings.groqKey : (getGroqApiKey() || "");
@@ -257,14 +261,19 @@ const SettingsPage = () => {
   const handleSaveSimkl = async (e) => {
     e.preventDefault();
     const cleanId = simklClientId.trim();
+    const cleanSecret = simklClientSecret.trim();
     if (!cleanId) {
       setSimklStatus({ type: "error", text: "SIMKL Client ID cannot be empty." });
       return;
     }
     localStorage.setItem("simkl_client_id", cleanId);
-    localStorage.removeItem("simkl_access_token");
+    if (cleanSecret) {
+      localStorage.setItem("simkl_client_secret", cleanSecret);
+    } else {
+      localStorage.removeItem("simkl_client_secret");
+    }
     setHasSimklCustom(true);
-    await updateServerSettings({ simklClientId: cleanId });
+    await updateServerSettings({ simklClientId: cleanId, simklClientSecret: cleanSecret });
 
     setTestingSimkl(true);
     const testRes = await testSimklConnection(cleanId);
@@ -279,10 +288,12 @@ const SettingsPage = () => {
 
   const handleClearSimkl = async () => {
     localStorage.removeItem("simkl_client_id");
+    localStorage.removeItem("simkl_client_secret");
     localStorage.removeItem("simkl_access_token");
     setSimklClientId("");
+    setSimklClientSecret("");
     setHasSimklCustom(false);
-    await updateServerSettings({ simklClientId: "" });
+    await updateServerSettings({ simklClientId: "", simklClientSecret: "" });
     setSimklStatus({ type: "info", text: "SIMKL credentials cleared on server." });
   };
 
@@ -793,6 +804,25 @@ const SettingsPage = () => {
                     onChange={(e) => setSimklClientId(e.target.value)}
                     placeholder="Enter your SIMKL API Client ID..."
                   />
+                </div>
+              </div>
+              <div className="inputGroup" style={{ marginTop: 12 }}>
+                <label htmlFor="simklClientSecret">SIMKL_CLIENT_SECRET (Optional)</label>
+                <div className="inputWrapper">
+                  <input
+                    id="simklClientSecret"
+                    type={showSimklSecret ? "text" : "password"}
+                    value={simklClientSecret}
+                    onChange={(e) => setSimklClientSecret(e.target.value)}
+                    placeholder="Enter your SIMKL API Client Secret..."
+                  />
+                  <button
+                    type="button"
+                    className="toggleVisBtn"
+                    onClick={() => setShowSimklSecret(!showSimklSecret)}
+                  >
+                    {showSimklSecret ? <FiEyeOff /> : <FiEye />}
+                  </button>
                 </div>
               </div>
               {simklStatus && (
