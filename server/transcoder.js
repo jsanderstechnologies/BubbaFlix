@@ -96,6 +96,8 @@ const getEnvDefaultSettings = () => {
   const defaultTmdb = process.env.TMDB_READ_ACCESS_TOKEN || process.env.VITE_APP_TMDB_KEY || process.env.TMDB_TOKEN || DEFAULT_TMDB_KEY;
   const defaultGroq = process.env.GROQ_API_KEY || process.env.GROQ_KEY || process.env.VITE_GROQ_API_KEY || "";
   const defaultSimkl = process.env.SIMKL_CLIENT_ID || process.env.VITE_SIMKL_CLIENT_ID || "";
+  const defaultDispatcharrUrl = process.env.DISPATCHARR_URL || process.env.VITE_DISPATCHARR_URL || "http://192.168.10.3:9191";
+  const defaultDispatcharrApiKey = process.env.DISPATCHARR_API_KEY || process.env.VITE_DISPATCHARR_API_KEY || "";
   const defaultResolutions = process.env.STREAM_RESOLUTIONS
     ? process.env.STREAM_RESOLUTIONS.split(",").map((s) => s.trim())
     : ["2160p", "1080p", "720p", "480p"];
@@ -108,6 +110,8 @@ const getEnvDefaultSettings = () => {
     simklClientId: defaultSimkl,
     groqKey: defaultGroq,
     tmdbToken: defaultTmdb,
+    dispatcharrUrl: defaultDispatcharrUrl,
+    dispatcharrApiKey: defaultDispatcharrApiKey,
     stream_resolutions: defaultResolutions,
     stream_exclude_low_quality: defaultExcludeLow,
   };
@@ -127,6 +131,12 @@ const loadServerSettings = () => {
       }
       if (envDefaults.simklClientId && (!merged.simklClientId || merged.simklClientId.trim() === "")) {
         merged.simklClientId = envDefaults.simklClientId;
+      }
+      if (envDefaults.dispatcharrUrl && (!merged.dispatcharrUrl || merged.dispatcharrUrl.trim() === "" || merged.dispatcharrUrl === "http://192.168.1.100:9191")) {
+        merged.dispatcharrUrl = envDefaults.dispatcharrUrl;
+      }
+      if (envDefaults.dispatcharrApiKey && (!merged.dispatcharrApiKey || merged.dispatcharrApiKey.trim() === "")) {
+        merged.dispatcharrApiKey = envDefaults.dispatcharrApiKey;
       }
       if (!merged.tmdbToken || merged.tmdbToken.trim() === "") {
         merged.tmdbToken = DEFAULT_TMDB_KEY;
@@ -541,6 +551,85 @@ const detectGpuCapabilities = () => {
       logMessage(`[Version Check Network Error] Unable to fetch version.json from GitHub: ${vErr.message}`, true);
       sendJson(res, 200, { versionCode: 2, versionName: "1.0.1" });
     });
+  // Dispatcharr Proxy Endpoints for Live TV, Channels, EPG Guide, & Recordings
+  if (cleanPath.startsWith("/api/dispatcharr") || cleanPath.startsWith("/dispatcharr")) {
+    const settings = loadServerSettings();
+    const rawDispatcharrUrl = (settings.dispatcharrUrl || "http://192.168.10.3:9191").replace(/\/$/, "");
+    let apiKey = settings.dispatcharrApiKey || "";
+
+    if (!apiKey) {
+      apiKey = req.headers["x-api-key"] || parsedUrl.query.api_key || parsedUrl.query.token || "";
+      if (req.headers["authorization"] && req.headers["authorization"].startsWith("Bearer ")) {
+        apiKey = req.headers["authorization"].replace(/^Bearer\s+/i, "");
+      }
+    }
+
+    let subPath = rawPath.replace(/^\/api\/dispatcharr/, "").replace(/^\/dispatcharr/, "") || "/";
+    if (subPath.includes("?")) {
+      const parts = subPath.split("?");
+      const base = parts[0];
+      const queries = parts.slice(1).filter(Boolean).join("&");
+      subPath = `${base}?${queries}`;
+    }
+
+    const targetDispatcharrUrl = `${rawDispatcharrUrl}${subPath.startsWith("/") ? "" : "/"}${subPath}`;
+
+    try {
+      const targetParsed = new URL(targetDispatcharrUrl);
+      const isHttps = targetParsed.protocol === "https:";
+      const httpModule = isHttps ? require("https") : require("http");
+
+      const proxyHeaders = {};
+      for (const key of Object.keys(req.headers)) {
+        const lower = key.toLowerCase();
+        if (lower !== "host" && lower !== "content-length" && lower !== "connection") {
+          proxyHeaders[key] = req.headers[key];
+        }
+      }
+      proxyHeaders["host"] = targetParsed.host;
+
+      if (apiKey) {
+        if (apiKey.startsWith("eyJ")) {
+          proxyHeaders["authorization"] = `Bearer ${apiKey}`;
+        } else {
+          proxyHeaders["x-api-key"] = apiKey;
+          if (!proxyHeaders["authorization"]) {
+            proxyHeaders["authorization"] = `Bearer ${apiKey}`;
+          }
+        }
+      }
+
+      const proxyReq = httpModule.request(targetDispatcharrUrl, {
+        method: req.method,
+        headers: proxyHeaders,
+        rejectUnauthorized: false,
+        timeout: 10000
+      }, (proxyRes) => {
+        if (!res.headersSent) {
+          res.writeHead(proxyRes.statusCode, {
+            ...proxyRes.headers,
+            "Access-Control-Allow-Origin": "*"
+          });
+          proxyRes.pipe(res);
+        }
+      });
+
+      proxyReq.on("error", (err) => {
+        if (!res.headersSent) {
+          sendJson(res, 502, { error: `Dispatcharr proxy error: ${err.message}`, targetUrl: targetDispatcharrUrl });
+        }
+      });
+
+      if (req.method === "POST" || req.method === "PUT" || req.method === "PATCH" || req.method === "DELETE") {
+        req.pipe(proxyReq);
+      } else {
+        proxyReq.end();
+      }
+    } catch (e) {
+      if (!res.headersSent) {
+        sendJson(res, 500, { error: `Dispatcharr proxy exception: ${e.message}` });
+      }
+    }
     return;
   }
 

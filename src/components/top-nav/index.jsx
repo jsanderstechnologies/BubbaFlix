@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { HiOutlineSearch, HiOutlineFilm } from "react-icons/hi";
 import { AiFillStar } from "react-icons/ai";
-import { FiSettings, FiHome, FiTv, FiInfo } from "react-icons/fi";
+import { FiSettings, FiHome, FiTv, FiInfo, FiVideo } from "react-icons/fi";
 import ContentWrapper from "../content-wrapper";
 import "./index.scss";
 
@@ -54,6 +54,38 @@ const TopNav = () => {
 						>
 							<FiHome className="navIcon" />
 							<span>Home</span>
+						</button>
+
+						<button
+							className={`navBtn ${isActive("/livetv")}`}
+							tabIndex="0"
+							onClick={() => navigate("/livetv")}
+							onKeyDown={(e) => {
+								const code = e.keyCode;
+								if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+									e.preventDefault();
+									navigate("/livetv");
+								}
+							}}
+						>
+							<FiTv className="navIcon" />
+							<span>Live TV</span>
+						</button>
+
+						<button
+							className={`navBtn ${isActive("/recordings")}`}
+							tabIndex="0"
+							onClick={() => navigate("/recordings")}
+							onKeyDown={(e) => {
+								const code = e.keyCode;
+								if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+									e.preventDefault();
+									navigate("/recordings");
+								}
+							}}
+						>
+							<FiVideo className="navIcon" />
+							<span>Recordings</span>
 						</button>
 
 						<button

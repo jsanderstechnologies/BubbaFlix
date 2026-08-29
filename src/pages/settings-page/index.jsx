@@ -29,6 +29,12 @@ const SettingsPage = () => {
   const [testingServer, setTestingServer] = useState(false);
   const [hasCustomServer, setHasCustomServer] = useState(false);
 
+  // Dispatcharr Settings State
+  const [dispatcharrUrl, setDispatcharrUrl] = useState("http://192.168.10.3:9191");
+  const [dispatcharrApiKey, setDispatcharrApiKey] = useState("");
+  const [dispatcharrStatus, setDispatcharrStatus] = useState(null);
+  const [testingDispatcharr, setTestingDispatcharr] = useState(false);
+
   // Premiumize.me API State
   const [premiumizeKey, setPremiumizeKey] = useState("");
   const [showPremiumizeKey, setShowPremiumizeKey] = useState(false);
@@ -91,11 +97,27 @@ const SettingsPage = () => {
     setPremiumizeKey(activePrem);
     setHasPremiumizeCustom(!!activePrem);
 
+    const activeDispUrl = serverSettings?.dispatcharrUrl || "http://192.168.10.3:9191";
+    setDispatcharrUrl(activeDispUrl);
+    const activeDispKey = serverSettings?.dispatcharrApiKey || "";
+    setDispatcharrApiKey(activeDispKey);
+
     const resConfig = serverSettings?.stream_resolutions || (localStorage.getItem("stream_resolutions") ? JSON.parse(localStorage.getItem("stream_resolutions")) : ["2160p", "1080p", "720p", "480p"]);
     setSelectedResolutions(resConfig);
 
     const excludeLowConfig = serverSettings?.stream_exclude_low_quality !== undefined ? serverSettings.stream_exclude_low_quality : (localStorage.getItem("stream_exclude_low_quality") !== null ? JSON.parse(localStorage.getItem("stream_exclude_low_quality")) : true);
     setExcludeLowQuality(excludeLowConfig);
+  };
+
+  const handleSaveDispatcharr = async (e) => {
+    e.preventDefault();
+    setTestingDispatcharr(true);
+    await updateServerSettings({
+      dispatcharrUrl: dispatcharrUrl.trim(),
+      dispatcharrApiKey: dispatcharrApiKey.trim(),
+    });
+    setTestingDispatcharr(false);
+    setDispatcharrStatus({ type: "success", text: "Dispatcharr server settings saved successfully!" });
   };
 
   useEffect(() => {
@@ -501,6 +523,59 @@ const SettingsPage = () => {
                     Reset to Default
                   </button>
                 )}
+              </div>
+            </form>
+          </div>
+
+          {/* Dispatcharr Live TV & DVR Server Card */}
+          <div className="settingsCard">
+            <div className="cardHeader">
+              <h2><FiTv style={{ marginRight: 8 }} /> Dispatcharr Live TV & DVR Server</h2>
+              <span className={`badge ${dispatcharrUrl ? "custom" : "default"}`}>
+                <FiServer style={{ marginRight: 4 }} /> Dispatcharr Active
+              </span>
+            </div>
+            <p className="description">
+              Configure your Dispatcharr server address and API key for Live TV channel lineups, EPG guide schedules, and DVR recordings.
+            </p>
+            <form onSubmit={handleSaveDispatcharr} className="tokenForm">
+              <div className="inputGroup">
+                <label htmlFor="dispUrl">DISPATCHARR_SERVER_URL</label>
+                <div className="inputWrapper">
+                  <input
+                    id="dispUrl"
+                    type="text"
+                    value={dispatcharrUrl}
+                    onChange={(e) => setDispatcharrUrl(e.target.value)}
+                    placeholder="http://192.168.10.3:9191"
+                  />
+                </div>
+              </div>
+              <div className="inputGroup" style={{ marginTop: 15 }}>
+                <label htmlFor="dispKey">DISPATCHARR_API_KEY (Optional)</label>
+                <div className="inputWrapper">
+                  <input
+                    id="dispKey"
+                    type="password"
+                    value={dispatcharrApiKey}
+                    onChange={(e) => setDispatcharrApiKey(e.target.value)}
+                    placeholder="API Key or Bearer Token"
+                  />
+                </div>
+              </div>
+
+              {dispatcharrStatus && (
+                <div className={`statusBanner ${dispatcharrStatus.type}`}>
+                  {dispatcharrStatus.type === "success" && <FiCheckCircle />}
+                  {dispatcharrStatus.type === "error" && <FiXCircle />}
+                  <span>{dispatcharrStatus.text}</span>
+                </div>
+              )}
+
+              <div className="buttonGroup" style={{ marginTop: 15 }}>
+                <button type="submit" className="saveBtn" disabled={testingDispatcharr}>
+                  <FiSave /> {testingDispatcharr ? "Saving..." : "Save Dispatcharr Settings"}
+                </button>
               </div>
             </form>
           </div>
