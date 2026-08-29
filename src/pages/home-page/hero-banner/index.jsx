@@ -81,7 +81,7 @@ const HeroBanner = () => {
 
 			<ContentWrapper>
 				<div className="hero-banner-content">
-					<img src="/logo.svg" alt="BubbaFlix Logo" className="hero-logo" />
+					<img src="/logo.png" alt="BubbaFlix Logo" className="hero-logo" />
 					<span className="title">Welcome</span>
 					<span className="sub-title">
 						Your Cinematic Journey Begins Here

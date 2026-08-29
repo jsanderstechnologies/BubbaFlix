@@ -33,9 +33,9 @@ const TopNav = () => {
 		<nav className="topNav">
 			<ContentWrapper>
 				<div className="topNavInner">
-					{/* App Logo */}
-					<div className="navLogo" onClick={() => navigate("/")} style={{ cursor: "pointer" }}>
-						<img src="/tv_banner.png" alt="BubbaFlix TV" />
+					{/* App Logo - Non-focusable branding display */}
+					<div className="navLogo" style={{ pointerEvents: "none", userSelect: "none" }}>
+						<img src="/logo.png" alt="BubbaFlix TV" tabIndex="-1" style={{ pointerEvents: "none" }} />
 					</div>
 
 					{/* Navigation Item Links */}

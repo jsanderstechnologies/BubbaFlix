@@ -292,17 +292,31 @@ export const stopDispatcharrRecording = async (recordingId) => {
 /**
  * Construct playback stream URL for live channel or DVR recording
  */
-export const getChannelStreamUrl = (channelId) => {
+export const getChannelStreamUrl = (channel) => {
+  if (!channel) return "";
   const baseUrl = getProxyBaseUrl();
-  return `${baseUrl}/proxy/ts/stream/${channelId}`;
+  if (typeof channel === "object") {
+    if (channel.stream_url && channel.stream_url.startsWith("http")) return channel.stream_url;
+    if (channel.stream_url) return `${baseUrl}${channel.stream_url.startsWith("/") ? "" : "/"}${channel.stream_url}`;
+    if (channel.url && channel.url.startsWith("http")) return channel.url;
+    if (channel.url) return `${baseUrl}${channel.url.startsWith("/") ? "" : "/"}${channel.url}`;
+    const id = channel.id || channel.channel_id || channel.number || channel.tvg_id;
+    return `${baseUrl}/proxy/ts/stream/${id}`;
+  }
+  return `${baseUrl}/proxy/ts/stream/${channel}`;
 };
 
 export const getRecordingStreamUrl = (recording) => {
   if (!recording) return "";
   const baseUrl = getProxyBaseUrl();
+  if (typeof recording === "string" || typeof recording === "number") {
+    return `${baseUrl}/api/channels/recordings/${recording}/file/`;
+  }
   if (recording.file_url && recording.file_url.startsWith("http")) return recording.file_url;
   if (recording.file_url) return `${baseUrl}${recording.file_url.startsWith("/") ? "" : "/"}${recording.file_url}`;
   if (recording.stream_url && recording.stream_url.startsWith("http")) return recording.stream_url;
   if (recording.stream_url) return `${baseUrl}${recording.stream_url.startsWith("/") ? "" : "/"}${recording.stream_url}`;
-  return `${baseUrl}/api/channels/recordings/${recording.id}/file/`;
+  if (recording.path && recording.path.startsWith("http")) return recording.path;
+  if (recording.path) return `${baseUrl}/api/channels/recordings/${recording.id}/file/`;
+  return `${baseUrl}/api/channels/recordings/${recording.id || recording.program_id}/file/`;
 };

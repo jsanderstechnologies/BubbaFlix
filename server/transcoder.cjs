@@ -712,59 +712,77 @@ const server = http.createServer((req, res) => {
 
     const targetDispatcharrUrl = `${rawDispatcharrUrl}${subPath.startsWith("/") ? "" : "/"}${subPath}`;
 
-    try {
-      const targetParsed = new URL(targetDispatcharrUrl);
-      const isHttps = targetParsed.protocol === "https:";
-      const httpModule = isHttps ? require("https") : require("http");
-
-      const proxyHeaders = {};
-      for (const key of Object.keys(req.headers)) {
-        const lower = key.toLowerCase();
-        if (lower !== "host" && lower !== "content-length" && lower !== "connection") {
-          proxyHeaders[key] = req.headers[key];
-        }
-      }
-      proxyHeaders["host"] = targetParsed.host;
-
-      if (apiKey) {
-        if (apiKey.startsWith("eyJ")) {
-          proxyHeaders["authorization"] = `Bearer ${apiKey}`;
-        } else {
-          proxyHeaders["x-api-key"] = apiKey;
-        }
-      }
-
-      const proxyReq = httpModule.request(targetDispatcharrUrl, {
-        method: req.method,
-        headers: proxyHeaders,
-        rejectUnauthorized: false,
-        timeout: 10000
-      }, (proxyRes) => {
-        if (!res.headersSent) {
-          res.writeHead(proxyRes.statusCode, {
-            ...proxyRes.headers,
-            "Access-Control-Allow-Origin": "*"
-          });
-          proxyRes.pipe(res);
-        }
-      });
-
-      proxyReq.on("error", (err) => {
-        if (!res.headersSent) {
-          sendJson(res, 502, { error: `Dispatcharr proxy error: ${err.message}`, targetUrl: targetDispatcharrUrl });
-        }
-      });
-
-      if (req.method === "POST" || req.method === "PUT" || req.method === "PATCH" || req.method === "DELETE") {
-        req.pipe(proxyReq);
-      } else {
-        proxyReq.end();
-      }
-    } catch (e) {
-      if (!res.headersSent) {
-        sendJson(res, 500, { error: `Dispatcharr proxy exception: ${e.message}` });
+    const proxyHeaders = {};
+    for (const key of Object.keys(req.headers)) {
+      const lower = key.toLowerCase();
+      if (lower !== "host" && lower !== "content-length" && lower !== "connection") {
+        proxyHeaders[key] = req.headers[key];
       }
     }
+
+    if (apiKey) {
+      if (apiKey.startsWith("eyJ")) {
+        proxyHeaders["authorization"] = `Bearer ${apiKey}`;
+      } else {
+        proxyHeaders["x-api-key"] = apiKey;
+      }
+    }
+
+    const proxyWithRedirects = (req, res, targetUrl, headers, maxRedirects = 5) => {
+      if (maxRedirects <= 0) {
+        if (!res.headersSent) sendJson(res, 502, { error: "Too many redirects from stream server." });
+        return;
+      }
+
+      try {
+        const targetParsed = new URL(targetUrl);
+        const isHttps = targetParsed.protocol === "https:";
+        const httpModule = isHttps ? require("https") : require("http");
+        const currentHeaders = { ...headers, host: targetParsed.host };
+
+        const proxyReq = httpModule.request(targetUrl, {
+          method: req.method,
+          headers: currentHeaders,
+          rejectUnauthorized: false,
+          timeout: 15000,
+        }, (proxyRes) => {
+          if ([301, 302, 303, 307, 308].includes(proxyRes.statusCode) && proxyRes.headers.location) {
+            let redirectUrl = proxyRes.headers.location;
+            if (!redirectUrl.startsWith("http")) {
+              redirectUrl = new URL(redirectUrl, targetUrl).toString();
+            }
+            logMessage(`[Dispatcharr Proxy Redirect ${proxyRes.statusCode}] Following redirect to: ${redirectUrl}`);
+            return proxyWithRedirects(req, res, redirectUrl, headers, maxRedirects - 1);
+          }
+
+          if (!res.headersSent) {
+            res.writeHead(proxyRes.statusCode, {
+              ...proxyRes.headers,
+              "Access-Control-Allow-Origin": "*",
+            });
+            proxyRes.pipe(res);
+          }
+        });
+
+        proxyReq.on("error", (err) => {
+          if (!res.headersSent) {
+            sendJson(res, 502, { error: `Dispatcharr proxy error: ${err.message}`, targetUrl });
+          }
+        });
+
+        if (req.method === "POST" || req.method === "PUT" || req.method === "PATCH" || req.method === "DELETE") {
+          req.pipe(proxyReq);
+        } else {
+          proxyReq.end();
+        }
+      } catch (e) {
+        if (!res.headersSent) {
+          sendJson(res, 500, { error: `Dispatcharr proxy exception: ${e.message}` });
+        }
+      }
+    };
+
+    proxyWithRedirects(req, res, targetDispatcharrUrl, proxyHeaders);
     return;
   }
 
