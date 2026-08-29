@@ -541,16 +541,19 @@ const server = http.createServer((req, res) => {
     ffmpegProcess.stdout.pipe(res);
 
     let hasGpuDeviceError = false;
+    let clientClosedConnection = false;
 
     ffmpegProcess.stderr.on("data", (data) => {
       const logLine = data.toString();
       if (
-        logLine.includes("MFX session") ||
         logLine.includes("Device creation failed") ||
         logLine.includes("No device available") ||
         logLine.includes("Hardware device setup failed") ||
-        logLine.includes("cuda") ||
-        logLine.includes("vaapi")
+        logLine.includes("CUDA_ERROR") ||
+        logLine.includes("Cannot load libcuda") ||
+        logLine.includes("Failed to create Nvenc") ||
+        logLine.includes("Error creating CUDA context") ||
+        logLine.includes("MFX session failed")
       ) {
         hasGpuDeviceError = true;
       }
@@ -568,14 +571,14 @@ const server = http.createServer((req, res) => {
 
     ffmpegProcess.on("close", (code) => {
       logMessage(`[Backend Transcoder Engine] FFmpeg process for [${initiator.initiatorComponent}] (${initiator.ip}) terminated with exit code ${code}`);
-      if (code !== 0 && gpuInfo.enabled && hasGpuDeviceError) {
+      if (code !== 0 && !clientClosedConnection && gpuInfo.enabled && hasGpuDeviceError) {
         logMessage(`[GPU Transcoder Engine Warning] GPU Hardware device error detected (exit code ${code}). Reverting cached config to CPU libx264 fallback.`, true);
         cachedGpuConfig = {
           enabled: false,
           type: "CPU Software (libx264)",
           encoder: "libx264",
           inputArgs: [],
-          outputArgs: ["-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-crf", "23"]
+          outputArgs: ["-c:v", "libx264", "-preset", "superfast", "-crf", "20", "-pix_fmt", "yuv420p", "-maxrate", "6M", "-bufsize", "8M"]
         };
       }
       if (!res.writableEnded) {
@@ -584,6 +587,7 @@ const server = http.createServer((req, res) => {
     });
 
     req.on("close", () => {
+      clientClosedConnection = true;
       logMessage(`[Backend Transcoder Engine] Client [${initiator.initiatorComponent}] (${initiator.ip}) closed HTTP connection. Terminating FFmpeg process...`);
       ffmpegProcess.kill("SIGKILL");
     });
