@@ -349,19 +349,23 @@ const LiveTvPage = () => {
                     if (end <= gridStartTime || start >= gridEndTime) return false;
 
                     const chIdStr = String(ch.id || "").toLowerCase();
-                    const chNumStr = String(ch.number || "").toLowerCase();
-                    const chNameStr = String(ch.name || "").toLowerCase();
-                    const chTvgStr = String(ch.tvg_id || "").toLowerCase();
+                    const chNumStr = String(ch.number || ch.channel_number || ch.effective_channel_number || "").toLowerCase();
+                    const chNameStr = String(ch.name || ch.effective_name || "").toLowerCase();
+                    const chTvgStr = String(ch.tvg_id || ch.effective_tvg_id || "").toLowerCase();
+                    const chEpgIdStr = String(ch.epg_data_id || ch.effective_epg_data_id || "").toLowerCase();
+                    const chUuidStr = String(ch.uuid || "").toLowerCase();
 
                     const rawCh = p.channel && typeof p.channel === "object" ? p.channel : null;
                     const pChId = String(rawCh?.id || (typeof p.channel !== "object" ? p.channel : "") || p.channel_id || "").toLowerCase();
                     const pChNum = String(rawCh?.number || p.channel_number || "").toLowerCase();
                     const pChName = String(rawCh?.name || p.channel_name || p.channel_title || "").toLowerCase();
                     const pChTvg = String(rawCh?.tvg_id || p.tvg_id || "").toLowerCase();
+                    const pChEpgId = String(rawCh?.epg_data_id || p.epg_data_id || "").toLowerCase();
 
-                    if (pChId && pChId !== "[object object]" && (pChId === chIdStr || pChId === chNumStr)) return true;
+                    if (pChId && pChId !== "[object object]" && (pChId === chIdStr || pChId === chNumStr || (chTvgStr && pChId === chTvgStr))) return true;
                     if (pChNum && (pChNum === chIdStr || pChNum === chNumStr)) return true;
-                    if (pChTvg && chTvgStr && pChTvg === chTvgStr) return true;
+                    if (pChTvg && (pChTvg === chTvgStr || (chUuidStr && pChTvg === chUuidStr) || (chIdStr && pChTvg === chIdStr))) return true;
+                    if (pChEpgId && chEpgIdStr && pChEpgId === chEpgIdStr) return true;
                     if (pChName && chNameStr && (pChName === chNameStr || pChName.includes(chNameStr) || chNameStr.includes(pChName))) return true;
                     return false;
                   });

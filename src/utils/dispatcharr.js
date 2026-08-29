@@ -86,11 +86,8 @@ export const fetchDispatcharrEpgPrograms = async (params = {}) => {
   // 1. Try /api/epg/grid/ (Dispatcharr native EPG grid)
   try {
     const resGrid = await axios.get(`${baseUrl}/api/epg/grid/`, { timeout: 8000 });
-    const dataGrid = resGrid.data;
-    const gridPrograms = Array.isArray(dataGrid)
-      ? dataGrid
-      : dataGrid?.results || dataGrid?.programs || [];
-    if (Array.isArray(gridPrograms)) {
+    const gridPrograms = extractArrayFromResponse(resGrid.data);
+    if (gridPrograms.length > 0) {
       allPrograms.push(...gridPrograms);
     }
   } catch (err) {
@@ -104,11 +101,8 @@ export const fetchDispatcharrEpgPrograms = async (params = {}) => {
       params: { page_size: 1000, ...params },
       timeout: 10000,
     });
-    const dataProg = resProg.data;
-    const progList = Array.isArray(dataProg)
-      ? dataProg
-      : dataProg?.results || dataProg?.programs || [];
-    if (Array.isArray(progList)) {
+    const progList = extractArrayFromResponse(resProg.data);
+    if (progList.length > 0) {
       allPrograms.push(...progList);
     }
   } catch (err) {
