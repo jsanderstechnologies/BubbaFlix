@@ -87,17 +87,7 @@ export const fetchDispatcharrChannels = async () => {
   const baseUrl = getProxyBaseUrl();
   let lastErrorStatus = null;
 
-  // 1. Try /api/channels/channels/summary/ (Dispatcharr TV Guide channel summary endpoint)
-  try {
-    const resSummary = await axios.get(`${baseUrl}/api/channels/channels/summary/`, { timeout: 8000 });
-    const listSummary = extractArrayFromResponse(resSummary.data);
-    if (listSummary.length > 0) return listSummary;
-  } catch (err) {
-    if (err.response?.status) lastErrorStatus = err.response.status;
-    console.warn("[Dispatcharr API] /api/channels/channels/summary/ attempt:", err.message);
-  }
-
-  // 2. Try /api/channels/channels/
+  // 1. Try /api/channels/channels/?page_size=1000
   try {
     const res = await axios.get(`${baseUrl}/api/channels/channels/`, {
       params: { page_size: 1000 },
@@ -110,17 +100,14 @@ export const fetchDispatcharrChannels = async () => {
     console.warn("[Dispatcharr API] /api/channels/channels/ attempt:", err.message);
   }
 
-  // 3. Try /api/channels/streams/
+  // 2. Try /api/channels/channels/summary/
   try {
-    const resStreams = await axios.get(`${baseUrl}/api/channels/streams/`, {
-      params: { page_size: 1000 },
-      timeout: 8000,
-    });
-    const listStreams = extractArrayFromResponse(resStreams.data);
-    if (listStreams.length > 0) return listStreams;
+    const resSummary = await axios.get(`${baseUrl}/api/channels/channels/summary/`, { timeout: 8000 });
+    const listSummary = extractArrayFromResponse(resSummary.data);
+    if (listSummary.length > 0) return listSummary;
   } catch (err) {
     if (err.response?.status) lastErrorStatus = err.response.status;
-    console.warn("[Dispatcharr API] /api/channels/streams/ attempt:", err.message);
+    console.warn("[Dispatcharr API] /api/channels/channels/summary/ attempt:", err.message);
   }
 
   const list = [];

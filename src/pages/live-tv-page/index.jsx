@@ -115,26 +115,8 @@ const LiveTvPage = () => {
       setAuthError(false);
     }
 
-    // Build unified channel map merging chData and progData to guarantee full EPG schedule coverage
+    // Build unified channel map from EPG schedule (progData) first to prioritize channels with EPG data
     const channelMap = new Map();
-
-    if (Array.isArray(chData)) {
-      chData.forEach((ch) => {
-        if (!ch) return;
-        const id = ch.id || ch.channel_number || ch.number || ch.name;
-        if (id) {
-          channelMap.set(String(id), {
-            ...ch,
-            id: ch.id || id,
-            name: ch.name || ch.effective_name || `Channel ${id}`,
-            number: ch.number || ch.channel_number || ch.effective_channel_number || id,
-            logo: ch.logo || ch.logo_url || "",
-            tvg_id: ch.tvg_id || ch.effective_tvg_id || "",
-            epg_data_id: ch.epg_data_id || ch.effective_epg_data_id || "",
-          });
-        }
-      });
-    }
 
     if (Array.isArray(progData)) {
       progData.forEach((p) => {
@@ -151,24 +133,59 @@ const LiveTvPage = () => {
             logo: rawCh?.logo || p.channel_logo || p.icon || "",
             tvg_id: rawCh?.tvg_id || p.tvg_id || "",
             epg_data_id: rawCh?.epg_data_id || p.epg_data_id || "",
+            hasEpg: true,
           });
         }
       });
     }
 
-    chData = Array.from(channelMap.values());
-
-    if (!chData || chData.length === 0) {
-      chData = [
-        { id: 1, name: "Dispatcharr Live Channel 1", number: 1, logo: "" },
-        { id: 2, name: "Dispatcharr Live Channel 2", number: 2, logo: "" },
-        { id: 3, name: "Dispatcharr Live Channel 3", number: 3, logo: "" },
-        { id: 4, name: "Dispatcharr Live Channel 4", number: 4, logo: "" },
-        { id: 5, name: "Dispatcharr Live Channel 5", number: 5, logo: "" },
-      ];
+    if (Array.isArray(chData)) {
+      chData.forEach((ch) => {
+        if (!ch) return;
+        const id = ch.id || ch.channel_number || ch.number || ch.name;
+        if (!id) return;
+        const key = String(id);
+        const existing = channelMap.get(key);
+        if (existing) {
+          channelMap.set(key, {
+            ...existing,
+            ...ch,
+            name: ch.name || ch.effective_name || existing.name,
+            number: ch.number || ch.channel_number || ch.effective_channel_number || existing.number,
+            logo: ch.logo || ch.logo_url || existing.logo,
+            tvg_id: ch.tvg_id || ch.effective_tvg_id || existing.tvg_id,
+            epg_data_id: ch.epg_data_id || ch.effective_epg_data_id || existing.epg_data_id,
+            hasEpg: true,
+          });
+        } else {
+          channelMap.set(key, {
+            ...ch,
+            id: ch.id || id,
+            name: ch.name || ch.effective_name || `Channel ${id}`,
+            number: ch.number || ch.channel_number || ch.effective_channel_number || id,
+            logo: ch.logo || ch.logo_url || "",
+            tvg_id: ch.tvg_id || ch.effective_tvg_id || "",
+            epg_data_id: ch.epg_data_id || ch.effective_epg_data_id || "",
+            hasEpg: false,
+          });
+        }
+      });
     }
 
-    setChannels(chData || []);
+    const finalChannels = Array.from(channelMap.values()).sort((a, b) => {
+      if (a.hasEpg !== b.hasEpg) return a.hasEpg ? -1 : 1;
+      const numA = parseFloat(a.number) || 9999;
+      const numB = parseFloat(b.number) || 9999;
+      return numA - numB;
+    });
+
+    setChannels(finalChannels.length > 0 ? finalChannels : [
+      { id: 1, name: "Dispatcharr Live Channel 1", number: 1, logo: "" },
+      { id: 2, name: "Dispatcharr Live Channel 2", number: 2, logo: "" },
+      { id: 3, name: "Dispatcharr Live Channel 3", number: 3, logo: "" },
+      { id: 4, name: "Dispatcharr Live Channel 4", number: 4, logo: "" },
+      { id: 5, name: "Dispatcharr Live Channel 5", number: 5, logo: "" },
+    ]);
     setPrograms(progData || []);
     setRecordings(recData || []);
     setLoading(false);
