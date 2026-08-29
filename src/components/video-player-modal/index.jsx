@@ -62,6 +62,7 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
   const [maxBufferedTime, setMaxBufferedTime] = useState(0);
   const [bufferedPercent, setBufferedPercent] = useState(0);
   const [controlsVisible, setControlsVisible] = useState(true);
+  const [isBuffering, setIsBuffering] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -267,16 +268,72 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
   }, [show, videoUrl, rawUrl, tmdbId, mediaType]);
 
   // HLS.js & Native Video Element Media Binding
+  // HLS.js & Native Video Element Media Binding
   useEffect(() => {
     if (!show || !currentUrl || !videoRef.current) return;
 
     const videoNode = videoRef.current;
     setHasError(false);
+    setIsBuffering(true);
 
     if (hlsRef.current) {
       hlsRef.current.destroy();
       hlsRef.current = null;
     }
+
+    // Set preload="auto" to force the browser to buffer as much as possible
+    videoNode.setAttribute("preload", "auto");
+
+    let hasStartedPlayback = false;
+
+    const checkBufferAndPlay = () => {
+      if (hasStartedPlayback) return;
+      if (videoNode.buffered && videoNode.buffered.length > 0) {
+        let maxBufferedEnd = 0;
+        for (let i = 0; i < videoNode.buffered.length; i++) {
+          if (videoNode.buffered.start(i) <= videoNode.currentTime && videoNode.currentTime <= videoNode.buffered.end(i)) {
+            maxBufferedEnd = videoNode.buffered.end(i);
+            break;
+          }
+        }
+        const bufferedDuration = maxBufferedEnd - videoNode.currentTime;
+        // Require at least 5.0 seconds of buffered content before starting to play
+        if (bufferedDuration >= 5.0 || (videoNode.duration > 0 && maxBufferedEnd >= videoNode.duration - 0.5)) {
+          console.log("[VideoPlayerModal] Buffer threshold reached:", bufferedDuration, "seconds. Starting playback...");
+          hasStartedPlayback = true;
+          setIsBuffering(false);
+          videoNode.play().catch((err) => {
+            console.warn("[Player Playback Start Error]:", err.message);
+          });
+        }
+      }
+    };
+
+    const handleProgress = () => {
+      checkBufferAndPlay();
+    };
+
+    const handleCanPlay = () => {
+      checkBufferAndPlay();
+    };
+
+    const handleWaiting = () => {
+      setIsBuffering(true);
+    };
+
+    const handlePlaying = () => {
+      setIsBuffering(false);
+    };
+
+    const handleError = () => {
+      setIsBuffering(false);
+    };
+
+    videoNode.addEventListener("progress", handleProgress);
+    videoNode.addEventListener("canplay", handleCanPlay);
+    videoNode.addEventListener("waiting", handleWaiting);
+    videoNode.addEventListener("playing", handlePlaying);
+    videoNode.addEventListener("error", handleError);
 
     const isHls = currentUrl.includes(".m3u8") || currentUrl.includes("/hls/") || currentUrl.includes("m3u8");
 
@@ -288,6 +345,9 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
         liveBackBufferLength: 3600,
         liveSyncDurationCount: 3,
         liveMaxLatencyDurationCount: 10,
+        maxBufferLength: 120, // Keep up to 2 minutes of video buffered
+        maxMaxBufferLength: 300, // Limit maximum buffer length to 5 minutes
+        maxBufferSize: 250 * 1024 * 1024, // Allow up to 250 MB buffer size
       });
       hlsRef.current = hls;
 
@@ -295,7 +355,7 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
       hls.attachMedia(videoNode);
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        videoNode.play().catch(() => {});
+        console.log("[VideoPlayerModal] HLS Manifest parsed. Pre-buffering...");
       });
 
       // HLS Audio Track Updates & Default to English
@@ -327,13 +387,8 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
       });
     } else {
       videoNode.src = currentUrl;
-      videoNode.play().catch((err) => {
-        console.warn("[Player Native Play Error]:", err.message);
-        if (currentUrl && !currentUrl.includes("/api/transcode")) {
-          console.log("[VideoPlayerModal] Direct video play error. Attempting backend transcoder fallback...");
-          setCurrentUrl(`/api/transcode?url=${encodeURIComponent(currentUrl)}`);
-        }
-      });
+      videoNode.load(); // Explicitly start loading direct stream
+      console.log("[VideoPlayerModal] Native media source set. Pre-buffering...");
 
       // Check for native HTML5 audio tracks if supported by browser
       if (videoNode.audioTracks) {
@@ -357,6 +412,11 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
     }
 
     return () => {
+      videoNode.removeEventListener("progress", handleProgress);
+      videoNode.removeEventListener("canplay", handleCanPlay);
+      videoNode.removeEventListener("waiting", handleWaiting);
+      videoNode.removeEventListener("playing", handlePlaying);
+      videoNode.removeEventListener("error", handleError);
       if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
@@ -666,6 +726,13 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
           <div className="errorNotice">
             <FiAlertTriangle className="errorIcon" />
             <p>{errorMessage}</p>
+          </div>
+        )}
+
+        {isBuffering && (
+          <div className="bufferingOverlay">
+            <div className="bufferingSpinner" />
+            <p>Buffering stream... please wait</p>
           </div>
         )}
 
