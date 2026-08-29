@@ -91,12 +91,8 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
       return /\b(hdcam|camrip|cam|telesync|tele-sync|hd-ts|hdts|workprint|screener|dvdscr)\b/i.test(fullStr);
     };
 
-    // Filter HEVC / x265 codec streams in web player mode only
-    const isWebBrowserOnly = typeof window !== "undefined" && !isTvDevice() && !(window.AndroidPlayer && typeof window.AndroidPlayer.playStream === "function");
-    if (isWebBrowserOnly) {
-      console.log("[MagnetSection] Web Player mode: Filtering out HEVC / x265 streams for web browser compatibility.");
-      finalStreams = finalStreams.filter((item) => !isHevcOrX265Stream(item));
-    }
+    // Note: HEVC / x265 codec streams are allowed so the user can test transcoding.
+    // The player's automatic fallback triggers backend transcode if direct playback fails.
 
     // Apply Resolution & Quality Filtering
     finalStreams = finalStreams.filter((item) => {
