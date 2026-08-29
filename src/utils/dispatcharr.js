@@ -472,18 +472,26 @@ export const getChannelStreamUrl = (channel) => {
     if (channel.url && channel.url.startsWith("http")) return channel.url;
     if (channel.url) return `${baseUrl}${channel.url.startsWith("/") ? "" : "/"}${channel.url}`;
 
-    const tvg = channel.tvg_id || channel.effective_tvg_id;
+    // 1. Prefer numeric channel PK first for /api/channels/channels/<id>/stream/
+    const numericId = channel.pk || (typeof channel.id === "number" || (channel.id && /^\d+$/.test(String(channel.id))) ? channel.id : null);
+    if (numericId) {
+      return `${baseUrl}/api/channels/channels/${numericId}/stream/`;
+    }
+
+    // 2. Fall back to string tvg_id for /proxy/ts/stream/<tvg_id>
+    const tvg = channel.tvg_id || channel.effective_tvg_id || (typeof channel.id === "string" && isNaN(Number(channel.id)) ? channel.id : null);
     if (tvg) {
       return `${baseUrl}/proxy/ts/stream/${tvg}`;
     }
 
-    const id = channel.id || channel.channel_id || channel.number || channel.channel_number;
-    if (id) {
-      return `${baseUrl}/proxy/ts/stream/${id}`;
-    }
+    const fallbackId = channel.id || channel.channel_id || channel.number;
+    return `${baseUrl}/api/channels/channels/${fallbackId}/stream/`;
   }
 
   const str = String(channel).trim();
+  if (/^\d+$/.test(str)) {
+    return `${baseUrl}/api/channels/channels/${str}/stream/`;
+  }
   return `${baseUrl}/proxy/ts/stream/${str}`;
 };
 

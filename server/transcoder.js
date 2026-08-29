@@ -895,12 +895,14 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
       subPath = `${base}?${queries}`;
     }
 
-    // Auto-rewrite any /channels/channels/<id>/stream/ API endpoint requests to direct TS stream endpoint /proxy/ts/stream/<id>
+    // Auto-rewrite non-numeric string TVG channel stream requests (e.g. /channels/channels/KAKE.us/stream/) to TS proxy endpoint
     const apiChannelStreamMatch = subPath.match(/\/channels\/channels\/([^/]+)\/stream\/?/);
     if (apiChannelStreamMatch) {
       const targetId = apiChannelStreamMatch[1];
-      subPath = `/proxy/ts/stream/${targetId}`;
-      logMessage(`[Dispatcharr Proxy Router] Rewrote API channel stream request '${apiChannelStreamMatch[0]}' to direct TS stream endpoint: ${subPath}`);
+      if (isNaN(Number(targetId))) {
+        subPath = `/proxy/ts/stream/${targetId}`;
+        logMessage(`[Dispatcharr Proxy Router] Rewrote string TVG channel stream request '${apiChannelStreamMatch[0]}' to direct TS stream endpoint: ${subPath}`);
+      }
     }
 
     // Serve directly from background memory cache (eliminates page-load refresh)
@@ -969,6 +971,38 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
             }
             logMessage(`[Dispatcharr Proxy Redirect ${proxyRes.statusCode}] Following redirect to: ${redirectUrl}`);
             return proxyWithRedirects(req, res, redirectUrl, headers, maxRedirects - 1);
+          }
+
+          // Inspect JSON responses on stream endpoints and extract underlying stream_url
+          const contentType = (proxyRes.headers["content-type"] || "").toLowerCase();
+          if (targetUrl.includes("/stream") && contentType.includes("json")) {
+            let jsonBody = "";
+            proxyRes.on("data", (chunk) => {
+              if (jsonBody.length < 65536) jsonBody += chunk.toString();
+            });
+            proxyRes.on("end", () => {
+              try {
+                const parsed = JSON.parse(jsonBody);
+                const extracted = parsed.stream_url || parsed.url || parsed.file_url;
+                if (extracted && typeof extracted === "string") {
+                  let nextUrl = extracted;
+                  if (!nextUrl.startsWith("http")) {
+                    nextUrl = new URL(nextUrl, targetUrl).toString();
+                  }
+                  logMessage(`[Dispatcharr Stream Proxy JSON Resolver] Following JSON stream_url: ${nextUrl}`);
+                  return proxyWithRedirects(req, res, nextUrl, headers, maxRedirects - 1);
+                }
+              } catch (e) {}
+
+              if (!res.headersSent) {
+                res.writeHead(proxyRes.statusCode, {
+                  ...proxyRes.headers,
+                  "Access-Control-Allow-Origin": "*",
+                });
+                res.end(jsonBody);
+              }
+            });
+            return;
           }
 
           if (!res.headersSent) {
