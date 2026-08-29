@@ -34,7 +34,7 @@ import { isFavoriteChannel, toggleFavoriteChannel } from "../../utils/favorites"
 import "./index.scss";
 
 const PIXELS_PER_MINUTE = 5; // 30 mins = 150px
-const TOTAL_HOURS = 24; // 24 hours timeline scrollable to cover full 24h EPG schedule
+const TOTAL_HOURS = 6; // 6 hours chunked timeline
 
 const LiveTvPage = () => {
   const navigate = useNavigate();
@@ -68,11 +68,11 @@ const LiveTvPage = () => {
     });
   }, [channels, favUpdate]);
 
-  // Timeline base time (rounded down to top of current hour minus 2 hours)
+  // Timeline base time (rounded down to top of current hour)
   const gridStartTime = useMemo(() => {
     const d = new Date();
-    d.setMinutes(0, 0, 0);
-    return new Date(d.getTime() - 2 * 60 * 60 * 1000); // 2 hrs before current hour
+    d.setMinutes(0, 0, 0); // Current hour
+    return d;
   }, []);
 
   const gridEndTime = useMemo(() => {
@@ -322,13 +322,16 @@ const LiveTvPage = () => {
 
   // Calculate position and width of a program chip on timeline
   const calculateChipStyle = (prog) => {
-    const start = parseApiDate(prog.start_time) || gridStartTime;
-    const end = parseApiDate(prog.end_time) || new Date(start.getTime() + 60 * 60 * 1000);
+    const rawStart = parseApiDate(prog.start_time) || gridStartTime;
+    const end = parseApiDate(prog.end_time) || new Date(rawStart.getTime() + 60 * 60 * 1000);
+
+    // If program started before gridStartTime, clamp visual start to gridStartTime so it aligns at left edge
+    const start = rawStart < gridStartTime ? gridStartTime : rawStart;
 
     const startDiffMins = (start.getTime() - gridStartTime.getTime()) / (60 * 1000);
     const durationMins = Math.max(15, (end.getTime() - start.getTime()) / (60 * 1000));
 
-    const left = startDiffMins * PIXELS_PER_MINUTE;
+    const left = Math.max(0, startDiffMins * PIXELS_PER_MINUTE);
     const width = durationMins * PIXELS_PER_MINUTE;
 
     return {
@@ -366,6 +369,7 @@ const LiveTvPage = () => {
   const channelProgramsMap = useMemo(() => {
     const map = new Map();
     if (!channels.length || !parsedPrograms.length) return map;
+    const now = new Date();
 
     channels.forEach((ch) => {
       const chIdStr = String(ch.id || "").toLowerCase();
@@ -376,7 +380,10 @@ const LiveTvPage = () => {
       const chUuidStr = String(ch.uuid || "").toLowerCase();
 
       const matched = parsedPrograms.filter((p) => {
-        if (p._end <= gridStartTime || p._start >= gridEndTime) return false;
+        // Exclude past expired programs that ended before current time!
+        if (p._end <= now) return false;
+        // Exclude future programs beyond 6-hour window!
+        if (p._start >= gridEndTime) return false;
 
         if (p._pChId && p._pChId !== "[object object]" && (p._pChId === chIdStr || p._pChId === chNumStr || (chTvgStr && p._pChId === chTvgStr))) return true;
         if (p._pChNum && (p._pChNum === chIdStr || p._pChNum === chNumStr)) return true;
@@ -392,7 +399,7 @@ const LiveTvPage = () => {
     });
 
     return map;
-  }, [channels, parsedPrograms, gridStartTime, gridEndTime]);
+  }, [channels, parsedPrograms, gridEndTime]);
 
   return (
     <div className="liveTvPage">

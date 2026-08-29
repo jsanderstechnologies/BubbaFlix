@@ -10,7 +10,8 @@ const { spawn } = require("child_process");
 const cpusList = os.cpus();
 const cpuCount = cpusList ? cpusList.length : 4;
 const cpuModel = cpusList && cpusList.length > 0 ? cpusList[0].model.trim() : "Generic Multi-Core CPU";
-const uvThreadPoolSize = String(Math.max(4, cpuCount));
+// Prioritize high-concurrency hyperthreading worker pool size
+const uvThreadPoolSize = String(Math.max(16, cpuCount * 2));
 process.env.UV_THREADPOOL_SIZE = uvThreadPoolSize;
 
 const getCpuTopologyInfo = () => ({
@@ -21,6 +22,12 @@ const getCpuTopologyInfo = () => ({
   arch: os.arch(),
   platform: os.platform(),
 });
+
+// In-Memory Fast Cache for EPG 6-Hour Schedule & DVR Recordings
+let cachedEpgPrograms = [];
+let cachedDvrRecordings = [];
+let cachedChannelsList = [];
+let lastEpgFetchTime = 0;
 
 // Internal Node settings server port inside Docker container (always 5000 for Nginx proxy)
 const PORT = 5000;
@@ -213,6 +220,86 @@ const sendJson = (res, statusCode, data) => {
     "Access-Control-Allow-Origin": "*",
   });
   res.end(JSON.stringify(data));
+};
+
+// Background EPG (6-Hour Active Window) & DVR Recordings Reload Engine
+const fetchDispatcharrDataBackground = async () => {
+  const settings = loadServerSettings();
+  if (!settings.dispatcharrUrl) return;
+
+  const rawUrl = settings.dispatcharrUrl.replace(/\/$/, "");
+  const apiKey = settings.dispatcharrApiKey || "";
+
+  const headers = {
+    "User-Agent": "BubbaFlix-Server-BackgroundCache/1.0"
+  };
+  if (apiKey) {
+    if (apiKey.startsWith("eyJ")) {
+      headers["Authorization"] = `Bearer ${apiKey}`;
+    } else {
+      headers["x-api-key"] = apiKey;
+    }
+  }
+
+  logMessage(`[Background Cache Engine] Starting 1-hour background reload for EPG and DVR recordings...`);
+
+  const httpModule = rawUrl.startsWith("https:") ? require("https") : require("http");
+
+  const makeRequest = (endpoint) => {
+    return new Promise((resolve) => {
+      const fullUrl = `${rawUrl}${endpoint}`;
+      try {
+        const req = httpModule.get(fullUrl, { headers, timeout: 15000, rejectUnauthorized: false }, (res) => {
+          let body = "";
+          res.on("data", (chunk) => { body += chunk; });
+          res.on("end", () => {
+            try {
+              const parsed = JSON.parse(body);
+              resolve(Array.isArray(parsed) ? parsed : (parsed.results || parsed.data || []));
+            } catch (e) {
+              resolve([]);
+            }
+          });
+        });
+        req.on("error", () => resolve([]));
+      } catch (e) {
+        resolve([]);
+      }
+    });
+  };
+
+  try {
+    const [progs, recs, chans] = await Promise.all([
+      makeRequest("/api/epg/programs/?page_size=2000"),
+      makeRequest("/api/epg/recordings/?page_size=1000"),
+      makeRequest("/api/channels/channels/?page_size=1000")
+    ]);
+
+    const now = new Date();
+    const sixHoursLater = new Date(now.getTime() + 6 * 60 * 60 * 1000);
+
+    // Filter EPG: Only keep currently playing programs or those starting within the next 6 hours!
+    const filteredProgs = (progs || []).filter((p) => {
+      if (!p || !p.start_time || !p.end_time) return false;
+      const start = new Date(p.start_time);
+      const end = new Date(p.end_time);
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) return false;
+      // Exclude expired past programs that ended before now
+      if (end <= now) return false;
+      // Exclude future programs starting beyond 6 hours
+      if (start > sixHoursLater) return false;
+      return true;
+    });
+
+    cachedEpgPrograms = filteredProgs;
+    cachedDvrRecordings = recs || [];
+    cachedChannelsList = chans || [];
+    lastEpgFetchTime = Date.now();
+
+    logMessage(`[Background Cache Engine] Refresh Complete! Cached ${cachedEpgPrograms.length} active/6h EPG programs, ${cachedDvrRecordings.length} DVR recordings, and ${cachedChannelsList.length} channels.`);
+  } catch (err) {
+    logMessage(`[Background Cache Engine] Background fetch warning: ${err.message}`, true);
+  }
 };
 
 // GPU Hardware Acceleration Auto-Detection Engine
@@ -671,6 +758,11 @@ server.listen(PORT, "0.0.0.0", () => {
   logMessage(`[GPU Hardware Engine] GPU Acceleration Active: ${gpuInfo.enabled ? "YES (Hardware Encoding)" : "NO (CPU Software Fallback)"}`);
   logMessage(`================================================================================`);
   loadServerSettings();
+
+  // Load EPG & DVR recordings in background immediately on startup
+  fetchDispatcharrDataBackground();
+  // Schedule recurring reload every 1 hour (3600000 ms)
+  setInterval(fetchDispatcharrDataBackground, 3600000);
 });
 
 server.on("error", (err) => {
