@@ -25,6 +25,10 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 
+import android.content.Intent
+import android.speech.RecognizerIntent
+import androidx.activity.result.contract.ActivityResultContracts
+
 class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
@@ -33,6 +37,41 @@ class MainActivity : AppCompatActivity() {
     private var customView: View? = null
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
     private var isDialogShowing = false
+
+    private val speechLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK && result.data != null) {
+            val spokenText = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+            if (!spokenText.isNullOrEmpty()) {
+                val cleanText = spokenText.replace("'", "\\'")
+                runOnUiThread {
+                    webView.evaluateJavascript(
+                        "(function() {" +
+                        "  if (typeof window.onVoiceSearchResult === 'function') {" +
+                        "    window.onVoiceSearchResult('$cleanText');" +
+                        "  } else {" +
+                        "    window.location.hash = '#/search/' + encodeURIComponent('$cleanText');" +
+                        "  }" +
+                        "})();",
+                        null
+                    )
+                }
+            }
+        }
+    }
+
+    fun triggerVoiceSearch() {
+        try {
+            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak to search BubbaFlix...")
+            }
+            speechLauncher.launch(intent)
+        } catch (e: Exception) {
+            runOnUiThread {
+                Toast.makeText(this, "Voice search is not available on this device.", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     companion object {
         private const val PREFS_NAME = "BubbaFlixTVPrefs"
@@ -54,6 +93,13 @@ class MainActivity : AppCompatActivity() {
                 if (currentFocusView != null) {
                     imm?.showSoftInput(currentFocusView, android.view.inputmethod.InputMethodManager.SHOW_FORCED)
                 }
+            }
+        }
+
+        @JavascriptInterface
+        fun startVoiceSearch() {
+            activity.runOnUiThread {
+                (activity as? MainActivity)?.triggerVoiceSearch()
             }
         }
 
@@ -124,6 +170,12 @@ class MainActivity : AppCompatActivity() {
         webView.addJavascriptInterface(AndroidPlayerBridge(this, this), "AndroidPlayer")
 
         webView.webChromeClient = object : WebChromeClient() {
+            override fun onPermissionRequest(request: PermissionRequest?) {
+                runOnUiThread {
+                    request?.grant(request.resources)
+                }
+            }
+
             override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
                 return super.onConsoleMessage(consoleMessage)
             }

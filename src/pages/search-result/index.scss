@@ -66,6 +66,33 @@
 			}
 		}
 
+		.voiceSearchBtn {
+			background: rgba(218, 47, 104, 0.2);
+			border: 1px solid rgba(218, 47, 104, 0.5);
+			color: var(--pink);
+			width: 36px;
+			height: 36px;
+			border-radius: 50%;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			cursor: pointer;
+			font-size: 18px;
+			flex-shrink: 0;
+			margin-left: 8px;
+			transition: all 0.2s ease;
+
+			&:hover,
+			&:focus,
+			&:focus-visible {
+				background: var(--pink);
+				color: #ffffff;
+				transform: scale(1.15);
+				box-shadow: 0 0 12px rgba(218, 47, 104, 0.6);
+				outline: none;
+			}
+		}
+
 		.clearSearchBtn {
 			background: rgba(255, 255, 255, 0.15);
 			border: none;

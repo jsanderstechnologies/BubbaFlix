@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import InfiniteScroll from "react-infinite-scroll-component";
 import { HiOutlineSearch, HiX } from "react-icons/hi";
-import { FiFilm, FiTv, FiGrid, FiUser } from "react-icons/fi";
+import { FiFilm, FiTv, FiGrid, FiUser, FiMic } from "react-icons/fi";
 
 import "./index.scss";
 
@@ -68,10 +68,40 @@ const SearchResult = () => {
   };
 
   useEffect(() => {
-    if (urlQuery !== undefined && urlQuery !== searchQuery) {
-      setSearchQuery(urlQuery);
+    window.onVoiceSearchResult = (spokenQuery) => {
+      if (spokenQuery && spokenQuery.trim()) {
+        const clean = spokenQuery.trim();
+        setSearchQuery(clean);
+        navigate(`/search/${encodeURIComponent(clean)}`, { replace: true });
+      }
+    };
+    return () => {
+      window.onVoiceSearchResult = null;
+    };
+  }, [navigate]);
+
+  const handleVoiceSearch = () => {
+    if (window.AndroidPlayer && typeof window.AndroidPlayer.startVoiceSearch === "function") {
+      window.AndroidPlayer.startVoiceSearch();
+    } else {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.lang = "en-US";
+        recognition.interimResults = false;
+        recognition.onresult = (e) => {
+          const transcript = e.results[0]?.[0]?.transcript;
+          if (transcript) {
+            setSearchQuery(transcript.trim());
+            navigate(`/search/${encodeURIComponent(transcript.trim())}`, { replace: true });
+          }
+        };
+        recognition.start();
+      } else {
+        alert("Voice search is not supported on this browser.");
+      }
     }
-  }, [urlQuery]);
+  };
 
   useEffect(() => {
     if (searchQuery.trim().length > 0) {
@@ -187,6 +217,16 @@ const SearchResult = () => {
               tabIndex="0"
               autoFocus
             />
+            <button
+              type="button"
+              className="voiceSearchBtn"
+              onClick={handleVoiceSearch}
+              tabIndex="0"
+              title="Voice Search"
+              aria-label="Voice Search"
+            >
+              <FiMic />
+            </button>
             {searchQuery.length > 0 && (
               <button
                 className="clearSearchBtn"
