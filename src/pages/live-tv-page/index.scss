@@ -303,6 +303,13 @@
         &:hover {
           transform: scale(1.15);
         }
+
+        &:focus, &:focus-visible {
+          outline: none;
+          border: 2px solid white;
+          box-shadow: 0 0 12px var(--pink);
+          transform: scale(1.25);
+        }
       }
     }
 
@@ -340,6 +347,15 @@
           border-color: var(--pink);
           z-index: 5;
           transform: translateY(-1px);
+        }
+
+        &:focus, &:focus-visible {
+          outline: none;
+          background: rgba(229, 9, 20, 0.45);
+          border: 3px solid #ffffff;
+          box-shadow: 0 0 18px rgba(229, 9, 20, 0.9), 0 0 4px #ffffff;
+          z-index: 20;
+          transform: scale(1.04);
         }
 
         &.airingNow {

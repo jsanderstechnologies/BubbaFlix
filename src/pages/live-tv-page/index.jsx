@@ -462,7 +462,14 @@ const LiveTvPage = () => {
                         </div>
                         <button
                           className="watchLiveIconBtn"
+                          tabIndex={0}
                           onClick={() => handleWatchLive(ch, currentProg)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              handleWatchLive(ch, currentProg);
+                            }
+                          }}
                           title="Watch Channel Live"
                         >
                           <FiPlay />
@@ -482,8 +489,32 @@ const LiveTvPage = () => {
                           return (
                             <div
                               key={prog.id || idx}
+                              tabIndex={0}
+                              role="button"
+                              aria-label={`${prog.title}, ${formatTime(prog.start_time)}`}
                               className={`programCell ${isAiring ? "airingNow" : ""} ${rec ? "isRecorded" : ""}`}
                               style={style}
+                              onFocus={(e) => {
+                                if (timelineRef.current && e.target) {
+                                  const cellLeft = e.target.offsetLeft;
+                                  const cellWidth = e.target.offsetWidth;
+                                  const containerScroll = timelineRef.current.scrollLeft;
+                                  const containerWidth = timelineRef.current.clientWidth - 220;
+
+                                  if (cellLeft < containerScroll) {
+                                    timelineRef.current.scrollTo({ left: Math.max(0, cellLeft - 40), behavior: "smooth" });
+                                  } else if (cellLeft + cellWidth > containerScroll + containerWidth) {
+                                    timelineRef.current.scrollTo({ left: cellLeft + cellWidth - containerWidth + 60, behavior: "smooth" });
+                                  }
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  setSelectedProgram({ ...prog, channelObj: ch });
+                                  setActionStatus(null);
+                                }
+                              }}
                               onClick={() => {
                                 setSelectedProgram({ ...prog, channelObj: ch });
                                 setActionStatus(null);
