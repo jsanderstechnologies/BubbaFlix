@@ -510,6 +510,8 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
       ref={containerRef}
       className={`videoPlayerModal ${show ? "visible" : ""}`}
       onMouseMove={resetControlsTimeout}
+      onTouchStart={resetControlsTimeout}
+      onTouchEnd={resetControlsTimeout}
       onClick={resetControlsTimeout}
     >
       <div className="playerWindow">
@@ -519,6 +521,8 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
             className="videoElement"
             onTimeUpdate={handleTimeUpdate}
             onEnded={() => setIsPlaying(false)}
+            onTouchStart={resetControlsTimeout}
+            onClick={resetControlsTimeout}
             playsInline
           >
             {activeVttUrl && (

@@ -11,6 +11,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.View
 import android.widget.Button
 import android.widget.ImageButton
@@ -388,6 +389,18 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private fun setupControlClickListeners() {
+        val onScreenTap = View.OnClickListener {
+            if (controlsVisible) {
+                resetControlsTimeout()
+            } else {
+                resetControlsTimeout()
+                btnPlayPause.requestFocus()
+            }
+        }
+
+        playerView.setOnClickListener(onScreenTap)
+        controlsOverlay.setOnClickListener(onScreenTap)
+
         btnBack.setOnClickListener { finish() }
 
         btnAudio.setOnClickListener { showAudioTrackSelectionDialog() }
@@ -414,6 +427,13 @@ class PlayerActivity : AppCompatActivity() {
         btnRewind10.setOnClickListener { seekRelative(-10000) }
         btnFF10.setOnClickListener { seekRelative(10000) }
         btnFF30.setOnClickListener { seekRelative(30000) }
+    }
+
+    override fun onTouchEvent(event: MotionEvent?): Boolean {
+        if (event != null && (event.action == MotionEvent.ACTION_DOWN || event.action == MotionEvent.ACTION_UP)) {
+            resetControlsTimeout()
+        }
+        return super.onTouchEvent(event)
     }
 
     @SuppressLint("UnsafeOptInUsageError")
