@@ -124,20 +124,50 @@ export const fetchDispatcharrEpgPrograms = async (params = {}) => {
 };
 
 /**
- * Fetch all DVR recordings (completed, in-progress, upcoming) from Dispatcharr
+ * Fetch all DVR recordings (completed, in-progress, upcoming, and series rules) from Dispatcharr
  */
 export const fetchDispatcharrRecordings = async () => {
+  const baseUrl = getProxyBaseUrl();
+  let recordingsList = [];
+
+  // 1. Fetch /api/channels/recordings/?page_size=1000
   try {
-    const baseUrl = getProxyBaseUrl();
-    const res = await axios.get(`${baseUrl}/api/channels/recordings/`, { timeout: 10000 });
+    const res = await axios.get(`${baseUrl}/api/channels/recordings/`, {
+      params: { page_size: 1000 },
+      timeout: 10000,
+    });
     const data = res.data;
-    if (Array.isArray(data)) return data;
-    if (data && Array.isArray(data.results)) return data.results;
-    return [];
+    const list = Array.isArray(data) ? data : data?.results || data?.recordings || [];
+    if (Array.isArray(list)) recordingsList.push(...list);
   } catch (err) {
     console.warn("[Dispatcharr API] Failed to fetch DVR recordings:", err.message);
-    return [];
   }
+
+  // 2. Fetch /api/channels/series-rules/?page_size=1000
+  try {
+    const resRules = await axios.get(`${baseUrl}/api/channels/series-rules/`, {
+      params: { page_size: 1000 },
+      timeout: 8000,
+    });
+    const dataRules = resRules.data;
+    const rulesList = Array.isArray(dataRules) ? dataRules : dataRules?.results || dataRules?.rules || [];
+    if (Array.isArray(rulesList)) {
+      rulesList.forEach((rule) => {
+        recordingsList.push({
+          id: rule.id || `rule-${rule.title}`,
+          title: rule.title || rule.program_title || "Series Recording Rule",
+          status: "scheduled",
+          isSeriesRule: true,
+          start_time: rule.created_at || new Date().toISOString(),
+          description: `Series DVR rule set for ${rule.title || "program"}.`,
+        });
+      });
+    }
+  } catch (err) {
+    console.warn("[Dispatcharr API] Series rules fetch attempt:", err.message);
+  }
+
+  return recordingsList;
 };
 
 /**

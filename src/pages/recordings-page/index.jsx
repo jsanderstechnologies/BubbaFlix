@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import ContentWrapper from "../../components/content-wrapper";
 import TopNav from "../../components/top-nav";
 import Spinner from "../../components/spinner";
@@ -22,6 +23,7 @@ import {
 import "./index.scss";
 
 const RecordingsPage = () => {
+  const navigate = useNavigate();
   const [recordings, setRecordings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
@@ -139,8 +141,15 @@ const RecordingsPage = () => {
         ) : filteredRecordings.length === 0 ? (
           <div className="emptyNotice">
             <FiAlertCircle className="icon" />
-            <h3>No Recordings Found</h3>
-            <p>No DVR recordings match the selected filter tab.</p>
+            <h3>No DVR Recordings Found</h3>
+            <p>You have no saved or scheduled DVR recordings on your Dispatcharr server.</p>
+            <button
+              className="refreshBtn"
+              style={{ background: "var(--pink)", borderColor: "var(--pink)", marginTop: 15, padding: "10px 20px" }}
+              onClick={() => navigate("/livetv")}
+            >
+              Go to Live TV Guide to Schedule Recording
+            </button>
           </div>
         ) : (
           <div className="recordingsGrid">
