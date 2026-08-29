@@ -23,7 +23,7 @@ import { getWatchProgress, saveWatchProgress, clearWatchProgress, formatTimeDisp
 import { getTranscodedStreamUrl } from "../../utils/serverSettings";
 import "./index.scss";
 
-const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, mediaType = "movie", seasonNum, episodeNum, channelLogo }) => {
+const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, streamUrl, title, tmdbId, mediaType = "movie", seasonNum, episodeNum, channelLogo }) => {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   const hideControlsTimeoutRef = useRef(null);
@@ -74,7 +74,7 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
 
   useEffect(() => {
     if (show) {
-      let targetUrl = rawUrl || videoUrl || "";
+      let targetUrl = rawUrl || videoUrl || streamUrl || "";
       if (targetUrl && !targetUrl.includes("/api/transcode")) {
         targetUrl = getTranscodedStreamUrl(targetUrl);
       }
@@ -83,7 +83,8 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
       if (typeof window !== "undefined" && window.AndroidPlayer && typeof window.AndroidPlayer.playStream === "function") {
         console.log("[Launching Native Universal Player Activity]:", targetUrl);
         window.AndroidPlayer.playStream(targetUrl, title || "", channelLogo || mediaLogoUrl || "", tmdbId || "", mediaType || "movie");
-        setShow(false);
+        if (typeof setShow === "function") setShow(false);
+        if (typeof onClose === "function") onClose();
         return;
       }
 

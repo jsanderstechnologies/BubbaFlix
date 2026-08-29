@@ -690,6 +690,10 @@ const LiveTvPage = () => {
         {/* Video Player Modal */}
         {showPlayer && (
           <VideoPlayerModal
+            show={showPlayer}
+            setShow={setShowPlayer}
+            videoUrl={activeStreamUrl}
+            rawUrl={activeStreamUrl}
             streamUrl={activeStreamUrl}
             title={activeStreamTitle}
             onClose={() => setShowPlayer(false)}

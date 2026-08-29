@@ -217,7 +217,11 @@ const RecordingsPage = () => {
         {/* Video Player Modal */}
         {showPlayer && (
           <VideoPlayerModal
+            show={showPlayer}
+            setShow={setShowPlayer}
             videoUrl={activeVideoUrl}
+            rawUrl={activeVideoUrl}
+            streamUrl={activeVideoUrl}
             title={activeVideoTitle}
             onClose={() => setShowPlayer(false)}
           />
