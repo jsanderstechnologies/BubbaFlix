@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.util.Log
 import android.media.audiofx.DynamicsProcessing
 import android.media.audiofx.LoudnessEnhancer
 import android.os.Build
@@ -71,6 +72,7 @@ class PlayerActivity : AppCompatActivity() {
 
     private val handler = Handler(Looper.getMainLooper())
     private var controlsVisible = true
+    private var probedDurationMs: Long = 0
 
     private val hideControlsRunnable = Runnable {
         hideControls()
@@ -161,6 +163,7 @@ class PlayerActivity : AppCompatActivity() {
 
         setupControlClickListeners()
         setupSeekBarListener()
+        fetchProbedMetadata(videoUrl)
         initializeExoPlayer(videoUrl)
 
         btnPlayPause.requestFocus()
@@ -442,6 +445,56 @@ class PlayerActivity : AppCompatActivity() {
         }
     }
 
+    private fun fetchProbedMetadata(videoUrl: String) {
+        val mediaType = intent.getStringExtra(EXTRA_MEDIA_TYPE) ?: "movie"
+        if (mediaType == "tv") return
+
+        var probeUrl = videoUrl
+        if (videoUrl.contains("/api/transcode")) {
+            try {
+                val uri = Uri.parse(videoUrl)
+                probeUrl = uri.getQueryParameter("url") ?: videoUrl
+            } catch (e: Exception) {
+                probeUrl = videoUrl
+            }
+        }
+
+        val prefs = getSharedPreferences("BubbaFlixTVPrefs", Context.MODE_PRIVATE)
+        val serverBase = prefs.getString("server_url", "https://bubbaflix.sanders-technologies.net") ?: "https://bubbaflix.sanders-technologies.net"
+        val cleanServerBase = serverBase.replace(Regex("""/+$"""), "")
+        val metadataUrl = "$cleanServerBase/api/transcode/metadata?url=${Uri.encode(probeUrl)}"
+
+        val client = OkHttpClient()
+        val request = Request.Builder().url(metadataUrl).build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.w("PlayerActivity", "Failed to fetch probed metadata: ${e.message}")
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                response.use {
+                    if (response.isSuccessful) {
+                        try {
+                            val body = response.body?.string() ?: ""
+                            val json = JSONObject(body)
+                            val durationSec = json.optDouble("duration", 0.0)
+                            if (durationSec > 0.0) {
+                                runOnUiThread {
+                                    probedDurationMs = (durationSec * 1000).toLong()
+                                    Log.i("PlayerActivity", "Successfully probed media duration: $probedDurationMs ms")
+                                    updateProgress()
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.w("PlayerActivity", "Error parsing probed metadata: ${e.message}")
+                        }
+                    }
+                }
+            }
+        })
+    }
+
     private fun setupControlClickListeners() {
         val onScreenTap = View.OnClickListener {
             if (controlsVisible) {
@@ -562,10 +615,19 @@ class PlayerActivity : AppCompatActivity() {
         seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
                 if (fromUser && exoPlayer != null) {
-                    val duration = exoPlayer!!.duration
-                    if (duration > 0) {
-                        val newPos = (duration * progress) / 1000
-                        txtCurrentTime.text = formatTime(newPos)
+                    val isLive = intent.getStringExtra(EXTRA_MEDIA_TYPE) == "tv"
+                    if (!isLive) {
+                        val rawDur = exoPlayer!!.duration
+                        val isTranscoded = intent.getStringExtra(EXTRA_VIDEO_URL)?.contains("/api/transcode") == true
+                        val duration = if (isTranscoded) {
+                            if (probedDurationMs > 0) probedDurationMs else 0L
+                        } else {
+                            if (rawDur > 0 && rawDur != androidx.media3.common.C.TIME_UNSET) rawDur else (if (probedDurationMs > 0) probedDurationMs else 0L)
+                        }
+                        if (duration > 0) {
+                            val newPos = (duration * progress) / 1000
+                            txtCurrentTime.text = formatTime(newPos)
+                        }
                     }
                 }
             }
@@ -576,10 +638,19 @@ class PlayerActivity : AppCompatActivity() {
 
             override fun onStopTrackingTouch(sb: SeekBar?) {
                 if (exoPlayer != null && sb != null) {
-                    val duration = exoPlayer!!.duration
-                    if (duration > 0) {
-                        val newPos = (duration * sb.progress) / 1000
-                        exoPlayer!!.seekTo(newPos)
+                    val isLive = intent.getStringExtra(EXTRA_MEDIA_TYPE) == "tv"
+                    if (!isLive) {
+                        val rawDur = exoPlayer!!.duration
+                        val isTranscoded = intent.getStringExtra(EXTRA_VIDEO_URL)?.contains("/api/transcode") == true
+                        val duration = if (isTranscoded) {
+                            if (probedDurationMs > 0) probedDurationMs else 0L
+                        } else {
+                            if (rawDur > 0 && rawDur != androidx.media3.common.C.TIME_UNSET) rawDur else (if (probedDurationMs > 0) probedDurationMs else 0L)
+                        }
+                        if (duration > 0) {
+                            val newPos = (duration * sb.progress) / 1000
+                            exoPlayer!!.seekTo(newPos)
+                        }
                     }
                 }
                 resetControlsTimeout()
@@ -589,9 +660,8 @@ class PlayerActivity : AppCompatActivity() {
 
     private fun updateProgress() {
         val player = exoPlayer ?: return
-        val isLive = player.isCurrentMediaItemLive || intent.getStringExtra(EXTRA_MEDIA_TYPE) == "tv"
+        val isLive = intent.getStringExtra(EXTRA_MEDIA_TYPE) == "tv"
         val current = player.currentPosition
-        val dur = player.duration
         val buffered = player.bufferedPosition
 
         if (isLive) {
@@ -620,26 +690,43 @@ class PlayerActivity : AppCompatActivity() {
                 txtDuration.text = "● LIVE"
                 txtDuration.setTextColor(android.graphics.Color.parseColor("#4CAF50"))
             }
-        } else if (dur > 0) {
-            val progress = ((current * 1000) / dur).toInt()
-            val secondaryProgress = ((buffered * 1000) / dur).toInt()
-            seekBar.progress = progress
-            seekBar.secondaryProgress = secondaryProgress
-            txtCurrentTime.text = formatTime(current)
-            txtDuration.text = formatTime(dur)
         } else {
-            seekBar.progress = 0
-            seekBar.secondaryProgress = 0
-            txtCurrentTime.text = "00:00"
-            txtDuration.text = "00:00"
+            val rawDur = player.duration
+            val isTranscoded = intent.getStringExtra(EXTRA_VIDEO_URL)?.contains("/api/transcode") == true
+            val dur = if (isTranscoded) {
+                if (probedDurationMs > 0) probedDurationMs else 0L
+            } else {
+                if (rawDur > 0 && rawDur != androidx.media3.common.C.TIME_UNSET) rawDur else (if (probedDurationMs > 0) probedDurationMs else 0L)
+            }
+
+            if (dur > 0) {
+                val progress = ((current * 1000) / dur).toInt()
+                val secondaryProgress = ((buffered * 1000) / dur).toInt()
+                seekBar.progress = progress
+                seekBar.secondaryProgress = secondaryProgress
+                txtCurrentTime.text = formatTime(current)
+                txtDuration.text = formatTime(dur)
+            } else {
+                seekBar.progress = 0
+                seekBar.secondaryProgress = 0
+                txtCurrentTime.text = "00:00"
+                txtDuration.text = "00:00"
+            }
         }
     }
 
     private fun seekRelative(offsetMs: Long) {
         resetControlsTimeout()
         exoPlayer?.let { player ->
-            val isLive = player.isCurrentMediaItemLive || intent.getStringExtra(EXTRA_MEDIA_TYPE) == "tv"
-            val maxPos = if (isLive) player.bufferedPosition.coerceAtLeast(player.currentPosition) else player.duration.coerceAtLeast(0L)
+            val isLive = intent.getStringExtra(EXTRA_MEDIA_TYPE) == "tv"
+            val rawDur = player.duration
+            val isTranscoded = intent.getStringExtra(EXTRA_VIDEO_URL)?.contains("/api/transcode") == true
+            val dur = if (isTranscoded) {
+                if (probedDurationMs > 0) probedDurationMs else 0L
+            } else {
+                if (rawDur > 0 && rawDur != androidx.media3.common.C.TIME_UNSET) rawDur else (if (probedDurationMs > 0) probedDurationMs else 0L)
+            }
+            val maxPos = if (isLive) player.bufferedPosition.coerceAtLeast(player.currentPosition) else dur.coerceAtLeast(0L)
             val newPos = (player.currentPosition + offsetMs).coerceIn(0L, if (maxPos > 0) maxPos else Long.MAX_VALUE)
             player.seekTo(newPos)
             updateProgress()
