@@ -150,6 +150,13 @@ const LiveTvPage = () => {
       setAuthError(false);
     }
 
+    const formatLogoUrl = (rawLogo) => {
+      if (!rawLogo) return "";
+      if (rawLogo.startsWith("http")) return rawLogo;
+      const baseUrl = getProxyBaseUrl();
+      return `${baseUrl}${rawLogo.startsWith("/") ? "" : "/"}${rawLogo}`;
+    };
+
     // Build unified channel map from EPG schedule (progData) first to prioritize channels with EPG data
     const channelMap = new Map();
 
@@ -160,12 +167,13 @@ const LiveTvPage = () => {
         const id = rawCh?.id || (typeof p.channel !== "object" ? p.channel : null) || p.channel_id || p.tvg_id;
         if (!id || typeof id === "object") return;
         const key = String(id);
+        const rawLogo = rawCh?.logo || p.channel_logo || p.icon || p.thumbnail || "";
         if (!channelMap.has(key)) {
           channelMap.set(key, {
             id,
             name: rawCh?.name || p.channel_name || p.channel_title || `Channel ${id}`,
             number: rawCh?.number || p.channel_number || id,
-            logo: rawCh?.logo || p.channel_logo || p.icon || "",
+            logo: formatLogoUrl(rawLogo),
             tvg_id: rawCh?.tvg_id || p.tvg_id || "",
             epg_data_id: rawCh?.epg_data_id || p.epg_data_id || "",
             hasEpg: true,
@@ -180,6 +188,8 @@ const LiveTvPage = () => {
         const id = ch.id || ch.channel_number || ch.number || ch.name;
         if (!id) return;
         const key = String(id);
+        const rawLogo = ch.logo || ch.logo_url || ch.icon || ch.thumbnail || "";
+        const formattedLogo = formatLogoUrl(rawLogo);
         const existing = channelMap.get(key);
         if (existing) {
           channelMap.set(key, {
@@ -187,7 +197,7 @@ const LiveTvPage = () => {
             ...ch,
             name: ch.name || ch.effective_name || existing.name,
             number: ch.number || ch.channel_number || ch.effective_channel_number || existing.number,
-            logo: ch.logo || ch.logo_url || existing.logo,
+            logo: formattedLogo || existing.logo,
             tvg_id: ch.tvg_id || ch.effective_tvg_id || existing.tvg_id,
             epg_data_id: ch.epg_data_id || ch.effective_epg_data_id || existing.epg_data_id,
             hasEpg: true,
@@ -198,7 +208,7 @@ const LiveTvPage = () => {
             id: ch.id || id,
             name: ch.name || ch.effective_name || `Channel ${id}`,
             number: ch.number || ch.channel_number || ch.effective_channel_number || id,
-            logo: ch.logo || ch.logo_url || "",
+            logo: formattedLogo,
             tvg_id: ch.tvg_id || ch.effective_tvg_id || "",
             epg_data_id: ch.epg_data_id || ch.effective_epg_data_id || "",
             hasEpg: false,

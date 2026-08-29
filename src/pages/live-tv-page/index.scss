@@ -230,9 +230,9 @@
 
     /* Sticky Channel Sidebar Column */
     .channelColumn {
-      width: 220px;
-      min-width: 220px;
-      max-width: 220px;
+      width: 260px;
+      min-width: 260px;
+      max-width: 260px;
       padding: 10px 14px;
       background: #14161f;
       border-right: 2px solid rgba(255, 255, 255, 0.15);
@@ -241,32 +241,37 @@
       z-index: 10;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
 
       .channelBadge {
-        width: 36px;
-        height: 36px;
+        width: 58px;
+        height: 58px;
         flex-shrink: 0;
         display: flex;
         align-items: center;
         justify-content: center;
 
         .channelLogo {
-          width: 36px;
-          height: 36px;
+          width: 58px;
+          height: 58px;
+          max-width: 58px;
+          max-height: 58px;
           object-fit: contain;
-          border-radius: 6px;
+          background: rgba(0, 0, 0, 0.35);
+          border-radius: 8px;
+          padding: 4px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
         }
         .channelNumber {
-          width: 36px;
-          height: 36px;
+          width: 58px;
+          height: 58px;
           background: rgba(255, 255, 255, 0.1);
-          border-radius: 6px;
+          border-radius: 8px;
           display: flex;
           align-items: center;
           justify-content: center;
           font-weight: 800;
-          font-size: 13px;
+          font-size: 16px;
           color: var(--pink);
         }
       }
@@ -276,7 +281,7 @@
         overflow: hidden;
 
         .channelName {
-          font-size: 14px;
+          font-size: 15px;
           font-weight: 700;
           color: white;
           white-space: nowrap;
@@ -287,8 +292,8 @@
       }
 
       .watchLiveIconBtn {
-        width: 30px;
-        height: 30px;
+        width: 32px;
+        height: 32px;
         border-radius: 50%;
         background: var(--pink);
         color: white;
@@ -316,7 +321,7 @@
     /* Program Grid Cells Area */
     .programTimeline {
       position: relative;
-      height: 64px;
+      height: 80px;
       box-sizing: border-box;
       background: repeating-linear-gradient(
         90deg,
