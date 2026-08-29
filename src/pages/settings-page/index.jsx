@@ -633,59 +633,7 @@ const SettingsPage = () => {
           </div>
 
           {/* Global System & Stream Resolution Settings Cards */}
-          {/* Color Theme Selector Card */}
-              <div className="settingsCard">
-                <div className="cardHeader">
-                  <h2><FiSun style={{ marginRight: 8 }} /> Application Color Theme</h2>
-                  <span className="badge custom"><FiServer style={{ marginRight: 4 }} /> Server Synced</span>
-                </div>
-                <p className="description">
-                  Select your preferred color theme for BubbaFlix, including Dark Red (Netflix Style). Synced across all client devices.
-                </p>
-                <div className="themeGrid">
-                  {THEMES.map((theme) => (
-                    <div
-                      key={theme.id}
-                      className={`themeCard ${activeTheme === theme.id ? "active" : ""}`}
-                      onClick={() => handleSelectTheme(theme.id)}
-                      tabIndex="0"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          handleSelectTheme(theme.id);
-                        }
-                      }}
-                    >
-                      <div
-                        className="themePreview"
-                        style={{
-                          background: theme.bg,
-                          borderColor: activeTheme === theme.id ? theme.primary : "rgba(255,255,255,0.1)",
-                        }}
-                      >
-                        <div className="previewHeader" style={{ background: theme.bg2 }}>
-                          <div className="previewBadge" style={{ background: theme.gradient }} />
-                        </div>
-                        <div className="previewBody">
-                          <div className="previewDot" style={{ background: theme.primary }} />
-                          <div className="previewDot" style={{ background: theme.secondary }} />
-                        </div>
-                      </div>
-                      <div className="themeInfo">
-                        <span className="themeName">{theme.name}</span>
-                        <span className="themeDesc">{theme.description}</span>
-                      </div>
-                      {activeTheme === theme.id && (
-                        <div className="activeCheck">
-                          <FiCheckCircle />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Groq AI Key Card */}
+          {/* Groq AI Key Card */}
               <div className="settingsCard">
                 <div className="cardHeader">
                   <h2><FiCpu style={{ marginRight: 8 }} /> Groq AI Stream Filter Key</h2>
