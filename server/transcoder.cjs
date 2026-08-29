@@ -376,10 +376,15 @@ const detectGpuCapabilities = () => {
         "-b:v", "4M"
       ];
     } else if (hasVaapi) {
-      gpuType = "Linux Hardware Acceleration (VAAPI)";
+      gpuType = "Linux Hardware Acceleration (VAAPI / Intel iGPU)";
       encoder = "h264_vaapi";
-      inputArgs = ["-hwaccel", "vaapi"];
+      const fs = require("fs");
+      const hasRenderNode = fs.existsSync("/dev/dri/renderD128");
+      inputArgs = hasRenderNode
+        ? ["-hwaccel", "vaapi", "-vaapi_device", "/dev/dri/renderD128"]
+        : ["-hwaccel", "vaapi"];
       outputArgs = [
+        "-vf", "format=nv12,hwupload",
         "-c:v", "h264_vaapi",
         "-qp", "21",
         "-b:v", "4M",
