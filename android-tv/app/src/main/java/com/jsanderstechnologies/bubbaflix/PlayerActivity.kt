@@ -331,6 +331,10 @@ class PlayerActivity : AppCompatActivity() {
                     }
 
                     override fun onPlaybackStateChanged(state: Int) {
+                        if (state == Player.STATE_ENDED) {
+                            finish()
+                            return
+                        }
                         if (state == Player.STATE_READY) {
                             errorLayout.visibility = View.GONE
                             btnPlayPause.setImageResource(

@@ -5,6 +5,7 @@ import DetailsBanner from "./details-banner";
 import VideosSection from "./videos-section";
 import SeasonsSection from "./seasons-section";
 import TopNav from "../../components/top-nav";
+import { FiArrowLeft } from "react-icons/fi";
 import "./index.scss";
 import { useParams, useNavigate } from "react-router-dom";
 
@@ -39,6 +40,15 @@ const DetailsPage = () => {
 
 	return (
 		<div className="details-page">
+			<button
+				className="detailsPageBackBtn"
+				onClick={() => navigate(-1)}
+				tabIndex="0"
+				aria-label="Go Back"
+				title="Go Back"
+			>
+				<FiArrowLeft />
+			</button>
 			<TopNav />
 			<DetailsBanner video={data?.results?.[0]} crew={credits?.crew} />
 

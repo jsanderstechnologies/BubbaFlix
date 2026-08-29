@@ -520,7 +520,11 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
             ref={videoRef}
             className="videoElement"
             onTimeUpdate={handleTimeUpdate}
-            onEnded={() => setIsPlaying(false)}
+            onEnded={() => {
+              setIsPlaying(false);
+              if (typeof onClose === "function") onClose();
+              else if (typeof setShow === "function") setShow(false);
+            }}
             onTouchStart={resetControlsTimeout}
             onClick={resetControlsTimeout}
             playsInline

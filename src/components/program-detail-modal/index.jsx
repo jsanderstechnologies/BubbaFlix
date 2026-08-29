@@ -1,5 +1,5 @@
 import React from "react";
-import { FiTv, FiClock, FiCalendar, FiPlay, FiVideo, FiX, FiInfo, FiCircle, FiCheck } from "react-icons/fi";
+import { FiTv, FiClock, FiCalendar, FiPlay, FiVideo, FiX, FiArrowLeft, FiInfo, FiCircle, FiCheck } from "react-icons/fi";
 import "./index.scss";
 
 const ProgramDetailModal = ({ show, onClose, program, channel, recStatus, onPlay, onRecord }) => {
@@ -44,6 +44,9 @@ const ProgramDetailModal = ({ show, onClose, program, channel, recStatus, onPlay
   return (
     <div className="programDetailModalOverlay" onClick={onClose}>
       <div className="programDetailModalContent" onClick={(e) => e.stopPropagation()} tabIndex="0">
+        <button className="backBtn" onClick={onClose} tabIndex="0" aria-label="Go Back" title="Go Back">
+          <FiArrowLeft />
+        </button>
         <button className="closeBtn" onClick={onClose} tabIndex="0">
           <FiX />
         </button>

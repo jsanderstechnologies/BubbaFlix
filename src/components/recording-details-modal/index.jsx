@@ -1,5 +1,5 @@
 import React from "react";
-import { FiVideo, FiClock, FiCalendar, FiPlay, FiTrash2, FiX, FiInfo, FiScissors, FiPlusCircle } from "react-icons/fi";
+import { FiVideo, FiClock, FiCalendar, FiPlay, FiTrash2, FiX, FiArrowLeft, FiInfo, FiScissors, FiPlusCircle } from "react-icons/fi";
 import "./index.scss";
 
 const RecordingDetailsModal = ({ show, onClose, recording, onPlay, onDelete }) => {
@@ -42,6 +42,9 @@ const RecordingDetailsModal = ({ show, onClose, recording, onPlay, onDelete }) =
   return (
     <div className="recordingDetailsModalOverlay" onClick={onClose}>
       <div className="recordingDetailsModalContent" onClick={(e) => e.stopPropagation()} tabIndex="0">
+        <button className="backBtn" onClick={onClose} tabIndex="0" aria-label="Go Back" title="Go Back">
+          <FiArrowLeft />
+        </button>
         <button className="closeBtn" onClick={onClose} tabIndex="0">
           <FiX />
         </button>
