@@ -57,6 +57,7 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
   const [isPlaying, setIsPlaying] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [customDuration, setCustomDuration] = useState(0);
   const [maxBufferedTime, setMaxBufferedTime] = useState(0);
   const [bufferedPercent, setBufferedPercent] = useState(0);
   const [controlsVisible, setControlsVisible] = useState(true);
@@ -109,6 +110,32 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
       setHasError(false);
       setErrorMessage("");
       resetControlsTimeout();
+
+      // Fetch probed media duration from ffprobe metadata endpoint if not Live TV
+      if (mediaType !== "tv" && targetUrl) {
+        let probeUrl = targetUrl;
+        if (targetUrl.includes("/api/transcode")) {
+          try {
+            const urlParams = new URLSearchParams(targetUrl.substring(targetUrl.indexOf("?")));
+            probeUrl = urlParams.get("url") || targetUrl;
+          } catch (e) {
+            probeUrl = targetUrl;
+          }
+        }
+        fetch(`/api/transcode/metadata?url=${encodeURIComponent(probeUrl)}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data && data.duration > 0) {
+              console.log("[VideoPlayerModal] Probed media duration using ffprobe:", data.duration);
+              setCustomDuration(data.duration);
+            }
+          })
+          .catch((err) => {
+            console.warn("[VideoPlayerModal] ffprobe duration resolve failed:", err.message);
+          });
+      } else {
+        setCustomDuration(0);
+      }
 
       // Check for saved watch progress to prompt resume
       const saved = getWatchProgress(tmdbId, mediaType, seasonNum, episodeNum);
@@ -382,14 +409,17 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
     }
   };
 
-  const isLiveStream = mediaType === "tv" || duration === Infinity || isNaN(duration);
+  const actualDuration = (duration > 0 && duration !== Infinity && !isNaN(duration)) ? duration : (customDuration > 0 ? customDuration : 0);
+  const isLiveStream = mediaType === "tv" || (actualDuration === 0 && (duration === Infinity || isNaN(duration)));
 
   const handleTimeUpdate = () => {
     if (videoRef.current) {
       const v = videoRef.current;
       setCurrentTime(v.currentTime);
-      const dur = v.duration || 0;
-      setDuration(dur);
+      const rawDur = v.duration || 0;
+      setDuration(rawDur);
+
+      const displayDur = (rawDur > 0 && rawDur !== Infinity && !isNaN(rawDur)) ? rawDur : (customDuration > 0 ? customDuration : 0);
 
       let maxBuf = v.currentTime;
       if (v.buffered && v.buffered.length > 0) {
@@ -404,21 +434,21 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
           maxBufferedEnd = v.buffered.end(v.buffered.length - 1);
         }
         maxBuf = Math.max(v.currentTime, maxBufferedEnd);
-        const totalLength = isLiveStream ? maxBuf : dur;
+        const totalLength = isLiveStream ? maxBuf : displayDur;
         const pct = totalLength > 0 ? Math.min(100, (maxBufferedEnd / totalLength) * 100) : 0;
         setBufferedPercent(pct);
       }
       setMaxBufferedTime(maxBuf);
 
       // Save watch progress to localStorage if not Live TV
-      if (!isLiveStream && dur > 0 && v.currentTime >= 10 && tmdbId) {
+      if (!isLiveStream && displayDur > 0 && v.currentTime >= 10 && tmdbId) {
         saveWatchProgress({
           tmdbId,
           mediaType,
           seasonNum,
           episodeNum,
           currentTime: v.currentTime,
-          duration: dur,
+          duration: displayDur,
           title
         });
       }
@@ -441,7 +471,7 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
     resetControlsTimeout();
     if (!videoRef.current) return;
     const v = videoRef.current;
-    const maxSeek = isLiveStream ? Math.max(v.currentTime, maxBufferedTime) : (duration || 0);
+    const maxSeek = isLiveStream ? Math.max(v.currentTime, maxBufferedTime) : (actualDuration || 0);
     const target = Math.min(Math.max(0, v.currentTime + seconds), maxSeek);
     v.currentTime = target;
   };
@@ -639,8 +669,8 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
                   className="playedTrack"
                   style={{
                     width: `${
-                      (isLiveStream ? maxBufferedTime : duration) > 0
-                        ? (currentTime / (isLiveStream ? maxBufferedTime : duration)) * 100
+                      (isLiveStream ? maxBufferedTime : actualDuration) > 0
+                        ? (currentTime / (isLiveStream ? maxBufferedTime : actualDuration)) * 100
                         : 0
                     }%`
                   }}
@@ -649,7 +679,7 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
                   ref={scrubberRef}
                   type="range"
                   min={0}
-                  max={isLiveStream ? Math.max(10, maxBufferedTime) : (duration || 100)}
+                  max={isLiveStream ? Math.max(10, maxBufferedTime) : (actualDuration || 100)}
                   value={currentTime}
                   onChange={handleScrubberChange}
                   className="timelineScrubber"
@@ -678,7 +708,7 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
                   </button>
                 );
               })() : (
-                <span className="timeDisplay">{formatTime(duration)}</span>
+                <span className="timeDisplay">{formatTime(actualDuration)}</span>
               )}
             </div>
 

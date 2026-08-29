@@ -590,6 +590,38 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
   });
 };
 
+  // Probe Media Metadata & Duration Endpoint
+  if ((cleanPath === "/api/transcode/metadata" || cleanPath === "/transcode/metadata") && req.method === "GET") {
+    const targetUrl = parsedUrl.query.url;
+    if (!targetUrl) {
+      return sendJson(res, 400, { error: "Missing required query parameter: url" });
+    }
+
+    let cleanedTargetUrl = targetUrl;
+    try {
+      cleanedTargetUrl = encodeURI(decodeURI(targetUrl));
+    } catch (e) {
+      cleanedTargetUrl = targetUrl;
+    }
+
+    const { exec } = require("child_process");
+    // Run ffprobe to get duration in seconds
+    const probeCmd = `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${cleanedTargetUrl.replace(/"/g, '\\"')}"`;
+    
+    exec(probeCmd, { timeout: 10000 }, (error, stdout, stderr) => {
+      if (error) {
+        logMessage(`[ffprobe Error] Failed to probe duration: ${error.message}`);
+        return sendJson(res, 500, { error: "Failed to probe media duration", details: error.message });
+      }
+      const dur = parseFloat(stdout.trim());
+      if (isNaN(dur) || dur <= 0) {
+        return sendJson(res, 200, { duration: 0 });
+      }
+      return sendJson(res, 200, { duration: dur });
+    });
+    return;
+  }
+
   // Real-Time Transcoding & Remuxing Proxy Stream Endpoint
   if ((cleanPath === "/api/transcode" || cleanPath === "/transcode") && req.method === "GET") {
     const targetUrl = parsedUrl.query.url;
