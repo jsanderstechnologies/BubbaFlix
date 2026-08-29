@@ -20,6 +20,7 @@ import { fetchServerSettings } from "./utils/serverSettings";
 
 import AboutPage from "./pages/about-page";
 import TvInstallPrompt from "./components/tv-install-prompt";
+import BackgroundRotator from "./components/background-rotator";
 
 const App = () => {
 	const dispatch = useDispatch();
@@ -66,6 +67,7 @@ const App = () => {
 			{showSplash && <SplashScreen onComplete={handleSplashComplete} />}
 			<TvInstallPrompt />
 			<BrowserRouter>
+				<BackgroundRotator />
 				<Routes>
 					<Route path="/" element={<HomePage />} />
 					<Route path="/about" element={<AboutPage />} />
