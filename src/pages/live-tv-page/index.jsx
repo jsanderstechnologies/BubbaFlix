@@ -60,6 +60,10 @@ const LiveTvPage = () => {
     return new Date(d.getTime() - 60 * 60 * 1000); // 1 hr before current hour
   }, []);
 
+  const gridEndTime = useMemo(() => {
+    return new Date(gridStartTime.getTime() + TOTAL_HOURS * 60 * 60 * 1000);
+  }, [gridStartTime]);
+
   // Generate 30-min time slots for top header
   const timeSlots = useMemo(() => {
     const slots = [];
@@ -73,6 +77,25 @@ const LiveTvPage = () => {
     }
     return slots;
   }, [gridStartTime]);
+
+  // Current red time marker position
+  const nowMarkerLeft = useMemo(() => {
+    const now = new Date();
+    const diffMins = (now.getTime() - gridStartTime.getTime()) / (60 * 1000);
+    return Math.max(0, diffMins * PIXELS_PER_MINUTE);
+  }, [gridStartTime]);
+
+  // Auto-scroll timeline to current live time on load
+  useEffect(() => {
+    if (!loading && timelineRef.current) {
+      setTimeout(() => {
+        if (timelineRef.current) {
+          const scrollTo = Math.max(0, nowMarkerLeft - 150);
+          timelineRef.current.scrollTo({ left: scrollTo, behavior: "smooth" });
+        }
+      }, 300);
+    }
+  }, [loading, nowMarkerLeft]);
 
   useEffect(() => {
     loadLiveTvData();
@@ -228,24 +251,20 @@ const LiveTvPage = () => {
     const start = new Date(prog.start_time);
     const end = new Date(prog.end_time);
 
-    const startDiffMins = Math.max(0, (start.getTime() - gridStartTime.getTime()) / (60 * 1000));
-    const durationMins = Math.max(15, (end.getTime() - start.getTime()) / (60 * 1000));
+    const effStart = start < gridStartTime ? gridStartTime : start;
+    const effEnd = end > gridEndTime ? gridEndTime : end;
+
+    const startDiffMins = (effStart.getTime() - gridStartTime.getTime()) / (60 * 1000);
+    const durationMins = Math.max(10, (effEnd.getTime() - effStart.getTime()) / (60 * 1000));
 
     const left = startDiffMins * PIXELS_PER_MINUTE;
     const width = durationMins * PIXELS_PER_MINUTE;
 
     return {
       left: `${left}px`,
-      width: `${width - 4}px`, // 4px margin gap
+      width: `${Math.max(20, width - 4)}px`,
     };
   };
-
-  // Current red time marker position
-  const nowMarkerLeft = useMemo(() => {
-    const now = new Date();
-    const diffMins = (now.getTime() - gridStartTime.getTime()) / (60 * 1000);
-    return Math.max(0, diffMins * PIXELS_PER_MINUTE);
-  }, [gridStartTime]);
 
   return (
     <div className="liveTvPage">
@@ -323,7 +342,12 @@ const LiveTvPage = () => {
               <div className="epgBody">
                 {channels.map((ch) => {
                   const channelPrograms = programs.filter((p) => {
-                    if (!p) return false;
+                    if (!p || !p.start_time || !p.end_time) return false;
+                    const start = new Date(p.start_time);
+                    const end = new Date(p.end_time);
+                    if (isNaN(start.getTime()) || isNaN(end.getTime())) return false;
+                    if (end <= gridStartTime || start >= gridEndTime) return false;
+
                     const chIdStr = String(ch.id || "").toLowerCase();
                     const chNumStr = String(ch.number || "").toLowerCase();
                     const chNameStr = String(ch.name || "").toLowerCase();
