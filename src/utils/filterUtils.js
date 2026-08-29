@@ -87,28 +87,28 @@ export const filterEnglishMedia = (items) => {
     // Retain Person entries in search
     if (item.media_type === "person") return true;
 
-    // Non-English language check
+    // 1. Primary Rule: If original_language is present, enforce English ("en" or "eng")
     if (item.original_language) {
       const lang = item.original_language.toLowerCase();
       if (lang !== "en" && lang !== "eng") return false;
     }
 
-    // Non-English origin country check (without English co-producers)
-    if (Array.isArray(item.origin_country) && item.origin_country.length > 0) {
+    // 2. Non-Latin character script check (Cyrillic, CJK, Arabic, Hindi, etc.)
+    const title = item.title || item.name || item.original_title || item.original_name || "";
+    if (!title || FOREIGN_SCRIPT_REGEX.test(title)) return false;
+
+    // 3. Foreign title descriptor terms check (e.g. "colección", "trilogie", "película")
+    const titleLower = title.toLowerCase();
+    if (FOREIGN_TITLE_TERMS.some((term) => titleLower.includes(term))) {
+      return false;
+    }
+
+    // 4. Country check ONLY if original_language is not explicitly English
+    if (!item.original_language && Array.isArray(item.origin_country) && item.origin_country.length > 0) {
       const hasEnglishCountry = item.origin_country.some((c) => ["US", "GB", "CA", "AU", "NZ", "IE"].includes(c));
       if (!hasEnglishCountry && item.origin_country.some((c) => NON_ENGLISH_COUNTRIES.includes(c))) {
         return false;
       }
-    }
-
-    // Non-Latin character script check
-    const title = item.title || item.name || item.original_title || item.original_name || "";
-    if (!title || FOREIGN_SCRIPT_REGEX.test(title)) return false;
-
-    // Foreign title descriptor terms check
-    const titleLower = title.toLowerCase();
-    if (FOREIGN_TITLE_TERMS.some((term) => titleLower.includes(term))) {
-      return false;
     }
 
     return true;
@@ -133,7 +133,7 @@ export const filterEnglishCollections = (items) => {
     // Filter out Anime collections
     if (isAnime(col)) return false;
 
-    // Non-English language check
+    // Primary Rule: If original_language is present, enforce English ("en" or "eng")
     if (col.original_language) {
       const lang = col.original_language.toLowerCase();
       if (lang !== "en" && lang !== "eng") return false;
