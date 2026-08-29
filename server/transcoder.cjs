@@ -681,6 +681,7 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
       logMessage(`[Backend Transcoder Engine] Client [${initiator.initiatorComponent}] (${initiator.ip}) closed HTTP connection. Terminating FFmpeg process...`);
       ffmpegProcess.kill("SIGKILL");
     });
+    });
     return;
   }
 
