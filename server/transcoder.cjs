@@ -886,10 +886,11 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     }
 
     if (apiKey) {
+      proxyHeaders["x-api-key"] = apiKey;
       if (apiKey.startsWith("eyJ")) {
         proxyHeaders["authorization"] = `Bearer ${apiKey}`;
       } else {
-        proxyHeaders["x-api-key"] = apiKey;
+        proxyHeaders["authorization"] = `Api-Key ${apiKey}`;
       }
     }
 

@@ -209,37 +209,51 @@ export const fetchDispatcharrRecordings = async () => {
 };
 
 /**
+ * Get optional authorization headers for Dispatcharr requests
+ */
+const getDispatcharrHeaders = () => {
+  const apiKey = typeof window !== "undefined" ? (localStorage.getItem("dispatcharr_api_key") || "") : "";
+  const headers = { "Content-Type": "application/json" };
+  if (apiKey) {
+    headers["X-Api-Key"] = apiKey;
+    headers["Authorization"] = apiKey.startsWith("eyJ") ? `Bearer ${apiKey}` : `Api-Key ${apiKey}`;
+  }
+  return headers;
+};
+
+/**
  * Helper to ensure a channel identifier is converted to Dispatcharr's integer Primary Key
  */
 const resolveChannelPk = async (channelId, baseUrl) => {
-  if (!channelId) return 1;
-  const strVal = String(channelId).trim();
-  if (/^\d+$/.test(strVal)) {
-    return parseInt(strVal, 10);
-  }
+  const strVal = channelId ? String(channelId).trim() : "";
 
-  // If string (e.g. "amc.us"), fetch channels list from Dispatcharr to look up integer PK
   try {
-    const res = await axios.get(`${baseUrl}/api/channels/`, { timeout: 5000 });
-    const channels = Array.isArray(res.data) ? res.data : res.data?.results || [];
-    const match = channels.find(
-      (c) =>
-        String(c.id) === strVal ||
-        c.name?.toLowerCase() === strVal.toLowerCase() ||
-        c.tvg_id?.toLowerCase() === strVal.toLowerCase() ||
-        String(c.channel_number) === strVal
-    );
-    if (match && match.id) {
-      return parseInt(match.id, 10);
-    }
-    if (channels.length > 0 && channels[0].id) {
-      return parseInt(channels[0].id, 10);
+    const channels = await fetchDispatcharrChannels();
+    if (Array.isArray(channels) && channels.length > 0) {
+      if (strVal) {
+        const match = channels.find(
+          (c) =>
+            String(c.id) === strVal ||
+            String(c.pk) === strVal ||
+            c.name?.toLowerCase() === strVal.toLowerCase() ||
+            c.tvg_id?.toLowerCase() === strVal.toLowerCase() ||
+            String(c.number) === strVal ||
+            String(c.channel_number) === strVal
+        );
+        if (match && match.id) {
+          return parseInt(match.id, 10);
+        }
+      }
+      if (channels[0] && channels[0].id) {
+        return parseInt(channels[0].id, 10);
+      }
     }
   } catch (e) {
     console.warn("[Dispatcharr API] Could not resolve channel integer PK:", e.message);
   }
+
   const parsed = parseInt(strVal, 10);
-  return isNaN(parsed) ? 1 : parsed;
+  return !isNaN(parsed) && parsed > 0 ? parsed : 376;
 };
 
 /**
@@ -265,7 +279,10 @@ export const createOneTimeRecording = async ({ programId, channelId, title, star
     }
 
     console.log("[Dispatcharr API] Creating one-time recording payload:", payload);
-    const res = await axios.post(`${baseUrl}/api/channels/recordings/`, payload, { timeout: 10000 });
+    const res = await axios.post(`${baseUrl}/api/channels/recordings/`, payload, {
+      headers: getDispatcharrHeaders(),
+      timeout: 10000,
+    });
     return { success: true, data: res.data };
   } catch (err) {
     console.error("[Dispatcharr API] Failed to create one-time recording:", err.response?.data || err.message);
@@ -305,7 +322,10 @@ export const createSeriesRecordingRule = async ({ programTitle, channelId, tvgId
       payload.tvg_id = tvgId;
     }
 
-    const res = await axios.post(`${baseUrl}/api/channels/series-rules/`, payload, { timeout: 10000 });
+    const res = await axios.post(`${baseUrl}/api/channels/series-rules/`, payload, {
+      headers: getDispatcharrHeaders(),
+      timeout: 10000,
+    });
     return { success: true, data: res.data };
   } catch (err) {
     console.error("[Dispatcharr API] Failed to create series recording rule:", err.response?.data || err.message);
