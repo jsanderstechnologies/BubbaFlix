@@ -973,35 +973,68 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
             return proxyWithRedirects(req, res, redirectUrl, headers, maxRedirects - 1);
           }
 
-          // Inspect JSON responses on stream endpoints and extract underlying stream_url
+          // Inspect response chunks on stream endpoints to parse JSON payloads and follow stream_url
           const contentType = (proxyRes.headers["content-type"] || "").toLowerCase();
-          if (targetUrl.includes("/stream") && contentType.includes("json")) {
-            let jsonBody = "";
-            proxyRes.on("data", (chunk) => {
-              if (jsonBody.length < 65536) jsonBody += chunk.toString();
-            });
-            proxyRes.on("end", () => {
-              try {
-                const parsed = JSON.parse(jsonBody);
-                const extracted = parsed.stream_url || parsed.url || parsed.file_url;
-                if (extracted && typeof extracted === "string") {
-                  let nextUrl = extracted;
-                  if (!nextUrl.startsWith("http")) {
-                    nextUrl = new URL(nextUrl, targetUrl).toString();
-                  }
-                  logMessage(`[Dispatcharr Stream Proxy JSON Resolver] Following JSON stream_url: ${nextUrl}`);
-                  return proxyWithRedirects(req, res, nextUrl, headers, maxRedirects - 1);
-                }
-              } catch (e) {}
+          const isStreamEndpoint = targetUrl.includes("/stream") || targetUrl.includes("/channels/channels/");
 
-              if (!res.headersSent) {
-                res.writeHead(proxyRes.statusCode, {
-                  ...proxyRes.headers,
-                  "Access-Control-Allow-Origin": "*",
-                });
-                res.end(jsonBody);
+          if (isStreamEndpoint) {
+            let chunks = [];
+            let totalLen = 0;
+            let isJsonChecked = false;
+
+            const onData = (chunk) => {
+              chunks.push(chunk);
+              totalLen += chunk.length;
+
+              if (!isJsonChecked && totalLen >= 2) {
+                isJsonChecked = true;
+                const buf = Buffer.concat(chunks);
+                const firstChar = buf.toString("utf8", 0, 50).trim()[0];
+
+                if (firstChar === "{" || firstChar === "[" || contentType.includes("json")) {
+                  proxyRes.pause();
+                  let fullBody = buf.toString("utf8");
+                  proxyRes.on("data", (nextChunk) => {
+                    if (fullBody.length < 65536) fullBody += nextChunk.toString("utf8");
+                  });
+                  proxyRes.on("end", () => {
+                    try {
+                      const parsed = JSON.parse(fullBody);
+                      const extracted = parsed.stream_url || parsed.url || parsed.file_url || parsed.target;
+                      if (extracted && typeof extracted === "string" && extracted !== targetUrl) {
+                        let nextUrl = extracted;
+                        if (!nextUrl.startsWith("http")) {
+                          nextUrl = new URL(nextUrl, targetUrl).toString();
+                        }
+                        logMessage(`[Dispatcharr Stream Proxy JSON Resolver] Extracted target stream_url from JSON: ${nextUrl}`);
+                        return proxyWithRedirects(req, res, nextUrl, headers, maxRedirects - 1);
+                      }
+                    } catch (e) {}
+
+                    if (!res.headersSent) {
+                      res.writeHead(proxyRes.statusCode, {
+                        ...proxyRes.headers,
+                        "Access-Control-Allow-Origin": "*",
+                      });
+                      res.end(fullBody);
+                    }
+                  });
+                  proxyRes.resume();
+                } else {
+                  proxyRes.removeListener("data", onData);
+                  if (!res.headersSent) {
+                    res.writeHead(proxyRes.statusCode, {
+                      ...proxyRes.headers,
+                      "Access-Control-Allow-Origin": "*",
+                    });
+                    res.write(buf);
+                    proxyRes.pipe(res);
+                  }
+                }
               }
-            });
+            };
+
+            proxyRes.on("data", onData);
             return;
           }
 

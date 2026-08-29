@@ -359,15 +359,18 @@ class PlayerActivity : AppCompatActivity() {
                         val errDetails = error.message ?: error.cause?.message ?: "Unknown playback decoding error"
                         sendErrorToServerLog(errDetails, error.errorCodeName, videoUrl)
 
-                        val isAudioRendererError = (error.message?.contains("MediaCodecAudioRenderer", ignoreCase = true) == true) ||
+                        val isDecoderOrFormatError = (error.message?.contains("MediaCodecAudioRenderer", ignoreCase = true) == true) ||
                                 (error.message?.contains("mp4a-latm", ignoreCase = true) == true) ||
                                 (error.message?.contains("AudioTrack", ignoreCase = true) == true) ||
                                 (error.message?.contains("Codec", ignoreCase = true) == true) ||
-                                (error.message?.contains("format_supported=YES", ignoreCase = true) == true)
+                                (error.message?.contains("format_supported=YES", ignoreCase = true) == true) ||
+                                error.errorCodeName.contains("CONTAINER", ignoreCase = true) ||
+                                error.errorCodeName.contains("PARSING", ignoreCase = true) ||
+                                error.errorCodeName.contains("UNSUPPORTED", ignoreCase = true)
 
-                        if (!hasRetriedWithFallback && (isLiveStream || isAudioRendererError)) {
+                        if (!hasRetriedWithFallback && (isLiveStream || isDecoderOrFormatError)) {
                             hasRetriedWithFallback = true
-                            if (isAudioRendererError && !videoUrl.contains("/api/transcode")) {
+                            if (isDecoderOrFormatError && !videoUrl.contains("/api/transcode")) {
                                 val baseUrl = videoUrl.substringBefore("/api/dispatcharr").substringBefore("/api/channels")
                                 val transcodeUrl = "$baseUrl/api/transcode?url=${Uri.encode(videoUrl)}"
                                 val fallbackItem = MediaItem.Builder()
