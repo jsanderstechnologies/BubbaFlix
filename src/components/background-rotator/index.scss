@@ -1,15 +1,18 @@
 .backgroundRotatorStage {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
+  top: -10%;
+  left: -10%;
+  width: 120%;
+  height: 120%;
+  min-width: 125vw;
+  min-height: 125vh;
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
   opacity: 0.55;
   filter: blur(3px);
-  transform: scale(1.05);
+  transform: scale(1.15);
+  transform-origin: center center;
 
   .bgLayer {
     position: absolute;
