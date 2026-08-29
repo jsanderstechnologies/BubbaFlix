@@ -58,11 +58,16 @@ const getRequiredQueryParams = (clientId, extraParams = {}) => {
 };
 
 const getRequiredHeaders = (clientId) => {
-  return {
+  const headers = {
     "simkl-api-key": clientId,
     "User-Agent": USER_AGENT,
     "Content-Type": "application/json",
   };
+  const token = typeof window !== "undefined" ? localStorage.getItem("simkl_access_token") : null;
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
 };
 
 export const isSimklWatched = ({ tmdbId, mediaType, seasonNum, episodeNum }) => {
@@ -245,8 +250,9 @@ export const toggleSimklWatched = async ({ tmdbId, title, mediaType, seasonNum, 
 
   saveSimklWatchCache(cache);
 
-  if (!clientId) {
-    console.log("[Simkl] Toggled locally. Configure SIMKL Client ID in Settings for account sync.");
+  const token = typeof window !== "undefined" ? localStorage.getItem("simkl_access_token") : null;
+  if (!clientId || !token) {
+    console.log("[Simkl] Toggled watch state locally. Connect your Simkl OAuth account in Settings to sync with simkl.com.");
     return !currentlyWatched;
   }
 

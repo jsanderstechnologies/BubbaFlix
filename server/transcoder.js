@@ -761,6 +761,39 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     return;
   }
 
+  // Transparent SIMKL API Proxy Endpoint
+  if (cleanPath.startsWith("/api/simkl")) {
+    const simklPath = cleanPath.replace(/^\/api\/simkl/, "");
+    const queryString = parsedUrl.search || "";
+    const targetSimklUrl = `https://api.simkl.com${simklPath}${queryString}`;
+
+    const https = require("https");
+    const proxyHeaders = { ...req.headers };
+    delete proxyHeaders.host;
+    delete proxyHeaders.connection;
+    proxyHeaders["host"] = "api.simkl.com";
+
+    const proxyReq = https.request(
+      targetSimklUrl,
+      {
+        method: req.method,
+        headers: proxyHeaders,
+      },
+      (proxyRes) => {
+        res.writeHead(proxyRes.statusCode, proxyRes.headers);
+        proxyRes.pipe(res);
+      }
+    );
+
+    proxyReq.on("error", (err) => {
+      logMessage(`[SIMKL API Proxy Error]: ${err.message}`, true);
+      sendJson(res, 502, { error: "SIMKL upstream service unavailable." });
+    });
+
+    req.pipe(proxyReq);
+    return;
+  }
+
   // Version Check Proxy Endpoint
   if ((cleanPath === "/api/version" || cleanPath === "/version") && req.method === "GET") {
     const https = require("https");
