@@ -39,10 +39,11 @@ export const fetchDispatcharrChannels = async () => {
 };
 
 /**
- * Fetch EPG program schedule from Dispatcharr (tries /api/epg/grid/ then /api/epg/programs/)
+ * Fetch EPG program schedule from Dispatcharr (combines /api/epg/grid/ and /api/epg/programs/)
  */
 export const fetchDispatcharrEpgPrograms = async (params = {}) => {
   const baseUrl = getProxyBaseUrl();
+  let allPrograms = [];
   let lastErrorStatus = null;
 
   // 1. Try /api/epg/grid/ (Dispatcharr native EPG grid)
@@ -52,7 +53,9 @@ export const fetchDispatcharrEpgPrograms = async (params = {}) => {
     const gridPrograms = Array.isArray(dataGrid)
       ? dataGrid
       : dataGrid?.results || dataGrid?.programs || [];
-    if (gridPrograms.length > 0) return gridPrograms;
+    if (Array.isArray(gridPrograms)) {
+      allPrograms.push(...gridPrograms);
+    }
   } catch (err) {
     if (err.response?.status) lastErrorStatus = err.response.status;
     console.warn("[Dispatcharr API] /api/epg/grid/ attempt:", err.message);
@@ -68,15 +71,34 @@ export const fetchDispatcharrEpgPrograms = async (params = {}) => {
     const progList = Array.isArray(dataProg)
       ? dataProg
       : dataProg?.results || dataProg?.programs || [];
-    if (progList.length > 0) return progList;
+    if (Array.isArray(progList)) {
+      allPrograms.push(...progList);
+    }
   } catch (err) {
     if (err.response?.status) lastErrorStatus = err.response.status;
     console.warn("[Dispatcharr API] /api/epg/programs/ attempt:", err.message);
   }
 
-  const list = [];
-  if (lastErrorStatus) list.errorStatus = lastErrorStatus;
-  return list;
+  if (allPrograms.length === 0) {
+    const list = [];
+    if (lastErrorStatus) list.errorStatus = lastErrorStatus;
+    return list;
+  }
+
+  // Deduplicate programs by ID or (channel + start_time + title)
+  const seen = new Set();
+  const deduped = [];
+  allPrograms.forEach((p) => {
+    if (!p) return;
+    const chId = p.channel && typeof p.channel === "object" ? p.channel.id : p.channel;
+    const key = p.id || `${chId}_${p.start_time}_${p.title}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      deduped.push(p);
+    }
+  });
+
+  return deduped;
 };
 
 /**
