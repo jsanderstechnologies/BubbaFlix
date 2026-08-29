@@ -86,41 +86,6 @@ const HeroBanner = () => {
 					<span className="sub-title">
 						Your Cinematic Journey Begins Here
 					</span>
-					<div className="search-input-section">
-						<input
-							type="text"
-							tabIndex="0"
-							placeholder="Search for movies or tv shows.."
-							value={query}
-							readOnly={isReadOnly}
-							onChange={(e) => setQuery(e.value)}
-							onClick={() => setIsReadOnly(false)}
-							onBlur={() => setIsReadOnly(true)}
-							onKeyDown={(e) => {
-								const code = e.keyCode;
-								if (e.key === "Enter" || code === 13 || code === 23 || code === 66) {
-									if (isReadOnly) {
-										e.preventDefault();
-										setIsReadOnly(false);
-									} else {
-										searchQuery(e);
-									}
-								}
-							}}
-						/>
-						<button
-							tabIndex="0"
-							onClick={handleSearch}
-							onKeyDown={(e) => {
-								const code = e.keyCode;
-								if (e.key === "Enter" || code === 13 || code === 23 || code === 66) {
-									handleSearch();
-								}
-							}}
-						>
-							Search
-						</button>
-					</div>
 				</div>
 			</ContentWrapper>
 		</div>
