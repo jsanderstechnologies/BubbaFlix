@@ -156,11 +156,12 @@ const DynamicSection = ({ section, onPlayChannel, onPlayRecording }) => {
       let isMounted = true;
       const loadRecs = async () => {
         setLoading(true);
-        const res = await fetchDispatcharrRecordings();
-        if (res.success && Array.isArray(res.data) && isMounted) {
-          setRecs(res.data.slice(0, 10));
+        const list = await fetchDispatcharrRecordings();
+        const validRecs = Array.isArray(list) ? list : (list && Array.isArray(list.data) ? list.data : []);
+        if (isMounted) {
+          setRecs(validRecs.slice(0, 10));
+          setLoading(false);
         }
-        if (isMounted) setLoading(false);
       };
 
       loadRecs();
@@ -182,7 +183,11 @@ const DynamicSection = ({ section, onPlayChannel, onPlayRecording }) => {
             recs.map((rec) => (
               <div key={rec.id} className="recCard" onClick={() => onPlayRecording(rec)}>
                 <div className="cardPoster">
-                  {rec.poster ? <img src={rec.poster} alt={rec.title} /> : <div className="noPoster">DVR</div>}
+                  {rec.artwork || rec.poster ? (
+                    <img src={rec.artwork || rec.poster} alt={rec.title} />
+                  ) : (
+                    <div className="noPoster">DVR</div>
+                  )}
                 </div>
                 <div className="cardDetails">
                   <span className="cardTitle">{rec.title || "Recorded Program"}</span>
@@ -252,19 +257,6 @@ const HomePage = () => {
   return (
     <div className="home-page">
       <TopNav />
-
-      <ContentWrapper>
-        <div className="homeCustomizeBar">
-          <button
-            className="customizeBtn"
-            onClick={() => setShowCustomizeModal(true)}
-            tabIndex={0}
-            title="Customize Home Layout"
-          >
-            <FiSliders style={{ marginRight: 6 }} /> Customize Home Sections
-          </button>
-        </div>
-      </ContentWrapper>
 
       {sections
         .filter((s) => s.enabled)
