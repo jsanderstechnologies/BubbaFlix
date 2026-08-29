@@ -18,9 +18,28 @@ export const getServerUrl = () => {
   return DEFAULT_SERVER_URL;
 };
 
+export const isAndroidTvClient = () => {
+  if (typeof window === "undefined") return false;
+  if (window.AndroidPlayer) return true;
+  const ua = navigator.userAgent || "";
+  return (
+    ua.includes("BubbaFlixTV") ||
+    ua.includes("ExoPlayer") ||
+    ua.includes("AndroidTV") ||
+    ua.includes("SmartTV") ||
+    ua.includes("BRAVIA") ||
+    ua.includes("MiTV")
+  );
+};
+
 export const getTranscodedStreamUrl = (url) => {
   if (!url) return "";
   if (url.includes("/api/transcode")) return url;
+  // If playing on Android TV client, bypass FFmpeg server transcoding!
+  if (isAndroidTvClient()) {
+    console.log("[Android TV Client] Bypassing FFmpeg server transcoding for direct hardware decoding.");
+    return url;
+  }
   const baseUrl = getServerUrl();
   return `${baseUrl}/api/transcode?url=${encodeURIComponent(url)}`;
 };
