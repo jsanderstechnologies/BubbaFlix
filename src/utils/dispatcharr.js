@@ -4,7 +4,7 @@ import { getServerUrl } from "./serverSettings";
 /**
  * Get base URL for backend Dispatcharr proxy endpoints
  */
-const getProxyBaseUrl = () => {
+export const getProxyBaseUrl = () => {
   const serverUrl = getServerUrl();
   return `${serverUrl}/api/dispatcharr`;
 };

@@ -3,10 +3,17 @@ import { useNavigate } from "react-router-dom";
 import TopNav from "../../components/top-nav";
 import ContentWrapper from "../../components/content-wrapper";
 import Caraousel from "../../components/caraousel";
-import useFetch from "../../hooks/useFetch";
+import { fetchDataFromAPI } from "../../utils/api";
 import { getHomeSections, saveHomeSections } from "../../utils/homeConfig";
 import { getFavoriteChannels } from "../../utils/favorites";
-import { fetchDispatcharrChannels, fetchDispatcharrRecordings, getChannelStreamUrl } from "../../utils/dispatcharr";
+import {
+  fetchDispatcharrChannels,
+  fetchDispatcharrRecordings,
+  deleteDispatcharrRecording,
+  getChannelStreamUrl,
+  getRecordingStreamUrl,
+  getProxyBaseUrl
+} from "../../utils/dispatcharr";
 import VideoPlayerModal from "../../components/video-player-modal";
 import {
   FiSliders,
@@ -17,6 +24,10 @@ import {
   FiPlay,
   FiTv,
   FiVideo,
+  FiStar,
+  FiCalendar,
+  FiClock,
+  FiTrash2,
 } from "react-icons/fi";
 import "./index.scss";
 
@@ -169,14 +180,56 @@ const DynamicSection = ({ section, onPlayChannel, onPlayRecording }) => {
         setLoading(true);
         const list = await fetchDispatcharrRecordings();
         const validRecs = Array.isArray(list) ? list : (list && Array.isArray(list.data) ? list.data : []);
+        
+        const enriched = await Promise.all(
+          (validRecs || []).slice(0, 10).map(async (rec) => {
+            if (!rec || !rec.title) return rec;
+            try {
+              const cleanTitle = rec.title.replace(/\([^)]*\)/g, "").replace(/S\d+E\d+/i, "").trim();
+              const searchRes = await fetchDataFromAPI(`/search/multi`, { query: cleanTitle });
+              if (searchRes && Array.isArray(searchRes.results) && searchRes.results.length > 0) {
+                const match = searchRes.results.find((r) => r.media_type === "movie" || r.media_type === "tv") || searchRes.results[0];
+                if (match) {
+                  const poster = match.poster_path ? `https://image.tmdb.org/t/p/w500${match.poster_path}` : null;
+                  const backdrop = match.backdrop_path ? `https://image.tmdb.org/t/p/w500${match.backdrop_path}` : null;
+                  return {
+                    ...rec,
+                    tmdbId: match.id,
+                    mediaType: match.media_type,
+                    poster: rec.poster || rec.artwork || poster,
+                    backdrop: rec.backdrop || backdrop,
+                    overview: rec.description || match.overview,
+                    vote_average: match.vote_average ? match.vote_average.toFixed(1) : null,
+                    release_date: (match.release_date || match.first_air_date || "").substring(0, 4),
+                  };
+                }
+              }
+            } catch (e) {
+              console.warn("[HomePage] TMDB metadata fetch error:", e.message);
+            }
+            return rec;
+          })
+        );
+
         if (isMounted) {
-          setRecs(validRecs.slice(0, 10));
+          setRecs(enriched);
           setLoading(false);
         }
       };
 
       loadRecs();
     }, []);
+
+    const handleDeleteRec = async (recId, e) => {
+      e.stopPropagation();
+      if (!window.confirm("Are you sure you want to delete this recording?")) return;
+      const res = await deleteDispatcharrRecording(recId);
+      if (res.success) {
+        setRecs((prev) => prev.filter((r) => r.id !== recId));
+      } else {
+        alert(res.message || "Failed to delete recording.");
+      }
+    };
 
     if (!loading && recs.length === 0) return null;
 
@@ -192,29 +245,78 @@ const DynamicSection = ({ section, onPlayChannel, onPlayRecording }) => {
             <div className="loadingText">Loading DVR recordings...</div>
           ) : (
             recs.map((rec) => {
+              const isCompleted = rec.status === "completed" || rec.file_url;
+              const isRecording = rec.status === "recording" || rec.status === "in_progress";
               const baseUrl = getProxyBaseUrl();
-              const rawPoster = rec.artwork || rec.poster || rec.image_url || rec.channelObj?.logo;
+              const rawPoster = rec.poster || rec.artwork || rec.thumbnail || rec.image_url || rec.channelObj?.logo;
               const posterUrl = rawPoster ? (rawPoster.startsWith("http") ? rawPoster : `${baseUrl}${rawPoster.startsWith("/") ? "" : "/"}${rawPoster}`) : "";
-              const displayDate = rec.created_at || rec.start_time ? new Date(rec.created_at || rec.start_time).toLocaleDateString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
-              const channelName = rec.channel_name || rec.channelObj?.name || "";
+              const displayDate = rec.start_time || rec.created_at ? new Date(rec.start_time || rec.created_at).toLocaleDateString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+              const channelName = rec.channel_name || rec.channel || rec.channelObj?.name || "";
 
               return (
-                <div key={rec.id} className="recCard" tabIndex="0" onClick={() => onPlayRecording(rec)}>
-                  <div className="cardPoster">
+                <div key={rec.id} className="recordingCard" tabIndex="0" onClick={() => onPlayRecording(rec)}>
+                  <div className="cardThumbnail">
                     {posterUrl ? (
-                      <img src={posterUrl} alt={rec.title} />
+                      <img src={posterUrl} alt={rec.title} className="recPosterImg" />
                     ) : (
-                      <div className="noPoster">
-                        <FiVideo size={36} />
-                        <span>DVR</span>
+                      <div className="thumbPlaceholder">
+                        <FiVideo />
                       </div>
                     )}
+
+                    {isCompleted && (
+                      <button className="playOverlayBtn" onClick={(e) => { e.stopPropagation(); onPlayRecording(rec); }}>
+                        <FiPlay />
+                      </button>
+                    )}
+
+                    <span className={`statusTag ${rec.status || "completed"}`}>
+                      {isRecording ? "REC NOW" : rec.status || "Ready"}
+                    </span>
                   </div>
-                  <div className="cardDetails">
-                    <span className="cardTitle">{rec.title || "Recorded Program"}</span>
-                    {channelName && <span className="cardSubtitle">{channelName}</span>}
-                    {displayDate && <span className="cardDate">{displayDate}</span>}
-                    <button className="playBtn"><FiPlay /> Play DVR</button>
+
+                  <div className="cardContent">
+                    <h3 className="recTitle" title={rec.title}>
+                      {rec.title || "Untitled Recording"}
+                    </h3>
+
+                    <div className="recMeta">
+                      <span className="channelName">{channelName}</span>
+                      {rec.vote_average && (
+                        <span className="ratingBadge">
+                          <FiStar style={{ fill: "#ffc107", color: "#ffc107", marginRight: 3 }} />
+                          {rec.vote_average}
+                        </span>
+                      )}
+                      {rec.release_date && (
+                        <span className="yearBadge">
+                          <FiCalendar style={{ marginRight: 3 }} />
+                          {rec.release_date}
+                        </span>
+                      )}
+                      {displayDate && (
+                        <span className="recTime">
+                          <FiClock style={{ marginRight: 4 }} /> {displayDate}
+                        </span>
+                      )}
+                    </div>
+
+                    {rec.overview && (
+                      <p className="recOverview" title={rec.overview}>
+                        {rec.overview}
+                      </p>
+                    )}
+
+                    <div className="cardActions">
+                      {(isCompleted || isRecording) && (
+                        <button className="actionBtn play" onClick={(e) => { e.stopPropagation(); onPlayRecording(rec); }}>
+                          <FiPlay /> Play
+                        </button>
+                      )}
+                      <button className="actionBtn delete" onClick={(e) => handleDeleteRec(rec.id, e)} title="Delete Recording">
+                        <FiTrash2 /> Delete
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
