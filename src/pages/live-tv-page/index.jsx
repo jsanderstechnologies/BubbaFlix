@@ -325,6 +325,63 @@ const LiveTvPage = () => {
     };
   };
 
+  // Pre-parse programs ONCE when programs state updates for instant D-pad navigation
+  const parsedPrograms = useMemo(() => {
+    if (!programs || programs.length === 0) return [];
+    return programs
+      .map((p) => {
+        if (!p || !p.start_time || !p.end_time) return null;
+        const start = parseApiDate(p.start_time);
+        const end = parseApiDate(p.end_time);
+        if (!start || !end) return null;
+
+        const rawCh = p.channel && typeof p.channel === "object" ? p.channel : null;
+        return {
+          ...p,
+          _start: start,
+          _end: end,
+          _pChId: String(rawCh?.id || (typeof p.channel !== "object" ? p.channel : "") || p.channel_id || "").toLowerCase(),
+          _pChNum: String(rawCh?.number || p.channel_number || "").toLowerCase(),
+          _pChName: String(rawCh?.name || p.channel_name || p.channel_title || "").toLowerCase(),
+          _pChTvg: String(rawCh?.tvg_id || p.tvg_id || "").toLowerCase(),
+          _pChEpgId: String(rawCh?.epg_data_id || p.epg_data_id || "").toLowerCase(),
+        };
+      })
+      .filter(Boolean);
+  }, [programs]);
+
+  // Pre-group programs by channel for instant O(1) row lookup during render
+  const channelProgramsMap = useMemo(() => {
+    const map = new Map();
+    if (!channels.length || !parsedPrograms.length) return map;
+
+    channels.forEach((ch) => {
+      const chIdStr = String(ch.id || "").toLowerCase();
+      const chNumStr = String(ch.number || ch.channel_number || ch.effective_channel_number || "").toLowerCase();
+      const chNameStr = String(ch.name || ch.effective_name || "").toLowerCase();
+      const chTvgStr = String(ch.tvg_id || ch.effective_tvg_id || "").toLowerCase();
+      const chEpgIdStr = String(ch.epg_data_id || ch.effective_epg_data_id || "").toLowerCase();
+      const chUuidStr = String(ch.uuid || "").toLowerCase();
+
+      const matched = parsedPrograms.filter((p) => {
+        if (p._end <= gridStartTime || p._start >= gridEndTime) return false;
+
+        if (p._pChId && p._pChId !== "[object object]" && (p._pChId === chIdStr || p._pChId === chNumStr || (chTvgStr && p._pChId === chTvgStr))) return true;
+        if (p._pChNum && (p._pChNum === chIdStr || p._pChNum === chNumStr)) return true;
+        if (p._pChTvg && (p._pChTvg === chTvgStr || (chUuidStr && p._pChTvg === chUuidStr) || (chIdStr && p._pChTvg === chIdStr) || (chTvgStr && p._pChTvg.includes(chTvgStr)) || (chTvgStr && chTvgStr.includes(p._pChTvg)))) return true;
+        if (p._pChTvg && chEpgIdStr && chEpgIdStr.length > 2 && p._pChTvg.includes(chEpgIdStr)) return true;
+        if (chTvgStr && p._pChEpgId && p._pChEpgId.length > 2 && chTvgStr.includes(p._pChEpgId)) return true;
+        if (p._pChEpgId && chEpgIdStr && p._pChEpgId === chEpgIdStr) return true;
+        if (p._pChName && chNameStr && (p._pChName === chNameStr || p._pChName.includes(chNameStr) || chNameStr.includes(p._pChName))) return true;
+        return false;
+      });
+
+      map.set(ch.id || ch.name, matched);
+    });
+
+    return map;
+  }, [channels, parsedPrograms, gridStartTime, gridEndTime]);
+
   return (
     <div className="liveTvPage">
       <TopNav />
@@ -400,36 +457,7 @@ const LiveTvPage = () => {
               {/* EPG Channel Grid Rows */}
               <div className="epgBody">
                 {channels.map((ch) => {
-                  const channelPrograms = programs.filter((p) => {
-                    if (!p || !p.start_time || !p.end_time) return false;
-                    const start = parseApiDate(p.start_time);
-                    const end = parseApiDate(p.end_time);
-                    if (!start || !end) return false;
-                    if (end <= gridStartTime || start >= gridEndTime) return false;
-
-                    const chIdStr = String(ch.id || "").toLowerCase();
-                    const chNumStr = String(ch.number || ch.channel_number || ch.effective_channel_number || "").toLowerCase();
-                    const chNameStr = String(ch.name || ch.effective_name || "").toLowerCase();
-                    const chTvgStr = String(ch.tvg_id || ch.effective_tvg_id || "").toLowerCase();
-                    const chEpgIdStr = String(ch.epg_data_id || ch.effective_epg_data_id || "").toLowerCase();
-                    const chUuidStr = String(ch.uuid || "").toLowerCase();
-
-                    const rawCh = p.channel && typeof p.channel === "object" ? p.channel : null;
-                    const pChId = String(rawCh?.id || (typeof p.channel !== "object" ? p.channel : "") || p.channel_id || "").toLowerCase();
-                    const pChNum = String(rawCh?.number || p.channel_number || "").toLowerCase();
-                    const pChName = String(rawCh?.name || p.channel_name || p.channel_title || "").toLowerCase();
-                    const pChTvg = String(rawCh?.tvg_id || p.tvg_id || "").toLowerCase();
-                    const pChEpgId = String(rawCh?.epg_data_id || p.epg_data_id || "").toLowerCase();
-
-                    if (pChId && pChId !== "[object object]" && (pChId === chIdStr || pChId === chNumStr || (chTvgStr && pChId === chTvgStr))) return true;
-                    if (pChNum && (pChNum === chIdStr || pChNum === chNumStr)) return true;
-                    if (pChTvg && (pChTvg === chTvgStr || (chUuidStr && pChTvg === chUuidStr) || (chIdStr && pChTvg === chIdStr) || (chTvgStr && pChTvg.includes(chTvgStr)) || (chTvgStr && chTvgStr.includes(pChTvg)))) return true;
-                    if (pChTvg && chEpgIdStr && chEpgIdStr.length > 2 && pChTvg.includes(chEpgIdStr)) return true;
-                    if (chTvgStr && pChEpgId && pChEpgId.length > 2 && chTvgStr.includes(pChEpgId)) return true;
-                    if (pChEpgId && chEpgIdStr && pChEpgId === chEpgIdStr) return true;
-                    if (pChName && chNameStr && (pChName === chNameStr || pChName.includes(chNameStr) || chNameStr.includes(pChName))) return true;
-                    return false;
-                  });
+                  const channelPrograms = channelProgramsMap.get(ch.id || ch.name) || [];
 
                   const displayedPrograms = channelPrograms.length > 0
                     ? channelPrograms

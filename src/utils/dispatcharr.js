@@ -116,60 +116,35 @@ export const fetchDispatcharrChannels = async () => {
 };
 
 /**
- * Fetch EPG program schedule from Dispatcharr (combines /api/epg/grid/ and /api/epg/programs/)
+ * Fetch all EPG programs from Dispatcharr (concurrent parallel fetch for max speed)
  */
 export const fetchDispatcharrEpgPrograms = async (params = {}) => {
   const baseUrl = getProxyBaseUrl();
-  let allPrograms = [];
-  let lastErrorStatus = null;
+  const allPrograms = [];
 
-  // 1. Try /api/epg/grid/ (Dispatcharr native EPG grid)
-  try {
-    const resGrid = await axios.get(`${baseUrl}/api/epg/grid/`, { timeout: 8000 });
-    const gridPrograms = extractAllProgramsFromResponse(resGrid.data);
-    if (gridPrograms.length > 0) {
-      allPrograms.push(...gridPrograms);
+  const results = await Promise.allSettled([
+    axios.get(`${baseUrl}/api/epg/programs/`, { params: { page_size: 1000, ...params }, timeout: 5000 }),
+    axios.get(`${baseUrl}/api/epg/grid/`, { timeout: 4000 }),
+  ]);
+
+  results.forEach((res) => {
+    if (res.status === "fulfilled" && res.value?.data) {
+      const progs = extractAllProgramsFromResponse(res.value.data);
+      if (progs.length > 0) allPrograms.push(...progs);
     }
-  } catch (err) {
-    if (err.response?.status) lastErrorStatus = err.response.status;
-    console.warn("[Dispatcharr API] /api/epg/grid/ attempt:", err.message);
-  }
+  });
 
-  // 2. Try /api/epg/programs/
-  try {
-    const resProg = await axios.get(`${baseUrl}/api/epg/programs/`, {
-      params: { page_size: 1000, ...params },
-      timeout: 10000,
-    });
-    const progList = extractAllProgramsFromResponse(resProg.data);
-    if (progList.length > 0) {
-      allPrograms.push(...progList);
-    }
-  } catch (err) {
-    if (err.response?.status) lastErrorStatus = err.response.status;
-    console.warn("[Dispatcharr API] /api/epg/programs/ attempt:", err.message);
-  }
+  if (allPrograms.length === 0) return [];
 
-  if (allPrograms.length === 0) {
-    const list = [];
-    if (lastErrorStatus) list.errorStatus = lastErrorStatus;
-    return list;
-  }
-
-  // Deduplicate programs by ID or (channel + start_time + title)
-  const seen = new Set();
-  const deduped = [];
+  const map = new Map();
   allPrograms.forEach((p) => {
     if (!p) return;
     const chId = p.channel && typeof p.channel === "object" ? p.channel.id : p.channel;
     const key = p.id || `${chId}_${p.start_time}_${p.title}`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      deduped.push(p);
-    }
+    if (!map.has(key)) map.set(key, p);
   });
 
-  return deduped;
+  return Array.from(map.values());
 };
 
 /**
