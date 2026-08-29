@@ -68,18 +68,20 @@ const App = () => {
 			<TvInstallPrompt />
 			<BrowserRouter>
 				<BackgroundRotator />
-				<Routes>
-					<Route path="/" element={<HomePage />} />
-					<Route path="/about" element={<AboutPage />} />
-					<Route path="/favorites" element={<FavoritesPage />} />
-					<Route path="/settings" element={<SettingsPage />} />
-					<Route path="/:mediaType/:id" element={<DetailsPage />} />
-					<Route path="/search" element={<SearchResult />} />
-					<Route path="/search/:query" element={<SearchResult />} />
-					<Route path="/explore/:mediaType" element={<ExplorePage />} />
-					<Route path="*" element={<Page404 />} />
-				</Routes>
-				<Footer />
+				<div style={{ position: "relative", zIndex: 1 }}>
+					<Routes>
+						<Route path="/" element={<HomePage />} />
+						<Route path="/about" element={<AboutPage />} />
+						<Route path="/favorites" element={<FavoritesPage />} />
+						<Route path="/settings" element={<SettingsPage />} />
+						<Route path="/:mediaType/:id" element={<DetailsPage />} />
+						<Route path="/search" element={<SearchResult />} />
+						<Route path="/search/:query" element={<SearchResult />} />
+						<Route path="/explore/:mediaType" element={<ExplorePage />} />
+						<Route path="*" element={<Page404 />} />
+					</Routes>
+					<Footer />
+				</div>
 			</BrowserRouter>
 		</>
 	);

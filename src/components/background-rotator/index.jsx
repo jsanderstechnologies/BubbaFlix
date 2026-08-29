@@ -39,7 +39,7 @@ const BackgroundRotator = () => {
         <div
           key={url}
           className={`bgLayer ${idx === activeIdx ? "active" : ""}`}
-          style={{ backgroundImage: `linear-gradient(to bottom, rgba(10, 5, 10, 0.75), rgba(8, 8, 8, 0.88)), url("${url}")` }}
+          style={{ backgroundImage: `linear-gradient(to bottom, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.65)), url("${url}")` }}
         />
       ))}
     </div>
