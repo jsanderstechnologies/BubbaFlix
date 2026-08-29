@@ -811,6 +811,48 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     return;
   }
 
+  // Transparent Groq AI Chat Completion Proxy Endpoint
+  if ((cleanPath === "/api/groq/chat/completions" || cleanPath === "/groq/chat/completions") && req.method === "POST") {
+    let body = "";
+    req.on("data", (chunk) => { body += chunk.toString(); });
+    req.on("end", () => {
+      try {
+        const settings = loadServerSettings();
+        const serverGroqKey = settings.groqKey || process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY || "";
+        const authHeader = req.headers.authorization || (serverGroqKey ? `Bearer ${serverGroqKey}` : "");
+
+        if (!authHeader) {
+          return sendJson(res, 400, { error: "Missing Groq API Key" });
+        }
+
+        const https = require("https");
+        const groqReq = https.request("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": authHeader,
+            "Content-Type": "application/json",
+            "Content-Length": Buffer.byteLength(body),
+          },
+        }, (groqRes) => {
+          res.writeHead(groqRes.statusCode, groqRes.headers);
+          groqRes.pipe(res);
+        });
+
+        groqReq.on("error", (e) => {
+          logMessage(`[Groq Proxy Error]: ${e.message}`, true);
+          return sendJson(res, 500, { error: e.message });
+        });
+
+        groqReq.write(body);
+        groqReq.end();
+      } catch (e) {
+        logMessage(`[Groq Proxy Exception]: ${e.message}`, true);
+        return sendJson(res, 500, { error: e.message });
+      }
+    });
+    return;
+  }
+
   // Transparent SIMKL API Proxy Endpoint
   if (cleanPath.startsWith("/api/simkl")) {
     const simklPath = cleanPath.replace(/^\/api\/simkl/, "");

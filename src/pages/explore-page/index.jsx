@@ -6,6 +6,7 @@ import "./index.scss";
 
 import { fetchDataFromAPI } from "../../utils/api";
 import { filterEnglishMedia, filterEnglishCollections } from "../../utils/filterUtils";
+import { filterCollectionsWithGroq } from "../../utils/groqFilter";
 import ContentWrapper from "../../components/content-wrapper";
 import MovieCard from "../../components/movie-card";
 import CollectionCard from "../../components/collection-card";
@@ -112,15 +113,17 @@ const filterEnglishCollections = (items) => {
 	});
 };
 
-const fetchNextCollectionsPage = () => {
+	const fetchNextCollectionsPage = () => {
 		if (colLoading || !colHasMore) return;
 		setColLoading(true);
 
 		const currentKw = COLLECTION_KEYWORDS[colKeywordIndex] || "movie";
 
 		fetchDataFromAPI(`/search/collection?query=${encodeURIComponent(currentKw)}&page=${colSubPage}`)
-			.then((res) => {
-				const fetchedCols = filterEnglishCollections(res?.results || []);
+			.then(async (res) => {
+				let fetchedCols = filterEnglishCollections(res?.results || []);
+				fetchedCols = await filterCollectionsWithGroq(fetchedCols);
+
 				setCollectionsList((prev) => {
 					const existingIds = new Set(prev.map((c) => c.id));
 					const uniqueNew = fetchedCols.filter((c) => !existingIds.has(c.id));

@@ -44,7 +44,7 @@ Respond ONLY with a JSON array of matching line numbers, like: [1, 3, 5]`;
     const response = await axios.post(
       `${baseUrl}/api/groq/chat/completions`,
       {
-        model: "llama3-8b-8192",
+        model: "llama-3.3-70b-versatile",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.1,
       },
@@ -72,4 +72,68 @@ Respond ONLY with a JSON array of matching line numbers, like: [1, 3, 5]`;
   }
 
   return results;
+};
+
+export const filterCollectionsWithGroq = async (collections) => {
+  let apiKey = getGroqApiKey();
+  if (!apiKey) {
+    const serverSettings = await fetchServerSettings();
+    if (serverSettings?.groqKey) {
+      apiKey = serverSettings.groqKey;
+      localStorage.setItem("groq_api_key", apiKey);
+    }
+  }
+
+  if (!apiKey || !Array.isArray(collections) || collections.length === 0) {
+    return collections;
+  }
+
+  const titlesList = collections.map((c, i) => `${i + 1}. ${c.name || c.title}`).join("\n");
+
+  const prompt = `You are a movie collection safety classifier for an English family video app.
+Review the following list of movie collections and return ONLY the line numbers of legitimate, English-language, non-anime, non-adult movie collections (e.g. Marvel Cinematic Universe, Dark Knight, Star Wars, James Bond, Harry Potter).
+
+STRICTLY EXCLUDE:
+- Any Japanese Anime / Manga / Hentai collections (e.g. Naruto, Dragon Ball, One Piece, Studio Ghibli, Sailor Moon, Gundam, Pokemon).
+- Any porn, XXX, adult content, erotica, or NSFW collections.
+- Any non-English or foreign language movie collections.
+
+Input List:
+${titlesList}
+
+Respond ONLY with a JSON array of allowed line numbers, like: [1, 2, 4, 7]`;
+
+  try {
+    const baseUrl = getServerUrl();
+    const response = await axios.post(
+      `${baseUrl}/api/groq/chat/completions`,
+      {
+        model: "llama-3.3-70b-versatile",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.1,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        timeout: 8000,
+      }
+    );
+
+    const content = response.data?.choices?.[0]?.message?.content || "";
+    const match = content.match(/\[[\d,\s]*\]/);
+    if (match) {
+      const allowedIndices = JSON.parse(match[0]);
+      if (Array.isArray(allowedIndices) && allowedIndices.length > 0) {
+        const filtered = collections.filter((_, idx) => allowedIndices.includes(idx + 1));
+        console.log(`[Groq AI Collection Filter]: Reduced collections from ${collections.length} to ${filtered.length}`);
+        return filtered;
+      }
+    }
+  } catch (err) {
+    console.warn("[Groq AI Collection Filter Warning]:", err.message || err);
+  }
+
+  return collections;
 };
