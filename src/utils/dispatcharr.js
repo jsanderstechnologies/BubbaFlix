@@ -387,17 +387,22 @@ export const stopDispatcharrRecording = async (recordingId) => {
 export const getChannelStreamUrl = (channel) => {
   if (!channel) return "";
   const baseUrl = getProxyBaseUrl();
+  let channelId = null;
+
   if (typeof channel === "object") {
     if (channel.stream_url && channel.stream_url.startsWith("http")) return channel.stream_url;
     if (channel.stream_url) return `${baseUrl}${channel.stream_url.startsWith("/") ? "" : "/"}${channel.stream_url}`;
     if (channel.url && channel.url.startsWith("http")) return channel.url;
     if (channel.url) return `${baseUrl}${channel.url.startsWith("/") ? "" : "/"}${channel.url}`;
-    const tvg = channel.tvg_id || channel.effective_tvg_id;
-    if (tvg) return `${baseUrl}/proxy/ts/stream/${tvg}`;
-    const id = channel.id || channel.channel_id || channel.number;
-    return `${baseUrl}/api/channels/channels/${id}/stream/`;
+    channelId = channel.id || channel.channel_id || channel.number || channel.channel_number;
+  } else {
+    channelId = channel;
   }
-  return `${baseUrl}/proxy/ts/stream/${channel}`;
+
+  if (channelId) {
+    return `${baseUrl}/api/channels/channels/${channelId}/stream/`;
+  }
+  return "";
 };
 
 export const getRecordingStreamUrl = (recording) => {
@@ -411,6 +416,7 @@ export const getRecordingStreamUrl = (recording) => {
   if (recording.stream_url && recording.stream_url.startsWith("http")) return recording.stream_url;
   if (recording.stream_url) return `${baseUrl}${recording.stream_url.startsWith("/") ? "" : "/"}${recording.stream_url}`;
   if (recording.path && recording.path.startsWith("http")) return recording.path;
-  if (recording.path) return `${baseUrl}/api/channels/recordings/${recording.id}/file/`;
-  return `${baseUrl}/api/channels/recordings/${recording.id || recording.program_id}/file/`;
+  if (recording.path) return `${baseUrl}${recording.path.startsWith("/") ? "" : "/"}${recording.path}`;
+  const recId = recording.id || recording.recording_id || recording.program_id;
+  return `${baseUrl}/api/channels/recordings/${recId}/file/`;
 };

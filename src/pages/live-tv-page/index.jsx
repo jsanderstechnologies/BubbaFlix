@@ -12,6 +12,7 @@ import {
   createSeriesRecordingRule,
   deleteDispatcharrRecording,
   getChannelStreamUrl,
+  getRecordingStreamUrl,
 } from "../../utils/dispatcharr";
 import {
   FiPlay,
@@ -721,6 +722,40 @@ const LiveTvPage = () => {
                   >
                     <FiPlay /> Watch Live Channel
                   </button>
+
+                  {getRecordingForProgram(selectedProgram) && (
+                    <button
+                      className="actionBtn playBtn"
+                      style={{ background: "#4caf50", color: "white" }}
+                      tabIndex={0}
+                      onClick={() => {
+                        const rec = getRecordingForProgram(selectedProgram);
+                        const streamUrl = getRecordingStreamUrl(rec);
+                        if (streamUrl) {
+                          setActiveStreamUrl(streamUrl);
+                          setActiveStreamTitle(rec.title || selectedProgram.title);
+                          setShowPlayer(true);
+                          setSelectedProgram(null);
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        const code = e.keyCode || e.which;
+                        if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+                          e.preventDefault();
+                          const rec = getRecordingForProgram(selectedProgram);
+                          const streamUrl = getRecordingStreamUrl(rec);
+                          if (streamUrl) {
+                            setActiveStreamUrl(streamUrl);
+                            setActiveStreamTitle(rec.title || selectedProgram.title);
+                            setShowPlayer(true);
+                            setSelectedProgram(null);
+                          }
+                        }
+                      }}
+                    >
+                      <FiPlay /> Play Recorded Program
+                    </button>
+                  )}
 
                   {getRecordingForProgram(selectedProgram) ? (
                     <button

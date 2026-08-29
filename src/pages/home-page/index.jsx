@@ -375,7 +375,11 @@ const HomePage = () => {
   };
 
   const handlePlayRecording = (rec) => {
-    const streamUrl = rec.file_url || rec.stream_url || `/api/dispatcharr/api/channels/recordings/${rec.id}/file/`;
+    const streamUrl = getRecordingStreamUrl(rec);
+    if (!streamUrl) {
+      alert("Stream URL not available for this recording.");
+      return;
+    }
     setActiveStreamUrl(streamUrl);
     setActiveStreamTitle(rec.title || "DVR Recording");
     setShowPlayer(true);
