@@ -224,6 +224,11 @@ const SplashScreen = ({ onComplete }) => {
       startAnimation();
     }, 100);
 
+    // Hard fallback safety timer to guarantee splash screen disappears
+    const safetyTimer = setTimeout(() => {
+      finishSplash();
+    }, 3200);
+
     // Keyboard / remote dpad handler to skip or trigger audio
     const handleKeyDown = (e) => {
       if (e.key === "Enter" || e.key === " " || e.key === "Escape" || e.key.startsWith("Arrow")) {
@@ -236,6 +241,7 @@ const SplashScreen = ({ onComplete }) => {
 
     return () => {
       clearTimeout(timer);
+      clearTimeout(safetyTimer);
       window.removeEventListener("keydown", handleKeyDown);
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);

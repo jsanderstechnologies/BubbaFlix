@@ -35,11 +35,10 @@ const App = () => {
 		const currentTheme = getSavedTheme();
 		applyTheme(currentTheme);
 
-		// Pull global settings from backend server on startup
-		fetchServerSettings().then(() => {
-			fetchApiConfig();
-			fetchUserSimklHistory();
-		});
+		// Fetch TMDB config and user history immediately
+		fetchApiConfig();
+		fetchUserSimklHistory();
+		fetchServerSettings();
 
 		const cleanupDpad = initDpadNavigation();
 		return () => {
