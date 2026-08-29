@@ -11,11 +11,11 @@ export const getActiveTmdbToken = () => {
   return import.meta.env.VITE_APP_TMDB_KEY || DEFAULT_TMDB_TOKEN;
 };
 
-// Helper function to filter out Anime/Animation while preserving English & Western films (e.g. The Fifth Element, Leon The Professional)
-const isNotAnime = (item) => {
+// Helper function to filter out Animation/Anime and non-English foreign content
+const isEnglishAndNonAnime = (item) => {
   if (!item || typeof item !== "object") return false;
 
-  // Must not be Animation (TMDB genre ID 16)
+  // Filter out Animation (TMDB genre ID 16)
   if (Array.isArray(item.genre_ids) && item.genre_ids.includes(16)) {
     return false;
   }
@@ -29,8 +29,13 @@ const isNotAnime = (item) => {
     return false;
   }
 
-  // Must not be of Japanese origin (anime)
+  // Filter out Japanese origin content (anime)
   if (Array.isArray(item.origin_country) && item.origin_country.includes("JP")) {
+    return false;
+  }
+
+  // Filter out non-English original language content
+  if (item.original_language && item.original_language.toLowerCase() !== "en") {
     return false;
   }
 
@@ -44,11 +49,16 @@ export const fetchDataFromAPI = async (url, params) => {
       Authorization: "bearer " + activeToken,
     };
 
-    const customParams = { ...params };
+    const customParams = {
+      language: "en-US",
+      with_original_language: "en",
+      ...params,
+    };
 
     // Pre-filter on TMDB discover endpoints
     if (url.startsWith("/discover")) {
       customParams.without_genres = "16";
+      customParams.with_original_language = "en";
     }
 
     const { data } = await axios.get(BASE_URL + url, {
@@ -57,7 +67,7 @@ export const fetchDataFromAPI = async (url, params) => {
     });
 
     if (data && Array.isArray(data.results)) {
-      data.results = data.results.filter(isNotAnime);
+      data.results = data.results.filter(isEnglishAndNonAnime);
     }
 
     return data;
