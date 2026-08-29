@@ -31,7 +31,7 @@ import {
 import "./index.scss";
 
 const PIXELS_PER_MINUTE = 5; // 30 mins = 150px
-const TOTAL_HOURS = 12; // 12 hours timeline scrollable
+const TOTAL_HOURS = 24; // 24 hours timeline scrollable to cover full 24h EPG schedule
 
 const LiveTvPage = () => {
   const navigate = useNavigate();
@@ -53,11 +53,11 @@ const LiveTvPage = () => {
   const [activeStreamUrl, setActiveStreamUrl] = useState("");
   const [activeStreamTitle, setActiveStreamTitle] = useState("");
 
-  // Timeline base time (rounded down to top of current hour minus 1 hour)
+  // Timeline base time (rounded down to top of current hour minus 2 hours)
   const gridStartTime = useMemo(() => {
     const d = new Date();
     d.setMinutes(0, 0, 0);
-    return new Date(d.getTime() - 60 * 60 * 1000); // 1 hr before current hour
+    return new Date(d.getTime() - 2 * 60 * 60 * 1000); // 2 hrs before current hour
   }, []);
 
   const gridEndTime = useMemo(() => {
@@ -313,18 +313,15 @@ const LiveTvPage = () => {
     const start = parseApiDate(prog.start_time) || gridStartTime;
     const end = parseApiDate(prog.end_time) || new Date(start.getTime() + 60 * 60 * 1000);
 
-    const effStart = start < gridStartTime ? gridStartTime : start;
-    const effEnd = end > gridEndTime ? gridEndTime : end;
-
-    const startDiffMins = (effStart.getTime() - gridStartTime.getTime()) / (60 * 1000);
-    const durationMins = Math.max(10, (effEnd.getTime() - effStart.getTime()) / (60 * 1000));
+    const startDiffMins = (start.getTime() - gridStartTime.getTime()) / (60 * 1000);
+    const durationMins = Math.max(15, (end.getTime() - start.getTime()) / (60 * 1000));
 
     const left = startDiffMins * PIXELS_PER_MINUTE;
     const width = durationMins * PIXELS_PER_MINUTE;
 
     return {
       left: `${left}px`,
-      width: `${Math.max(20, width - 4)}px`,
+      width: `${Math.max(30, width - 4)}px`,
     };
   };
 

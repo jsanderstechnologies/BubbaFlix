@@ -185,9 +185,24 @@ export const fetchDispatcharrRecordings = async () => {
       params: { page_size: 1000 },
       timeout: 10000,
     });
-    const data = res.data;
-    const list = Array.isArray(data) ? data : data?.results || data?.recordings || [];
-    if (Array.isArray(list)) recordingsList.push(...list);
+    const rawList = extractAllProgramsFromResponse(res.data);
+    rawList.forEach((rec) => {
+      if (!rec) return;
+      const props = rec.custom_properties || {};
+      const fileUrl = rec.file_url || props.file_url || props.path || props.url;
+      const status = rec.status || props.status || (fileUrl ? "completed" : "scheduled");
+      recordingsList.push({
+        ...rec,
+        id: rec.id,
+        title: rec.title || props.title || props.name || props.program_title || "DVR Recording",
+        status: status,
+        file_url: fileUrl,
+        artwork: rec.artwork || props.artwork || props.poster || props.image || rec.thumbnail,
+        channel_name: rec.channel_name || props.channel_name || (typeof rec.channel === "object" ? rec.channel?.name : rec.channel) || "TV Channel",
+        start_time: rec.start_time || props.start_time || rec.created_at,
+        end_time: rec.end_time || props.end_time,
+      });
+    });
   } catch (err) {
     console.warn("[Dispatcharr API] Failed to fetch DVR recordings:", err.message);
   }
@@ -198,20 +213,19 @@ export const fetchDispatcharrRecordings = async () => {
       params: { page_size: 1000 },
       timeout: 8000,
     });
-    const dataRules = resRules.data;
-    const rulesList = Array.isArray(dataRules) ? dataRules : dataRules?.results || dataRules?.rules || [];
-    if (Array.isArray(rulesList)) {
-      rulesList.forEach((rule) => {
-        recordingsList.push({
-          id: rule.id || `rule-${rule.title}`,
-          title: rule.title || rule.program_title || "Series Recording Rule",
-          status: "scheduled",
-          isSeriesRule: true,
-          start_time: rule.created_at || new Date().toISOString(),
-          description: `Series DVR rule set for ${rule.title || "program"}.`,
-        });
+    const rulesList = extractAllProgramsFromResponse(resRules.data);
+    rulesList.forEach((rule) => {
+      if (!rule) return;
+      const props = rule.custom_properties || {};
+      recordingsList.push({
+        id: rule.id || `rule-${rule.title}`,
+        title: rule.title || rule.program_title || props.title || "Series Recording Rule",
+        status: "scheduled",
+        isSeriesRule: true,
+        start_time: rule.created_at || new Date().toISOString(),
+        description: `Series DVR rule set for ${rule.title || "program"}.`,
       });
-    }
+    });
   } catch (err) {
     console.warn("[Dispatcharr API] Series rules fetch attempt:", err.message);
   }
