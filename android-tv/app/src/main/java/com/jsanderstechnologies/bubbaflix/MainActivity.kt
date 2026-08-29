@@ -431,12 +431,27 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun clearAppCache() {
+        try {
+            webView.clearCache(true)
+            webView.clearFormData()
+            webView.clearHistory()
+            WebStorage.getInstance().deleteAllData()
+
+            externalCacheDir?.deleteRecursively()
+            cacheDir?.deleteRecursively()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     fun promptExitApp() {
         runOnUiThread {
             AlertDialog.Builder(this)
                 .setTitle("Exit BubbaFlix?")
                 .setMessage("Are you sure you want to exit BubbaFlix TV?")
                 .setPositiveButton("Exit") { _, _ ->
+                    clearAppCache()
                     finishAffinity()
                 }
                 .setNegativeButton("Cancel", null)
@@ -496,5 +511,11 @@ class MainActivity : AppCompatActivity() {
         if (hasFocus) {
             hideSystemUI()
         }
+    }
+
+    override fun onDestroy() {
+        clearAppCache()
+        webView.destroy()
+        super.onDestroy()
     }
 }
