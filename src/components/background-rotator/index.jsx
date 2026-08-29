@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import "./index.scss";
 
 const WALLPAPERS = [
+  "/wallpaper_tv_shows.jpg",
   "/horror_background.jpg",
   "/wallpaper_mix_movies.jpg",
   "/wallpaper_film_posters.jpg",
@@ -11,18 +12,20 @@ const WALLPAPERS = [
 const BackgroundRotator = () => {
   const location = useLocation();
   const [activeIdx, setActiveIdx] = useState(0);
-  const isFirstRender = useRef(true);
 
-  // Rotate wallpaper on navigation / route change
+  // Set dedicated background on route change (e.g. TV Shows page) or rotate to next
   useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
+    if (location.pathname === "/explore/tv") {
+      // Dedicated TV Shows Collage Wallpaper
+      setActiveIdx(0);
+    } else if (location.pathname === "/explore/movie") {
+      setActiveIdx(2);
+    } else {
+      setActiveIdx((prevIdx) => (prevIdx + 1) % WALLPAPERS.length);
     }
-    setActiveIdx((prevIdx) => (prevIdx + 1) % WALLPAPERS.length);
   }, [location.pathname]);
 
-  // Timed auto-rotation every 45 seconds while viewing
+  // Timed auto-rotation every 45 seconds while viewing general pages
   useEffect(() => {
     const timer = setInterval(() => {
       setActiveIdx((prevIdx) => (prevIdx + 1) % WALLPAPERS.length);
