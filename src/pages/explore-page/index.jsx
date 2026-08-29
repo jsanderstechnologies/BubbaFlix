@@ -79,7 +79,37 @@ const Explore = () => {
 		});
 	};
 
-	const fetchNextCollectionsPage = () => {
+const filterEnglishCollections = (items) => {
+	if (!Array.isArray(items)) return [];
+
+	const adultKeywords = [
+		"xxx", "adult", "erotic", "porn", "hentai", "nude", "sex", "uncensored", 
+		"striptease", "playboy", "penthouse", "softcore", "hardcore", "erotica", "sensual"
+	];
+
+	const foreignScriptRegex = /[\u0400-\u04FF\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uac00-\ud7af\u0600-\u06FF\u0900-\u097F\u0E00-\u0E7F\u0370-\u03FF]/;
+
+	return items.filter((col) => {
+		if (!col) return false;
+		if (col.adult === true) return false;
+
+		const name = (col.name || col.title || "").toLowerCase();
+		const words = name.split(/\s+/);
+		if (words.some((w) => adultKeywords.includes(w))) return false;
+		if (adultKeywords.some((kw) => name.includes(kw))) return false;
+
+		if (foreignScriptRegex.test(col.name || col.title || "")) return false;
+
+		if (col.original_language) {
+			const lang = col.original_language.toLowerCase();
+			if (lang !== "en" && lang !== "eng") return false;
+		}
+
+		return true;
+	});
+};
+
+const fetchNextCollectionsPage = () => {
 		if (colLoading || !colHasMore) return;
 		setColLoading(true);
 
@@ -87,7 +117,7 @@ const Explore = () => {
 
 		fetchDataFromAPI(`/search/collection?query=${encodeURIComponent(currentKw)}&page=${colSubPage}`)
 			.then((res) => {
-				const fetchedCols = res?.results || [];
+				const fetchedCols = filterEnglishCollections(res?.results || []);
 				setCollectionsList((prev) => {
 					const existingIds = new Set(prev.map((c) => c.id));
 					const uniqueNew = fetchedCols.filter((c) => !existingIds.has(c.id));
@@ -129,7 +159,7 @@ const Explore = () => {
 			const initialTopColIds = [86311, 263, 10, 1241, 2344, 9485, 328, 645];
 			Promise.all(initialTopColIds.map((id) => fetchDataFromAPI(`/collection/${id}`).catch(() => null)))
 				.then((list) => {
-					setCollectionsList(list.filter(Boolean));
+					setCollectionsList(filterEnglishCollections(list.filter(Boolean)));
 				});
 		}
 	}, [mediaType]);

@@ -113,6 +113,36 @@ const SearchResult = () => {
     }
   }, [searchQuery, activeFilter]);
 
+  const filterEnglishCollections = (items) => {
+    if (!Array.isArray(items)) return [];
+
+    const adultKeywords = [
+      "xxx", "adult", "erotic", "porn", "hentai", "nude", "sex", "uncensored", 
+      "striptease", "playboy", "penthouse", "softcore", "hardcore", "erotica", "sensual"
+    ];
+
+    const foreignScriptRegex = /[\u0400-\u04FF\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uac00-\ud7af\u0600-\u06FF\u0900-\u097F\u0E00-\u0E7F\u0370-\u03FF]/;
+
+    return items.filter((col) => {
+      if (!col) return false;
+      if (col.adult === true) return false;
+
+      const name = (col.name || col.title || "").toLowerCase();
+      const words = name.split(/\s+/);
+      if (words.some((w) => adultKeywords.includes(w))) return false;
+      if (adultKeywords.some((kw) => name.includes(kw))) return false;
+
+      if (foreignScriptRegex.test(col.name || col.title || "")) return false;
+
+      if (col.original_language) {
+        const lang = col.original_language.toLowerCase();
+        if (lang !== "en" && lang !== "eng") return false;
+      }
+
+      return true;
+    });
+  };
+
   const fetchSearchResults = (queryStr, page, filterType) => {
     if (!queryStr) return;
     setLoading(true);
@@ -120,7 +150,7 @@ const SearchResult = () => {
     if (filterType === "collection") {
       fetchDataFromAPI(`/search/collection?query=${encodeURIComponent(queryStr)}&page=${page}`)
         .then((res) => {
-          const colList = (res?.results || []).map((item) => ({ ...item, media_type: "collection" }));
+          const colList = filterEnglishCollections(res?.results || []).map((item) => ({ ...item, media_type: "collection" }));
           setData({ ...res, results: colList });
           setPageNum(2);
           setLoading(false);
@@ -136,7 +166,7 @@ const SearchResult = () => {
       ])
         .then(([multiRes, colRes]) => {
           const multiList = filterEnglishResults(multiRes?.results || []);
-          const colList = (colRes?.results || []).map((item) => ({ ...item, media_type: "collection" }));
+          const colList = filterEnglishCollections(colRes?.results || []).map((item) => ({ ...item, media_type: "collection" }));
           setData({
             ...multiRes,
             results: [...colList, ...multiList],
