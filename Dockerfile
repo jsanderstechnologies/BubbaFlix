@@ -16,8 +16,8 @@ RUN npm run build
 # Stage 2: Serve application using Nginx + Native Node.js Backend + FFmpeg & VLC Transcoder Engine
 FROM nginx:alpine
 
-# Install Node.js runtime, FFmpeg, VLC, and universal GPU hardware acceleration drivers (Intel QSV/VAAPI & AMD Radeon VAAPI)
-RUN apk add --no-cache nodejs ffmpeg vlc libva libva-intel-driver intel-media-driver mesa-va-gallium mesa-dri-gallium
+# Install Node.js runtime, FFmpeg, VLC, and universal GPU hardware acceleration drivers (Intel QSV/VAAPI, AMD VAAPI, and OneVPL runtimes)
+RUN apk add --no-cache nodejs ffmpeg vlc libva libva-intel-driver intel-media-driver mesa-va-gallium mesa-dri-gallium libmfx intel-media-sdk libvpl
 
 WORKDIR /app
 

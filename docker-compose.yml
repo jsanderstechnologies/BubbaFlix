@@ -22,6 +22,9 @@ services:
       DISPATCHARR_API_KEY: "${DISPATCHARR_API_KEY:-}"
     volumes:
       - bubbaflix-data:/app/data
+    devices:
+      # Map host GPU render devices for Intel QuickSync/VAAPI and AMD hardware transcoding
+      - /dev/dri:/dev/dri
 
 volumes:
   bubbaflix-data:
