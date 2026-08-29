@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import ContentWrapper from "../../components/content-wrapper";
 import TopNav from "../../components/top-nav";
 import Spinner from "../../components/spinner";
@@ -23,14 +24,17 @@ import {
   FiRefreshCw,
   FiVideo,
   FiCheck,
+  FiLock,
 } from "react-icons/fi";
 import "./index.scss";
 
 const LiveTvPage = () => {
+  const navigate = useNavigate();
   const [channels, setChannels] = useState([]);
   const [programs, setPrograms] = useState([]);
   const [recordings, setRecordings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState(false);
 
   // Selected program modal state
   const [selectedProgram, setSelectedProgram] = useState(null);
@@ -53,6 +57,12 @@ const LiveTvPage = () => {
       fetchDispatcharrEpgPrograms(),
       fetchDispatcharrRecordings(),
     ]);
+
+    if (chData.errorStatus === 401 || progData.errorStatus === 401 || recData.errorStatus === 401) {
+      setAuthError(true);
+    } else {
+      setAuthError(false);
+    }
 
     // If channels array is empty but we have EPG programs, derive channels from programs!
     if ((!chData || chData.length === 0) && progData && progData.length > 0) {
@@ -178,6 +188,21 @@ const LiveTvPage = () => {
         {loading ? (
           <div className="loadingContainer">
             <Spinner />
+          </div>
+        ) : authError ? (
+          <div className="emptyNotice">
+            <FiLock className="icon" style={{ color: "#f44336" }} />
+            <h3 style={{ color: "#f44336" }}>Dispatcharr Server Authentication Required (401 Unauthorized)</h3>
+            <p style={{ maxWidth: 520, margin: "10px auto 20px", lineHeight: "1.6", color: "rgba(255,255,255,0.8)" }}>
+              Your Dispatcharr server requires an API Key or Bearer token. Please configure your <code>DISPATCHARR_API_KEY</code> in Settings to access channels and EPG schedules.
+            </p>
+            <button
+              className="refreshBtn"
+              style={{ background: "var(--pink)", borderColor: "var(--pink)", padding: "12px 24px", margin: "0 auto" }}
+              onClick={() => navigate("/settings")}
+            >
+              Go to Settings
+            </button>
           </div>
         ) : channels.length === 0 ? (
           <div className="emptyNotice">

@@ -32,7 +32,9 @@ export const fetchDispatcharrChannels = async () => {
     return [];
   } catch (err) {
     console.warn("[Dispatcharr API] Failed to fetch channels:", err.message);
-    return [];
+    const list = [];
+    if (err.response?.status) list.errorStatus = err.response.status;
+    return list;
   }
 };
 
@@ -41,6 +43,7 @@ export const fetchDispatcharrChannels = async () => {
  */
 export const fetchDispatcharrEpgPrograms = async (params = {}) => {
   const baseUrl = getProxyBaseUrl();
+  let lastErrorStatus = null;
 
   // 1. Try /api/epg/grid/ (Dispatcharr native EPG grid)
   try {
@@ -51,6 +54,7 @@ export const fetchDispatcharrEpgPrograms = async (params = {}) => {
       : dataGrid?.results || dataGrid?.programs || [];
     if (gridPrograms.length > 0) return gridPrograms;
   } catch (err) {
+    if (err.response?.status) lastErrorStatus = err.response.status;
     console.warn("[Dispatcharr API] /api/epg/grid/ attempt:", err.message);
   }
 
@@ -66,10 +70,13 @@ export const fetchDispatcharrEpgPrograms = async (params = {}) => {
       : dataProg?.results || dataProg?.programs || [];
     if (progList.length > 0) return progList;
   } catch (err) {
+    if (err.response?.status) lastErrorStatus = err.response.status;
     console.warn("[Dispatcharr API] /api/epg/programs/ attempt:", err.message);
   }
 
-  return [];
+  const list = [];
+  if (lastErrorStatus) list.errorStatus = lastErrorStatus;
+  return list;
 };
 
 /**

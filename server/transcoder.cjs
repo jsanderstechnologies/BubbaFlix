@@ -595,9 +595,6 @@ const server = http.createServer((req, res) => {
           proxyHeaders["authorization"] = `Bearer ${apiKey}`;
         } else {
           proxyHeaders["x-api-key"] = apiKey;
-          if (!proxyHeaders["authorization"]) {
-            proxyHeaders["authorization"] = `Bearer ${apiKey}`;
-          }
         }
       }
 
