@@ -10,7 +10,7 @@ import MovieCard from "../../components/movie-card";
 import CollectionCard from "../../components/collection-card";
 import Spinner from "../../components/spinner";
 import TopNav from "../../components/top-nav";
-import { FiSliders, FiLayers } from "react-icons/fi";
+import { FiSliders, FiLayers, FiFilm } from "react-icons/fi";
 
 let filters = {};
 
@@ -24,12 +24,33 @@ const SORT_OPTIONS = [
 	{ value: "primary_release_date.asc", label: "Sort by Release Date (Oldest)" },
 ];
 
+const COLLECTION_KEYWORDS = [
+	"marvel", "avengers", "star", "dark", "harry", "potter", "fast", "furious", "dragon", 
+	"spider", "batman", "godzilla", "jurassic", "disney", "pixar", "x-men", "matrix", "rings", 
+	"chronicles", "dead", "alien", "predator", "terminator", "pirates", "transformers", "star trek", 
+	"dune", "indiana", "bond", "shrek", "toy", "despicable", "ice", "hunger", "twilight", "divergent", 
+	"maze", "blade", "resident", "underworld", "saw", "scream", "conjuring", "insidious", "annabelle", 
+	"purge", "destination", "halloween", "friday", "elm", "chucky", "psycho", "jaws", "rocky", "creed", 
+	"rambo", "hard", "lethal", "weapon", "bad boys", "rush hour", "beverly hills", "men in black", 
+	"ghostbusters", "back future", "karate kid", "ocean", "the", "a", "o"
+];
+
 const Explore = () => {
 	const [data, setData] = useState(null);
 	const [pageNum, setPageNum] = useState(1);
 	const [loading, setLoading] = useState(false);
 	const [sortby, setSortby] = useState("popularity.desc");
-	const [collections, setCollections] = useState([]);
+	
+	// Movies vs Collections Sub-Tabs
+	const [movieTab, setMovieTab] = useState("movies"); // "movies" | "collections"
+	
+	// Collections Infinite Scroll State
+	const [collectionsList, setCollectionsList] = useState([]);
+	const [colKeywordIndex, setColKeywordIndex] = useState(0);
+	const [colSubPage, setColSubPage] = useState(1);
+	const [colLoading, setColLoading] = useState(false);
+	const [colHasMore, setColHasMore] = useState(true);
+
 	const { mediaType } = useParams();
 
 	const fetchInitialData = () => {
@@ -58,23 +79,66 @@ const Explore = () => {
 		});
 	};
 
+	const fetchNextCollectionsPage = () => {
+		if (colLoading || !colHasMore) return;
+		setColLoading(true);
+
+		const currentKw = COLLECTION_KEYWORDS[colKeywordIndex] || "movie";
+
+		fetchDataFromAPI(`/search/collection?query=${encodeURIComponent(currentKw)}&page=${colSubPage}`)
+			.then((res) => {
+				const fetchedCols = res?.results || [];
+				setCollectionsList((prev) => {
+					const existingIds = new Set(prev.map((c) => c.id));
+					const uniqueNew = fetchedCols.filter((c) => !existingIds.has(c.id));
+					return [...prev, ...uniqueNew];
+				});
+
+				if (colSubPage < (res?.total_pages || 1) && colSubPage < 3) {
+					setColSubPage((prev) => prev + 1);
+				} else {
+					setColSubPage(1);
+					if (colKeywordIndex + 1 < COLLECTION_KEYWORDS.length) {
+						setColKeywordIndex((prev) => prev + 1);
+					} else {
+						setColHasMore(false);
+					}
+				}
+				setColLoading(false);
+			})
+			.catch(() => {
+				setColLoading(false);
+			});
+	};
+
 	useEffect(() => {
 		filters = { sort_by: "popularity.desc" };
 		setData(null);
 		setPageNum(1);
 		setSortby("popularity.desc");
+		setMovieTab("movies");
 		fetchInitialData();
 
 		if (mediaType === "movie") {
-			const topColIds = [86311, 263, 10, 1241, 2344, 9485, 328, 645];
-			Promise.all(topColIds.map((id) => fetchDataFromAPI(`/collection/${id}`).catch(() => null)))
+			setCollectionsList([]);
+			setColKeywordIndex(0);
+			setColSubPage(1);
+			setColHasMore(true);
+
+			// Initial batch load for Collections
+			const initialTopColIds = [86311, 263, 10, 1241, 2344, 9485, 328, 645];
+			Promise.all(initialTopColIds.map((id) => fetchDataFromAPI(`/collection/${id}`).catch(() => null)))
 				.then((list) => {
-					setCollections(list.filter(Boolean));
+					setCollectionsList(list.filter(Boolean));
 				});
-		} else {
-			setCollections([]);
 		}
 	}, [mediaType]);
+
+	useEffect(() => {
+		if (movieTab === "collections" && collectionsList.length <= 8) {
+			fetchNextCollectionsPage();
+		}
+	}, [movieTab]);
 
 	const handleSortChange = (e) => {
 		const val = e.target.value;
@@ -96,66 +160,93 @@ const Explore = () => {
 					<div className="pageTitle">
 						{mediaType === "tv"
 							? "Explore TV Series"
-							: "Explore Movies & Franchises"}
+							: movieTab === "collections"
+							? "Explore Movie Collections & Franchises"
+							: "Explore Movies"}
 					</div>
-					<div className="filters">
-						<div className="selectWrapper">
-							<FiSliders className="selectIcon" />
-							<select
-								className="tvSortSelect"
-								value={sortby}
-								onChange={handleSortChange}
+
+					{mediaType === "movie" ? (
+						<div className="exploreTabSwitcher">
+							<button
+								className={`tabBtn ${movieTab === "movies" ? "active" : ""}`}
+								onClick={() => setMovieTab("movies")}
 								tabIndex="0"
 							>
-								{SORT_OPTIONS.map((opt) => (
-									<option key={opt.value} value={opt.value}>
-										{opt.label}
-									</option>
-								))}
-							</select>
+								<FiFilm /> Movies
+							</button>
+							<button
+								className={`tabBtn ${movieTab === "collections" ? "active" : ""}`}
+								onClick={() => setMovieTab("collections")}
+								tabIndex="0"
+							>
+								<FiLayers /> Collections & Franchises ({collectionsList.length})
+							</button>
 						</div>
-					</div>
+					) : (
+						<div className="filters">
+							<div className="selectWrapper">
+								<FiSliders className="selectIcon" />
+								<select
+									className="tvSortSelect"
+									value={sortby}
+									onChange={handleSortChange}
+									tabIndex="0"
+								>
+									{SORT_OPTIONS.map((opt) => (
+										<option key={opt.value} value={opt.value}>
+											{opt.label}
+										</option>
+									))}
+								</select>
+							</div>
+						</div>
+					)}
 				</div>
 
-				{mediaType === "movie" && collections.length > 0 && (
-					<div className="featuredCollectionsBlock" style={{ marginBottom: 36 }}>
-						<h2 className="collectionsTitle" style={{ fontSize: 22, fontWeight: 700, marginBottom: 16, display: "flex", alignItems: "center", gap: 8, color: "#ffffff" }}>
-							<FiLayers style={{ color: "var(--pink)" }} /> Top Movie Collections & Franchises
-						</h2>
-						<div className="collectionsGrid" style={{ display: "flex", flexFlow: "row wrap", gap: 16 }}>
-							{collections.map((col) => (
-								<CollectionCard key={`explore-col-${col.id}`} data={col} />
-							))}
-						</div>
-					</div>
-				)}
-
-				{loading && <Spinner initial={true} />}
-				{!loading && (
+				{/* Collections Tab Content with Infinite Scroll */}
+				{mediaType === "movie" && movieTab === "collections" ? (
+					<InfiniteScroll
+						className="content"
+						dataLength={collectionsList.length}
+						next={fetchNextCollectionsPage}
+						hasMore={colHasMore}
+						loader={<Spinner />}
+					>
+						{collectionsList.map((col, idx) => (
+							<CollectionCard key={`col-${col.id}-${idx}`} data={col} />
+						))}
+					</InfiniteScroll>
+				) : (
+					/* Movies / TV Tab Content with Infinite Scroll */
 					<>
-						{data?.results?.length > 0 ? (
-							<InfiniteScroll
-								className="content"
-								dataLength={data?.results?.length || 0}
-								next={fetchNextPageData}
-								hasMore={pageNum <= data?.total_pages}
-								loader={<Spinner />}
-							>
-								{data?.results?.map((item, index) => {
-									if (item.media_type === "person") return null;
-									return (
-										<MovieCard
-											key={`${item.id}-${index}`}
-											data={item}
-											mediaType={mediaType}
-										/>
-									);
-								})}
-							</InfiniteScroll>
-						) : (
-							<span className="resultNotFound">
-								Sorry, no media titles found matching your request.
-							</span>
+						{loading && <Spinner initial={true} />}
+						{!loading && (
+							<>
+								{data?.results?.length > 0 ? (
+									<InfiniteScroll
+										className="content"
+										dataLength={data?.results?.length || 0}
+										next={fetchNextPageData}
+										hasMore={pageNum <= data?.total_pages}
+										loader={<Spinner />}
+									>
+										{data?.results?.map((item, index) => {
+											if (item.media_type === "person") return null;
+											return (
+												<MovieCard
+													key={`${item.id}-${index}`}
+													data={item}
+													mediaType={mediaType}
+												/>
+											);
+										})}
+									</InfiniteScroll>
+								) : (
+									<span className="resultNotFound">
+										Sorry, no media titles found matching your request.
+									</span>
+								)}
+							</>
 						)}
 					</>
 				)}
