@@ -70,7 +70,7 @@ const App = () => {
 			<TvInstallPrompt />
 			<BrowserRouter>
 				<BackgroundRotator />
-				<div style={{ position: "relative", zIndex: 1, opacity: 0.82 }}>
+				<div style={{ position: "relative", zIndex: 1, opacity: 0.5 }}>
 					<Routes>
 						<Route path="/" element={<HomePage />} />
 						<Route path="/livetv" element={<LiveTvPage />} />
