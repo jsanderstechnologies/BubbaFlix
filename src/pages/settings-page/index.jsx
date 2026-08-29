@@ -392,12 +392,12 @@ const SettingsPage = () => {
 
           {/* Android TV Centralized Settings Banner */}
           {isTvClient && (
-            <div className="settingsCard" style={{ background: "rgba(218, 47, 104, 0.1)", borderColor: "var(--pink)", marginBottom: 25 }}>
+            <div className="settingsCard">
               <div className="cardHeader">
-                <h2 style={{ color: "white" }}><FiServer style={{ marginRight: 8, color: "var(--pink)" }} /> Centralized Server Settings Active</h2>
+                <h2><FiServer style={{ marginRight: 8, color: "var(--pink)" }} /> Centralized Server Settings Active</h2>
                 <span className="badge custom">Backend Synced</span>
               </div>
-              <p className="description" style={{ color: "#dddddd", fontSize: "14px", lineHeight: "1.6" }}>
+              <p className="description">
                 Your Android TV app is automatically configured by your central BubbaFlix server (<code>{serverUrlState || "https://bubbaflix.sanders-technologies.net"}</code>). API tokens, Dispatcharr Live TV, AIOStreams Debrid, Premiumize, SIMKL, and Groq AI settings are managed globally on the server.
               </p>
             </div>
