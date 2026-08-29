@@ -334,33 +334,67 @@ const detectGpuCapabilities = () => {
     let gpuType = "CPU Software (libx264)";
     let encoder = "libx264";
     let inputArgs = [];
-    let outputArgs = ["-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-crf", "23"];
+    let outputArgs = ["-c:v", "libx264", "-preset", "superfast", "-crf", "20", "-pix_fmt", "yuv420p", "-maxrate", "6M", "-bufsize", "8M"];
 
     if (hasNvenc) {
       gpuType = "NVIDIA Hardware Acceleration (NVENC)";
       encoder = "h264_nvenc";
       inputArgs = hwaccelsOutput.includes("cuda") ? ["-hwaccel", "cuda"] : [];
-      outputArgs = ["-c:v", "h264_nvenc", "-preset", "p1", "-tune", "ll"];
+      outputArgs = [
+        "-c:v", "h264_nvenc",
+        "-preset", "p4",
+        "-rc", "vbr",
+        "-cq", "20",
+        "-b:v", "4M",
+        "-maxrate", "6M",
+        "-bufsize", "8M",
+        "-spatial-aq", "1",
+        "-temporal-aq", "1"
+      ];
     } else if (hasQsv) {
       gpuType = "Intel QuickSync Hardware Acceleration (QSV)";
       encoder = "h264_qsv";
       inputArgs = hwaccelsOutput.includes("qsv") ? ["-hwaccel", "qsv"] : [];
-      outputArgs = ["-c:v", "h264_qsv", "-preset", "veryfast"];
+      outputArgs = [
+        "-c:v", "h264_qsv",
+        "-preset", "medium",
+        "-global_quality", "21",
+        "-b:v", "4M",
+        "-maxrate", "6M",
+        "-bufsize", "8M"
+      ];
     } else if (hasAmf) {
       gpuType = "AMD Hardware Acceleration (AMF)";
       encoder = "h264_amf";
       inputArgs = [];
-      outputArgs = ["-c:v", "h264_amf", "-quality", "speed"];
+      outputArgs = [
+        "-c:v", "h264_amf",
+        "-quality", "quality",
+        "-rc", "cqp",
+        "-qp_i", "20",
+        "-qp_p", "22",
+        "-b:v", "4M"
+      ];
     } else if (hasVaapi) {
       gpuType = "Linux Hardware Acceleration (VAAPI)";
       encoder = "h264_vaapi";
       inputArgs = ["-hwaccel", "vaapi"];
-      outputArgs = ["-c:v", "h264_vaapi"];
+      outputArgs = [
+        "-c:v", "h264_vaapi",
+        "-qp", "21",
+        "-b:v", "4M",
+        "-maxrate", "6M"
+      ];
     } else if (hasVideotoolbox) {
       gpuType = "Apple Hardware Acceleration (VideoToolbox)";
       encoder = "h264_videotoolbox";
       inputArgs = [];
-      outputArgs = ["-c:v", "h264_videotoolbox", "-realtime", "true"];
+      outputArgs = [
+        "-c:v", "h264_videotoolbox",
+        "-b:v", "4M",
+        "-maxrate", "6M",
+        "-realtime", "true"
+      ];
     }
 
     cachedGpuConfig = {
@@ -489,6 +523,7 @@ const server = http.createServer((req, res) => {
       "-reconnect_delay_max", "2",
       "-analyzeduration", "10000000",
       "-probesize", "10000000",
+      "-threads", String(cpuCount),
       ...(gpuInfo.inputArgs || []),
       "-i", normalizedTargetUrl,
       ...(gpuInfo.outputArgs || []),
