@@ -58,6 +58,7 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [customDuration, setCustomDuration] = useState(0);
+  const [tmdbRuntime, setTmdbRuntime] = useState(0);
   const [maxBufferedTime, setMaxBufferedTime] = useState(0);
   const [bufferedPercent, setBufferedPercent] = useState(0);
   const [controlsVisible, setControlsVisible] = useState(true);
@@ -157,6 +158,37 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
           });
       } else {
         setCustomDuration(0);
+      }
+
+      // Fetch TMDB runtime as a fallback
+      if (mediaType !== "tv" && tmdbId) {
+        const fetchTmdbRuntime = async () => {
+          try {
+            if (mediaType === "movie") {
+              const res = await fetchDataFromAPI(`/movie/${tmdbId}`);
+              if (res && res.runtime) {
+                console.log("[VideoPlayerModal] Fetched TMDB movie runtime (minutes):", res.runtime);
+                setTmdbRuntime(res.runtime * 60);
+              }
+            } else if (seasonNum !== undefined && episodeNum !== undefined) {
+              const res = await fetchDataFromAPI(`/tv/${tmdbId}/season/${seasonNum}/episode/${episodeNum}`);
+              if (res && res.runtime) {
+                console.log("[VideoPlayerModal] Fetched TMDB episode runtime (minutes):", res.runtime);
+                setTmdbRuntime(res.runtime * 60);
+              } else {
+                const showRes = await fetchDataFromAPI(`/tv/${tmdbId}`);
+                if (showRes && Array.isArray(showRes.episode_run_time) && showRes.episode_run_time.length > 0) {
+                  setTmdbRuntime(showRes.episode_run_time[0] * 60);
+                }
+              }
+            }
+          } catch (e) {
+            console.warn("[VideoPlayerModal] Failed to fetch TMDB runtime fallback:", e.message);
+          }
+        };
+        fetchTmdbRuntime();
+      } else {
+        setTmdbRuntime(0);
       }
 
       // Check for saved watch progress to prompt resume
@@ -466,7 +498,9 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
     }
   };
 
-  const actualDuration = (duration > 0 && duration !== Infinity && !isNaN(duration)) ? duration : (customDuration > 0 ? customDuration : 0);
+  const actualDuration = (duration > 0 && duration !== Infinity && !isNaN(duration)) 
+    ? duration 
+    : (customDuration > 0 ? customDuration : (tmdbRuntime > 0 ? tmdbRuntime : 0));
   const isLiveStream = mediaType === "tv" || (actualDuration === 0 && (duration === Infinity || isNaN(duration)));
 
   const handleTimeUpdate = () => {
@@ -476,7 +510,9 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
       const rawDur = v.duration || 0;
       setDuration(rawDur);
 
-      const displayDur = (rawDur > 0 && rawDur !== Infinity && !isNaN(rawDur)) ? rawDur : (customDuration > 0 ? customDuration : 0);
+      const displayDur = (rawDur > 0 && rawDur !== Infinity && !isNaN(rawDur)) 
+        ? rawDur 
+        : (customDuration > 0 ? customDuration : (tmdbRuntime > 0 ? tmdbRuntime : 0));
 
       let maxBuf = v.currentTime;
       if (v.buffered && v.buffered.length > 0) {
