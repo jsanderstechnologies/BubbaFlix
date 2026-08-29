@@ -498,9 +498,10 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
     }
   };
 
-  const actualDuration = (duration > 0 && duration !== Infinity && !isNaN(duration)) 
-    ? duration 
-    : (customDuration > 0 ? customDuration : (tmdbRuntime > 0 ? tmdbRuntime : 0));
+  const isTranscoded = currentUrl && currentUrl.includes("/api/transcode");
+  const actualDuration = isTranscoded
+    ? (customDuration > 0 ? customDuration : (tmdbRuntime > 0 ? tmdbRuntime : 0))
+    : ((duration > 0 && duration !== Infinity && !isNaN(duration)) ? duration : (customDuration > 0 ? customDuration : (tmdbRuntime > 0 ? tmdbRuntime : 0)));
   const isLiveStream = mediaType === "tv" || (actualDuration === 0 && (duration === Infinity || isNaN(duration)));
 
   const handleTimeUpdate = () => {
@@ -510,9 +511,9 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
       const rawDur = v.duration || 0;
       setDuration(rawDur);
 
-      const displayDur = (rawDur > 0 && rawDur !== Infinity && !isNaN(rawDur)) 
-        ? rawDur 
-        : (customDuration > 0 ? customDuration : (tmdbRuntime > 0 ? tmdbRuntime : 0));
+      const displayDur = isTranscoded
+        ? (customDuration > 0 ? customDuration : (tmdbRuntime > 0 ? tmdbRuntime : 0))
+        : ((rawDur > 0 && rawDur !== Infinity && !isNaN(rawDur)) ? rawDur : (customDuration > 0 ? customDuration : (tmdbRuntime > 0 ? tmdbRuntime : 0)));
 
       let maxBuf = v.currentTime;
       if (v.buffered && v.buffered.length > 0) {
