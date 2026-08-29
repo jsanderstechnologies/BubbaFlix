@@ -576,12 +576,9 @@ class PlayerActivity : AppCompatActivity() {
         resetControlsTimeout()
 
         when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
-                if (!controlsVisible) {
-                    showControls()
-                    btnPlayPause.requestFocus()
-                    return true
-                }
+            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> {
+                btnPlayPause.performClick()
+                return true
             }
             KeyEvent.KEYCODE_DPAD_UP -> {
                 if (!controlsVisible) {
@@ -609,11 +606,10 @@ class PlayerActivity : AppCompatActivity() {
                 btnFF10.performClick()
                 return true
             }
-            KeyEvent.KEYCODE_BACK -> {
-                if (controlsVisible) {
-                    hideControls()
-                    return true
-                }
+            KeyEvent.KEYCODE_BACK, 4, 27, 10009, 461 -> {
+                saveCurrentWatchProgress()
+                finish()
+                return true
             }
         }
         return super.onKeyDown(keyCode, event)

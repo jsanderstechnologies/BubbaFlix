@@ -132,6 +132,35 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
 
       // Load Subtitles
       loadSubtitles();
+
+      // Remote & Keyboard D-Pad Event Handler
+      const handlePlayerKeyDown = (e) => {
+        const key = e.key;
+        const code = e.keyCode;
+
+        // Remote Back / ESC Key -> Exit Player immediately
+        if (key === "Escape" || key === "Back" || code === 27 || code === 4 || code === 10009 || code === 461) {
+          e.preventDefault();
+          e.stopPropagation();
+          setShow(false);
+          if (typeof onClose === "function") onClose();
+          return;
+        }
+
+        // Media Play/Pause
+        if (key === "MediaPlayPause" || key === "MediaPlay" || key === "MediaPause") {
+          e.preventDefault();
+          togglePlayPause();
+          resetControlsTimeout();
+          return;
+        }
+      };
+
+      window.addEventListener("keydown", handlePlayerKeyDown, true);
+
+      return () => {
+        window.removeEventListener("keydown", handlePlayerKeyDown, true);
+      };
     } else {
       document.body.classList.remove("videoPlayerActive");
       document.documentElement.classList.remove("videoPlayerActive");
