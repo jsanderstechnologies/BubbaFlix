@@ -114,10 +114,8 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
         }
       }, 100);
 
-      // Load TMDB Logo
-      if (tmdbId) {
-        loadTmdbLogo();
-      }
+      // Load TMDB Logo for all items (movies, tv shows, live tv, recordings)
+      loadTmdbLogo();
 
       // Load Subtitles
       loadSubtitles();
@@ -249,10 +247,24 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
   const loadTmdbLogo = async () => {
     try {
       setMediaLogoUrl(null);
-      if (!tmdbId) return;
+      let targetTmdbId = tmdbId;
+      let targetType = mediaType === "tv" || mediaType === "series" ? "tv" : "movie";
 
-      const targetType = mediaType === "tv" || mediaType === "series" ? "tv" : "movie";
-      const endpoint = `/${targetType}/${tmdbId}/images`;
+      if (!targetTmdbId && title) {
+        const cleanTitle = title.replace(/\([^)]*\)/g, "").replace(/S\d+E\d+/i, "").trim();
+        const searchRes = await fetchDataFromAPI(`/search/multi`, { query: cleanTitle });
+        if (searchRes && Array.isArray(searchRes.results) && searchRes.results.length > 0) {
+          const match = searchRes.results.find((r) => r.media_type === "movie" || r.media_type === "tv") || searchRes.results[0];
+          if (match) {
+            targetTmdbId = match.id;
+            targetType = match.media_type || "movie";
+          }
+        }
+      }
+
+      if (!targetTmdbId) return;
+
+      const endpoint = `/${targetType}/${targetTmdbId}/images`;
       const res = await fetchDataFromAPI(endpoint, { include_image_language: "en,null" });
 
       if (res && Array.isArray(res.logos) && res.logos.length > 0) {

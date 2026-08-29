@@ -4,6 +4,7 @@ import ContentWrapper from "../../components/content-wrapper";
 import TopNav from "../../components/top-nav";
 import Spinner from "../../components/spinner";
 import VideoPlayerModal from "../../components/video-player-modal";
+import { fetchDataFromAPI } from "../../utils/api";
 import {
   fetchDispatcharrRecordings,
   deleteDispatcharrRecording,
@@ -17,8 +18,8 @@ import {
   FiSquare,
   FiRefreshCw,
   FiClock,
-  FiCheckCircle,
-  FiAlertCircle,
+  FiStar,
+  FiCalendar,
 } from "react-icons/fi";
 import "./index.scss";
 
@@ -40,7 +41,39 @@ const RecordingsPage = () => {
   const loadRecordings = async () => {
     setLoading(true);
     const data = await fetchDispatcharrRecordings();
-    setRecordings(data);
+
+    // Enrich recordings with TMDB poster & episode/movie metadata
+    const enriched = await Promise.all(
+      (data || []).map(async (rec) => {
+        if (!rec || !rec.title) return rec;
+        try {
+          const cleanTitle = rec.title.replace(/\([^)]*\)/g, "").replace(/S\d+E\d+/i, "").trim();
+          const searchRes = await fetchDataFromAPI(`/search/multi`, { query: cleanTitle });
+          if (searchRes && Array.isArray(searchRes.results) && searchRes.results.length > 0) {
+            const match = searchRes.results.find((r) => r.media_type === "movie" || r.media_type === "tv") || searchRes.results[0];
+            if (match) {
+              const poster = match.poster_path ? `https://image.tmdb.org/t/p/w500${match.poster_path}` : null;
+              const backdrop = match.backdrop_path ? `https://image.tmdb.org/t/p/w500${match.backdrop_path}` : null;
+              return {
+                ...rec,
+                tmdbId: match.id,
+                mediaType: match.media_type,
+                poster: rec.poster || rec.artwork || poster,
+                backdrop: rec.backdrop || backdrop,
+                overview: rec.description || match.overview,
+                vote_average: match.vote_average ? match.vote_average.toFixed(1) : null,
+                release_date: (match.release_date || match.first_air_date || "").substring(0, 4),
+              };
+            }
+          }
+        } catch (e) {
+          console.warn("[RecordingsPage] TMDB metadata fetch error:", e.message);
+        }
+        return rec;
+      })
+    );
+
+    setRecordings(enriched);
     setLoading(false);
   };
 
@@ -160,8 +193,8 @@ const RecordingsPage = () => {
               return (
                 <div key={rec.id} className="recordingCard">
                   <div className="cardThumbnail">
-                    {rec.artwork || rec.thumbnail ? (
-                      <img src={rec.artwork || rec.thumbnail} alt={rec.title} />
+                    {rec.poster || rec.artwork || rec.thumbnail ? (
+                      <img src={rec.poster || rec.artwork || rec.thumbnail} alt={rec.title} className="recPosterImg" />
                     ) : (
                       <div className="thumbPlaceholder">
                         <FiVideo />
@@ -183,12 +216,31 @@ const RecordingsPage = () => {
                     <h3 className="recTitle" title={rec.title}>
                       {rec.title || "Untitled Recording"}
                     </h3>
+
                     <div className="recMeta">
                       <span className="channelName">{rec.channel_name || rec.channel || "TV Channel"}</span>
+                      {rec.vote_average && (
+                        <span className="ratingBadge">
+                          <FiStar style={{ fill: "#ffc107", color: "#ffc107", marginRight: 3 }} />
+                          {rec.vote_average}
+                        </span>
+                      )}
+                      {rec.release_date && (
+                        <span className="yearBadge">
+                          <FiCalendar style={{ marginRight: 3 }} />
+                          {rec.release_date}
+                        </span>
+                      )}
                       <span className="recTime">
                         <FiClock style={{ marginRight: 4 }} /> {formatDate(rec.start_time || rec.created_at)}
                       </span>
                     </div>
+
+                    {rec.overview && (
+                      <p className="recOverview" title={rec.overview}>
+                        {rec.overview}
+                      </p>
+                    )}
 
                     <div className="cardActions">
                       {(isCompleted || isRecording) && (
