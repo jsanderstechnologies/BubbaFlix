@@ -115,30 +115,49 @@ const LiveTvPage = () => {
       setAuthError(false);
     }
 
-    // If channels array is empty but we have EPG programs, derive channels from programs!
-    if ((!chData || chData.length === 0) && progData && progData.length > 0) {
-      const channelMap = new Map();
-      progData.forEach((p) => {
-        const rawCh = p.channel && typeof p.channel === "object" ? p.channel : null;
-        const id = rawCh?.id || p.channel || p.channel_id || p.tvg_id || p.channel_name;
-        const name = rawCh?.name || p.channel_name || p.channel_title || p.title || `Channel ${id}`;
-        const number = rawCh?.number || p.channel_number || p.channel || id;
-        const logo = rawCh?.logo || p.channel_logo || p.icon || p.logo || "";
+    // Build unified channel map merging chData and progData to guarantee full EPG schedule coverage
+    const channelMap = new Map();
 
-        if (id && typeof id !== "object" && !channelMap.has(String(id))) {
+    if (Array.isArray(chData)) {
+      chData.forEach((ch) => {
+        if (!ch) return;
+        const id = ch.id || ch.channel_number || ch.number || ch.name;
+        if (id) {
           channelMap.set(String(id), {
-            id,
-            name,
-            number,
-            logo,
-            tvg_id: rawCh?.tvg_id || p.tvg_id || "",
+            ...ch,
+            id: ch.id || id,
+            name: ch.name || ch.effective_name || `Channel ${id}`,
+            number: ch.number || ch.channel_number || ch.effective_channel_number || id,
+            logo: ch.logo || ch.logo_url || "",
+            tvg_id: ch.tvg_id || ch.effective_tvg_id || "",
+            epg_data_id: ch.epg_data_id || ch.effective_epg_data_id || "",
           });
         }
       });
-      chData = Array.from(channelMap.values());
     }
 
-    // If channels array is still empty, populate default Dispatcharr channels so EPG Grid Table is ALWAYS visible!
+    if (Array.isArray(progData)) {
+      progData.forEach((p) => {
+        if (!p) return;
+        const rawCh = p.channel && typeof p.channel === "object" ? p.channel : null;
+        const id = rawCh?.id || (typeof p.channel !== "object" ? p.channel : null) || p.channel_id || p.tvg_id;
+        if (!id || typeof id === "object") return;
+        const key = String(id);
+        if (!channelMap.has(key)) {
+          channelMap.set(key, {
+            id,
+            name: rawCh?.name || p.channel_name || p.channel_title || `Channel ${id}`,
+            number: rawCh?.number || p.channel_number || id,
+            logo: rawCh?.logo || p.channel_logo || p.icon || "",
+            tvg_id: rawCh?.tvg_id || p.tvg_id || "",
+            epg_data_id: rawCh?.epg_data_id || p.epg_data_id || "",
+          });
+        }
+      });
+    }
+
+    chData = Array.from(channelMap.values());
+
     if (!chData || chData.length === 0) {
       chData = [
         { id: 1, name: "Dispatcharr Live Channel 1", number: 1, logo: "" },
