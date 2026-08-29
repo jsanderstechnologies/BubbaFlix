@@ -133,7 +133,7 @@ class PlayerActivity : AppCompatActivity() {
         val mediaType = intent.getStringExtra(EXTRA_MEDIA_TYPE) ?: "movie"
 
         if (!title.isNullOrEmpty()) {
-            txtPlayerTitle.text = title
+            txtPlayerTitle.text = cleanMediaTitle(title)
             txtPlayerTitle.visibility = View.VISIBLE
         } else {
             txtPlayerTitle.visibility = View.GONE
@@ -143,6 +143,8 @@ class PlayerActivity : AppCompatActivity() {
             loadLogoImage(logoUrl)
         } else if (!tmdbId.isNullOrEmpty()) {
             fetchTmdbLogo(tmdbId, mediaType)
+        } else if (!title.isNullOrEmpty()) {
+            searchTmdbLogoByTitle(title, mediaType)
         } else {
             imgMediaLogo.visibility = View.GONE
         }
@@ -155,11 +157,53 @@ class PlayerActivity : AppCompatActivity() {
         resetControlsTimeout()
     }
 
+    private fun cleanMediaTitle(rawTitle: String): String {
+        var clean = rawTitle.replace(Regex("""\.(mkv|mp4|avi|mov|m4v|wmv|flv|webm)$""", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("""[._+]"""), " ")
+            .replace(Regex("""\b(1080p|720p|2160p|4k|hdr|web-dl|webrip|h264|x264|h265|hevc|repack|proper|aac|dts|xvid|ethel|eztv|eztvx|rarbg|yts)\b""", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("""\[[^\]]*\]|\([^)]*\)"""), "")
+            .replace(Regex("""\s+"""), " ")
+            .trim()
+        return if (clean.isEmpty()) rawTitle else clean
+    }
+
     private fun loadLogoImage(url: String) {
         imgMediaLogo.visibility = View.VISIBLE
+        txtPlayerTitle.visibility = View.GONE
         Glide.with(this)
             .load(url)
             .into(imgMediaLogo)
+    }
+
+    private fun searchTmdbLogoByTitle(rawTitle: String, mediaType: String) {
+        val cleanTitle = cleanMediaTitle(rawTitle)
+        if (cleanTitle.isEmpty()) return
+
+        val client = OkHttpClient()
+        val url = "https://api.themoviedb.org/3/search/multi?api_key=4544d6db87081702f3a61f38e078b6be&query=" + Uri.encode(cleanTitle)
+        val request = Request.Builder().url(url).build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {}
+            override fun onResponse(call: Call, response: Response) {
+                if (!response.isSuccessful) return
+                val bodyStr = response.body?.string() ?: return
+                try {
+                    val json = JSONObject(bodyStr)
+                    val results = json.optJSONArray("results")
+                    if (results != null && results.length() > 0) {
+                        val first = results.getJSONObject(0)
+                        val id = first.optInt("id", 0)
+                        val type = first.optString("media_type", mediaType)
+                        if (id > 0) {
+                            fetchTmdbLogo(id.toString(), type)
+                        }
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        })
     }
 
     private fun fetchTmdbLogo(tmdbId: String, mediaType: String) {
@@ -168,19 +212,10 @@ class PlayerActivity : AppCompatActivity() {
         val request = Request.Builder().url(url).build()
 
         client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                runOnUiThread {
-                    imgMediaLogo.visibility = View.GONE
-                }
-            }
+            override fun onFailure(call: Call, e: IOException) {}
 
             override fun onResponse(call: Call, response: Response) {
-                if (!response.isSuccessful) {
-                    runOnUiThread {
-                        imgMediaLogo.visibility = View.GONE
-                    }
-                    return
-                }
+                if (!response.isSuccessful) return
 
                 val bodyStr = response.body?.string()
                 if (!bodyStr.isNullOrEmpty()) {
@@ -212,10 +247,6 @@ class PlayerActivity : AppCompatActivity() {
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }
-                }
-
-                runOnUiThread {
-                    imgMediaLogo.visibility = View.GONE
                 }
             }
         })

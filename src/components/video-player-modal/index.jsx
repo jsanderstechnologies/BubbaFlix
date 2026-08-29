@@ -23,6 +23,17 @@ import { getWatchProgress, saveWatchProgress, clearWatchProgress, formatTimeDisp
 import { getTranscodedStreamUrl } from "../../utils/serverSettings";
 import "./index.scss";
 
+const cleanMediaTitle = (rawTitle) => {
+  if (!rawTitle) return "";
+  let clean = rawTitle;
+  clean = clean.replace(/\.(mkv|mp4|avi|mov|m4v|wmv|flv|webm)$/i, "");
+  clean = clean.replace(/[\._\+]/g, " ");
+  clean = clean.replace(/\b(1080p|720p|2160p|4k|hdr|web-dl|webrip|h264|x264|h265|hevc|repack|proper|aac|dts|xvid|ethel|eztv|eztvx|rarbg|yts)\b/gi, "");
+  clean = clean.replace(/\[[^\]]*\]/g, "").replace(/\([^)]*\)/g, "");
+  clean = clean.replace(/\s+/g, " ").trim();
+  return clean || rawTitle;
+};
+
 const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, streamUrl, title, tmdbId, mediaType = "movie", seasonNum, episodeNum, channelLogo }) => {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
@@ -56,6 +67,8 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
   // TMDB Logo State
   const [mediaLogoUrl, setMediaLogoUrl] = useState(null);
 
+  const displayTitle = cleanMediaTitle(title || "");
+
   // Audio Track State
   const [audioTracks, setAudioTracks] = useState([]);
   const [activeAudioIdx, setActiveAudioIdx] = useState(0);
@@ -79,14 +92,17 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
         targetUrl = getTranscodedStreamUrl(targetUrl);
       }
 
-      // Check if running inside Native Android TV App Client with Universal ExoPlayer
-      if (typeof window !== "undefined" && window.AndroidPlayer && typeof window.AndroidPlayer.playStream === "function") {
-        console.log("[Launching Native Universal Player Activity]:", targetUrl);
-        window.AndroidPlayer.playStream(targetUrl, title || "", channelLogo || mediaLogoUrl || "", tmdbId || "", mediaType || "movie");
-        if (typeof setShow === "function") setShow(false);
-        if (typeof onClose === "function") onClose();
-        return;
-      }
+      // Pre-fetch TMDB logo then handle native player or web player setup
+      loadTmdbLogo().then((fetchedLogo) => {
+        const finalLogo = channelLogo || fetchedLogo || "";
+        if (typeof window !== "undefined" && window.AndroidPlayer && typeof window.AndroidPlayer.playStream === "function") {
+          console.log("[Launching Native Universal Player Activity]:", targetUrl, "Logo:", finalLogo);
+          window.AndroidPlayer.playStream(targetUrl, displayTitle, finalLogo, tmdbId || "", mediaType || "movie");
+          if (typeof setShow === "function") setShow(false);
+          if (typeof onClose === "function") onClose();
+          return;
+        }
+      });
 
       document.body.classList.add("videoPlayerActive");
       document.documentElement.classList.add("videoPlayerActive");
@@ -113,9 +129,6 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
           mainPlayBtnRef.current.focus();
         }
       }, 100);
-
-      // Load TMDB Logo for all items (movies, tv shows, live tv, recordings)
-      loadTmdbLogo();
 
       // Load Subtitles
       loadSubtitles();
@@ -251,7 +264,7 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
       let targetType = mediaType === "tv" || mediaType === "series" ? "tv" : "movie";
 
       if (!targetTmdbId && title) {
-        const cleanTitle = title.replace(/\([^)]*\)/g, "").replace(/S\d+E\d+/i, "").trim();
+        const cleanTitle = cleanMediaTitle(title);
         const searchRes = await fetchDataFromAPI(`/search/multi`, { query: cleanTitle });
         if (searchRes && Array.isArray(searchRes.results) && searchRes.results.length > 0) {
           const match = searchRes.results.find((r) => r.media_type === "movie" || r.media_type === "tv") || searchRes.results[0];
@@ -262,7 +275,7 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
         }
       }
 
-      if (!targetTmdbId) return;
+      if (!targetTmdbId) return null;
 
       const endpoint = `/${targetType}/${targetTmdbId}/images`;
       const res = await fetchDataFromAPI(endpoint, { include_image_language: "en,null" });
@@ -272,12 +285,13 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
         if (engLogo && engLogo.file_path) {
           const logoFullUrl = `https://image.tmdb.org/t/p/w500${engLogo.file_path}`;
           setMediaLogoUrl(logoFullUrl);
-          return;
+          return logoFullUrl;
         }
       }
     } catch (err) {
       console.warn("[VideoPlayerModal] Error fetching TMDB logo:", err.message);
     }
+    return null;
   };
 
   const loadSubtitles = async () => {
@@ -513,13 +527,13 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
 
               {channelLogo ? (
                 <div className="playerChannelLogoHeader">
-                  <img src={channelLogo} alt={title || "Channel Logo"} className="playerChannelLogo" />
-                  <h2 className="playerTitle">{title}</h2>
+                  <img src={channelLogo} alt={displayTitle || "Channel Logo"} className="playerChannelLogo" />
+                  <h2 className="playerTitle">{displayTitle}</h2>
                 </div>
               ) : mediaLogoUrl ? (
-                <img src={mediaLogoUrl} alt="Media Title Logo" className="mediaLogo" />
+                <img src={mediaLogoUrl} alt={displayTitle} className="mediaLogo" />
               ) : (
-                <h2 className="playerTitle">{title}</h2>
+                <h2 className="playerTitle">{displayTitle}</h2>
               )}
             </div>
           </div>
