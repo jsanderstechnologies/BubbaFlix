@@ -325,11 +325,30 @@ const detectGpuCapabilities = () => {
       hwaccelsOutput = "";
     }
 
-    const hasNvenc = encodersOutput.includes("h264_nvenc");
-    const hasQsv = encodersOutput.includes("h264_qsv");
-    const hasAmf = encodersOutput.includes("h264_amf");
-    const hasVaapi = encodersOutput.includes("h264_vaapi");
-    const hasVideotoolbox = encodersOutput.includes("h264_videotoolbox");
+    const verifyHardwareEncoder = (encoderName) => {
+      try {
+        let testCmd = "";
+        if (encoderName === "h264_vaapi") {
+          const fs = require("fs");
+          const hasRenderNode = fs.existsSync("/dev/dri/renderD128");
+          const vaapiDevice = hasRenderNode ? "-vaapi_device /dev/dri/renderD128 " : "";
+          testCmd = `ffmpeg ${vaapiDevice}-f lavfi -i testsrc=duration=1:size=320x240:rate=30 -vf format=nv12,hwupload -c:v h264_vaapi -f null -`;
+        } else {
+          testCmd = `ffmpeg -f lavfi -i testsrc=duration=1:size=320x240:rate=30 -c:v ${encoderName} -f null -`;
+        }
+        execSync(testCmd, { encoding: "utf8", timeout: 4000, stdio: ["ignore", "ignore", "ignore"] });
+        return true;
+      } catch (err) {
+        logMessage(`[GPU Verification Warning] ${encoderName} is compiled but sandbox hardware initialization test failed: ${err.message}. Disabling GPU option.`);
+        return false;
+      }
+    };
+
+    const hasNvenc = encodersOutput.includes("h264_nvenc") && verifyHardwareEncoder("h264_nvenc");
+    const hasQsv = encodersOutput.includes("h264_qsv") && verifyHardwareEncoder("h264_qsv");
+    const hasAmf = encodersOutput.includes("h264_amf") && verifyHardwareEncoder("h264_amf");
+    const hasVaapi = encodersOutput.includes("h264_vaapi") && verifyHardwareEncoder("h264_vaapi");
+    const hasVideotoolbox = encodersOutput.includes("h264_videotoolbox") && verifyHardwareEncoder("h264_videotoolbox");
 
     let gpuType = "CPU Software (libx264)";
     let encoder = "libx264";
