@@ -28,6 +28,59 @@ const extractArrayFromResponse = (data) => {
 };
 
 /**
+ * Unpacks program items from any response shape (Array, {results: [...]}, {1: [...], 2: [...]}, [{programs: [...]}, ...])
+ */
+const extractAllProgramsFromResponse = (data) => {
+  if (!data) return [];
+  const programs = [];
+
+  if (Array.isArray(data)) {
+    data.forEach((item) => {
+      if (!item) return;
+      if (item.start_time || item.title) {
+        programs.push(item);
+      } else if (Array.isArray(item.programs)) {
+        item.programs.forEach((p) => {
+          if (p) programs.push({ ...p, channel: p.channel || item.id || item.channel_id });
+        });
+      } else if (Array.isArray(item.epg)) {
+        item.epg.forEach((p) => {
+          if (p) programs.push({ ...p, channel: p.channel || item.id });
+        });
+      }
+    });
+    return programs;
+  }
+
+  if (typeof data === "object") {
+    if (Array.isArray(data.results)) {
+      return extractAllProgramsFromResponse(data.results);
+    }
+    if (Array.isArray(data.programs)) {
+      return extractAllProgramsFromResponse(data.programs);
+    }
+    if (Array.isArray(data.grid)) {
+      return extractAllProgramsFromResponse(data.grid);
+    }
+
+    // Dictionary keyed by channel ID or UUID { "1": [...progs], "2": [...progs] }
+    Object.keys(data).forEach((key) => {
+      const val = data[key];
+      if (Array.isArray(val)) {
+        val.forEach((p) => {
+          if (p && typeof p === "object") {
+            const chRef = p.channel || key;
+            programs.push({ ...p, channel: chRef });
+          }
+        });
+      }
+    });
+  }
+
+  return programs;
+};
+
+/**
  * Fetch all enabled Live TV channels from Dispatcharr
  */
 export const fetchDispatcharrChannels = async () => {
@@ -86,7 +139,7 @@ export const fetchDispatcharrEpgPrograms = async (params = {}) => {
   // 1. Try /api/epg/grid/ (Dispatcharr native EPG grid)
   try {
     const resGrid = await axios.get(`${baseUrl}/api/epg/grid/`, { timeout: 8000 });
-    const gridPrograms = extractArrayFromResponse(resGrid.data);
+    const gridPrograms = extractAllProgramsFromResponse(resGrid.data);
     if (gridPrograms.length > 0) {
       allPrograms.push(...gridPrograms);
     }
@@ -101,7 +154,7 @@ export const fetchDispatcharrEpgPrograms = async (params = {}) => {
       params: { page_size: 1000, ...params },
       timeout: 10000,
     });
-    const progList = extractArrayFromResponse(resProg.data);
+    const progList = extractAllProgramsFromResponse(resProg.data);
     if (progList.length > 0) {
       allPrograms.push(...progList);
     }

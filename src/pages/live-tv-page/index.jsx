@@ -364,7 +364,9 @@ const LiveTvPage = () => {
 
                     if (pChId && pChId !== "[object object]" && (pChId === chIdStr || pChId === chNumStr || (chTvgStr && pChId === chTvgStr))) return true;
                     if (pChNum && (pChNum === chIdStr || pChNum === chNumStr)) return true;
-                    if (pChTvg && (pChTvg === chTvgStr || (chUuidStr && pChTvg === chUuidStr) || (chIdStr && pChTvg === chIdStr))) return true;
+                    if (pChTvg && (pChTvg === chTvgStr || (chUuidStr && pChTvg === chUuidStr) || (chIdStr && pChTvg === chIdStr) || (chTvgStr && pChTvg.includes(chTvgStr)) || (chTvgStr && chTvgStr.includes(pChTvg)))) return true;
+                    if (pChTvg && chEpgIdStr && chEpgIdStr.length > 2 && pChTvg.includes(chEpgIdStr)) return true;
+                    if (chTvgStr && pChEpgId && pChEpgId.length > 2 && chTvgStr.includes(pChEpgId)) return true;
                     if (pChEpgId && chEpgIdStr && pChEpgId === chEpgIdStr) return true;
                     if (pChName && chNameStr && (pChName === chNameStr || pChName.includes(chNameStr) || chNameStr.includes(pChName))) return true;
                     return false;
