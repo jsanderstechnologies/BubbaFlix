@@ -7,6 +7,9 @@
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
+  opacity: 0.5;
+  filter: blur(10px);
+  transform: scale(1.05);
 
   .bgLayer {
     position: absolute;
