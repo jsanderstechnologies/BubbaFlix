@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import TopNav from "../../components/top-nav";
 import ContentWrapper from "../../components/content-wrapper";
 import Caraousel from "../../components/caraousel";
+import useFetch from "../../hooks/useFetch";
 import { fetchDataFromAPI } from "../../utils/api";
 import { getHomeSections, saveHomeSections } from "../../utils/homeConfig";
 import { getFavoriteChannels } from "../../utils/favorites";
