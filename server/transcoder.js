@@ -506,8 +506,16 @@ const server = http.createServer((req, res) => {
       "Access-Control-Allow-Origin": "*",
     });
 
-    const normalizedTargetUrl = targetUrl;
     const settings = loadServerSettings();
+    const rawDispatcharrUrl = (settings.dispatcharrUrl || "http://192.168.10.3:9191").replace(/\/$/, "");
+
+    let resolvedTargetUrl = targetUrl;
+    if (targetUrl.includes("/api/dispatcharr/") || targetUrl.includes("/dispatcharr/")) {
+      const subPath = targetUrl.replace(/^https?:\/\/[^\/]+/, "").replace(/^\/api\/dispatcharr/, "").replace(/^\/dispatcharr/, "");
+      resolvedTargetUrl = `${rawDispatcharrUrl}${subPath.startsWith("/") ? "" : "/"}${subPath}`;
+      logMessage(`[Transcoder Direct Resolve] Rewrote internal proxy URL to direct Dispatcharr target: ${resolvedTargetUrl}`);
+    }
+
     let authHeaderStr = "";
     if (settings.dispatcharrApiKey) {
       if (settings.dispatcharrApiKey.startsWith("eyJ")) {
@@ -522,6 +530,7 @@ const server = http.createServer((req, res) => {
 
     const ffmpegArgs = [
       "-headers", headersStr,
+      "-tls_verify", "0",
       "-reconnect", "1",
       "-reconnect_at_eof", "1",
       "-reconnect_streamed", "1",
@@ -530,7 +539,7 @@ const server = http.createServer((req, res) => {
       "-probesize", "10000000",
       "-threads", String(cpuCount),
       ...(gpuInfo.inputArgs || []),
-      "-i", normalizedTargetUrl,
+      "-i", resolvedTargetUrl,
       ...(gpuInfo.outputArgs || []),
       "-c:a", "aac",
       "-b:a", "192k",
