@@ -29,8 +29,8 @@ let cachedDvrRecordings = [];
 let cachedChannelsList = [];
 let lastEpgFetchTime = 0;
 
-// Internal Node settings server port (default 5150)
-const PORT = process.env.PORT || 5150;
+// Internal Node settings server port (always 5000 for Nginx proxy inside container)
+const PORT = process.env.PORT || 5000;
 const UDP_DISCOVERY_PORT = 5151;
 const DATA_DIR = process.env.DATA_DIR || (fs.existsSync("/app/data") ? "/app/data" : __dirname);
 const SETTINGS_FILE = path.join(DATA_DIR, "settings.json");

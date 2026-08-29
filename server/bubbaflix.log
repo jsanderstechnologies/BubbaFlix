@@ -80,3 +80,17 @@
 [2026-08-29T08:46:59.865Z] [HTTP Request] GET /livetv | Initiator: [Unknown Component] | Client IP: 127.0.0.1 | Referer: Direct Connection | User-Agent: Unknown Client
 [2026-08-29T08:46:59.898Z] [HTTP Request] GET /api/version | Initiator: [Unknown Component] | Client IP: 127.0.0.1 | Referer: Direct Connection | User-Agent: Unknown Client
 [2026-08-29T08:47:00.059Z] [Version Check] Served version 1.0.1 (v2) to [Unknown Component] (127.0.0.1)
+[2026-08-29T08:51:46.916Z] [BubbaFlix Server] UDP Local Server Discovery Beacon running on port 5151
+[2026-08-29T08:51:47.079Z] [GPU Transcoder Engine] Auto-Detected Hardware Accelerator: CPU Software (libx264) (libx264)
+[2026-08-29T08:51:47.105Z] ================================================================================
+[2026-08-29T08:51:47.133Z] [BubbaFlix Server Startup] Pure Node Server listening on 0.0.0.0:5150
+[2026-08-29T08:51:47.160Z] [CPU Hardware Topology] Model: Intel(R) Core(TM) i5-2540M CPU @ 2.60GHz
+[2026-08-29T08:51:47.188Z] [CPU Hardware Topology] Logical Cores / Hyperthreads: 4
+[2026-08-29T08:51:47.213Z] [CPU Hardware Topology] Libuv Threadpool Size (UV_THREADPOOL_SIZE): 16
+[2026-08-29T08:51:47.241Z] [CPU Hardware Topology] Multi-Core Hyperthreading Active: YES
+[2026-08-29T08:51:47.268Z] [GPU Hardware Engine] Auto-Detected GPU Accelerator: CPU Software (libx264) (libx264)
+[2026-08-29T08:51:47.296Z] [GPU Hardware Engine] GPU Acceleration Active: NO (CPU Software Fallback)
+[2026-08-29T08:51:47.322Z] ================================================================================
+[2026-08-29T08:51:47.352Z] [Background Cache Engine] Starting 1-hour background reload for EPG and DVR recordings...
+[2026-08-29T08:51:47.415Z] [Background Cache Engine] Refresh Complete! Cached 0 active/6h EPG programs, 0 DVR recordings, and 0 channels.
+[2026-08-29T08:52:02.953Z] [HTTP Request] GET / | Initiator: [Unknown Component] | Client IP: 127.0.0.1 | Referer: Direct Connection | User-Agent: Unknown Client
