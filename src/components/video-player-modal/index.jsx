@@ -20,6 +20,7 @@ import {
 import { fetchDataFromAPI } from "../../utils/api";
 import { fetchOpenSubtitles, downloadAndConvertSubtitle } from "../../utils/subtitles";
 import { getWatchProgress, saveWatchProgress, clearWatchProgress, formatTimeDisplay } from "../../utils/watchProgress";
+import { getTranscodedStreamUrl } from "../../utils/serverSettings";
 import "./index.scss";
 
 const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, mediaType = "movie", seasonNum, episodeNum, channelLogo }) => {
@@ -73,7 +74,10 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
 
   useEffect(() => {
     if (show) {
-      const targetUrl = rawUrl || videoUrl || "";
+      let targetUrl = rawUrl || videoUrl || "";
+      if (targetUrl && !targetUrl.includes("/api/transcode")) {
+        targetUrl = getTranscodedStreamUrl(targetUrl);
+      }
 
       // Check if running inside Native Android TV App Client with Universal ExoPlayer
       if (typeof window !== "undefined" && window.AndroidPlayer && typeof window.AndroidPlayer.playStream === "function") {
@@ -160,7 +164,11 @@ const VideoPlayerModal = ({ show, setShow, videoUrl, rawUrl, title, tmdbId, medi
     if (isHls && Hls.isSupported()) {
       const hls = new Hls({
         enableWorker: true,
-        lowLatencyMode: true,
+        lowLatencyMode: false,
+        backBufferLength: 3600,
+        liveBackBufferLength: 3600,
+        liveSyncDurationCount: 3,
+        liveMaxLatencyDurationCount: 10,
       });
       hlsRef.current = hls;
 

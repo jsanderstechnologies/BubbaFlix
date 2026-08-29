@@ -72,7 +72,10 @@ export const isSimklWatched = ({ tmdbId, mediaType, seasonNum, episodeNum }) => 
 
   if (episodeNum !== undefined && seasonNum !== undefined) {
     const epKey = `${idStr}_s${seasonNum}_e${episodeNum}`;
-    return !!cache.episodes[epKey];
+    if (cache.episodes[epKey]) return true;
+    const seasonKey = `${idStr}_s${seasonNum}`;
+    if (cache.seasons[seasonKey]) return true;
+    return false;
   }
 
   if (seasonNum !== undefined) {
@@ -94,8 +97,7 @@ export const isSimklWatched = ({ tmdbId, mediaType, seasonNum, episodeNum }) => 
 // SIMKL API Phase 1 & Phase 2 Compliant Sync Strategy
 export const fetchUserSimklHistory = async (forceManualSync = false) => {
   const { clientId } = getSimklConfig();
-  const accessToken = typeof window !== "undefined" ? localStorage.getItem("simkl_access_token") : null;
-  if (!clientId || !accessToken) return getSimklWatchCache();
+  if (!clientId) return getSimklWatchCache();
 
   if (typeof window !== "undefined" && !forceManualSync) {
     const lastSyncTime = localStorage.getItem("simkl_last_sync_time");
@@ -217,23 +219,28 @@ export const fetchUserSimklHistory = async (forceManualSync = false) => {
   return cache;
 };
 
-export const toggleSimklWatched = async ({ tmdbId, title, mediaType, seasonNum, episodeNum }) => {
+export const toggleSimklWatched = async ({ tmdbId, title, mediaType, seasonNum, episodeNum, totalEpisodes = 30 }) => {
   const { clientId } = getSimklConfig();
   const currentlyWatched = isSimklWatched({ tmdbId, mediaType, seasonNum, episodeNum });
   const cache = getSimklWatchCache();
   const idStr = String(tmdbId);
+  const newStatus = !currentlyWatched;
 
   // Optimistically update local cache
   if (episodeNum !== undefined && seasonNum !== undefined) {
     const epKey = `${idStr}_s${seasonNum}_e${episodeNum}`;
-    cache.episodes[epKey] = !currentlyWatched;
+    cache.episodes[epKey] = newStatus;
   } else if (seasonNum !== undefined) {
     const seasonKey = `${idStr}_s${seasonNum}`;
-    cache.seasons[seasonKey] = !currentlyWatched;
+    cache.seasons[seasonKey] = newStatus;
+    // Cascade season watched state to all episode entries for that season!
+    for (let ep = 1; ep <= totalEpisodes; ep++) {
+      cache.episodes[`${idStr}_s${seasonNum}_e${ep}`] = newStatus;
+    }
   } else if (mediaType === "movie") {
-    cache.movies[idStr] = !currentlyWatched;
+    cache.movies[idStr] = newStatus;
   } else if (mediaType === "tv") {
-    cache.shows[idStr] = !currentlyWatched;
+    cache.shows[idStr] = newStatus;
   }
 
   saveSimklWatchCache(cache);

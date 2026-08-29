@@ -18,6 +18,13 @@ export const getServerUrl = () => {
   return DEFAULT_SERVER_URL;
 };
 
+export const getTranscodedStreamUrl = (url) => {
+  if (!url) return "";
+  if (url.includes("/api/transcode")) return url;
+  const baseUrl = getServerUrl();
+  return `${baseUrl}/api/transcode?url=${encodeURIComponent(url)}`;
+};
+
 export const saveServerUrl = (url) => {
   if (typeof window === "undefined") return;
   if (!url || url.trim().length === 0) {
