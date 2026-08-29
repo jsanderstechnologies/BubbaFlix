@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import TopNav from "../../components/top-nav";
 import ContentWrapper from "../../components/content-wrapper";
-import HeroBanner from "./hero-banner";
 import Caraousel from "../../components/caraousel";
 import useFetch from "../../hooks/useFetch";
 import { getHomeSections, saveHomeSections } from "../../utils/homeConfig";
@@ -253,7 +252,6 @@ const HomePage = () => {
   return (
     <div className="home-page">
       <TopNav />
-      <HeroBanner />
 
       <ContentWrapper>
         <div className="homeCustomizeBar">
