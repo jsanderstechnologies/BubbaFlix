@@ -9,7 +9,8 @@ import { getPremiumizeKey, savePremiumizeKey } from "../../utils/premiumize";
 import { updateServerSettings, fetchServerSettings, getServerUrl, saveServerUrl, testBackendServerHealth } from "../../utils/serverSettings";
 import { getApiConfiguration } from "../../store/homeSlice";
 import { THEMES, getSavedTheme, applyTheme } from "../../utils/theme";
-import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning, FiCheckSquare, FiTv, FiPlus, FiMinus, FiServer, FiInfo, FiExternalLink, FiCloud } from "react-icons/fi";
+import { getHomeSections, saveHomeSections, DEFAULT_HOME_SECTIONS } from "../../utils/homeConfig";
+import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning, FiCheckSquare, FiTv, FiPlus, FiMinus, FiServer, FiInfo, FiExternalLink, FiCloud, FiChevronUp, FiChevronDown, FiRotateCcw } from "react-icons/fi";
 import "./index.scss";
 
 const ALL_RESOLUTIONS = [
@@ -69,6 +70,10 @@ const SettingsPage = () => {
   const [cpuInfo, setCpuInfo] = useState(null);
   const [gpuInfo, setGpuInfo] = useState(null);
 
+  // Home Screen Layout Customization State
+  const [homeSections, setHomeSections] = useState(getHomeSections());
+  const [homeSectionStatus, setHomeSectionStatus] = useState(null);
+
   const dispatch = useDispatch();
 
   const loadAllSettings = async () => {
@@ -118,6 +123,40 @@ const SettingsPage = () => {
     if (serverSettings?.gpuInfo) {
       setGpuInfo(serverSettings.gpuInfo);
     }
+    if (serverSettings?.home_sections && Array.isArray(serverSettings.home_sections)) {
+      setHomeSections(serverSettings.home_sections);
+      saveHomeSections(serverSettings.home_sections);
+    } else {
+      setHomeSections(getHomeSections());
+    }
+  };
+
+  const handleToggleHomeSection = (id) => {
+    const updated = homeSections.map((s) => (s.id === id ? { ...s, enabled: !s.enabled } : s));
+    setHomeSections(updated);
+  };
+
+  const handleMoveHomeSection = (index, direction) => {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= homeSections.length) return;
+    const updated = [...homeSections];
+    const [moved] = updated.splice(index, 1);
+    updated.splice(newIndex, 0, moved);
+    setHomeSections(updated);
+  };
+
+  const handleSaveHomeSections = async (e) => {
+    if (e) e.preventDefault();
+    saveHomeSections(homeSections);
+    await updateServerSettings({ home_sections: homeSections });
+    setHomeSectionStatus({ type: "success", text: "Home screen layout saved & synced to all devices." });
+  };
+
+  const handleResetHomeSections = async () => {
+    setHomeSections(DEFAULT_HOME_SECTIONS);
+    saveHomeSections(DEFAULT_HOME_SECTIONS);
+    await updateServerSettings({ home_sections: DEFAULT_HOME_SECTIONS });
+    setHomeSectionStatus({ type: "info", text: "Home screen layout reset to defaults." });
   };
 
   const handleSaveDispatcharr = async (e) => {
@@ -390,6 +429,114 @@ const SettingsPage = () => {
                 <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>CPU Processor Model</div>
                 <div style={{ fontSize: 13, fontWeight: "bold", color: "#ffc107", marginTop: 4 }}>{cpuInfo?.model || "Generic CPU"}</div>
               </div>
+            </div>
+          </div>
+
+          {/* Home Screen Category & Layout Manager Card */}
+          <div className="settingsCard">
+            <div className="cardHeader">
+              <h2><FiSliders style={{ marginRight: 8, color: "var(--pink)" }} /> Home Screen Category & Layout Manager</h2>
+              <span className="badge custom"><FiServer style={{ marginRight: 4 }} /> Syncs across devices</span>
+            </div>
+            <p className="description">
+              Select which categories appear on your home screen and customize their display order as you please.
+            </p>
+
+            {homeSectionStatus && (
+              <div className={`statusNotice ${homeSectionStatus.type}`} style={{ marginBottom: 15 }}>
+                {homeSectionStatus.type === "success" ? <FiCheckCircle /> : <FiInfo />}
+                <span>{homeSectionStatus.text}</span>
+              </div>
+            )}
+
+            <div className="homeSectionsManager" style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 15 }}>
+              {homeSections.map((sec, idx) => (
+                <div
+                  key={sec.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    background: "rgba(255, 255, 255, 0.04)",
+                    padding: "12px 16px",
+                    borderRadius: 10,
+                    border: "1px solid rgba(255, 255, 255, 0.08)",
+                  }}
+                >
+                  <label style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", fontSize: 15, fontWeight: 500 }}>
+                    <input
+                      type="checkbox"
+                      checked={sec.enabled}
+                      onChange={() => handleToggleHomeSection(sec.id)}
+                      style={{ width: 18, height: 18, accentColor: "var(--pink)", cursor: "pointer" }}
+                    />
+                    <span>{sec.title}</span>
+                  </label>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button
+                      type="button"
+                      disabled={idx === 0}
+                      onClick={() => handleMoveHomeSection(idx, -1)}
+                      title="Move Up"
+                      style={{
+                        background: "rgba(255, 255, 255, 0.08)",
+                        border: "none",
+                        color: "#fff",
+                        width: 32,
+                        height: 32,
+                        borderRadius: 6,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: idx === 0 ? "not-allowed" : "pointer",
+                        opacity: idx === 0 ? 0.3 : 1,
+                      }}
+                    >
+                      <FiChevronUp />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={idx === homeSections.length - 1}
+                      onClick={() => handleMoveHomeSection(idx, 1)}
+                      title="Move Down"
+                      style={{
+                        background: "rgba(255, 255, 255, 0.08)",
+                        border: "none",
+                        color: "#fff",
+                        width: 32,
+                        height: 32,
+                        borderRadius: 6,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: idx === homeSections.length - 1 ? "not-allowed" : "pointer",
+                        opacity: idx === homeSections.length - 1 ? 0.3 : 1,
+                      }}
+                    >
+                      <FiChevronDown />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="buttonGroup" style={{ marginTop: 20, display: "flex", gap: 12 }}>
+              <button
+                type="button"
+                className="saveBtn"
+                onClick={handleSaveHomeSections}
+                style={{ background: "var(--pink)", borderColor: "var(--pink)", display: "flex", alignItems: "center", gap: 6 }}
+              >
+                <FiSave /> Save Home Layout
+              </button>
+              <button
+                type="button"
+                className="clearBtn"
+                onClick={handleResetHomeSections}
+                style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "#fff", display: "flex", alignItems: "center", gap: 6, padding: "10px 18px", borderRadius: 8, cursor: "pointer" }}
+              >
+                <FiRotateCcw /> Reset Defaults
+              </button>
             </div>
           </div>
 
