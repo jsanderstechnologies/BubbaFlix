@@ -556,21 +556,33 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     const settings = loadServerSettings();
     const rawDispatcharrUrl = (settings.dispatcharrUrl || "http://192.168.10.3:9191").replace(/\/$/, "");
 
+    const isDispatcharrTarget =
+      targetUrl.includes("/api/dispatcharr/") ||
+      targetUrl.includes("/dispatcharr/") ||
+      targetUrl.includes(rawDispatcharrUrl) ||
+      targetUrl.startsWith("http://192.168.") ||
+      targetUrl.startsWith("http://10.") ||
+      targetUrl.startsWith("http://172.16.");
+
     let resolvedTargetUrl = targetUrl;
-    if (targetUrl.includes("/api/dispatcharr/") || targetUrl.includes("/dispatcharr/")) {
-      const subPath = targetUrl.replace(/^https?:\/\/[^\/]+/, "").replace(/^\/api\/dispatcharr/, "").replace(/^\/dispatcharr/, "");
-      resolvedTargetUrl = `${rawDispatcharrUrl}${subPath.startsWith("/") ? "" : "/"}${subPath}`;
-      logMessage(`[Transcoder Direct Resolve] Rewrote internal proxy URL to direct Dispatcharr target: ${resolvedTargetUrl}`);
+    if (isDispatcharrTarget) {
+      if (targetUrl.includes("/api/dispatcharr/") || targetUrl.includes("/dispatcharr/")) {
+        const subPath = targetUrl.replace(/^https?:\/\/[^\/]+/, "").replace(/^\/api\/dispatcharr/, "").replace(/^\/dispatcharr/, "");
+        resolvedTargetUrl = `${rawDispatcharrUrl}${subPath.startsWith("/") ? "" : "/"}${subPath}`;
+        logMessage(`[Transcoder Direct Resolve] Rewrote internal proxy URL to direct Dispatcharr target: ${resolvedTargetUrl}`);
+      }
+
+      if (settings.dispatcharrApiKey && !resolvedTargetUrl.includes("api_key=") && !resolvedTargetUrl.includes("token=")) {
+        const sep = resolvedTargetUrl.includes("?") ? "&" : "?";
+        resolvedTargetUrl = `${resolvedTargetUrl}${sep}api_key=${encodeURIComponent(settings.dispatcharrApiKey)}`;
+      }
     }
 
-    // Append API key to query string so 302 redirects inside FFmpeg preserve authentication
-    if (settings.dispatcharrApiKey && !resolvedTargetUrl.includes("api_key=") && !resolvedTargetUrl.includes("token=")) {
-      const sep = resolvedTargetUrl.includes("?") ? "&" : "?";
-      resolvedTargetUrl = `${resolvedTargetUrl}${sep}api_key=${encodeURIComponent(settings.dispatcharrApiKey)}`;
-    }
+    const preResolvePromise = isDispatcharrTarget
+      ? resolveFinalStreamUrl(resolvedTargetUrl, settings.dispatcharrApiKey)
+      : Promise.resolve(resolvedTargetUrl);
 
-    // Pre-resolve 302/307 redirects asynchronously before spawning FFmpeg
-    resolveFinalStreamUrl(resolvedTargetUrl, settings.dispatcharrApiKey).then((finalMediaUrl) => {
+    preResolvePromise.then((finalMediaUrl) => {
       res.writeHead(200, {
         "Content-Type": "video/mp4",
         "Cache-Control": "no-cache, no-store, must-revalidate",
@@ -581,7 +593,7 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
       });
 
       let authHeaderStr = "";
-      if (settings.dispatcharrApiKey) {
+      if (isDispatcharrTarget && settings.dispatcharrApiKey) {
         if (settings.dispatcharrApiKey.startsWith("eyJ")) {
           authHeaderStr = `Authorization: Bearer ${settings.dispatcharrApiKey}\r\n`;
         } else {
