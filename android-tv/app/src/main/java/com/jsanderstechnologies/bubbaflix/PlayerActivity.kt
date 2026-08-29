@@ -668,6 +668,11 @@ class PlayerActivity : AppCompatActivity() {
     private fun showControls() {
         controlsVisible = true
         controlsOverlay.visibility = View.VISIBLE
+        if (currentFocus == null || currentFocus == playerView || currentFocus == controlsOverlay) {
+            btnPlayPause.post {
+                btnPlayPause.requestFocus()
+            }
+        }
     }
 
     private fun hideControls() {
@@ -700,12 +705,24 @@ class PlayerActivity : AppCompatActivity() {
                 keyCode == KeyEvent.KEYCODE_DPAD_UP || keyCode == KeyEvent.KEYCODE_DPAD_DOWN ||
                 keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
                 showControls()
-                btnPlayPause.requestFocus()
+                btnPlayPause.post {
+                    btnPlayPause.requestFocus()
+                }
                 return true
             }
         }
 
         when (keyCode) {
+            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> {
+                val focused = currentFocus
+                if (focused != null && focused != playerView && focused != controlsOverlay) {
+                    focused.performClick()
+                } else {
+                    btnPlayPause.requestFocus()
+                    btnPlayPause.performClick()
+                }
+                return true
+            }
             KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE -> {
                 btnPlayPause.performClick()
                 return true
