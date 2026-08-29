@@ -8,6 +8,7 @@ import "./index.scss";
 
 import { fetchDataFromAPI } from "../../utils/api";
 import { filterEnglishMedia, filterEnglishCollections } from "../../utils/filterUtils";
+import { restoreLastFocusedPoster } from "../../utils/focusManager";
 import ContentWrapper from "../../components/content-wrapper";
 import MovieCard from "../../components/movie-card";
 import CollectionCard from "../../components/collection-card";
@@ -106,6 +107,10 @@ const SearchResult = () => {
       setData(null);
     }
   }, [searchQuery, activeFilter]);
+
+  useEffect(() => {
+    restoreLastFocusedPoster();
+  }, [data, activeFilter]);
 
   const filterEnglishCollections = (items) => {
     if (!Array.isArray(items)) return [];

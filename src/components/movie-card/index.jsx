@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 
 import { getWatchProgress } from "../../utils/watchProgress";
+import { saveLastClickedPoster } from "../../utils/focusManager";
 import "./index.scss";
 import Img from "../lazy-load";
 import CircleRating from "../circle-rating";
@@ -24,12 +25,18 @@ const MovieCard = ({ data, fromSearch, mediaType }) => {
 	const prog = getWatchProgress(data.id, data.media_type || mediaType);
 	const progressPercent = prog?.progressPercent || 0;
 
+	const targetType = data.media_type || mediaType || "movie";
+	const posterKey = `poster-${targetType}-${data.id}`;
+
 	const handleSelect = () => {
-		navigate(`/${data.media_type || mediaType}/${data.id}`);
+		saveLastClickedPoster(data.id, targetType);
+		navigate(`/${targetType}/${data.id}`);
 	};
 
 	return (
 		<div
+			id={posterKey}
+			data-poster-id={posterKey}
 			className="movieCard"
 			tabIndex="0"
 			role="button"

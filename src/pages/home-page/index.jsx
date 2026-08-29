@@ -7,6 +7,7 @@ import useFetch from "../../hooks/useFetch";
 import { fetchDataFromAPI } from "../../utils/api";
 import { getHomeSections, saveHomeSections } from "../../utils/homeConfig";
 import { getFavoriteChannels } from "../../utils/favorites";
+import { restoreLastFocusedPoster } from "../../utils/focusManager";
 import {
   fetchDispatcharrChannels,
   fetchDispatcharrRecordings,
@@ -359,6 +360,10 @@ const HomePage = () => {
     window.addEventListener("home-sections-updated", handleUpdate);
     return () => window.removeEventListener("home-sections-updated", handleUpdate);
   }, []);
+
+  useEffect(() => {
+    restoreLastFocusedPoster();
+  }, [sections]);
 
   const toggleSection = (id) => {
     const updated = sections.map((s) => (s.id === id ? { ...s, enabled: !s.enabled } : s));

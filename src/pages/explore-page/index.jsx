@@ -7,6 +7,7 @@ import "./index.scss";
 import { fetchDataFromAPI } from "../../utils/api";
 import { filterEnglishMedia, filterEnglishCollections } from "../../utils/filterUtils";
 import { filterCollectionsWithGroq } from "../../utils/groqFilter";
+import { restoreLastFocusedPoster } from "../../utils/focusManager";
 import ContentWrapper from "../../components/content-wrapper";
 import MovieCard from "../../components/movie-card";
 import CollectionCard from "../../components/collection-card";
@@ -180,6 +181,10 @@ const filterEnglishCollections = (items) => {
 			fetchNextCollectionsPage();
 		}
 	}, [movieTab]);
+
+	useEffect(() => {
+		restoreLastFocusedPoster();
+	}, [data, collectionsList, movieTab]);
 
 	const handleSortChange = (e) => {
 		const val = e.target.value;

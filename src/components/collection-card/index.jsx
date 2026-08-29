@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { FiLayers } from "react-icons/fi";
+import { saveLastClickedPoster } from "../../utils/focusManager";
 import Img from "../lazy-load";
 import PosterFallback from "../../assets/no-poster.png";
 import "./index.scss";
@@ -19,7 +20,10 @@ const CollectionCard = ({ data }) => {
     ? posterBase + data.poster_path
     : PosterFallback;
 
+  const posterKey = `poster-collection-${data.id}`;
+
   const handleSelect = () => {
+    saveLastClickedPoster(data.id, "collection");
     navigate(`/collection/${data.id}`);
   };
 
@@ -27,6 +31,8 @@ const CollectionCard = ({ data }) => {
 
   return (
     <div
+      id={posterKey}
+      data-poster-id={posterKey}
       className="collectionCard"
       tabIndex={0}
       role="button"

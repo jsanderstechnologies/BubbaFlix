@@ -7,6 +7,7 @@ import MovieCard from "../../components/movie-card";
 import CollectionCard from "../../components/collection-card";
 import TopNav from "../../components/top-nav";
 import { getFavorites, getFavoriteCollections } from "../../utils/favorites";
+import { restoreLastFocusedPoster } from "../../utils/focusManager";
 import "./index.scss";
 
 const FavoritesPage = () => {
@@ -29,11 +30,15 @@ const FavoritesPage = () => {
       loadFavs();
     };
 
-    window.addEventListener("bubbaflix_favorites_updated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
     return () => {
-      window.removeEventListener("bubbaflix_favorites_updated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
     };
   }, []);
+
+  useEffect(() => {
+    restoreLastFocusedPoster();
+  }, [favorites, favCollections, activeTab]);
 
   const movieFavs = favorites.filter(
     (item) => (item.media_type || item.mediaType || "movie") === "movie"
