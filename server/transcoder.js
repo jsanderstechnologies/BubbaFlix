@@ -830,6 +830,10 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
   if (
     cleanPath.startsWith("/api/dispatcharr") ||
     cleanPath.startsWith("/dispatcharr") ||
+    cleanPath.startsWith("/api/channels") ||
+    cleanPath.startsWith("/api/epg") ||
+    cleanPath.startsWith("/api/recordings") ||
+    cleanPath.startsWith("/api/series-rules") ||
     cleanPath.startsWith("/proxy/ts/")
   ) {
     const settings = loadServerSettings();
@@ -951,12 +955,25 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
   }
 
   // Static File Serving for Production Vite Web App (dist folder)
-  const distDir = path.join(__dirname, "..", "dist");
+  const candidateDirs = [
+    path.resolve(process.cwd(), "dist"),
+    path.resolve(__dirname, "..", "dist"),
+    path.resolve(__dirname, "dist"),
+    "/app/dist"
+  ];
+  const distDir = candidateDirs.find((d) => fs.existsSync(path.join(d, "index.html"))) || candidateDirs[0];
   let filePath = path.join(distDir, cleanPath === "/" ? "index.html" : cleanPath);
 
   // Security check to prevent path traversal
   if (!filePath.startsWith(distDir)) {
     return sendJson(res, 403, { error: "Access Denied" });
+  }
+
+  // If request is an unmatched API endpoint (/api/...), return 404 JSON instead of HTML
+  if (cleanPath.startsWith("/api/")) {
+    const duration = Date.now() - startTime;
+    logMessage(`[HTTP 404 Warning] Unmatched API Route ${req.method} ${rawPath} (${duration}ms) | Client IP: ${initiator.ip}`, true);
+    return sendJson(res, 404, { error: "Endpoint not found." });
   }
 
   const mimeTypes = {
@@ -978,18 +995,17 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     ".mp4": "video/mp4",
   };
 
-  fs.stat(filePath, (err, stats) => {
-    if (err || !stats.isFile()) {
-      filePath = path.join(distDir, "index.html");
-    }
-
-    const ext = path.extname(filePath).toLowerCase();
+  const serveFile = (targetFile) => {
+    const ext = path.extname(targetFile).toLowerCase();
     const contentType = mimeTypes[ext] || "application/octet-stream";
 
-    fs.readFile(filePath, (readErr, content) => {
+    fs.readFile(targetFile, (readErr, content) => {
       if (readErr) {
+        if (targetFile !== path.join(distDir, "index.html")) {
+          return serveFile(path.join(distDir, "index.html"));
+        }
         const duration = Date.now() - startTime;
-        logMessage(`[HTTP 404 Warning] Unmatched Route ${req.method} ${rawPath} (${duration}ms) | Client IP: ${initiator.ip}`, true);
+        logMessage(`[HTTP 404 Warning] Failed to serve file ${targetFile} (${duration}ms) | Client IP: ${initiator.ip}`, true);
         return sendJson(res, 404, { error: "Endpoint not found." });
       }
 
@@ -1000,6 +1016,13 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
       });
       res.end(content);
     });
+  };
+
+  fs.stat(filePath, (err, stats) => {
+    if (err || !stats.isFile()) {
+      filePath = path.join(distDir, "index.html");
+    }
+    serveFile(filePath);
   });
 });
 

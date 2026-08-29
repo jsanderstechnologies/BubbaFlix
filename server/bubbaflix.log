@@ -62,3 +62,21 @@
 [2026-08-29T08:42:26.020Z] ================================================================================
 [2026-08-29T08:42:26.048Z] [Background Cache Engine] Starting 1-hour background reload for EPG and DVR recordings...
 [2026-08-29T08:42:26.116Z] [Background Cache Engine] Refresh Complete! Cached 0 active/6h EPG programs, 0 DVR recordings, and 0 channels.
+[2026-08-29T08:46:42.511Z] [BubbaFlix Server] UDP Local Server Discovery Beacon running on port 5151
+[2026-08-29T08:46:42.681Z] [GPU Transcoder Engine] Auto-Detected Hardware Accelerator: CPU Software (libx264) (libx264)
+[2026-08-29T08:46:42.707Z] ================================================================================
+[2026-08-29T08:46:42.731Z] [BubbaFlix Server Startup] Pure Node Server listening on 0.0.0.0:5150
+[2026-08-29T08:46:42.755Z] [CPU Hardware Topology] Model: Intel(R) Core(TM) i5-2540M CPU @ 2.60GHz
+[2026-08-29T08:46:42.803Z] [CPU Hardware Topology] Logical Cores / Hyperthreads: 4
+[2026-08-29T08:46:42.827Z] [CPU Hardware Topology] Libuv Threadpool Size (UV_THREADPOOL_SIZE): 16
+[2026-08-29T08:46:42.855Z] [CPU Hardware Topology] Multi-Core Hyperthreading Active: YES
+[2026-08-29T08:46:42.880Z] [GPU Hardware Engine] Auto-Detected GPU Accelerator: CPU Software (libx264) (libx264)
+[2026-08-29T08:46:42.907Z] [GPU Hardware Engine] GPU Acceleration Active: NO (CPU Software Fallback)
+[2026-08-29T08:46:42.932Z] ================================================================================
+[2026-08-29T08:46:42.961Z] [Background Cache Engine] Starting 1-hour background reload for EPG and DVR recordings...
+[2026-08-29T08:46:43.027Z] [Background Cache Engine] Refresh Complete! Cached 0 active/6h EPG programs, 0 DVR recordings, and 0 channels.
+[2026-08-29T08:46:59.791Z] [HTTP Request] GET / | Initiator: [Unknown Component] | Client IP: 127.0.0.1 | Referer: Direct Connection | User-Agent: Unknown Client
+[2026-08-29T08:46:59.826Z] [HTTP Request] GET /api/channels/channels/ | Initiator: [Unknown Component] | Client IP: 127.0.0.1 | Referer: Direct Connection | User-Agent: Unknown Client
+[2026-08-29T08:46:59.865Z] [HTTP Request] GET /livetv | Initiator: [Unknown Component] | Client IP: 127.0.0.1 | Referer: Direct Connection | User-Agent: Unknown Client
+[2026-08-29T08:46:59.898Z] [HTTP Request] GET /api/version | Initiator: [Unknown Component] | Client IP: 127.0.0.1 | Referer: Direct Connection | User-Agent: Unknown Client
+[2026-08-29T08:47:00.059Z] [Version Check] Served version 1.0.1 (v2) to [Unknown Component] (127.0.0.1)
