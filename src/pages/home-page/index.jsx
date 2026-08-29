@@ -184,25 +184,37 @@ const DynamicSection = ({ section, onPlayChannel, onPlayRecording }) => {
         
         const enriched = await Promise.all(
           (validRecs || []).slice(0, 10).map(async (rec) => {
-            if (!rec || !rec.title) return rec;
+            if (!rec) return rec;
+            const rawTitle = (rec.title && rec.title !== "DVR Recording" ? rec.title : (rec.filename || rec.name || "")).trim();
+            if (!rawTitle) return rec;
+
             try {
-              const cleanTitle = rec.title.replace(/\([^)]*\)/g, "").replace(/S\d+E\d+/i, "").trim();
-              const searchRes = await fetchDataFromAPI(`/search/multi`, { query: cleanTitle });
-              if (searchRes && Array.isArray(searchRes.results) && searchRes.results.length > 0) {
-                const match = searchRes.results.find((r) => r.media_type === "movie" || r.media_type === "tv") || searchRes.results[0];
-                if (match) {
-                  const poster = match.poster_path ? `https://image.tmdb.org/t/p/w500${match.poster_path}` : null;
-                  const backdrop = match.backdrop_path ? `https://image.tmdb.org/t/p/w500${match.backdrop_path}` : null;
-                  return {
-                    ...rec,
-                    tmdbId: match.id,
-                    mediaType: match.media_type,
-                    poster: rec.poster || rec.artwork || poster,
-                    backdrop: rec.backdrop || backdrop,
-                    overview: rec.description || match.overview,
-                    vote_average: match.vote_average ? match.vote_average.toFixed(1) : null,
-                    release_date: (match.release_date || match.first_air_date || "").substring(0, 4),
-                  };
+              const cleanTitle = rawTitle
+                .replace(/\([^)]*\)/g, "")
+                .replace(/S\d+E\d+/i, "")
+                .replace(/[\-_]/g, " ")
+                .replace(/\b\d{4}-\d{2}-\d{2}\b/g, "")
+                .trim();
+
+              if (cleanTitle) {
+                const searchRes = await fetchDataFromAPI(`/search/multi`, { query: cleanTitle });
+                if (searchRes && Array.isArray(searchRes.results) && searchRes.results.length > 0) {
+                  const match = searchRes.results.find((r) => r.media_type === "movie" || r.media_type === "tv") || searchRes.results[0];
+                  if (match) {
+                    const poster = match.poster_path ? `https://image.tmdb.org/t/p/w500${match.poster_path}` : null;
+                    const backdrop = match.backdrop_path ? `https://image.tmdb.org/t/p/w500${match.backdrop_path}` : null;
+                    return {
+                      ...rec,
+                      title: rec.title && rec.title !== "DVR Recording" ? rec.title : (match.title || match.name || cleanTitle),
+                      tmdbId: match.id,
+                      mediaType: match.media_type,
+                      poster: poster || rec.poster || rec.artwork,
+                      backdrop: backdrop || rec.backdrop,
+                      overview: match.overview || rec.description || rec.overview || "No description available.",
+                      vote_average: match.vote_average ? match.vote_average.toFixed(1) : null,
+                      release_date: (match.release_date || match.first_air_date || "").substring(0, 4),
+                    };
+                  }
                 }
               }
             } catch (e) {

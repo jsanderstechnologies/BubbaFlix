@@ -186,8 +186,21 @@ export const fetchDispatcharrRecordings = async () => {
       const matchedEpg = progId ? epgProgramsMap.get(progId) : null;
       const prog = progObj || matchedEpg || {};
 
+      // Extract title from filename/path if rec.title is missing or generic
+      let cleanFilenameTitle = "";
+      const rawPath = rec.file_url || rec.path || rec.filename || rec.file_name || props.path || props.file_url || "";
+      if (rawPath) {
+        const basename = rawPath.split(/[/\\]/).pop() || "";
+        const nameWithoutExt = basename.replace(/\.[^/.]+$/, "");
+        cleanFilenameTitle = nameWithoutExt
+          .replace(/[\-_]/g, " ")
+          .replace(/\b\d{4}\d{2}\d{2}\d{2}\d{2}\d{2}\b/g, "")
+          .replace(/\b\d{4}-\d{2}-\d{2}\b/g, "")
+          .trim();
+      }
+
       const title =
-        rec.title ||
+        (rec.title && rec.title !== "DVR Recording" ? rec.title : null) ||
         props.title ||
         props.name ||
         rec.program_title ||
@@ -196,6 +209,8 @@ export const fetchDispatcharrRecordings = async () => {
         prog.name ||
         rec.show_title ||
         rec.series_title ||
+        (cleanFilenameTitle && cleanFilenameTitle !== "file" ? cleanFilenameTitle : null) ||
+        rec.title ||
         "DVR Recording";
 
       const description =
@@ -204,6 +219,8 @@ export const fetchDispatcharrRecordings = async () => {
         rec.overview ||
         prog.description ||
         prog.overview ||
+        prog.sub_title ||
+        prog.subtitle ||
         "";
 
       const fileUrl = rec.file_url || props.file_url || props.path || props.url || rec.path;
