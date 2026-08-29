@@ -65,8 +65,9 @@ const SettingsPage = () => {
   const [excludeLowQuality, setExcludeLowQuality] = useState(true);
   const [filterStatus, setFilterStatus] = useState(null);
 
-  // CPU Topology State
+  // CPU & GPU Topology State
   const [cpuInfo, setCpuInfo] = useState(null);
+  const [gpuInfo, setGpuInfo] = useState(null);
 
   const dispatch = useDispatch();
 
@@ -113,6 +114,9 @@ const SettingsPage = () => {
 
     if (serverSettings?.cpuTopology) {
       setCpuInfo(serverSettings.cpuTopology);
+    }
+    if (serverSettings?.gpuInfo) {
+      setGpuInfo(serverSettings.gpuInfo);
     }
   };
 
@@ -360,31 +364,31 @@ const SettingsPage = () => {
             </div>
           )}
 
-          {/* CPU Hardware Topology & Hyperthreading Engine Card */}
+          {/* CPU Hardware Topology & GPU Acceleration Engine Card */}
           <div className="settingsCard">
             <div className="cardHeader">
-              <h2><FiCpu style={{ marginRight: 8, color: "var(--pink)" }} /> CPU Hardware Topology & Hyperthreading Engine</h2>
-              <span className="badge custom"><FiServer style={{ marginRight: 4 }} /> Multi-Core Hyperthreading Active</span>
+              <h2><FiCpu style={{ marginRight: 8, color: "var(--pink)" }} /> CPU & GPU Hardware Transcode Engine</h2>
+              <span className="badge custom"><FiServer style={{ marginRight: 4 }} /> {gpuInfo?.enabled ? "GPU Acceleration Active" : "Multi-Core Hyperthreading Active"}</span>
             </div>
             <p className="description">
-              BubbaFlix server auto-detects CPU cores and hyperthreads to parallelize transcode operations, HTTP proxying, and background stream indexing.
+              BubbaFlix server auto-detects GPU hardware accelerators (NVIDIA NVENC, Intel QuickSync QSV, AMD AMF, Linux VAAPI, Apple VideoToolbox) and CPU cores to power FFmpeg streams and eliminate buffering.
             </p>
             <div className="cpuTopologyGrid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 15, marginTop: 15 }}>
               <div className="cpuStatBox" style={{ background: "rgba(255,255,255,0.05)", padding: "12px 16px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)" }}>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>Auto-Detected GPU Accelerator</div>
+                <div style={{ fontSize: 14, fontWeight: "bold", color: gpuInfo?.enabled ? "#4caf50" : "#fff", marginTop: 4 }}>{gpuInfo?.type || "GPU Auto-Detection Active"}</div>
+              </div>
+              <div className="cpuStatBox" style={{ background: "rgba(255,255,255,0.05)", padding: "12px 16px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)" }}>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>FFmpeg Hardware Encoder</div>
+                <div style={{ fontSize: 18, fontWeight: "bold", color: "var(--pink)", marginTop: 4 }}>{gpuInfo?.encoder || "libx264"}</div>
+              </div>
+              <div className="cpuStatBox" style={{ background: "rgba(255,255,255,0.05)", padding: "12px 16px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)" }}>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>CPU Logical Cores / Hyperthreads</div>
+                <div style={{ fontSize: 18, fontWeight: "bold", color: "#4caf50", marginTop: 4 }}>{cpuInfo?.logicalCores || 8} Cores ({cpuInfo?.uvThreadPoolSize || 8} Threads)</div>
+              </div>
+              <div className="cpuStatBox" style={{ background: "rgba(255,255,255,0.05)", padding: "12px 16px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)" }}>
                 <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>CPU Processor Model</div>
-                <div style={{ fontSize: 14, fontWeight: "bold", color: "#fff", marginTop: 4 }}>{cpuInfo?.model || "Multi-Core CPU Processor"}</div>
-              </div>
-              <div className="cpuStatBox" style={{ background: "rgba(255,255,255,0.05)", padding: "12px 16px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)" }}>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>Logical Cores / Hyperthreads</div>
-                <div style={{ fontSize: 18, fontWeight: "bold", color: "var(--pink)", marginTop: 4 }}>{cpuInfo?.logicalCores || 8} Cores</div>
-              </div>
-              <div className="cpuStatBox" style={{ background: "rgba(255,255,255,0.05)", padding: "12px 16px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)" }}>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>Libuv Threadpool Size</div>
-                <div style={{ fontSize: 18, fontWeight: "bold", color: "#4caf50", marginTop: 4 }}>{cpuInfo?.uvThreadPoolSize || 8} Threads</div>
-              </div>
-              <div className="cpuStatBox" style={{ background: "rgba(255,255,255,0.05)", padding: "12px 16px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)" }}>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>Hyperthreading Status</div>
-                <div style={{ fontSize: 14, fontWeight: "bold", color: "#ffc107", marginTop: 4 }}>Enabled / Parallel Active</div>
+                <div style={{ fontSize: 13, fontWeight: "bold", color: "#ffc107", marginTop: 4 }}>{cpuInfo?.model || "Generic CPU"}</div>
               </div>
             </div>
           </div>

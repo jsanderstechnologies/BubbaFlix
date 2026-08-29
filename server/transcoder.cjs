@@ -491,8 +491,9 @@ const server = http.createServer((req, res) => {
   if ((cleanPath === "/api/settings" || cleanPath === "/settings") && req.method === "GET") {
     const settings = loadServerSettings();
     const cpuTopology = getCpuTopologyInfo();
-    logMessage(`[Settings GET] Served settings to [${initiator.initiatorComponent}] (${initiator.ip}) | CPU: ${cpuTopology.model} (${cpuTopology.logicalCores} threads)`);
-    return sendJson(res, 200, { status: "success", settings, ...settings, cpuTopology });
+    const gpuInfo = detectGpuCapabilities();
+    logMessage(`[Settings GET] Served settings to [${initiator.initiatorComponent}] (${initiator.ip}) | CPU: ${cpuTopology.model} (${cpuTopology.logicalCores} threads) | GPU: ${gpuInfo.type}`);
+    return sendJson(res, 200, { status: "success", settings, ...settings, cpuTopology, gpuInfo });
   }
 
   // POST Settings API
@@ -678,12 +679,15 @@ process.on("unhandledRejection", (reason) => {
 });
 
 server.listen(PORT, "0.0.0.0", () => {
+  const gpuInfo = detectGpuCapabilities();
   logMessage(`================================================================================`);
   logMessage(`[BubbaFlix Server Startup] Pure Node Server listening on 0.0.0.0:${PORT}`);
   logMessage(`[CPU Hardware Topology] Model: ${cpuModel}`);
   logMessage(`[CPU Hardware Topology] Logical Cores / Hyperthreads: ${cpuCount}`);
   logMessage(`[CPU Hardware Topology] Libuv Threadpool Size (UV_THREADPOOL_SIZE): ${uvThreadPoolSize}`);
   logMessage(`[CPU Hardware Topology] Multi-Core Hyperthreading Active: YES`);
+  logMessage(`[GPU Hardware Engine] Auto-Detected GPU Accelerator: ${gpuInfo.type} (${gpuInfo.encoder})`);
+  logMessage(`[GPU Hardware Engine] GPU Acceleration Active: ${gpuInfo.enabled ? "YES (Hardware Encoding)" : "NO (CPU Software Fallback)"}`);
   logMessage(`================================================================================`);
   loadServerSettings();
 });
