@@ -1,66 +1,85 @@
-// Favorites Persistence Engine for BubbaFlix
-const STORAGE_KEY = "bubbaflix_favorites";
-
+// Movie & TV Show Favorites Utility
 export const getFavorites = () => {
+  if (typeof window === "undefined") return [];
   try {
-    const data = localStorage.getItem(STORAGE_KEY);
-    return data ? JSON.parse(data) : [];
+    const raw = localStorage.getItem("bubbaflix_favorites");
+    return raw ? JSON.parse(raw) : [];
   } catch (e) {
-    console.error("[Favorites] Error reading favorites:", e);
     return [];
   }
 };
 
-export const isFavorite = (id, mediaType) => {
-  if (!id) return false;
-  const list = getFavorites();
-  const targetId = String(id);
-  const targetType = mediaType === "tv" || mediaType === "series" ? "tv" : "movie";
-  return list.some((item) => String(item.id) === targetId && (item.media_type || item.mediaType || "movie") === targetType);
+export const isFavorite = (tmdbId, mediaType) => {
+  if (!tmdbId) return false;
+  const favs = getFavorites();
+  const idStr = String(tmdbId);
+  return favs.some((f) => String(f.id) === idStr && (!mediaType || f.media_type === mediaType || f.mediaType === mediaType));
 };
 
 export const toggleFavorite = (item) => {
-  if (!item || !item.id) return false;
-  const list = getFavorites();
-  const targetId = String(item.id);
-  const targetType = item.media_type || item.mediaType || (item.name || item.first_air_date ? "tv" : "movie");
+  if (typeof window === "undefined" || !item || !item.id) return false;
+  let favs = getFavorites();
+  const idStr = String(item.id);
+  const mediaType = item.media_type || item.mediaType || (item.name ? "tv" : "movie");
 
-  const existingIndex = list.findIndex(
-    (fav) => String(fav.id) === targetId && (fav.media_type || fav.mediaType || "movie") === targetType
-  );
+  const exists = favs.some((f) => String(f.id) === idStr && (f.media_type === mediaType || f.mediaType === mediaType));
+  let isNowAdded = false;
 
-  let updatedList = [];
-  let isAdded = false;
-
-  if (existingIndex >= 0) {
-    // Remove from favorites
-    updatedList = list.filter((_, idx) => idx !== existingIndex);
-    isAdded = false;
+  if (exists) {
+    favs = favs.filter((f) => !(String(f.id) === idStr && (f.media_type === mediaType || f.mediaType === mediaType)));
+    isNowAdded = false;
   } else {
-    // Add to favorites
-    const favObject = {
+    favs.unshift({
       id: item.id,
-      title: item.title || item.name || item.original_title || item.original_name,
+      media_type: mediaType,
+      mediaType: mediaType,
+      title: item.title || item.name,
       name: item.name || item.title,
       poster_path: item.poster_path,
       backdrop_path: item.backdrop_path,
       vote_average: item.vote_average,
       release_date: item.release_date || item.first_air_date,
-      first_air_date: item.first_air_date || item.release_date,
-      media_type: targetType,
-      mediaType: targetType,
-      addedAt: new Date().toISOString(),
-    };
-    updatedList = [favObject, ...list];
-    isAdded = true;
+    });
+    isNowAdded = true;
   }
 
+  localStorage.setItem("bubbaflix_favorites", JSON.stringify(favs));
+  window.dispatchEvent(new Event("bubbaflix_favorites_updated"));
+  return isNowAdded;
+};
+
+// Live TV Favorite Channels Utility
+export const getFavoriteChannels = () => {
+  if (typeof window === "undefined") return [];
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedList));
-    window.dispatchEvent(new Event("bubbaflix_favorites_updated"));
+    const raw = localStorage.getItem("bubbaflix_favorite_channels");
+    return raw ? JSON.parse(raw) : [];
   } catch (e) {
-    console.error("[Favorites] Error saving favorites:", e);
+    return [];
+  }
+};
+
+export const toggleFavoriteChannel = (channelId) => {
+  if (typeof window === "undefined" || !channelId) return false;
+  const idStr = String(channelId);
+  let favorites = getFavoriteChannels();
+  let isFav = false;
+
+  if (favorites.includes(idStr)) {
+    favorites = favorites.filter((id) => id !== idStr);
+    isFav = false;
+  } else {
+    favorites.push(idStr);
+    isFav = true;
   }
 
-  return isAdded;
+  localStorage.setItem("bubbaflix_favorite_channels", JSON.stringify(favorites));
+  window.dispatchEvent(new Event("favorite-channels-updated"));
+  return isFav;
+};
+
+export const isFavoriteChannel = (channelId) => {
+  if (!channelId) return false;
+  const favorites = getFavoriteChannels();
+  return favorites.includes(String(channelId));
 };

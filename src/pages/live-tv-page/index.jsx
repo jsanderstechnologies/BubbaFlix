@@ -23,11 +23,14 @@ import {
   FiX,
   FiRefreshCw,
   FiVideo,
+  FiSliders,
   FiCheck,
   FiLock,
   FiChevronLeft,
   FiChevronRight,
+  FiStar,
 } from "react-icons/fi";
+import { isFavoriteChannel, toggleFavoriteChannel } from "../../utils/favorites";
 import "./index.scss";
 
 const PIXELS_PER_MINUTE = 5; // 30 mins = 150px
@@ -52,6 +55,18 @@ const LiveTvPage = () => {
   const [showPlayer, setShowPlayer] = useState(false);
   const [activeStreamUrl, setActiveStreamUrl] = useState("");
   const [activeStreamTitle, setActiveStreamTitle] = useState("");
+  const [favUpdate, setFavUpdate] = useState(0);
+
+  const sortedChannels = useMemo(() => {
+    if (!channels || channels.length === 0) return [];
+    return [...channels].sort((a, b) => {
+      const isFavA = isFavoriteChannel(a.id || a.name);
+      const isFavB = isFavoriteChannel(b.id || b.name);
+      if (isFavA && !isFavB) return -1;
+      if (!isFavA && isFavB) return 1;
+      return 0;
+    });
+  }, [channels, favUpdate]);
 
   // Timeline base time (rounded down to top of current hour minus 2 hours)
   const gridStartTime = useMemo(() => {
@@ -453,7 +468,7 @@ const LiveTvPage = () => {
 
               {/* EPG Channel Grid Rows */}
               <div className="epgBody">
-                {channels.map((ch) => {
+                {sortedChannels.map((ch) => {
                   const channelPrograms = channelProgramsMap.get(ch.id || ch.name) || [];
 
                   const displayedPrograms = channelPrograms.length > 0
@@ -470,6 +485,7 @@ const LiveTvPage = () => {
                       ];
 
                   const currentProg = displayedPrograms.find(isProgramCurrentlyAiring) || displayedPrograms[0];
+                  const isFav = isFavoriteChannel(ch.id || ch.name);
 
                   return (
                     <div key={ch.id || ch.name} className="epgRow">
@@ -485,6 +501,17 @@ const LiveTvPage = () => {
                         <div className="channelDetails">
                           <span className="channelName">{ch.name || ch.title || `Channel ${ch.number || ch.id}`}</span>
                         </div>
+                        <button
+                          className={`favStarBtn ${isFav ? "active" : ""}`}
+                          tabIndex={0}
+                          onClick={() => {
+                            toggleFavoriteChannel(ch.id || ch.name);
+                            setFavUpdate((prev) => prev + 1);
+                          }}
+                          title={isFav ? "Remove from Favorites" : "Add to Favorites"}
+                        >
+                          <FiStar style={{ fill: isFav ? "#ffc107" : "none", color: isFav ? "#ffc107" : "rgba(255,255,255,0.4)" }} />
+                        </button>
                         <button
                           className="watchLiveIconBtn"
                           tabIndex={0}
