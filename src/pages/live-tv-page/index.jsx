@@ -190,10 +190,37 @@ const LiveTvPage = () => {
             {/* Channel List & Program Guide */}
             <div className="channelList">
               {channels.map((ch) => {
-                const channelPrograms = programs.filter(
-                  (p) => p.channel === ch.id || p.channel_id === ch.id || p.channel_name === ch.name
-                );
-                const currentProg = channelPrograms.find(isProgramCurrentlyAiring) || channelPrograms[0];
+                const channelPrograms = programs.filter((p) => {
+                  if (!p) return false;
+                  const chIdStr = String(ch.id || "").toLowerCase();
+                  const chNumStr = String(ch.number || "").toLowerCase();
+                  const chNameStr = String(ch.name || "").toLowerCase();
+                  const chTvgStr = String(ch.tvg_id || "").toLowerCase();
+
+                  const pChStr = String(p.channel || p.channel_id || "").toLowerCase();
+                  const pNameStr = String(p.channel_name || p.channel_title || "").toLowerCase();
+                  const pTvgStr = String(p.tvg_id || "").toLowerCase();
+
+                  if (pChStr && (pChStr === chIdStr || pChStr === chNumStr)) return true;
+                  if (pTvgStr && chTvgStr && pTvgStr === chTvgStr) return true;
+                  if (pNameStr && chNameStr && pNameStr === chNameStr) return true;
+                  return false;
+                });
+
+                const displayedPrograms = channelPrograms.length > 0
+                  ? channelPrograms.slice(0, 8)
+                  : [
+                      {
+                        id: `live-${ch.id || ch.name}`,
+                        title: ch.name || "Live Channel Stream",
+                        start_time: new Date(Date.now() - 3600000).toISOString(),
+                        end_time: new Date(Date.now() + 3600000).toISOString(),
+                        description: `Live TV stream for ${ch.name || "Channel"}. Click Watch Live to start streaming.`,
+                        channel: ch.id,
+                      },
+                    ];
+
+                const currentProg = displayedPrograms.find(isProgramCurrentlyAiring) || displayedPrograms[0];
 
                 return (
                   <div key={ch.id || ch.name} className="channelCard">
@@ -222,7 +249,7 @@ const LiveTvPage = () => {
 
                     {/* Program Schedule Timeline */}
                     <div className="programRow">
-                      {channelPrograms.slice(0, 6).map((prog, idx) => {
+                      {displayedPrograms.map((prog, idx) => {
                         const isAiring = isProgramCurrentlyAiring(prog);
                         const rec = getRecordingForProgram(prog);
 

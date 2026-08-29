@@ -37,30 +37,39 @@ export const fetchDispatcharrChannels = async () => {
 };
 
 /**
- * Fetch EPG program schedule from Dispatcharr
+ * Fetch EPG program schedule from Dispatcharr (tries /api/epg/grid/ then /api/epg/programs/)
  */
 export const fetchDispatcharrEpgPrograms = async (params = {}) => {
+  const baseUrl = getProxyBaseUrl();
+
+  // 1. Try /api/epg/grid/ (Dispatcharr native EPG grid)
   try {
-    const baseUrl = getProxyBaseUrl();
-    const res = await axios.get(`${baseUrl}/api/epg/programs/`, {
-      params: { page_size: 1000, ...params },
-      timeout: 12000,
-    });
-    const data = res.data;
-    if (Array.isArray(data)) return data;
-    if (data && Array.isArray(data.results)) return data.results;
-    if (data && Array.isArray(data.programs)) return data.programs;
-    if (data && typeof data === "object") {
-      const keys = Object.keys(data);
-      for (const k of keys) {
-        if (Array.isArray(data[k])) return data[k];
-      }
-    }
-    return [];
+    const resGrid = await axios.get(`${baseUrl}/api/epg/grid/`, { timeout: 8000 });
+    const dataGrid = resGrid.data;
+    const gridPrograms = Array.isArray(dataGrid)
+      ? dataGrid
+      : dataGrid?.results || dataGrid?.programs || [];
+    if (gridPrograms.length > 0) return gridPrograms;
   } catch (err) {
-    console.warn("[Dispatcharr API] Failed to fetch EPG programs:", err.message);
-    return [];
+    console.warn("[Dispatcharr API] /api/epg/grid/ attempt:", err.message);
   }
+
+  // 2. Try /api/epg/programs/
+  try {
+    const resProg = await axios.get(`${baseUrl}/api/epg/programs/`, {
+      params: { page_size: 1000, ...params },
+      timeout: 10000,
+    });
+    const dataProg = resProg.data;
+    const progList = Array.isArray(dataProg)
+      ? dataProg
+      : dataProg?.results || dataProg?.programs || [];
+    if (progList.length > 0) return progList;
+  } catch (err) {
+    console.warn("[Dispatcharr API] /api/epg/programs/ attempt:", err.message);
+  }
+
+  return [];
 };
 
 /**
