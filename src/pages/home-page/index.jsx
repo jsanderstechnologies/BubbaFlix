@@ -102,9 +102,15 @@ const DynamicSection = ({ section, onPlayChannel, onPlayRecording }) => {
           return;
         }
 
-        const res = await fetchDispatcharrChannels();
-        if (res.success && Array.isArray(res.data)) {
-          const matched = res.data.filter((ch) => favIds.includes(String(ch.id || ch.name)));
+        const rawChannels = await fetchDispatcharrChannels();
+        const validChannels = Array.isArray(rawChannels) ? rawChannels : (rawChannels && Array.isArray(rawChannels.data) ? rawChannels.data : []);
+        if (validChannels.length > 0) {
+          const matched = validChannels.filter((ch) =>
+            favIds.includes(String(ch.id)) ||
+            favIds.includes(String(ch.name)) ||
+            favIds.includes(String(ch.tvg_id)) ||
+            favIds.includes(String(ch.channel_number))
+          );
           if (isMounted) setFavChannels(matched);
         }
         if (isMounted) setLoading(false);
@@ -131,17 +137,22 @@ const DynamicSection = ({ section, onPlayChannel, onPlayRecording }) => {
           {loading ? (
             <div className="loadingText">Loading favorite channels...</div>
           ) : (
-            favChannels.map((ch) => (
-              <div key={ch.id || ch.name} className="channelCard" onClick={() => onPlayChannel(ch)}>
-                <div className="cardBadge">
-                  {ch.logo ? <img src={ch.logo} alt={ch.name} /> : <div className="chNum">{ch.number || "TV"}</div>}
+            favChannels.map((ch) => {
+              const baseUrl = getProxyBaseUrl();
+              const logoPath = ch.logo || ch.effective_logo_id;
+              const logoUrl = logoPath ? (logoPath.startsWith("http") ? logoPath : `${baseUrl}${logoPath.startsWith("/") ? "" : "/"}${logoPath}`) : "";
+              return (
+                <div key={ch.id || ch.name} className="channelCard" tabIndex="0" onClick={() => onPlayChannel(ch)}>
+                  <div className="cardBadge">
+                    {logoUrl ? <img src={logoUrl} alt={ch.name} /> : <div className="chNum">{ch.number || ch.channel_number || "TV"}</div>}
+                  </div>
+                  <div className="cardDetails">
+                    <span className="cardTitle">{ch.name || `Channel ${ch.number || ch.id}`}</span>
+                    <button className="playBtn"><FiPlay /> Watch Live</button>
+                  </div>
                 </div>
-                <div className="cardDetails">
-                  <span className="cardTitle">{ch.name || `Channel ${ch.number || ch.id}`}</span>
-                  <button className="playBtn"><FiPlay /> Watch Live</button>
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
@@ -180,21 +191,34 @@ const DynamicSection = ({ section, onPlayChannel, onPlayRecording }) => {
           {loading ? (
             <div className="loadingText">Loading DVR recordings...</div>
           ) : (
-            recs.map((rec) => (
-              <div key={rec.id} className="recCard" onClick={() => onPlayRecording(rec)}>
-                <div className="cardPoster">
-                  {rec.artwork || rec.poster ? (
-                    <img src={rec.artwork || rec.poster} alt={rec.title} />
-                  ) : (
-                    <div className="noPoster">DVR</div>
-                  )}
+            recs.map((rec) => {
+              const baseUrl = getProxyBaseUrl();
+              const rawPoster = rec.artwork || rec.poster || rec.image_url || rec.channelObj?.logo;
+              const posterUrl = rawPoster ? (rawPoster.startsWith("http") ? rawPoster : `${baseUrl}${rawPoster.startsWith("/") ? "" : "/"}${rawPoster}`) : "";
+              const displayDate = rec.created_at || rec.start_time ? new Date(rec.created_at || rec.start_time).toLocaleDateString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+              const channelName = rec.channel_name || rec.channelObj?.name || "";
+
+              return (
+                <div key={rec.id} className="recCard" tabIndex="0" onClick={() => onPlayRecording(rec)}>
+                  <div className="cardPoster">
+                    {posterUrl ? (
+                      <img src={posterUrl} alt={rec.title} />
+                    ) : (
+                      <div className="noPoster">
+                        <FiVideo size={36} />
+                        <span>DVR</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="cardDetails">
+                    <span className="cardTitle">{rec.title || "Recorded Program"}</span>
+                    {channelName && <span className="cardSubtitle">{channelName}</span>}
+                    {displayDate && <span className="cardDate">{displayDate}</span>}
+                    <button className="playBtn"><FiPlay /> Play DVR</button>
+                  </div>
                 </div>
-                <div className="cardDetails">
-                  <span className="cardTitle">{rec.title || "Recorded Program"}</span>
-                  <button className="playBtn"><FiPlay /> Play DVR</button>
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>

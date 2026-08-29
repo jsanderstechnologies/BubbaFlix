@@ -20,6 +20,18 @@ const Header = () => {
 
 	useEffect(() => {
 		window.scrollTo(0, 0);
+		const timer = setTimeout(() => {
+			if (
+				!document.body.classList.contains("videoPlayerActive") &&
+				!document.body.classList.contains("detailsPageActive")
+			) {
+				const activeEl = document.querySelector(".menuItem.active");
+				if (activeEl) {
+					activeEl.focus();
+				}
+			}
+		}, 120);
+		return () => clearTimeout(timer);
 	}, [location]);
 
 	const searchQuery = (e) => {
@@ -74,6 +86,17 @@ const Header = () => {
 		}
 	};
 
+	const path = location.pathname;
+	const isHome = path === "/";
+	const isLiveTv = path.startsWith("/livetv");
+	const isRecordings = path.startsWith("/recordings");
+	const isSearch = path.startsWith("/search");
+	const isFavorites = path.startsWith("/favorites");
+	const isMovies = path.startsWith("/explore/movie");
+	const isTvShows = path.startsWith("/explore/tv");
+	const isSettings = path.startsWith("/settings");
+	const isAbout = path.startsWith("/about");
+
 	return (
 		<header
 			className={`header ${mobileMenu ? "mobileView" : ""} ${show}`}
@@ -85,7 +108,7 @@ const Header = () => {
 
 				<ul className="menuItems">
 					<li
-						className="menuItem"
+						className={`menuItem ${isHome ? "active" : ""}`}
 						tabIndex="0"
 						role="button"
 						onClick={() => handleNavigation("home")}
@@ -94,7 +117,7 @@ const Header = () => {
 						Home
 					</li>
 					<li
-						className="menuItem"
+						className={`menuItem ${isLiveTv ? "active" : ""}`}
 						tabIndex="0"
 						role="button"
 						onClick={() => handleNavigation("livetv")}
@@ -103,7 +126,7 @@ const Header = () => {
 						Live TV
 					</li>
 					<li
-						className="menuItem"
+						className={`menuItem ${isRecordings ? "active" : ""}`}
 						tabIndex="0"
 						role="button"
 						onClick={() => handleNavigation("recordings")}
@@ -112,7 +135,7 @@ const Header = () => {
 						Recordings
 					</li>
 					<li
-						className="menuItem"
+						className={`menuItem ${isSearch ? "active" : ""}`}
 						tabIndex="0"
 						role="button"
 						onClick={() => handleNavigation("search")}
@@ -121,7 +144,7 @@ const Header = () => {
 						<HiOutlineSearch style={{ marginRight: 6 }} /> Search
 					</li>
 					<li
-						className="menuItem"
+						className={`menuItem ${isFavorites ? "active" : ""}`}
 						tabIndex="0"
 						role="button"
 						onClick={() => handleNavigation("favorites")}
@@ -130,7 +153,7 @@ const Header = () => {
 						<AiFillStar style={{ marginRight: 6, color: "#ffd700" }} /> Favorites
 					</li>
 					<li
-						className="menuItem"
+						className={`menuItem ${isMovies ? "active" : ""}`}
 						tabIndex="0"
 						role="button"
 						onClick={() => handleNavigation("movies")}
@@ -139,7 +162,7 @@ const Header = () => {
 						Movies
 					</li>
 					<li
-						className="menuItem"
+						className={`menuItem ${isTvShows ? "active" : ""}`}
 						tabIndex="0"
 						role="button"
 						onClick={() => handleNavigation("tvShows")}
@@ -148,7 +171,7 @@ const Header = () => {
 						TV Shows
 					</li>
 					<li
-						className="menuItem"
+						className={`menuItem ${isSettings ? "active" : ""}`}
 						tabIndex="0"
 						role="button"
 						onClick={() => handleNavigation("settings")}
@@ -158,7 +181,7 @@ const Header = () => {
 						<FiSettings style={{ marginRight: 6 }} /> Settings
 					</li>
 					<li
-						className="menuItem"
+						className={`menuItem ${isAbout ? "active" : ""}`}
 						tabIndex="0"
 						role="button"
 						onClick={() => handleNavigation("about")}

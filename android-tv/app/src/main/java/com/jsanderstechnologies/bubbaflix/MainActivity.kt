@@ -472,14 +472,19 @@ class MainActivity : AppCompatActivity() {
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         if (keyCode == KeyEvent.KEYCODE_BACK) {
-            webView.evaluateJavascript("document.body.classList.contains('videoPlayerActive');") { result ->
-                if (result == "true") {
+            webView.evaluateJavascript(
+                "(function() {" +
+                "  if (document.body.classList.contains('videoPlayerActive')) return 'player';" +
+                "  if (document.body.classList.contains('detailsPageActive')) return 'details';" +
+                "  return 'none';" +
+                "})();"
+            ) { activeContext ->
+                val ctx = activeContext?.replace("\"", "")?.trim()
+                if (ctx == "player" || ctx == "details") {
                     webView.evaluateJavascript(
-                        "window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27 }));",
+                        "window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, bubbles: true }));",
                         null
                     )
-                } else if (webView.canGoBack()) {
-                    webView.goBack()
                 } else {
                     promptExitApp()
                 }
