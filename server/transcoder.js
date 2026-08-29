@@ -654,7 +654,6 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
 
       const ffmpegArgs = [
         "-headers", headersStr,
-        "-tls_verify", "0",
         "-reconnect", "1",
         "-reconnect_at_eof", "1",
         "-reconnect_streamed", "1",
