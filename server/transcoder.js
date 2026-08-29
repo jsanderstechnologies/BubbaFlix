@@ -553,21 +553,28 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     logMessage(`[Backend Transcoder Engine] Stream Target: ${targetUrl}`);
     logMessage(`[Backend Transcoder Engine] Client Referer: ${initiator.referer}`);
 
+    let cleanedTargetUrl = targetUrl;
+    try {
+      cleanedTargetUrl = encodeURI(decodeURI(targetUrl));
+    } catch (e) {
+      cleanedTargetUrl = targetUrl;
+    }
+
     const settings = loadServerSettings();
     const rawDispatcharrUrl = (settings.dispatcharrUrl || "http://192.168.10.3:9191").replace(/\/$/, "");
 
     const isDispatcharrTarget =
-      targetUrl.includes("/api/dispatcharr/") ||
-      targetUrl.includes("/dispatcharr/") ||
-      targetUrl.includes(rawDispatcharrUrl) ||
-      targetUrl.startsWith("http://192.168.") ||
-      targetUrl.startsWith("http://10.") ||
-      targetUrl.startsWith("http://172.16.");
+      cleanedTargetUrl.includes("/api/dispatcharr/") ||
+      cleanedTargetUrl.includes("/dispatcharr/") ||
+      cleanedTargetUrl.includes(rawDispatcharrUrl) ||
+      cleanedTargetUrl.startsWith("http://192.168.") ||
+      cleanedTargetUrl.startsWith("http://10.") ||
+      cleanedTargetUrl.startsWith("http://172.16.");
 
-    let resolvedTargetUrl = targetUrl;
+    let resolvedTargetUrl = cleanedTargetUrl;
     if (isDispatcharrTarget) {
-      if (targetUrl.includes("/api/dispatcharr/") || targetUrl.includes("/dispatcharr/")) {
-        const subPath = targetUrl.replace(/^https?:\/\/[^\/]+/, "").replace(/^\/api\/dispatcharr/, "").replace(/^\/dispatcharr/, "");
+      if (cleanedTargetUrl.includes("/api/dispatcharr/") || cleanedTargetUrl.includes("/dispatcharr/")) {
+        const subPath = cleanedTargetUrl.replace(/^https?:\/\/[^\/]+/, "").replace(/^\/api\/dispatcharr/, "").replace(/^\/dispatcharr/, "");
         resolvedTargetUrl = `${rawDispatcharrUrl}${subPath.startsWith("/") ? "" : "/"}${subPath}`;
         logMessage(`[Transcoder Direct Resolve] Rewrote internal proxy URL to direct Dispatcharr target: ${resolvedTargetUrl}`);
       }
@@ -600,7 +607,7 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
           authHeaderStr = `x-api-key: ${settings.dispatcharrApiKey}\r\n`;
         }
       }
-      const headersStr = `User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)\r\n${authHeaderStr}`;
+      const headersStr = `User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\r\nAccept: */*\r\n${authHeaderStr}`;
 
       const gpuInfo = detectGpuCapabilities();
 
@@ -610,9 +617,9 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
         "-reconnect", "1",
         "-reconnect_at_eof", "1",
         "-reconnect_streamed", "1",
-        "-reconnect_delay_max", "2",
-        "-analyzeduration", "10000000",
-        "-probesize", "10000000",
+        "-reconnect_delay_max", "3",
+        "-analyzeduration", "3000000",
+        "-probesize", "3000000",
         "-threads", String(cpuCount),
         ...(gpuInfo.inputArgs || []),
         "-i", finalMediaUrl,
@@ -635,6 +642,7 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
 
     ffmpegProcess.stderr.on("data", (data) => {
       const logLine = data.toString();
+      logMessage(`[FFmpeg Output] ${logLine.trim()}`);
       if (
         logLine.includes("Device creation failed") ||
         logLine.includes("No device available") ||
@@ -646,9 +654,6 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
         logLine.includes("MFX session failed")
       ) {
         hasGpuDeviceError = true;
-      }
-      if (logLine.includes("Error") || logLine.includes("failed") || logLine.includes("frame=")) {
-        logMessage(`[FFmpeg Log] ${logLine.trim()}`);
       }
     });
 
