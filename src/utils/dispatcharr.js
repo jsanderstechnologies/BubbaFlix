@@ -214,34 +214,36 @@ export const fetchDispatcharrRecordings = async () => {
 export const createOneTimeRecording = async ({ programId, channelId, title, startTime, endTime }) => {
   try {
     const baseUrl = getProxyBaseUrl();
+    const channelPk = Number(channelId);
+
     const payload = {
+      channel: !isNaN(channelPk) ? channelPk : channelId,
       title: title || "Recorded Program",
       start_time: startTime,
       end_time: endTime,
     };
 
-    // Only include program_id if it is a valid integer database primary key
+    // Include program_id if integer primary key is numeric
     if (programId && !isNaN(programId) && Number(programId) > 0) {
       payload.program_id = Number(programId);
     }
 
-    // Only include channel integer primary key if numeric
-    if (channelId && !isNaN(channelId) && Number(channelId) > 0) {
-      payload.channel = Number(channelId);
-    } else if (channelId && typeof channelId === "string") {
-      payload.channel_name = channelId;
-    }
-
-    console.log("[Dispatcharr API] Sending recording payload:", payload);
+    console.log("[Dispatcharr API] Creating one-time recording payload:", payload);
     const res = await axios.post(`${baseUrl}/api/channels/recordings/`, payload, { timeout: 10000 });
     return { success: true, data: res.data };
   } catch (err) {
     console.error("[Dispatcharr API] Failed to create one-time recording:", err.response?.data || err.message);
-    const errDetail = err.response?.data
-      ? typeof err.response.data === "object"
-        ? JSON.stringify(err.response.data)
-        : err.response.data
-      : err.message;
+    const errData = err.response?.data;
+    let errDetail = err.message;
+    if (errData) {
+      if (typeof errData === "object") {
+        errDetail = Object.entries(errData)
+          .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
+          .join(" | ");
+      } else {
+        errDetail = String(errData);
+      }
+    }
     return {
       success: false,
       message: errDetail || "Failed to schedule recording.",
@@ -255,13 +257,15 @@ export const createOneTimeRecording = async ({ programId, channelId, title, star
 export const createSeriesRecordingRule = async ({ programTitle, channelId, tvgId }) => {
   try {
     const baseUrl = getProxyBaseUrl();
+    const channelPk = Number(channelId);
+
     const payload = {
       title: programTitle,
       record_all: true,
     };
 
-    if (channelId && !isNaN(channelId) && Number(channelId) > 0) {
-      payload.channel = Number(channelId);
+    if (channelId) {
+      payload.channel = !isNaN(channelPk) ? channelPk : channelId;
     }
     if (tvgId) {
       payload.tvg_id = tvgId;
@@ -271,11 +275,17 @@ export const createSeriesRecordingRule = async ({ programTitle, channelId, tvgId
     return { success: true, data: res.data };
   } catch (err) {
     console.error("[Dispatcharr API] Failed to create series recording rule:", err.response?.data || err.message);
-    const errDetail = err.response?.data
-      ? typeof err.response.data === "object"
-        ? JSON.stringify(err.response.data)
-        : err.response.data
-      : err.message;
+    const errData = err.response?.data;
+    let errDetail = err.message;
+    if (errData) {
+      if (typeof errData === "object") {
+        errDetail = Object.entries(errData)
+          .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
+          .join(" | ");
+      } else {
+        errDetail = String(errData);
+      }
+    }
     return {
       success: false,
       message: errDetail || "Failed to schedule series recording.",
