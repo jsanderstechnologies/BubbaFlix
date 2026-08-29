@@ -155,8 +155,13 @@ const fetchNextCollectionsPage = () => {
 			setColSubPage(1);
 			setColHasMore(true);
 
-			// Initial batch load for Collections
-			const initialTopColIds = [86311, 263, 10, 1241, 2344, 9485, 328, 645];
+			// Initial batch load for Collections (fill entire viewport initially)
+			const initialTopColIds = [
+				86311, 263, 10, 1241, 2344, 9485, 328, 645,
+				528, 295, 131292, 8650, 119, 87096, 403374, 84,
+				2150, 86066, 422834, 2602, 1570, 2562, 2980, 33514,
+				1771, 748, 531241, 9125
+			];
 			Promise.all(initialTopColIds.map((id) => fetchDataFromAPI(`/collection/${id}`).catch(() => null)))
 				.then((list) => {
 					setCollectionsList(filterEnglishCollections(list.filter(Boolean)));
@@ -165,7 +170,7 @@ const fetchNextCollectionsPage = () => {
 	}, [mediaType]);
 
 	useEffect(() => {
-		if (movieTab === "collections" && collectionsList.length <= 8) {
+		if (movieTab === "collections" && collectionsList.length <= 20) {
 			fetchNextCollectionsPage();
 		}
 	}, [movieTab]);
@@ -209,7 +214,7 @@ const fetchNextCollectionsPage = () => {
 								onClick={() => setMovieTab("collections")}
 								tabIndex="0"
 							>
-								<FiLayers /> Collections & Franchises ({collectionsList.length})
+								<FiLayers /> Collections & Franchises
 							</button>
 						</div>
 					) : (
