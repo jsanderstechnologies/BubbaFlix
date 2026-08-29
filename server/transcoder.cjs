@@ -516,6 +516,12 @@ const server = http.createServer((req, res) => {
       logMessage(`[Transcoder Direct Resolve] Rewrote internal proxy URL to direct Dispatcharr target: ${resolvedTargetUrl}`);
     }
 
+    // Append API key to query string so 302 redirects inside FFmpeg preserve authentication
+    if (settings.dispatcharrApiKey && !resolvedTargetUrl.includes("api_key=") && !resolvedTargetUrl.includes("token=")) {
+      const sep = resolvedTargetUrl.includes("?") ? "&" : "?";
+      resolvedTargetUrl = `${resolvedTargetUrl}${sep}api_key=${encodeURIComponent(settings.dispatcharrApiKey)}`;
+    }
+
     let authHeaderStr = "";
     if (settings.dispatcharrApiKey) {
       if (settings.dispatcharrApiKey.startsWith("eyJ")) {
