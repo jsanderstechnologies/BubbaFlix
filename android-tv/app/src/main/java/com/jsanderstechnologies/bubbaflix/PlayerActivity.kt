@@ -37,6 +37,8 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import com.bumptech.glide.Glide
 import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.IOException
 import java.util.Locale
@@ -354,6 +356,9 @@ class PlayerActivity : AppCompatActivity() {
                     }
 
                     override fun onPlayerError(error: PlaybackException) {
+                        val errDetails = error.message ?: error.cause?.message ?: "Unknown playback decoding error"
+                        sendErrorToServerLog(errDetails, error.errorCodeName, videoUrl)
+
                         val isAudioRendererError = (error.message?.contains("MediaCodecAudioRenderer", ignoreCase = true) == true) ||
                                 (error.message?.contains("mp4a-latm", ignoreCase = true) == true) ||
                                 (error.message?.contains("AudioTrack", ignoreCase = true) == true) ||
@@ -390,6 +395,42 @@ class PlayerActivity : AppCompatActivity() {
             }
 
         handler.post(updateProgressRunnable)
+    }
+
+    private fun sendErrorToServerLog(errorMsg: String, errorCode: String, urlStr: String) {
+        try {
+            val prefs = getSharedPreferences("BubbaFlixTVPrefs", Context.MODE_PRIVATE)
+            val serverBase = prefs.getString("server_url", "https://bubbaflix.sanders-technologies.net") ?: "https://bubbaflix.sanders-technologies.net"
+            val logEndpoint = "${serverBase.replace(Regex("""/+$"""), "")}/api/log"
+
+            val title = intent.getStringExtra(EXTRA_TITLE) ?: ""
+
+            val client = OkHttpClient()
+            val jsonPayload = JSONObject().apply {
+                put("level", "ERROR")
+                put("source", "BubbaFlix Android App (ExoPlayer)")
+                put("message", errorMsg)
+                put("errorCode", errorCode)
+                put("mediaUrl", urlStr)
+                put("title", title)
+            }
+
+            val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
+            val requestBody = jsonPayload.toString().toRequestBody(mediaType)
+            val request = Request.Builder()
+                .url(logEndpoint)
+                .post(requestBody)
+                .build()
+
+            client.newCall(request).enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {}
+                override fun onResponse(call: Call, response: Response) {
+                    response.close()
+                }
+            })
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     private fun setupControlClickListeners() {

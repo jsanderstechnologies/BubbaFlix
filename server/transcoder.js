@@ -792,8 +792,17 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
       try {
         const payload = body ? JSON.parse(body) : {};
         const level = payload.level || "ERROR";
-        const message = payload.message || payload.error || "Client Report";
-        logMessage(`[Client Report ${level}] Sent by [${initiator.initiatorComponent}] (${initiator.ip}) | Referer: ${initiator.referer} | Details: ${message}`, level === "ERROR");
+        const msg = payload.message || payload.error || "Client Report";
+        const src = payload.source || initiator.initiatorComponent || "Client App";
+        const mediaUrl = payload.mediaUrl || payload.url || "";
+        const title = payload.title || payload.mediaTitle || "";
+
+        let logStr = `[Android/Client Player Error] Source: ${src} | Client IP: ${initiator.ip} | Message: ${msg}`;
+        if (title) logStr += ` | Title: ${title}`;
+        if (payload.errorCode) logStr += ` | Code: ${payload.errorCode}`;
+        if (mediaUrl) logStr += ` | Stream URL: ${mediaUrl}`;
+
+        logMessage(logStr, true);
         return sendJson(res, 200, { status: "logged" });
       } catch (e) {
         return sendJson(res, 400, { error: "Invalid log payload" });
