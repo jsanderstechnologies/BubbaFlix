@@ -465,22 +465,34 @@ export const stopDispatcharrRecording = async (recordingId) => {
 export const getChannelStreamUrl = (channel) => {
   if (!channel) return "";
   const baseUrl = getProxyBaseUrl();
-  let channelId = null;
 
   if (typeof channel === "object") {
     if (channel.stream_url && channel.stream_url.startsWith("http")) return channel.stream_url;
     if (channel.stream_url) return `${baseUrl}${channel.stream_url.startsWith("/") ? "" : "/"}${channel.stream_url}`;
     if (channel.url && channel.url.startsWith("http")) return channel.url;
     if (channel.url) return `${baseUrl}${channel.url.startsWith("/") ? "" : "/"}${channel.url}`;
-    channelId = channel.id || channel.channel_id || channel.number || channel.channel_number;
-  } else {
-    channelId = channel;
+
+    // Prefer numeric channel PK first
+    const numericId = channel.pk || (typeof channel.id === "number" || (channel.id && /^\d+$/.test(String(channel.id))) ? channel.id : null);
+    if (numericId) {
+      return `${baseUrl}/api/channels/channels/${numericId}/stream/`;
+    }
+
+    // Fall back to tvg_id for TS proxy
+    const tvg = channel.tvg_id || channel.effective_tvg_id || (typeof channel.id === "string" && isNaN(Number(channel.id)) ? channel.id : null);
+    if (tvg) {
+      return `${baseUrl}/proxy/ts/stream/${tvg}`;
+    }
+
+    const fallbackId = channel.id || channel.channel_id || channel.number;
+    return `${baseUrl}/api/channels/channels/${fallbackId}/stream/`;
   }
 
-  if (channelId) {
-    return `${baseUrl}/api/channels/channels/${channelId}/stream/`;
+  const str = String(channel).trim();
+  if (!isNaN(Number(str))) {
+    return `${baseUrl}/api/channels/channels/${str}/stream/`;
   }
-  return "";
+  return `${baseUrl}/proxy/ts/stream/${str}`;
 };
 
 export const getRecordingStreamUrl = (recording) => {

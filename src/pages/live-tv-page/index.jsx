@@ -186,32 +186,40 @@ const LiveTvPage = () => {
     if (Array.isArray(chData)) {
       chData.forEach((ch) => {
         if (!ch) return;
-        const id = ch.id || ch.channel_number || ch.number || ch.name;
-        if (!id) return;
-        const key = String(id);
-        const rawLogo = ch.logo || ch.logo_url || ch.icon || ch.thumbnail || "";
-        const formattedLogo = formatLogoUrl(rawLogo);
-        const existing = channelMap.get(key);
-        if (existing) {
-          channelMap.set(key, {
+        const numericId = ch.id;
+        const tvgId = ch.tvg_id || ch.effective_tvg_id;
+        const chName = ch.name || ch.effective_name;
+
+        let existingKey = null;
+        if (numericId && channelMap.has(String(numericId))) existingKey = String(numericId);
+        else if (tvgId && channelMap.has(String(tvgId))) existingKey = String(tvgId);
+        else if (chName && channelMap.has(String(chName))) existingKey = String(chName);
+
+        const formattedLogo = formatLogoUrl(ch.logo || ch.logo_url || ch.icon || ch.thumbnail || "");
+
+        if (existingKey) {
+          const existing = channelMap.get(existingKey);
+          channelMap.delete(existingKey);
+          const finalId = numericId || existing.id;
+          channelMap.set(String(finalId), {
             ...existing,
             ...ch,
-            name: ch.name || ch.effective_name || existing.name,
-            number: ch.number || ch.channel_number || ch.effective_channel_number || existing.number,
+            id: finalId,
+            name: chName || existing.name,
+            number: ch.number || ch.channel_number || existing.number,
             logo: formattedLogo || existing.logo,
-            tvg_id: ch.tvg_id || ch.effective_tvg_id || existing.tvg_id,
-            epg_data_id: ch.epg_data_id || ch.effective_epg_data_id || existing.epg_data_id,
+            tvg_id: tvgId || existing.tvg_id,
             hasEpg: true,
           });
         } else {
-          channelMap.set(key, {
+          const finalId = numericId || tvgId || chName;
+          channelMap.set(String(finalId), {
             ...ch,
-            id: ch.id || id,
-            name: ch.name || ch.effective_name || `Channel ${id}`,
-            number: ch.number || ch.channel_number || ch.effective_channel_number || id,
+            id: finalId,
+            name: chName || `Channel ${finalId}`,
+            number: ch.number || ch.channel_number || finalId,
             logo: formattedLogo,
-            tvg_id: ch.tvg_id || ch.effective_tvg_id || "",
-            epg_data_id: ch.epg_data_id || ch.effective_epg_data_id || "",
+            tvg_id: tvgId || "",
             hasEpg: false,
           });
         }
