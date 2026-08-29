@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import ContentWrapper from "../../components/content-wrapper";
 import TopNav from "../../components/top-nav";
@@ -25,11 +25,18 @@ import {
   FiVideo,
   FiCheck,
   FiLock,
+  FiChevronLeft,
+  FiChevronRight,
 } from "react-icons/fi";
 import "./index.scss";
 
+const PIXELS_PER_MINUTE = 5; // 30 mins = 150px
+const TOTAL_HOURS = 12; // 12 hours timeline scrollable
+
 const LiveTvPage = () => {
   const navigate = useNavigate();
+  const timelineRef = useRef(null);
+
   const [channels, setChannels] = useState([]);
   const [programs, setPrograms] = useState([]);
   const [recordings, setRecordings] = useState([]);
@@ -45,6 +52,27 @@ const LiveTvPage = () => {
   const [showPlayer, setShowPlayer] = useState(false);
   const [activeStreamUrl, setActiveStreamUrl] = useState("");
   const [activeStreamTitle, setActiveStreamTitle] = useState("");
+
+  // Timeline base time (rounded down to top of current hour minus 1 hour)
+  const gridStartTime = useMemo(() => {
+    const d = new Date();
+    d.setMinutes(0, 0, 0);
+    return new Date(d.getTime() - 60 * 60 * 1000); // 1 hr before current hour
+  }, []);
+
+  // Generate 30-min time slots for top header
+  const timeSlots = useMemo(() => {
+    const slots = [];
+    const numSlots = TOTAL_HOURS * 2; // 30 min slots
+    for (let i = 0; i < numSlots; i++) {
+      const slotTime = new Date(gridStartTime.getTime() + i * 30 * 60 * 1000);
+      slots.push({
+        time: slotTime,
+        label: slotTime.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+      });
+    }
+    return slots;
+  }, [gridStartTime]);
 
   useEffect(() => {
     loadLiveTvData();
@@ -177,6 +205,37 @@ const LiveTvPage = () => {
     return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   };
 
+  // Scroll timeline left or right
+  const scrollTimeline = (direction) => {
+    if (!timelineRef.current) return;
+    const amount = direction === "left" ? -400 : 400;
+    timelineRef.current.scrollBy({ left: amount, behavior: "smooth" });
+  };
+
+  // Calculate position and width of a program chip on timeline
+  const calculateChipStyle = (prog) => {
+    const start = new Date(prog.start_time);
+    const end = new Date(prog.end_time);
+
+    const startDiffMins = Math.max(0, (start.getTime() - gridStartTime.getTime()) / (60 * 1000));
+    const durationMins = Math.max(15, (end.getTime() - start.getTime()) / (60 * 1000));
+
+    const left = startDiffMins * PIXELS_PER_MINUTE;
+    const width = durationMins * PIXELS_PER_MINUTE;
+
+    return {
+      left: `${left}px`,
+      width: `${width - 4}px`, // 4px margin gap
+    };
+  };
+
+  // Current red time marker position
+  const nowMarkerLeft = useMemo(() => {
+    const now = new Date();
+    const diffMins = (now.getTime() - gridStartTime.getTime()) / (60 * 1000);
+    return Math.max(0, diffMins * PIXELS_PER_MINUTE);
+  }, [gridStartTime]);
+
   return (
     <div className="liveTvPage">
       <TopNav />
@@ -184,11 +243,19 @@ const LiveTvPage = () => {
         <div className="pageHeader">
           <div className="titleBlock">
             <h1><FiTv style={{ marginRight: 10 }} /> Live TV & EPG Guide</h1>
-            <p>Full TV Guide schedule, live stream playback, and Dispatcharr DVR recording management.</p>
+            <p>Full interactive TV Guide grid schedule, live stream playback, and Dispatcharr DVR recording.</p>
           </div>
-          <button className="refreshBtn" onClick={loadLiveTvData} disabled={loading}>
-            <FiRefreshCw className={loading ? "spin" : ""} /> Refresh Guide
-          </button>
+          <div className="headerActions">
+            <button className="scrollBtn" onClick={() => scrollTimeline("left")} title="Scroll Left">
+              <FiChevronLeft />
+            </button>
+            <button className="scrollBtn" onClick={() => scrollTimeline("right")} title="Scroll Right">
+              <FiChevronRight />
+            </button>
+            <button className="refreshBtn" onClick={loadLiveTvData} disabled={loading}>
+              <FiRefreshCw className={loading ? "spin" : ""} /> Refresh Guide
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -217,106 +284,140 @@ const LiveTvPage = () => {
             <p>Please check your Dispatcharr server configuration in Settings to verify channel lineups.</p>
           </div>
         ) : (
-          <div className="epgGridContainer">
-            {/* Channel List & Program Guide */}
-            <div className="channelList">
-              {channels.map((ch) => {
-                const channelPrograms = programs.filter((p) => {
-                  if (!p) return false;
-                  const chIdStr = String(ch.id || "").toLowerCase();
-                  const chNumStr = String(ch.number || "").toLowerCase();
-                  const chNameStr = String(ch.name || "").toLowerCase();
-                  const chTvgStr = String(ch.tvg_id || "").toLowerCase();
+          <div className="epgGridWrapper">
+            <div className="epgScrollContainer" ref={timelineRef}>
+              {/* EPG Grid Header */}
+              <div className="epgHeaderRow">
+                <div className="channelColumnHeader">
+                  <span>CHANNELS / GUIDE</span>
+                </div>
+                <div className="timeTimelineHeader" style={{ width: `${TOTAL_HOURS * 60 * PIXELS_PER_MINUTE}px` }}>
+                  {timeSlots.map((slot, i) => (
+                    <div
+                      key={i}
+                      className="timeSlot"
+                      style={{ width: `${30 * PIXELS_PER_MINUTE}px` }}
+                    >
+                      {slot.label}
+                    </div>
+                  ))}
+                  {/* Current Live Time Marker Line */}
+                  <div className="nowMarker" style={{ left: `${nowMarkerLeft}px` }}>
+                    <div className="nowLabel">LIVE</div>
+                  </div>
+                </div>
+              </div>
 
-                  const rawCh = p.channel && typeof p.channel === "object" ? p.channel : null;
-                  const pChId = String(rawCh?.id || (typeof p.channel !== "object" ? p.channel : "") || p.channel_id || "").toLowerCase();
-                  const pChNum = String(rawCh?.number || p.channel_number || "").toLowerCase();
-                  const pChName = String(rawCh?.name || p.channel_name || p.channel_title || "").toLowerCase();
-                  const pChTvg = String(rawCh?.tvg_id || p.tvg_id || "").toLowerCase();
+              {/* EPG Channel Grid Rows */}
+              <div className="epgBody">
+                {channels.map((ch) => {
+                  const channelPrograms = programs.filter((p) => {
+                    if (!p) return false;
+                    const chIdStr = String(ch.id || "").toLowerCase();
+                    const chNumStr = String(ch.number || "").toLowerCase();
+                    const chNameStr = String(ch.name || "").toLowerCase();
+                    const chTvgStr = String(ch.tvg_id || "").toLowerCase();
 
-                  if (pChId && pChId !== "[object object]" && (pChId === chIdStr || pChId === chNumStr)) return true;
-                  if (pChNum && (pChNum === chIdStr || pChNum === chNumStr)) return true;
-                  if (pChTvg && chTvgStr && pChTvg === chTvgStr) return true;
-                  if (pChName && chNameStr && (pChName === chNameStr || pChName.includes(chNameStr) || chNameStr.includes(pChName))) return true;
-                  return false;
-                });
+                    const rawCh = p.channel && typeof p.channel === "object" ? p.channel : null;
+                    const pChId = String(rawCh?.id || (typeof p.channel !== "object" ? p.channel : "") || p.channel_id || "").toLowerCase();
+                    const pChNum = String(rawCh?.number || p.channel_number || "").toLowerCase();
+                    const pChName = String(rawCh?.name || p.channel_name || p.channel_title || "").toLowerCase();
+                    const pChTvg = String(rawCh?.tvg_id || p.tvg_id || "").toLowerCase();
 
-                const displayedPrograms = channelPrograms.length > 0
-                  ? channelPrograms.slice(0, 8)
-                  : [
-                      {
-                        id: `live-${ch.id || ch.name}`,
-                        title: ch.name || "Live Channel Stream",
-                        start_time: new Date(Date.now() - 3600000).toISOString(),
-                        end_time: new Date(Date.now() + 3600000).toISOString(),
-                        description: `Live TV stream for ${ch.name || "Channel"}. Click Watch Live to start streaming.`,
-                        channel: ch.id,
-                      },
-                    ];
+                    if (pChId && pChId !== "[object object]" && (pChId === chIdStr || pChId === chNumStr)) return true;
+                    if (pChNum && (pChNum === chIdStr || pChNum === chNumStr)) return true;
+                    if (pChTvg && chTvgStr && pChTvg === chTvgStr) return true;
+                    if (pChName && chNameStr && (pChName === chNameStr || pChName.includes(chNameStr) || chNameStr.includes(pChName))) return true;
+                    return false;
+                  });
 
-                const currentProg = displayedPrograms.find(isProgramCurrentlyAiring) || displayedPrograms[0];
+                  const displayedPrograms = channelPrograms.length > 0
+                    ? channelPrograms
+                    : [
+                        {
+                          id: `live-${ch.id || ch.name}`,
+                          title: ch.name || "Live Channel Stream",
+                          start_time: gridStartTime.toISOString(),
+                          end_time: new Date(gridStartTime.getTime() + 12 * 60 * 60 * 1000).toISOString(),
+                          description: `Live TV stream for ${ch.name || "Channel"}. Click Watch Live to start streaming.`,
+                          channel: ch.id,
+                        },
+                      ];
 
-                return (
-                  <div key={ch.id || ch.name} className="channelCard">
-                    <div className="channelMeta">
-                      {ch.logo ? (
-                        <img src={ch.logo} alt={ch.name} className="channelLogo" />
-                      ) : (
-                        <div className="channelNumber">{ch.number || ch.id || "TV"}</div>
-                      )}
-                      <div className="channelInfo">
-                        <span className="channelName">{ch.name || ch.title}</span>
-                        {currentProg && (
-                          <span className="currentProgTitle">{currentProg.title}</span>
-                        )}
+                  const currentProg = displayedPrograms.find(isProgramCurrentlyAiring) || displayedPrograms[0];
+
+                  return (
+                    <div key={ch.id || ch.name} className="epgRow">
+                      {/* Sticky Channel Column */}
+                      <div className="channelColumn">
+                        <div className="channelBadge">
+                          {ch.logo ? (
+                            <img src={ch.logo} alt={ch.name} className="channelLogo" />
+                          ) : (
+                            <div className="channelNumber">{ch.number || ch.id || "TV"}</div>
+                          )}
+                        </div>
+                        <div className="channelDetails">
+                          <span className="channelName">{ch.name || ch.title || `Channel ${ch.number || ch.id}`}</span>
+                        </div>
+                        <button
+                          className="watchLiveIconBtn"
+                          onClick={() => handleWatchLive(ch, currentProg)}
+                          title="Watch Channel Live"
+                        >
+                          <FiPlay />
+                        </button>
+                      </div>
+
+                      {/* Program Timeline Grid Area */}
+                      <div
+                        className="programTimeline"
+                        style={{ width: `${TOTAL_HOURS * 60 * PIXELS_PER_MINUTE}px` }}
+                      >
+                        {displayedPrograms.map((prog, idx) => {
+                          const isAiring = isProgramCurrentlyAiring(prog);
+                          const rec = getRecordingForProgram(prog);
+                          const style = calculateChipStyle(prog);
+
+                          return (
+                            <div
+                              key={prog.id || idx}
+                              className={`programCell ${isAiring ? "airingNow" : ""} ${rec ? "isRecorded" : ""}`}
+                              style={style}
+                              onClick={() => {
+                                setSelectedProgram({ ...prog, channelObj: ch });
+                                setActionStatus(null);
+                              }}
+                            >
+                              <div className="cellHeader">
+                                {rec && <span className="recTag">REC</span>}
+                                {isAiring && <span className="liveTag">LIVE</span>}
+                                <span className="cellTime">{formatTime(prog.start_time)}</span>
+                              </div>
+                              <div className="cellTitle" title={prog.title}>
+                                {prog.title}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
-
-                    <div className="channelActions">
-                      <button
-                        className="watchLiveBtn"
-                        onClick={() => handleWatchLive(ch, currentProg)}
-                      >
-                        <FiPlay /> Watch Live
-                      </button>
-                    </div>
-
-                    {/* Program Schedule Timeline */}
-                    <div className="programRow">
-                      {displayedPrograms.map((prog, idx) => {
-                        const isAiring = isProgramCurrentlyAiring(prog);
-                        const rec = getRecordingForProgram(prog);
-
-                        return (
-                          <div
-                            key={prog.id || idx}
-                            className={`programChip ${isAiring ? "airingNow" : ""} ${rec ? "isRecorded" : ""}`}
-                            onClick={() => {
-                              setSelectedProgram({ ...prog, channelObj: ch });
-                              setActionStatus(null);
-                            }}
-                          >
-                            {rec && <span className="recBadge" title="Recording Scheduled">REC</span>}
-                            <span className="chipTitle">{prog.title}</span>
-                            <span className="chipTime">{formatTime(prog.start_time)}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
 
-        {/* Selected Program Modal */}
+        {/* Selected Program Details & Recording Modal */}
         {selectedProgram && (
           <div className="modalOverlay" onClick={() => setSelectedProgram(null)}>
-            <div className="programModal" onClick={(e) => e.stopPropagation()}>
+            <div className="programModalCard" onClick={(e) => e.stopPropagation()}>
               <div className="modalHeader">
-                <div className="headerMeta">
-                  <span className="channelBadge">{selectedProgram.channelObj?.name || "TV Channel"}</span>
+                <div className="headerTitle">
+                  <span className="channelTag">
+                    {selectedProgram.channelObj?.name || selectedProgram.channel_name || "Live TV"}
+                  </span>
                   <h2>{selectedProgram.title}</h2>
                 </div>
                 <button className="closeBtn" onClick={() => setSelectedProgram(null)}>
@@ -325,73 +426,71 @@ const LiveTvPage = () => {
               </div>
 
               <div className="modalBody">
-                <div className="timeBar">
-                  <FiClock style={{ marginRight: 6 }} />
-                  <span>
+                <div className="metaRow">
+                  <span className="timeBadge">
+                    <FiClock style={{ marginRight: 6 }} />
                     {formatTime(selectedProgram.start_time)} - {formatTime(selectedProgram.end_time)}
                   </span>
                   {isProgramCurrentlyAiring(selectedProgram) && (
-                    <span className="liveBadge">ON AIR NOW</span>
+                    <span className="airingBadge">
+                      <FiVideo style={{ marginRight: 6 }} /> Airing Now
+                    </span>
                   )}
                 </div>
 
-                <p className="description">
-                  {selectedProgram.description || selectedProgram.summary || "No program details available for this broadcast."}
+                <p className="programDescription">
+                  {selectedProgram.description ||
+                    selectedProgram.sub_title ||
+                    "No detailed description available for this program."}
                 </p>
 
                 {actionStatus && (
-                  <div className={`statusBanner ${actionStatus.type}`}>
-                    {actionStatus.type === "success" ? <FiCheck /> : <FiX />}
+                  <div className={`statusNotice ${actionStatus.type}`}>
+                    {actionStatus.type === "success" ? <FiCheckCircle /> : <FiX />}
                     <span>{actionStatus.text}</span>
                   </div>
                 )}
 
+                {/* DVR & Playback Actions */}
                 <div className="modalActions">
-                  {isProgramCurrentlyAiring(selectedProgram) && (
+                  <button
+                    className="actionBtn playBtn"
+                    onClick={() => {
+                      const ch = selectedProgram.channelObj || { id: selectedProgram.channel };
+                      handleWatchLive(ch, selectedProgram);
+                      setSelectedProgram(null);
+                    }}
+                  >
+                    <FiPlay /> Watch Live Channel
+                  </button>
+
+                  {getRecordingForProgram(selectedProgram) ? (
                     <button
-                      className="actionBtn play"
-                      onClick={() => {
-                        handleWatchLive(selectedProgram.channelObj, selectedProgram);
-                        setSelectedProgram(null);
-                      }}
+                      className="actionBtn cancelRecBtn"
+                      disabled={actionLoading}
+                      onClick={() => handleCancelRecording(getRecordingForProgram(selectedProgram))}
                     >
-                      <FiPlay /> Watch Live
+                      <FiX /> Cancel Scheduled DVR Recording
                     </button>
+                  ) : (
+                    <>
+                      <button
+                        className="actionBtn recordBtn"
+                        disabled={actionLoading}
+                        onClick={() => handleScheduleOneTime(selectedProgram)}
+                      >
+                        <FiCircle /> Record This Episode (DVR)
+                      </button>
+
+                      <button
+                        className="actionBtn seriesBtn"
+                        disabled={actionLoading}
+                        onClick={() => handleScheduleSeries(selectedProgram)}
+                      >
+                        <FiCalendar /> Record Full Series
+                      </button>
+                    </>
                   )}
-
-                  {(() => {
-                    const existingRec = getRecordingForProgram(selectedProgram);
-                    if (existingRec) {
-                      return (
-                        <button
-                          className="actionBtn cancel"
-                          onClick={() => handleCancelRecording(existingRec)}
-                          disabled={actionLoading}
-                        >
-                          <FiX /> Cancel Recording
-                        </button>
-                      );
-                    }
-
-                    return (
-                      <>
-                        <button
-                          className="actionBtn record"
-                          onClick={() => handleScheduleOneTime(selectedProgram)}
-                          disabled={actionLoading}
-                        >
-                          <FiCircle className="recDot" /> Record Program
-                        </button>
-                        <button
-                          className="actionBtn series"
-                          onClick={() => handleScheduleSeries(selectedProgram)}
-                          disabled={actionLoading}
-                        >
-                          <FiVideo /> Record Series
-                        </button>
-                      </>
-                    );
-                  })()}
                 </div>
               </div>
             </div>
@@ -401,7 +500,7 @@ const LiveTvPage = () => {
         {/* Video Player Modal */}
         {showPlayer && (
           <VideoPlayerModal
-            videoUrl={activeStreamUrl}
+            streamUrl={activeStreamUrl}
             title={activeStreamTitle}
             onClose={() => setShowPlayer(false)}
           />

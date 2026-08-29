@@ -9,45 +9,72 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 25px;
+    margin-bottom: 20px;
     flex-wrap: wrap;
     gap: 15px;
 
     .titleBlock {
       h1 {
-        font-size: 32px;
+        font-size: 30px;
         font-weight: 700;
         color: white;
         display: flex;
         align-items: center;
       }
       p {
-        font-size: 15px;
+        font-size: 14px;
         color: rgba(255, 255, 255, 0.6);
         margin-top: 4px;
       }
     }
 
-    .refreshBtn {
-      display: inline-flex;
+    .headerActions {
+      display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 10px 18px;
-      background: var(--black3);
-      color: white;
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: 600;
-      transition: all 0.2s ease;
+      gap: 10px;
 
-      &:hover {
-        background: rgba(255, 255, 255, 0.1);
-        border-color: var(--pink);
+      .scrollBtn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 38px;
+        height: 38px;
+        background: var(--black3);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 18px;
+        transition: all 0.2s ease;
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.15);
+          border-color: var(--pink);
+        }
       }
 
-      .spin {
-        animation: spin 1s linear infinite;
+      .refreshBtn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 16px;
+        background: var(--black3);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 14px;
+        transition: all 0.2s ease;
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.1);
+          border-color: var(--pink);
+        }
+
+        .spin {
+          animation: spin 1s linear infinite;
+        }
       }
     }
   }
@@ -82,327 +109,461 @@
     }
   }
 
-  .channelList {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+  /* Full EPG Grid Table Styles */
+  .epgGridWrapper {
+    width: 100%;
+    background: #0f1015;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
   }
 
-  .channelCard {
-    background: var(--black3);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+  .epgScrollContainer {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
 
-    @include md {
-      flex-direction: row;
+    &::-webkit-scrollbar {
+      height: 8px;
+    }
+    &::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.3);
+    }
+    &::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+      &:hover {
+        background: var(--pink);
+      }
+    }
+  }
+
+  /* Header Time Slots Row */
+  .epgHeaderRow {
+    display: flex;
+    background: #181a22;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.15);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+
+    .channelColumnHeader {
+      width: 220px;
+      min-width: 220px;
+      max-width: 220px;
+      padding: 12px 16px;
+      background: #181a22;
+      border-right: 2px solid rgba(255, 255, 255, 0.15);
+      position: sticky;
+      left: 0;
+      z-index: 25;
+      font-size: 12px;
+      font-weight: 800;
+      color: rgba(255, 255, 255, 0.5);
+      letter-spacing: 1px;
+      display: flex;
       align-items: center;
     }
 
-    .channelMeta {
+    .timeTimelineHeader {
+      position: relative;
+      display: flex;
+      height: 44px;
+
+      .timeSlot {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        padding-left: 8px;
+        font-size: 13px;
+        font-weight: 700;
+        color: rgba(255, 255, 255, 0.8);
+        border-right: 1px dashed rgba(255, 255, 255, 0.1);
+        box-sizing: border-box;
+      }
+    }
+  }
+
+  /* Live Time Marker Bar */
+  .nowMarker {
+    position: absolute;
+    top: 0;
+    bottom: -1000px;
+    width: 2px;
+    background: #f44336;
+    z-index: 15;
+    pointer-events: none;
+    box-shadow: 0 0 8px rgba(244, 67, 54, 0.8);
+
+    .nowLabel {
+      position: absolute;
+      top: 12px;
+      left: -16px;
+      background: #f44336;
+      color: white;
+      font-size: 9px;
+      font-weight: 900;
+      padding: 2px 5px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+  }
+
+  /* EPG Body & Channel Grid Rows */
+  .epgBody {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .epgRow {
+    display: flex;
+    align-items: stretch;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.02);
+      .channelColumn {
+        background: #1a1d26;
+      }
+    }
+
+    /* Sticky Channel Sidebar Column */
+    .channelColumn {
+      width: 220px;
+      min-width: 220px;
+      max-width: 220px;
+      padding: 10px 14px;
+      background: #14161f;
+      border-right: 2px solid rgba(255, 255, 255, 0.15);
+      position: sticky;
+      left: 0;
+      z-index: 10;
       display: flex;
       align-items: center;
-      gap: 12px;
-      min-width: 220px;
+      gap: 10px;
 
-      .channelLogo {
-        width: 48px;
-        height: 48px;
-        object-fit: contain;
-        border-radius: 8px;
-        background: rgba(0, 0, 0, 0.3);
-      }
-
-      .channelNumber {
-        width: 48px;
-        height: 48px;
+      .channelBadge {
+        width: 36px;
+        height: 36px;
+        flex-shrink: 0;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 8px;
-        font-weight: 700;
-        color: var(--pink);
-        font-size: 16px;
+
+        .channelLogo {
+          width: 36px;
+          height: 36px;
+          object-fit: contain;
+          border-radius: 6px;
+        }
+        .channelNumber {
+          width: 36px;
+          height: 36px;
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 6px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 800;
+          font-size: 13px;
+          color: var(--pink);
+        }
       }
 
-      .channelInfo {
-        display: flex;
-        flex-direction: column;
+      .channelDetails {
+        flex: 1;
+        overflow: hidden;
 
         .channelName {
+          font-size: 14px;
           font-weight: 700;
           color: white;
-          font-size: 16px;
-        }
-        .currentProgTitle {
-          font-size: 13px;
-          color: rgba(255, 255, 255, 0.6);
-          margin-top: 2px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          display: block;
         }
       }
-    }
 
-    .channelActions {
-      .watchLiveBtn {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 8px 14px;
+      .watchLiveIconBtn {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
         background: var(--pink);
         color: white;
         border: none;
-        border-radius: 6px;
-        font-weight: 600;
-        font-size: 13px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         cursor: pointer;
-        transition: opacity 0.2s ease;
+        flex-shrink: 0;
+        transition: transform 0.2s ease;
 
         &:hover {
-          opacity: 0.9;
+          transform: scale(1.15);
         }
       }
     }
 
-    .programRow {
-      display: flex;
-      gap: 10px;
-      overflow-x: auto;
-      padding-bottom: 4px;
-      flex: 1;
-
-      &::-webkit-scrollbar {
-        height: 4px;
-      }
-      &::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.2);
-        border-radius: 2px;
-      }
-    }
-
-    .programChip {
+    /* Program Grid Cells Area */
+    .programTimeline {
       position: relative;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px;
-      padding: 10px 14px;
-      min-width: 160px;
-      cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      transition: all 0.2s ease;
+      height: 64px;
+      box-sizing: border-box;
+      background: repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 149px,
+        rgba(255, 255, 255, 0.05) 149px,
+        rgba(255, 255, 255, 0.05) 150px
+      );
 
-      &:hover {
-        background: rgba(255, 255, 255, 0.12);
-        border-color: var(--pink);
-      }
-
-      &.airingNow {
-        border-color: #4caf50;
-        background: rgba(76, 175, 80, 0.1);
-      }
-
-      &.isRecorded {
-        border-color: #ff9800;
-      }
-
-      .recBadge {
+      .programCell {
         position: absolute;
         top: 6px;
-        right: 6px;
-        background: #f44336;
-        color: white;
-        font-size: 9px;
-        font-weight: 800;
-        padding: 2px 5px;
-        border-radius: 4px;
-      }
-
-      .chipTitle {
-        font-size: 13px;
-        font-weight: 600;
-        color: white;
-        white-space: nowrap;
+        bottom: 6px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 6px;
+        padding: 6px 10px;
+        box-sizing: border-box;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
         overflow: hidden;
-        text-overflow: ellipsis;
-      }
+        transition: all 0.2s ease;
 
-      .chipTime {
-        font-size: 11px;
-        color: rgba(255, 255, 255, 0.5);
-        margin-top: 4px;
+        &:hover {
+          background: rgba(255, 255, 255, 0.18);
+          border-color: var(--pink);
+          z-index: 5;
+          transform: translateY(-1px);
+        }
+
+        &.airingNow {
+          background: rgba(229, 9, 20, 0.25);
+          border-color: rgba(229, 9, 20, 0.6);
+        }
+
+        &.isRecorded {
+          border-color: #ff9800;
+        }
+
+        .cellHeader {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+
+          .liveTag {
+            background: #f44336;
+            color: white;
+            font-size: 9px;
+            font-weight: 800;
+            padding: 1px 4px;
+            border-radius: 3px;
+          }
+
+          .recTag {
+            background: #ff9800;
+            color: black;
+            font-size: 9px;
+            font-weight: 800;
+            padding: 1px 4px;
+            border-radius: 3px;
+          }
+
+          .cellTime {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.5);
+            font-weight: 600;
+          }
+        }
+
+        .cellTitle {
+          font-size: 13px;
+          font-weight: 700;
+          color: white;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
       }
     }
   }
 
-  /* Program Details Modal */
+  /* Program Detail Modal Card */
   .modalOverlay {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100vw;
-    height: 100vh;
+    right: 0;
+    bottom: 0;
     background: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(4px);
-    z-index: 1000;
+    backdrop-filter: blur(8px);
     display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 1000;
     padding: 20px;
   }
 
-  .programModal {
-    background: #1a1a24;
+  .programModalCard {
+    background: #14161f;
     border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 16px;
     width: 100%;
-    max-width: 540px;
+    max-width: 560px;
     overflow: hidden;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+    animation: fadeIn 0.2s ease;
 
     .modalHeader {
-      padding: 20px;
-      background: rgba(0, 0, 0, 0.2);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 20px 24px;
+      background: #1c1f2b;
       display: flex;
-      justify-content: space-between;
       align-items: flex-start;
+      justify-content: space-between;
 
-      .headerMeta {
-        .channelBadge {
-          display: inline-block;
-          background: rgba(255, 255, 255, 0.1);
-          color: var(--pink);
+      .headerTitle {
+        .channelTag {
           font-size: 12px;
           font-weight: 700;
-          padding: 4px 8px;
-          border-radius: 4px;
-          margin-bottom: 8px;
+          color: var(--pink);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
         }
-
         h2 {
           font-size: 22px;
-          color: white;
           font-weight: 700;
+          color: white;
+          margin-top: 4px;
         }
       }
 
       .closeBtn {
-        background: transparent;
+        background: rgba(255, 255, 255, 0.1);
         border: none;
-        color: rgba(255, 255, 255, 0.6);
-        font-size: 20px;
+        color: white;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         cursor: pointer;
         &:hover {
-          color: white;
+          background: rgba(255, 255, 255, 0.2);
         }
       }
     }
 
     .modalBody {
-      padding: 20px;
+      padding: 24px;
 
-      .timeBar {
+      .metaRow {
         display: flex;
-        align-items: center;
-        font-size: 14px;
-        color: rgba(255, 255, 255, 0.8);
+        gap: 12px;
         margin-bottom: 16px;
 
-        .liveBadge {
-          margin-left: 12px;
-          background: #4caf50;
-          color: white;
-          font-size: 10px;
-          font-weight: 800;
-          padding: 2px 6px;
-          border-radius: 4px;
+        .timeBadge {
+          display: inline-flex;
+          align-items: center;
+          padding: 6px 12px;
+          background: rgba(255, 255, 255, 0.08);
+          border-radius: 6px;
+          font-size: 13px;
+          color: rgba(255, 255, 255, 0.8);
+        }
+
+        .airingBadge {
+          display: inline-flex;
+          align-items: center;
+          padding: 6px 12px;
+          background: rgba(244, 67, 54, 0.2);
+          color: #f44336;
+          border-radius: 6px;
+          font-size: 13px;
+          font-weight: 700;
         }
       }
 
-      .description {
+      .programDescription {
         font-size: 14px;
         line-height: 1.6;
         color: rgba(255, 255, 255, 0.7);
         margin-bottom: 24px;
       }
 
-      .statusBanner {
-        padding: 10px 14px;
-        border-radius: 8px;
-        font-size: 13px;
+      .statusNotice {
         display: flex;
         align-items: center;
         gap: 8px;
-        margin-bottom: 20px;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 14px;
+        margin-bottom: 16px;
 
         &.success {
           background: rgba(76, 175, 80, 0.15);
-          color: #81c784;
+          color: #4caf50;
           border: 1px solid rgba(76, 175, 80, 0.3);
         }
         &.error {
           background: rgba(244, 67, 54, 0.15);
-          color: #e57373;
+          color: #f44336;
           border: 1px solid rgba(244, 67, 54, 0.3);
         }
       }
 
       .modalActions {
         display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
+        flex-direction: column;
+        gap: 10px;
 
         .actionBtn {
-          display: inline-flex;
+          display: flex;
           align-items: center;
-          gap: 8px;
-          padding: 10px 18px;
+          justify-content: center;
+          gap: 10px;
+          padding: 12px 20px;
           border-radius: 8px;
-          font-weight: 600;
           font-size: 14px;
+          font-weight: 700;
           cursor: pointer;
           border: none;
           transition: all 0.2s ease;
 
-          &.play {
-            background: #4caf50;
-            color: white;
-            &:hover {
-              background: #43a047;
-            }
-          }
-
-          &.record {
+          &.playBtn {
             background: var(--pink);
             color: white;
             &:hover {
               opacity: 0.9;
             }
-            .recDot {
-              color: white;
-              fill: white;
-            }
           }
-
-          &.series {
+          &.recordBtn {
             background: rgba(255, 255, 255, 0.1);
             color: white;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.15);
             &:hover {
-              background: rgba(255, 255, 255, 0.2);
+              background: rgba(255, 255, 255, 0.18);
             }
           }
-
-          &.cancel {
-            background: #f44336;
-            color: white;
+          &.seriesBtn {
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             &:hover {
-              background: #d32f2f;
+              background: rgba(255, 255, 255, 0.12);
+            }
+          }
+          &.cancelRecBtn {
+            background: rgba(244, 67, 54, 0.15);
+            color: #f44336;
+            border: 1px solid rgba(244, 67, 54, 0.3);
+            &:hover {
+              background: rgba(244, 67, 54, 0.25);
             }
           }
         }
@@ -412,6 +573,7 @@
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  100% {
+    transform: rotate(360deg);
+  }
 }
