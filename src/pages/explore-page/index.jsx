@@ -5,6 +5,7 @@ import InfiniteScroll from "react-infinite-scroll-component";
 import "./index.scss";
 
 import { fetchDataFromAPI } from "../../utils/api";
+import { filterEnglishMedia, filterEnglishCollections } from "../../utils/filterUtils";
 import ContentWrapper from "../../components/content-wrapper";
 import MovieCard from "../../components/movie-card";
 import CollectionCard from "../../components/collection-card";
@@ -56,7 +57,8 @@ const Explore = () => {
 	const fetchInitialData = () => {
 		setLoading(true);
 		fetchDataFromAPI(`/discover/${mediaType}`, filters).then((res) => {
-			setData(res);
+			const filtered = filterEnglishMedia(res?.results || []);
+			setData({ ...res, results: filtered });
 			setPageNum((prev) => prev + 1);
 			setLoading(false);
 		});
@@ -67,13 +69,14 @@ const Explore = () => {
 			`/discover/${mediaType}?page=${pageNum}`,
 			filters
 		).then((res) => {
+			const filteredNext = filterEnglishMedia(res?.results || []);
 			if (data?.results) {
 				setData({
 					...data,
-					results: [...data.results, ...res.results],
+					results: [...data.results, ...filteredNext],
 				});
 			} else {
-				setData(res);
+				setData({ ...res, results: filteredNext });
 			}
 			setPageNum((prev) => prev + 1);
 		});

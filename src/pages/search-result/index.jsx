@@ -7,6 +7,7 @@ import { FiFilm, FiTv, FiGrid, FiUser, FiMic, FiLayers } from "react-icons/fi";
 import "./index.scss";
 
 import { fetchDataFromAPI } from "../../utils/api";
+import { filterEnglishMedia, filterEnglishCollections } from "../../utils/filterUtils";
 import ContentWrapper from "../../components/content-wrapper";
 import MovieCard from "../../components/movie-card";
 import CollectionCard from "../../components/collection-card";
@@ -57,15 +58,8 @@ const SearchResult = () => {
   const [loading, setLoading] = useState(false);
   const inputRef = useRef(null);
 
-  // Filter helper: Enforce English language for Movies & TV Shows and retain Persons
   const filterEnglishResults = (items) => {
-    if (!Array.isArray(items)) return [];
-    return items.filter((item) => {
-      if (item.media_type === "person" || activeFilter === "person") return true;
-      if (!item.original_language) return true;
-      const lang = item.original_language.toLowerCase();
-      return lang === "en" || lang === "eng";
-    });
+    return filterEnglishMedia(items);
   };
 
   useEffect(() => {
