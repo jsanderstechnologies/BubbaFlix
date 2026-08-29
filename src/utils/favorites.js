@@ -124,6 +124,30 @@ export const toggleFavoriteCollection = (collectionObj) => {
       media_type: "collection",
     });
     isNowAdded = true;
+
+    // Automatically add all movies in the collection to Movie Favorites
+    if (Array.isArray(collectionObj.parts) && collectionObj.parts.length > 0) {
+      collectionObj.parts.forEach((movie) => {
+        if (movie && movie.id && !isFavorite(movie.id, "movie")) {
+          toggleFavorite({ ...movie, media_type: "movie" });
+        }
+      });
+    } else {
+      // Async fetch parts from TMDB API if not already present on card object
+      import("./api").then(({ fetchDataFromAPI }) => {
+        fetchDataFromAPI(`/collection/${collectionObj.id}`)
+          .then((res) => {
+            if (res && Array.isArray(res.parts)) {
+              res.parts.forEach((movie) => {
+                if (movie && movie.id && !isFavorite(movie.id, "movie")) {
+                  toggleFavorite({ ...movie, media_type: "movie" });
+                }
+              });
+            }
+          })
+          .catch(() => {});
+      });
+    }
   }
 
   localStorage.setItem("bubbaflix_favorite_collections", JSON.stringify(list));
