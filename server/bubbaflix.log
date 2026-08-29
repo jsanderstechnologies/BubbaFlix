@@ -3,3 +3,36 @@
 [2026-08-26T14:03:21.702Z] [HTTP Request] GET /api/dispatcharr/epg | Initiator: [Unknown Component] | Client IP: 127.0.0.1 | Referer: Direct Connection | User-Agent: Unknown Client
 [2026-08-26T14:03:21.889Z] [Dispatcharr Proxy] Initiated by [Unknown Component] (127.0.0.1) -> GET http://192.168.1.100:9191/api/epg/programs/
 [2026-08-26T14:03:31.947Z] [Dispatcharr Proxy Timeout Error] GET http://192.168.1.100:9191/api/epg/programs/ timed out after 10247ms for [Unknown Component] (127.0.0.1)
+[2026-08-29T08:36:28.738Z] [BubbaFlix Server] UDP Local Server Discovery Beacon running on port 5151
+[2026-08-29T08:36:28.884Z] [GPU Transcoder Engine] Auto-Detected Hardware Accelerator: CPU Software (libx264) (libx264)
+[2026-08-29T08:36:28.918Z] ================================================================================
+[2026-08-29T08:36:28.942Z] [BubbaFlix Server Startup] Pure Node Server listening on 0.0.0.0:5000
+[2026-08-29T08:36:28.966Z] [CPU Hardware Topology] Model: Intel(R) Core(TM) i5-2540M CPU @ 2.60GHz
+[2026-08-29T08:36:28.992Z] [CPU Hardware Topology] Logical Cores / Hyperthreads: 4
+[2026-08-29T08:36:29.016Z] [CPU Hardware Topology] Libuv Threadpool Size (UV_THREADPOOL_SIZE): 16
+[2026-08-29T08:36:29.044Z] [CPU Hardware Topology] Multi-Core Hyperthreading Active: YES
+[2026-08-29T08:36:29.068Z] [GPU Hardware Engine] Auto-Detected GPU Accelerator: CPU Software (libx264) (libx264)
+[2026-08-29T08:36:29.095Z] [GPU Hardware Engine] GPU Acceleration Active: NO (CPU Software Fallback)
+[2026-08-29T08:36:29.124Z] ================================================================================
+[2026-08-29T08:36:29.153Z] [Background Cache Engine] Starting 1-hour background reload for EPG and DVR recordings...
+[2026-08-29T08:36:29.209Z] [Background Cache Engine] Refresh Complete! Cached 0 active/6h EPG programs, 0 DVR recordings, and 0 channels.
+[2026-08-29T08:36:34.867Z] [HTTP Request] GET / | Initiator: [Unknown Component] | Client IP: 127.0.0.1 | Referer: Direct Connection | User-Agent: Unknown Client
+[2026-08-29T08:36:34.889Z] [HTTP 404 Warning] Unmatched Route GET / (23ms) | Client IP: 127.0.0.1 | Initiator: [Unknown Component] | Referer: Direct Connection
+[2026-08-29T08:36:55.425Z] [BubbaFlix Server] UDP Local Server Discovery Beacon running on port 5151
+[2026-08-29T08:36:55.544Z] [GPU Transcoder Engine] Auto-Detected Hardware Accelerator: CPU Software (libx264) (libx264)
+[2026-08-29T08:36:55.566Z] ================================================================================
+[2026-08-29T08:36:55.591Z] [BubbaFlix Server Startup] Pure Node Server listening on 0.0.0.0:5000
+[2026-08-29T08:36:55.612Z] [CPU Hardware Topology] Model: Intel(R) Core(TM) i5-2540M CPU @ 2.60GHz
+[2026-08-29T08:36:55.638Z] [CPU Hardware Topology] Logical Cores / Hyperthreads: 4
+[2026-08-29T08:36:55.660Z] [CPU Hardware Topology] Libuv Threadpool Size (UV_THREADPOOL_SIZE): 16
+[2026-08-29T08:36:55.681Z] [CPU Hardware Topology] Multi-Core Hyperthreading Active: YES
+[2026-08-29T08:36:55.706Z] [GPU Hardware Engine] Auto-Detected GPU Accelerator: CPU Software (libx264) (libx264)
+[2026-08-29T08:36:55.729Z] [GPU Hardware Engine] GPU Acceleration Active: NO (CPU Software Fallback)
+[2026-08-29T08:36:55.754Z] ================================================================================
+[2026-08-29T08:36:55.778Z] [Background Cache Engine] Starting 1-hour background reload for EPG and DVR recordings...
+[2026-08-29T08:36:55.832Z] [Background Cache Engine] Refresh Complete! Cached 0 active/6h EPG programs, 0 DVR recordings, and 0 channels.
+[2026-08-29T08:37:02.860Z] [HTTP Request] GET / | Initiator: [Unknown Component] | Client IP: 127.0.0.1 | Referer: Direct Connection | User-Agent: Unknown Client
+[2026-08-29T08:37:02.893Z] [HTTP Request] GET /livetv | Initiator: [Unknown Component] | Client IP: 127.0.0.1 | Referer: Direct Connection | User-Agent: Unknown Client
+[2026-08-29T08:37:02.918Z] [HTTP Request] GET /explore/movie | Initiator: [Unknown Component] | Client IP: 127.0.0.1 | Referer: Direct Connection | User-Agent: Unknown Client
+[2026-08-29T08:37:02.944Z] [HTTP Request] GET /api/version | Initiator: [Unknown Component] | Client IP: 127.0.0.1 | Referer: Direct Connection | User-Agent: Unknown Client
+[2026-08-29T08:37:03.165Z] [Version Check] Served version 1.0.1 (v2) to [Unknown Component] (127.0.0.1)

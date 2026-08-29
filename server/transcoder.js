@@ -950,9 +950,57 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     return;
   }
 
-  const duration = Date.now() - startTime;
-  logMessage(`[HTTP 404 Warning] Unmatched Route ${req.method} ${rawPath} (${duration}ms) | Client IP: ${initiator.ip} | Initiator: [${initiator.initiatorComponent}] | Referer: ${initiator.referer}`, true);
-  return sendJson(res, 404, { error: "Endpoint not found." });
+  // Static File Serving for Production Vite Web App (dist folder)
+  const distDir = path.join(__dirname, "..", "dist");
+  let filePath = path.join(distDir, cleanPath === "/" ? "index.html" : cleanPath);
+
+  // Security check to prevent path traversal
+  if (!filePath.startsWith(distDir)) {
+    return sendJson(res, 403, { error: "Access Denied" });
+  }
+
+  const mimeTypes = {
+    ".html": "text/html",
+    ".js": "text/javascript",
+    ".css": "text/css",
+    ".json": "application/json",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".svg": "image/svg+xml",
+    ".ico": "image/x-icon",
+    ".webp": "image/webp",
+    ".woff": "font/woff",
+    ".woff2": "font/woff2",
+    ".ttf": "font/ttf",
+    ".mp3": "audio/mpeg",
+    ".mp4": "video/mp4",
+  };
+
+  fs.stat(filePath, (err, stats) => {
+    if (err || !stats.isFile()) {
+      filePath = path.join(distDir, "index.html");
+    }
+
+    const ext = path.extname(filePath).toLowerCase();
+    const contentType = mimeTypes[ext] || "application/octet-stream";
+
+    fs.readFile(filePath, (readErr, content) => {
+      if (readErr) {
+        const duration = Date.now() - startTime;
+        logMessage(`[HTTP 404 Warning] Unmatched Route ${req.method} ${rawPath} (${duration}ms) | Client IP: ${initiator.ip}`, true);
+        return sendJson(res, 404, { error: "Endpoint not found." });
+      }
+
+      res.writeHead(200, {
+        "Content-Type": contentType,
+        "Cache-Control": ext === ".html" ? "no-cache, no-store, must-revalidate" : "public, max-age=31536000",
+        "Access-Control-Allow-Origin": "*",
+      });
+      res.end(content);
+    });
+  });
 });
 
 process.on("uncaughtException", (err) => {
