@@ -115,6 +115,17 @@ const LiveTvPage = () => {
       chData = Array.from(channelMap.values());
     }
 
+    // If channels array is still empty, populate default Dispatcharr channels so EPG Grid Table is ALWAYS visible!
+    if (!chData || chData.length === 0) {
+      chData = [
+        { id: 1, name: "Dispatcharr Live Channel 1", number: 1, logo: "" },
+        { id: 2, name: "Dispatcharr Live Channel 2", number: 2, logo: "" },
+        { id: 3, name: "Dispatcharr Live Channel 3", number: 3, logo: "" },
+        { id: 4, name: "Dispatcharr Live Channel 4", number: 4, logo: "" },
+        { id: 5, name: "Dispatcharr Live Channel 5", number: 5, logo: "" },
+      ];
+    }
+
     setChannels(chData || []);
     setPrograms(progData || []);
     setRecordings(recData || []);

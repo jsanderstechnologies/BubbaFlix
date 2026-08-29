@@ -13,29 +13,51 @@ const getProxyBaseUrl = () => {
  * Fetch all enabled Live TV channels from Dispatcharr
  */
 export const fetchDispatcharrChannels = async () => {
+  const baseUrl = getProxyBaseUrl();
+  let lastErrorStatus = null;
+
+  // 1. Try /api/channels/channels/
   try {
-    const baseUrl = getProxyBaseUrl();
     const res = await axios.get(`${baseUrl}/api/channels/channels/`, {
       params: { page_size: 1000 },
       timeout: 10000,
     });
     const data = res.data;
-    if (Array.isArray(data)) return data;
-    if (data && Array.isArray(data.results)) return data.results;
-    if (data && Array.isArray(data.channels)) return data.channels;
-    if (data && typeof data === "object") {
-      const keys = Object.keys(data);
-      for (const k of keys) {
-        if (Array.isArray(data[k])) return data[k];
-      }
-    }
-    return [];
+    const list = Array.isArray(data) ? data : data?.results || data?.channels || [];
+    if (list.length > 0) return list;
   } catch (err) {
-    console.warn("[Dispatcharr API] Failed to fetch channels:", err.message);
-    const list = [];
-    if (err.response?.status) list.errorStatus = err.response.status;
-    return list;
+    if (err.response?.status) lastErrorStatus = err.response.status;
+    console.warn("[Dispatcharr API] /api/channels/channels/ attempt:", err.message);
   }
+
+  // 2. Try /api/channels/channels/summary/
+  try {
+    const resSummary = await axios.get(`${baseUrl}/api/channels/channels/summary/`, { timeout: 8000 });
+    const dataSummary = resSummary.data;
+    const listSummary = Array.isArray(dataSummary) ? dataSummary : dataSummary?.results || dataSummary?.channels || [];
+    if (listSummary.length > 0) return listSummary;
+  } catch (err) {
+    if (err.response?.status) lastErrorStatus = err.response.status;
+    console.warn("[Dispatcharr API] /api/channels/channels/summary/ attempt:", err.message);
+  }
+
+  // 3. Try /api/channels/streams/
+  try {
+    const resStreams = await axios.get(`${baseUrl}/api/channels/streams/`, {
+      params: { page_size: 1000 },
+      timeout: 8000,
+    });
+    const dataStreams = resStreams.data;
+    const listStreams = Array.isArray(dataStreams) ? dataStreams : dataStreams?.results || dataStreams?.streams || [];
+    if (listStreams.length > 0) return listStreams;
+  } catch (err) {
+    if (err.response?.status) lastErrorStatus = err.response.status;
+    console.warn("[Dispatcharr API] /api/channels/streams/ attempt:", err.message);
+  }
+
+  const list = [];
+  if (lastErrorStatus) list.errorStatus = lastErrorStatus;
+  return list;
 };
 
 /**
