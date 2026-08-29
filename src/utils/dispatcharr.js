@@ -15,10 +15,20 @@ const getProxyBaseUrl = () => {
 export const fetchDispatcharrChannels = async () => {
   try {
     const baseUrl = getProxyBaseUrl();
-    const res = await axios.get(`${baseUrl}/api/channels/channels/`, { timeout: 10000 });
+    const res = await axios.get(`${baseUrl}/api/channels/channels/`, {
+      params: { page_size: 1000 },
+      timeout: 10000,
+    });
     const data = res.data;
     if (Array.isArray(data)) return data;
     if (data && Array.isArray(data.results)) return data.results;
+    if (data && Array.isArray(data.channels)) return data.channels;
+    if (data && typeof data === "object") {
+      const keys = Object.keys(data);
+      for (const k of keys) {
+        if (Array.isArray(data[k])) return data[k];
+      }
+    }
     return [];
   } catch (err) {
     console.warn("[Dispatcharr API] Failed to fetch channels:", err.message);
@@ -33,12 +43,19 @@ export const fetchDispatcharrEpgPrograms = async (params = {}) => {
   try {
     const baseUrl = getProxyBaseUrl();
     const res = await axios.get(`${baseUrl}/api/epg/programs/`, {
-      params,
+      params: { page_size: 1000, ...params },
       timeout: 12000,
     });
     const data = res.data;
     if (Array.isArray(data)) return data;
     if (data && Array.isArray(data.results)) return data.results;
+    if (data && Array.isArray(data.programs)) return data.programs;
+    if (data && typeof data === "object") {
+      const keys = Object.keys(data);
+      for (const k of keys) {
+        if (Array.isArray(data[k])) return data[k];
+      }
+    }
     return [];
   } catch (err) {
     console.warn("[Dispatcharr API] Failed to fetch EPG programs:", err.message);

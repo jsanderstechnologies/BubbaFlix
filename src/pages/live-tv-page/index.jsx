@@ -48,15 +48,32 @@ const LiveTvPage = () => {
 
   const loadLiveTvData = async () => {
     setLoading(true);
-    const [chData, progData, recData] = await Promise.all([
+    let [chData, progData, recData] = await Promise.all([
       fetchDispatcharrChannels(),
       fetchDispatcharrEpgPrograms(),
       fetchDispatcharrRecordings(),
     ]);
 
-    setChannels(chData);
-    setPrograms(progData);
-    setRecordings(recData);
+    // If channels array is empty but we have EPG programs, derive channels from programs!
+    if ((!chData || chData.length === 0) && progData && progData.length > 0) {
+      const channelMap = new Map();
+      progData.forEach((p) => {
+        const key = p.channel || p.channel_id || p.channel_name || p.tvg_id;
+        if (key && !channelMap.has(key)) {
+          channelMap.set(key, {
+            id: p.channel || p.channel_id || key,
+            name: p.channel_name || p.channel_title || p.title || `Channel ${key}`,
+            number: p.channel_number || p.channel || key,
+            logo: p.channel_logo || p.icon || p.logo || "",
+          });
+        }
+      });
+      chData = Array.from(channelMap.values());
+    }
+
+    setChannels(chData || []);
+    setPrograms(progData || []);
+    setRecordings(recData || []);
     setLoading(false);
   };
 
