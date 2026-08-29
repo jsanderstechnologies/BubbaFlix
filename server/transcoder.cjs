@@ -481,10 +481,8 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
       maxRedirects <= 0 ||
       !startUrl ||
       !startUrl.startsWith("http") ||
-      startUrl.includes("/proxy/ts/stream") ||
-      startUrl.includes("/stream") ||
       startUrl.includes(".m3u8") ||
-      startUrl.includes(".ts")
+      startUrl.includes("/proxy/ts/stream/")
     ) {
       return resolve(startUrl);
     }
@@ -495,7 +493,8 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
       const httpModule = isHttps ? require("https") : require("http");
 
       const reqHeaders = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Accept": "*/*",
       };
       if (apiKey) {
         if (apiKey.startsWith("eyJ")) {
@@ -506,12 +505,14 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
       }
 
       const req = httpModule.request(startUrl, {
-        method: "HEAD",
+        method: "GET",
         headers: reqHeaders,
         rejectUnauthorized: false,
-        timeout: 4000,
+        timeout: 5000,
       }, (res) => {
+        // 1. Follow HTTP Redirects (301, 302, 303, 307, 308)
         if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location) {
+          req.destroy();
           let loc = res.headers.location;
           if (!loc.startsWith("http")) {
             loc = new URL(loc, startUrl).toString();
@@ -521,9 +522,40 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
             loc = `${loc}${sep}api_key=${encodeURIComponent(apiKey)}`;
           }
           logMessage(`[Pre-Transcode Redirect Follower ${res.statusCode}] Resolved redirect to: ${loc}`);
-          resolve(resolveFinalStreamUrl(loc, apiKey, maxRedirects - 1));
+          return resolve(resolveFinalStreamUrl(loc, apiKey, maxRedirects - 1));
+        }
+
+        // 2. Check Content-Type & JSON API Responses
+        let contentType = (res.headers["content-type"] || "").toLowerCase();
+        if (contentType.includes("json") || contentType.includes("text/plain") || contentType.includes("text/html")) {
+          let body = "";
+          res.on("data", (chunk) => {
+            if (body.length < 65536) body += chunk.toString();
+          });
+          res.on("end", () => {
+            try {
+              const data = JSON.parse(body);
+              const extractedUrl = data.stream_url || data.url || data.file_url || data.target || data.stream || data.path;
+              if (extractedUrl && typeof extractedUrl === "string" && extractedUrl !== startUrl) {
+                let fullExtracted = extractedUrl;
+                if (!fullExtracted.startsWith("http")) {
+                  fullExtracted = new URL(fullExtracted, startUrl).toString();
+                }
+                if (apiKey && !fullExtracted.includes("api_key=") && !fullExtracted.includes("token=")) {
+                  const sep = fullExtracted.includes("?") ? "&" : "?";
+                  fullExtracted = `${fullExtracted}${sep}api_key=${encodeURIComponent(apiKey)}`;
+                }
+                logMessage(`[Pre-Transcode JSON Resolver] Extracted target stream URL from JSON: ${fullExtracted}`);
+                return resolve(resolveFinalStreamUrl(fullExtracted, apiKey, maxRedirects - 1));
+              }
+            } catch (e) {
+              // Not JSON or parse failed
+            }
+            return resolve(startUrl);
+          });
         } else {
-          resolve(startUrl);
+          req.destroy();
+          return resolve(startUrl);
         }
       });
 
