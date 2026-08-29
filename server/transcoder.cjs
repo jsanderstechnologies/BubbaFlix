@@ -475,6 +475,62 @@ const server = http.createServer((req, res) => {
     });
   }
 
+const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
+  return new Promise((resolve) => {
+    if (maxRedirects <= 0 || !startUrl || !startUrl.startsWith("http")) {
+      return resolve(startUrl);
+    }
+
+    try {
+      const parsed = new URL(startUrl);
+      const isHttps = parsed.protocol === "https:";
+      const httpModule = isHttps ? require("https") : require("http");
+
+      const reqHeaders = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+      };
+      if (apiKey) {
+        if (apiKey.startsWith("eyJ")) {
+          reqHeaders["Authorization"] = `Bearer ${apiKey}`;
+        } else {
+          reqHeaders["x-api-key"] = apiKey;
+        }
+      }
+
+      const req = httpModule.request(startUrl, {
+        method: "HEAD",
+        headers: reqHeaders,
+        rejectUnauthorized: false,
+        timeout: 4000,
+      }, (res) => {
+        if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location) {
+          let loc = res.headers.location;
+          if (!loc.startsWith("http")) {
+            loc = new URL(loc, startUrl).toString();
+          }
+          if (apiKey && !loc.includes("api_key=") && !loc.includes("token=")) {
+            const sep = loc.includes("?") ? "&" : "?";
+            loc = `${loc}${sep}api_key=${encodeURIComponent(apiKey)}`;
+          }
+          logMessage(`[Pre-Transcode Redirect Follower ${res.statusCode}] Resolved redirect to: ${loc}`);
+          resolve(resolveFinalStreamUrl(loc, apiKey, maxRedirects - 1));
+        } else {
+          resolve(startUrl);
+        }
+      });
+
+      req.on("error", () => resolve(startUrl));
+      req.on("timeout", () => {
+        req.destroy();
+        resolve(startUrl);
+      });
+      req.end();
+    } catch (e) {
+      resolve(startUrl);
+    }
+  });
+};
+
   // Real-Time Transcoding & Remuxing Proxy Stream Endpoint
   if ((cleanPath === "/api/transcode" || cleanPath === "/transcode") && req.method === "GET") {
     const targetUrl = parsedUrl.query.url;
@@ -497,15 +553,6 @@ const server = http.createServer((req, res) => {
     logMessage(`[Backend Transcoder Engine] Stream Target: ${targetUrl}`);
     logMessage(`[Backend Transcoder Engine] Client Referer: ${initiator.referer}`);
 
-    res.writeHead(200, {
-      "Content-Type": "video/mp4",
-      "Cache-Control": "no-cache, no-store, must-revalidate",
-      "Pragma": "no-cache",
-      "Expires": "0",
-      "Transfer-Encoding": "chunked",
-      "Access-Control-Allow-Origin": "*",
-    });
-
     const settings = loadServerSettings();
     const rawDispatcharrUrl = (settings.dispatcharrUrl || "http://192.168.10.3:9191").replace(/\/$/, "");
 
@@ -522,38 +569,49 @@ const server = http.createServer((req, res) => {
       resolvedTargetUrl = `${resolvedTargetUrl}${sep}api_key=${encodeURIComponent(settings.dispatcharrApiKey)}`;
     }
 
-    let authHeaderStr = "";
-    if (settings.dispatcharrApiKey) {
-      if (settings.dispatcharrApiKey.startsWith("eyJ")) {
-        authHeaderStr = `Authorization: Bearer ${settings.dispatcharrApiKey}\r\n`;
-      } else {
-        authHeaderStr = `x-api-key: ${settings.dispatcharrApiKey}\r\n`;
+    // Pre-resolve 302/307 redirects asynchronously before spawning FFmpeg
+    resolveFinalStreamUrl(resolvedTargetUrl, settings.dispatcharrApiKey).then((finalMediaUrl) => {
+      res.writeHead(200, {
+        "Content-Type": "video/mp4",
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+        "Transfer-Encoding": "chunked",
+        "Access-Control-Allow-Origin": "*",
+      });
+
+      let authHeaderStr = "";
+      if (settings.dispatcharrApiKey) {
+        if (settings.dispatcharrApiKey.startsWith("eyJ")) {
+          authHeaderStr = `Authorization: Bearer ${settings.dispatcharrApiKey}\r\n`;
+        } else {
+          authHeaderStr = `x-api-key: ${settings.dispatcharrApiKey}\r\n`;
+        }
       }
-    }
-    const headersStr = `User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)\r\n${authHeaderStr}`;
+      const headersStr = `User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)\r\n${authHeaderStr}`;
 
-    const gpuInfo = detectGpuCapabilities();
+      const gpuInfo = detectGpuCapabilities();
 
-    const ffmpegArgs = [
-      "-headers", headersStr,
-      "-tls_verify", "0",
-      "-reconnect", "1",
-      "-reconnect_at_eof", "1",
-      "-reconnect_streamed", "1",
-      "-reconnect_delay_max", "2",
-      "-analyzeduration", "10000000",
-      "-probesize", "10000000",
-      "-threads", String(cpuCount),
-      ...(gpuInfo.inputArgs || []),
-      "-i", resolvedTargetUrl,
-      ...(gpuInfo.outputArgs || []),
-      "-c:a", "aac",
-      "-b:a", "192k",
-      "-ac", "2",
-      "-movflags", "frag_keyframe+empty_moov+default_base_moof",
-      "-f", "mp4",
-      "pipe:1"
-    ];
+      const ffmpegArgs = [
+        "-headers", headersStr,
+        "-tls_verify", "0",
+        "-reconnect", "1",
+        "-reconnect_at_eof", "1",
+        "-reconnect_streamed", "1",
+        "-reconnect_delay_max", "2",
+        "-analyzeduration", "10000000",
+        "-probesize", "10000000",
+        "-threads", String(cpuCount),
+        ...(gpuInfo.inputArgs || []),
+        "-i", finalMediaUrl,
+        ...(gpuInfo.outputArgs || []),
+        "-c:a", "aac",
+        "-b:a", "192k",
+        "-ac", "2",
+        "-movflags", "frag_keyframe+empty_moov+default_base_moof",
+        "-f", "mp4",
+        "pipe:1"
+      ];
 
     logMessage(`[Backend Transcoder Engine] Spawning FFmpeg command: ffmpeg ${ffmpegArgs.join(" ")}`);
     const ffmpegProcess = spawn("ffmpeg", ffmpegArgs);
