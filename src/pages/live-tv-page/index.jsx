@@ -57,6 +57,26 @@ const LiveTvPage = () => {
   const [activeStreamTitle, setActiveStreamTitle] = useState("");
   const [favUpdate, setFavUpdate] = useState(0);
 
+  // Focus management refs for TV Remote control
+  const modalPlayBtnRef = useRef(null);
+  const lastFocusedCellRef = useRef(null);
+
+  useEffect(() => {
+    if (selectedProgram) {
+      if (document.activeElement && typeof document.activeElement.focus === "function") {
+        lastFocusedCellRef.current = document.activeElement;
+      }
+      const timer = setTimeout(() => {
+        if (modalPlayBtnRef.current) {
+          modalPlayBtnRef.current.focus();
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    } else if (lastFocusedCellRef.current) {
+      lastFocusedCellRef.current.focus();
+    }
+  }, [selectedProgram]);
+
   const sortedChannels = useMemo(() => {
     if (!channels || channels.length === 0) return [];
     return [...channels].sort((a, b) => {
@@ -601,7 +621,19 @@ const LiveTvPage = () => {
 
         {/* Selected Program Details & Recording Modal */}
         {selectedProgram && (
-          <div className="modalOverlay" onClick={() => setSelectedProgram(null)}>
+          <div
+            className="modalOverlay"
+            tabIndex={-1}
+            onClick={() => setSelectedProgram(null)}
+            onKeyDown={(e) => {
+              const code = e.keyCode || e.which;
+              // Back / ESC / Return key closes modal on Android TV Remote
+              if (e.key === "Escape" || e.key === "GoBack" || code === 27 || code === 4 || code === 10009 || code === 461) {
+                e.preventDefault();
+                setSelectedProgram(null);
+              }
+            }}
+          >
             <div className="programModalCard" onClick={(e) => e.stopPropagation()}>
               <div className="modalHeader">
                 <div className="headerTitle">
@@ -610,7 +642,18 @@ const LiveTvPage = () => {
                   </span>
                   <h2>{selectedProgram.title}</h2>
                 </div>
-                <button className="closeBtn" onClick={() => setSelectedProgram(null)}>
+                <button
+                  className="closeBtn"
+                  tabIndex={0}
+                  onClick={() => setSelectedProgram(null)}
+                  onKeyDown={(e) => {
+                    const code = e.keyCode || e.which;
+                    if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+                      e.preventDefault();
+                      setSelectedProgram(null);
+                    }
+                  }}
+                >
                   <FiX />
                 </button>
               </div>
@@ -644,11 +687,22 @@ const LiveTvPage = () => {
                 {/* DVR & Playback Actions */}
                 <div className="modalActions">
                   <button
+                    ref={modalPlayBtnRef}
                     className="actionBtn playBtn"
+                    tabIndex={0}
                     onClick={() => {
                       const ch = selectedProgram.channelObj || { id: selectedProgram.channel };
                       handleWatchLive(ch, selectedProgram);
                       setSelectedProgram(null);
+                    }}
+                    onKeyDown={(e) => {
+                      const code = e.keyCode || e.which;
+                      if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+                        e.preventDefault();
+                        const ch = selectedProgram.channelObj || { id: selectedProgram.channel };
+                        handleWatchLive(ch, selectedProgram);
+                        setSelectedProgram(null);
+                      }
                     }}
                   >
                     <FiPlay /> Watch Live Channel
@@ -657,8 +711,16 @@ const LiveTvPage = () => {
                   {getRecordingForProgram(selectedProgram) ? (
                     <button
                       className="actionBtn cancelRecBtn"
+                      tabIndex={0}
                       disabled={actionLoading}
                       onClick={() => handleCancelRecording(getRecordingForProgram(selectedProgram))}
+                      onKeyDown={(e) => {
+                        const code = e.keyCode || e.which;
+                        if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+                          e.preventDefault();
+                          handleCancelRecording(getRecordingForProgram(selectedProgram));
+                        }
+                      }}
                     >
                       <FiX /> Cancel Scheduled DVR Recording
                     </button>
@@ -666,16 +728,32 @@ const LiveTvPage = () => {
                     <>
                       <button
                         className="actionBtn recordBtn"
+                        tabIndex={0}
                         disabled={actionLoading}
                         onClick={() => handleScheduleOneTime(selectedProgram)}
+                        onKeyDown={(e) => {
+                          const code = e.keyCode || e.which;
+                          if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+                            e.preventDefault();
+                            handleScheduleOneTime(selectedProgram);
+                          }
+                        }}
                       >
                         <FiCircle /> Record This Episode (DVR)
                       </button>
 
                       <button
                         className="actionBtn seriesBtn"
+                        tabIndex={0}
                         disabled={actionLoading}
                         onClick={() => handleScheduleSeries(selectedProgram)}
+                        onKeyDown={(e) => {
+                          const code = e.keyCode || e.which;
+                          if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+                            e.preventDefault();
+                            handleScheduleSeries(selectedProgram);
+                          }
+                        }}
                       >
                         <FiCalendar /> Record Full Series
                       </button>

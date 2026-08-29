@@ -548,8 +548,12 @@
           font-size: 14px;
           font-weight: 700;
           cursor: pointer;
-          border: none;
-          transition: all 0.2s ease;
+          &:focus, &:focus-visible {
+            outline: none;
+            border: 2.5px solid white !important;
+            box-shadow: 0 0 16px var(--pink);
+            transform: scale(1.03);
+          }
 
           &.playBtn {
             background: var(--pink);
