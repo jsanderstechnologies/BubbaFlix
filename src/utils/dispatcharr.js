@@ -209,23 +209,59 @@ export const fetchDispatcharrRecordings = async () => {
 };
 
 /**
+ * Helper to ensure a channel identifier is converted to Dispatcharr's integer Primary Key
+ */
+const resolveChannelPk = async (channelId, baseUrl) => {
+  if (!channelId) return 1;
+  const strVal = String(channelId).trim();
+  if (/^\d+$/.test(strVal)) {
+    return parseInt(strVal, 10);
+  }
+
+  // If string (e.g. "amc.us"), fetch channels list from Dispatcharr to look up integer PK
+  try {
+    const res = await axios.get(`${baseUrl}/api/channels/`, { timeout: 5000 });
+    const channels = Array.isArray(res.data) ? res.data : res.data?.results || [];
+    const match = channels.find(
+      (c) =>
+        String(c.id) === strVal ||
+        c.name?.toLowerCase() === strVal.toLowerCase() ||
+        c.tvg_id?.toLowerCase() === strVal.toLowerCase() ||
+        String(c.channel_number) === strVal
+    );
+    if (match && match.id) {
+      return parseInt(match.id, 10);
+    }
+    if (channels.length > 0 && channels[0].id) {
+      return parseInt(channels[0].id, 10);
+    }
+  } catch (e) {
+    console.warn("[Dispatcharr API] Could not resolve channel integer PK:", e.message);
+  }
+  const parsed = parseInt(strVal, 10);
+  return isNaN(parsed) ? 1 : parsed;
+};
+
+/**
  * Schedule a one-time program recording on Dispatcharr
  */
 export const createOneTimeRecording = async ({ programId, channelId, title, startTime, endTime }) => {
   try {
     const baseUrl = getProxyBaseUrl();
-    const channelPk = Number(channelId);
+    const channelPk = await resolveChannelPk(channelId, baseUrl);
 
     const payload = {
-      channel: !isNaN(channelPk) ? channelPk : channelId,
+      channel: channelPk,
       title: title || "Recorded Program",
       start_time: startTime,
       end_time: endTime,
     };
 
-    // Include program_id if integer primary key is numeric
-    if (programId && !isNaN(programId) && Number(programId) > 0) {
-      payload.program_id = Number(programId);
+    if (programId) {
+      const strProg = String(programId).trim();
+      if (/^\d+$/.test(strProg)) {
+        payload.program_id = parseInt(strProg, 10);
+      }
     }
 
     console.log("[Dispatcharr API] Creating one-time recording payload:", payload);
@@ -257,16 +293,14 @@ export const createOneTimeRecording = async ({ programId, channelId, title, star
 export const createSeriesRecordingRule = async ({ programTitle, channelId, tvgId }) => {
   try {
     const baseUrl = getProxyBaseUrl();
-    const channelPk = Number(channelId);
+    const channelPk = await resolveChannelPk(channelId, baseUrl);
 
     const payload = {
       title: programTitle,
       record_all: true,
+      channel: channelPk,
     };
 
-    if (channelId) {
-      payload.channel = !isNaN(channelPk) ? channelPk : channelId;
-    }
     if (tvgId) {
       payload.tvg_id = tvgId;
     }
