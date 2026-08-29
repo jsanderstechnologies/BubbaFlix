@@ -472,26 +472,18 @@ export const getChannelStreamUrl = (channel) => {
     if (channel.url && channel.url.startsWith("http")) return channel.url;
     if (channel.url) return `${baseUrl}${channel.url.startsWith("/") ? "" : "/"}${channel.url}`;
 
-    // Prefer numeric channel PK first
-    const numericId = channel.pk || (typeof channel.id === "number" || (channel.id && /^\d+$/.test(String(channel.id))) ? channel.id : null);
-    if (numericId) {
-      return `${baseUrl}/api/channels/channels/${numericId}/stream/`;
-    }
-
-    // Fall back to tvg_id for TS proxy
-    const tvg = channel.tvg_id || channel.effective_tvg_id || (typeof channel.id === "string" && isNaN(Number(channel.id)) ? channel.id : null);
+    const tvg = channel.tvg_id || channel.effective_tvg_id;
     if (tvg) {
       return `${baseUrl}/proxy/ts/stream/${tvg}`;
     }
 
-    const fallbackId = channel.id || channel.channel_id || channel.number;
-    return `${baseUrl}/api/channels/channels/${fallbackId}/stream/`;
+    const id = channel.id || channel.channel_id || channel.number || channel.channel_number;
+    if (id) {
+      return `${baseUrl}/proxy/ts/stream/${id}`;
+    }
   }
 
   const str = String(channel).trim();
-  if (!isNaN(Number(str))) {
-    return `${baseUrl}/api/channels/channels/${str}/stream/`;
-  }
   return `${baseUrl}/proxy/ts/stream/${str}`;
 };
 

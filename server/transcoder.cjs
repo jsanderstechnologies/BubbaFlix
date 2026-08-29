@@ -886,12 +886,12 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
       subPath = `${base}?${queries}`;
     }
 
-    // Auto-rewrite non-numeric channel stream requests (e.g. /channels/channels/bravo.us/stream/) to TS proxy endpoint
-    const stringChannelStreamMatch = subPath.match(/\/channels\/channels\/([^/]+)\/stream\/?/);
-    if (stringChannelStreamMatch && isNaN(Number(stringChannelStreamMatch[1]))) {
-      const tvgId = stringChannelStreamMatch[1];
-      subPath = `/proxy/ts/stream/${tvgId}`;
-      logMessage(`[Dispatcharr Proxy Router] Rewrote non-numeric channel stream request '${stringChannelStreamMatch[0]}' to TS proxy endpoint: ${subPath}`);
+    // Auto-rewrite any /channels/channels/<id>/stream/ API endpoint requests to direct TS stream endpoint /proxy/ts/stream/<id>
+    const apiChannelStreamMatch = subPath.match(/\/channels\/channels\/([^/]+)\/stream\/?/);
+    if (apiChannelStreamMatch) {
+      const targetId = apiChannelStreamMatch[1];
+      subPath = `/proxy/ts/stream/${targetId}`;
+      logMessage(`[Dispatcharr Proxy Router] Rewrote API channel stream request '${apiChannelStreamMatch[0]}' to direct TS stream endpoint: ${subPath}`);
     }
 
     // Serve directly from background memory cache (eliminates page-load refresh)
