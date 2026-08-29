@@ -68,13 +68,19 @@ const LiveTvPage = () => {
     if ((!chData || chData.length === 0) && progData && progData.length > 0) {
       const channelMap = new Map();
       progData.forEach((p) => {
-        const key = p.channel || p.channel_id || p.channel_name || p.tvg_id;
-        if (key && !channelMap.has(key)) {
-          channelMap.set(key, {
-            id: p.channel || p.channel_id || key,
-            name: p.channel_name || p.channel_title || p.title || `Channel ${key}`,
-            number: p.channel_number || p.channel || key,
-            logo: p.channel_logo || p.icon || p.logo || "",
+        const rawCh = p.channel && typeof p.channel === "object" ? p.channel : null;
+        const id = rawCh?.id || p.channel || p.channel_id || p.tvg_id || p.channel_name;
+        const name = rawCh?.name || p.channel_name || p.channel_title || p.title || `Channel ${id}`;
+        const number = rawCh?.number || p.channel_number || p.channel || id;
+        const logo = rawCh?.logo || p.channel_logo || p.icon || p.logo || "";
+
+        if (id && typeof id !== "object" && !channelMap.has(String(id))) {
+          channelMap.set(String(id), {
+            id,
+            name,
+            number,
+            logo,
+            tvg_id: rawCh?.tvg_id || p.tvg_id || "",
           });
         }
       });
@@ -222,13 +228,16 @@ const LiveTvPage = () => {
                   const chNameStr = String(ch.name || "").toLowerCase();
                   const chTvgStr = String(ch.tvg_id || "").toLowerCase();
 
-                  const pChStr = String(p.channel || p.channel_id || "").toLowerCase();
-                  const pNameStr = String(p.channel_name || p.channel_title || "").toLowerCase();
-                  const pTvgStr = String(p.tvg_id || "").toLowerCase();
+                  const rawCh = p.channel && typeof p.channel === "object" ? p.channel : null;
+                  const pChId = String(rawCh?.id || (typeof p.channel !== "object" ? p.channel : "") || p.channel_id || "").toLowerCase();
+                  const pChNum = String(rawCh?.number || p.channel_number || "").toLowerCase();
+                  const pChName = String(rawCh?.name || p.channel_name || p.channel_title || "").toLowerCase();
+                  const pChTvg = String(rawCh?.tvg_id || p.tvg_id || "").toLowerCase();
 
-                  if (pChStr && (pChStr === chIdStr || pChStr === chNumStr)) return true;
-                  if (pTvgStr && chTvgStr && pTvgStr === chTvgStr) return true;
-                  if (pNameStr && chNameStr && pNameStr === chNameStr) return true;
+                  if (pChId && pChId !== "[object object]" && (pChId === chIdStr || pChId === chNumStr)) return true;
+                  if (pChNum && (pChNum === chIdStr || pChNum === chNumStr)) return true;
+                  if (pChTvg && chTvgStr && pChTvg === chTvgStr) return true;
+                  if (pChName && chNameStr && (pChName === chNameStr || pChName.includes(chNameStr) || chNameStr.includes(pChName))) return true;
                   return false;
                 });
 
