@@ -830,9 +830,7 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
   if (
     cleanPath.startsWith("/api/dispatcharr") ||
     cleanPath.startsWith("/dispatcharr") ||
-    cleanPath.startsWith("/proxy/") ||
-    cleanPath.startsWith("/live/") ||
-    cleanPath.startsWith("/movie/")
+    cleanPath.startsWith("/proxy/ts/")
   ) {
     const settings = loadServerSettings();
     const rawDispatcharrUrl = (settings.dispatcharrUrl || "http://192.168.10.3:9191").replace(/\/$/, "");
