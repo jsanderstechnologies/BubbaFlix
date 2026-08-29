@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import InfiniteScroll from "react-infinite-scroll-component";
 import { HiOutlineSearch, HiX } from "react-icons/hi";
-import { FiFilm, FiTv, FiGrid } from "react-icons/fi";
+import { FiFilm, FiTv, FiGrid, FiUser } from "react-icons/fi";
 
 import "./index.scss";
 
@@ -14,16 +14,58 @@ import TopNav from "../../components/top-nav";
 
 const POPULAR_TAGS = ["Action", "Comedy", "Marvel", "Sci-Fi", "Horror", "Drama", "Animation", "Thriller"];
 
+const PersonCard = ({ person }) => {
+  const navigate = useNavigate();
+  const avatarUrl = person.profile_path
+    ? `https://image.tmdb.org/t/p/w500${person.profile_path}`
+    : "/assets/avatar.png";
+
+  return (
+    <div
+      className="personCard"
+      tabIndex={0}
+      role="button"
+      aria-label={person.name}
+      onClick={() => navigate(`/search/${encodeURIComponent(person.name)}`)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          navigate(`/search/${encodeURIComponent(person.name)}`);
+        }
+      }}
+    >
+      <div className="personPoster">
+        <img src={avatarUrl} alt={person.name} />
+      </div>
+      <div className="personDetails">
+        <span className="personName">{person.name}</span>
+        <span className="personRole">{person.known_for_department || "Actor / Cast"}</span>
+      </div>
+    </div>
+  );
+};
+
 const SearchResult = () => {
   const { query: urlQuery } = useParams();
   const navigate = useNavigate();
 
   const [searchQuery, setSearchQuery] = useState(urlQuery || "");
-  const [activeFilter, setActiveFilter] = useState("all"); // "all", "movie", "tv"
+  const [activeFilter, setActiveFilter] = useState("all"); // "all", "movie", "tv", "person"
   const [data, setData] = useState(null);
   const [pageNum, setPageNum] = useState(1);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef(null);
+
+  // Filter helper: Enforce English language for Movies & TV Shows and retain Persons
+  const filterEnglishResults = (items) => {
+    if (!Array.isArray(items)) return [];
+    return items.filter((item) => {
+      if (item.media_type === "person" || activeFilter === "person") return true;
+      if (!item.original_language) return true;
+      const lang = item.original_language.toLowerCase();
+      return lang === "en" || lang === "eng";
+    });
+  };
 
   useEffect(() => {
     if (urlQuery !== undefined && urlQuery !== searchQuery) {
@@ -49,15 +91,23 @@ const SearchResult = () => {
       endpoint = `/search/movie?query=${encodeURIComponent(queryStr)}&page=${page}`;
     } else if (filterType === "tv") {
       endpoint = `/search/tv?query=${encodeURIComponent(queryStr)}&page=${page}`;
+    } else if (filterType === "person") {
+      endpoint = `/search/person?query=${encodeURIComponent(queryStr)}&page=${page}`;
     }
 
-    fetchDataFromAPI(endpoint).then((res) => {
-      setData(res);
-      setPageNum(2);
-      setLoading(false);
-    }).catch(() => {
-      setLoading(false);
-    });
+    fetchDataFromAPI(endpoint)
+      .then((res) => {
+        const filtered = {
+          ...res,
+          results: filterEnglishResults(res?.results || []),
+        };
+        setData(filtered);
+        setPageNum(2);
+        setLoading(false);
+      })
+      .catch(() => {
+        setLoading(false);
+      });
   };
 
   const fetchNextPageData = () => {
@@ -69,16 +119,19 @@ const SearchResult = () => {
       endpoint = `/search/movie?query=${encodeURIComponent(queryStr)}&page=${pageNum}`;
     } else if (activeFilter === "tv") {
       endpoint = `/search/tv?query=${encodeURIComponent(queryStr)}&page=${pageNum}`;
+    } else if (activeFilter === "person") {
+      endpoint = `/search/person?query=${encodeURIComponent(queryStr)}&page=${pageNum}`;
     }
 
     fetchDataFromAPI(endpoint).then((res) => {
+      const filteredNext = filterEnglishResults(res?.results || []);
       if (data?.results) {
         setData({
           ...data,
-          results: [...data.results, ...res.results],
+          results: [...data.results, ...filteredNext],
         });
       } else {
-        setData(res);
+        setData({ ...res, results: filteredNext });
       }
       setPageNum((prev) => prev + 1);
     });
@@ -106,6 +159,11 @@ const SearchResult = () => {
     navigate(`/search/${encodeURIComponent(tag)}`, { replace: true });
   };
 
+  // Group filtered results into Movies, TV Shows, and Actors
+  const moviesList = data?.results?.filter((item) => item.media_type === "movie" || activeFilter === "movie") || [];
+  const tvList = data?.results?.filter((item) => item.media_type === "tv" || activeFilter === "tv") || [];
+  const peopleList = data?.results?.filter((item) => item.media_type === "person" || activeFilter === "person") || [];
+
   return (
     <div className="searchResultsPage">
       <TopNav />
@@ -113,8 +171,8 @@ const SearchResult = () => {
         {/* Dedicated Search Header & Input Box */}
         <div className="searchHeaderSection">
           <div className="searchTitleBlock">
-            <h1>Search Movies & TV Shows</h1>
-            <p>Find thousands of movies, TV series, actors, and genres</p>
+            <h1>Search Movies, TV Shows & Actors</h1>
+            <p>Find English language movies, TV series, actors, and directors</p>
           </div>
 
           <div className="searchInputWrapper">
@@ -123,7 +181,7 @@ const SearchResult = () => {
               ref={inputRef}
               type="text"
               className="mainSearchInput"
-              placeholder="Type movie or TV show title..."
+              placeholder="Type movie, TV show, or actor name..."
               value={searchQuery}
               onChange={handleInputChange}
               tabIndex="0"
@@ -155,14 +213,21 @@ const SearchResult = () => {
               onClick={() => setActiveFilter("movie")}
               tabIndex="0"
             >
-              <FiFilm /> Movies Only
+              <FiFilm /> Movies ({moviesList.length})
             </button>
             <button
               className={`chip ${activeFilter === "tv" ? "active" : ""}`}
               onClick={() => setActiveFilter("tv")}
               tabIndex="0"
             >
-              <FiTv /> TV Series Only
+              <FiTv /> TV Series ({tvList.length})
+            </button>
+            <button
+              className={`chip ${activeFilter === "person" ? "active" : ""}`}
+              onClick={() => setActiveFilter("person")}
+              tabIndex="0"
+            >
+              <FiUser /> Actors & Cast ({peopleList.length})
             </button>
           </div>
 
@@ -192,35 +257,54 @@ const SearchResult = () => {
             {loading && !data ? (
               <Spinner initial={true} />
             ) : data?.results?.length > 0 ? (
-              <>
-                <div className="resultsSummary">
-                  Found {data?.total_results} {data?.total_results === 1 ? "result" : "results"} for &quot;{searchQuery}&quot;
-                </div>
+              <InfiniteScroll
+                className="infiniteScrollContainer"
+                dataLength={data?.results?.length || 0}
+                next={fetchNextPageData}
+                hasMore={pageNum <= data?.total_pages}
+                loader={<Spinner />}
+              >
+                {/* 1. Movies Category Section */}
+                {(activeFilter === "all" || activeFilter === "movie") && moviesList.length > 0 && (
+                  <div className="searchCategorySection">
+                    <h2 className="categoryTitle"><FiFilm style={{ marginRight: 8, color: "var(--pink)" }} /> Movies</h2>
+                    <div className="contentGrid">
+                      {moviesList.map((item, idx) => (
+                        <MovieCard key={`movie-${item.id}-${idx}`} data={item} fromSearch={true} mediaType="movie" />
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-                <InfiniteScroll
-                  className="content"
-                  dataLength={data?.results?.length || 0}
-                  next={fetchNextPageData}
-                  hasMore={pageNum <= data?.total_pages}
-                  loader={<Spinner />}
-                >
-                  {data?.results.map((item, index) => {
-                    if (item.media_type === "person") return null;
-                    return (
-                      <MovieCard
-                        key={`${item.id}-${index}`}
-                        data={item}
-                        fromSearch={true}
-                      />
-                    );
-                  })}
-                </InfiniteScroll>
-              </>
+                {/* 2. TV Shows Category Section */}
+                {(activeFilter === "all" || activeFilter === "tv") && tvList.length > 0 && (
+                  <div className="searchCategorySection">
+                    <h2 className="categoryTitle"><FiTv style={{ marginRight: 8, color: "var(--pink)" }} /> TV Shows & Series</h2>
+                    <div className="contentGrid">
+                      {tvList.map((item, idx) => (
+                        <MovieCard key={`tv-${item.id}-${idx}`} data={item} fromSearch={true} mediaType="tv" />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. Actors & Cast Category Section */}
+                {(activeFilter === "all" || activeFilter === "person") && peopleList.length > 0 && (
+                  <div className="searchCategorySection">
+                    <h2 className="categoryTitle"><FiUser style={{ marginRight: 8, color: "var(--pink)" }} /> Actors & Cast</h2>
+                    <div className="contentGrid">
+                      {peopleList.map((person, idx) => (
+                        <PersonCard key={`person-${person.id}-${idx}`} person={person} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </InfiniteScroll>
             ) : (
               !loading && (
                 <div className="noResultsBox">
-                  <h3>No titles found for &quot;{searchQuery}&quot;</h3>
-                  <p>Try searching for a different keyword, title, or genre.</p>
+                  <h3>No English titles or actors found for &quot;{searchQuery}&quot;</h3>
+                  <p>Try searching for another movie, TV series, or actor name.</p>
                 </div>
               )
             )}
