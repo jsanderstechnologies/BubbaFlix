@@ -60,11 +60,26 @@ const CollectionPage = () => {
     ? [...collection.parts].sort((a, b) => new Date(a.release_date || 0) - new Date(b.release_date || 0))
     : [];
 
+  // Remote & Keyboard D-pad Back Key Handler
+  useEffect(() => {
+    const handleCollectionKeyDown = (e) => {
+      const key = e.key;
+      const code = e.keyCode;
+      if (key === "Escape" || key === "Back" || code === 27 || code === 4 || code === 10009 || code === 461) {
+        e.preventDefault();
+        e.stopPropagation();
+        navigate(-1);
+      }
+    };
+    window.addEventListener("keydown", handleCollectionKeyDown, true);
+    return () => {
+      window.removeEventListener("keydown", handleCollectionKeyDown, true);
+    };
+  }, [navigate]);
+
   return (
     <div className="collectionDetailsPage">
-      <TopNav />
-
-      {/* Touch & D-pad Upper Left Back Arrow Button */}
+      {/* Touch & D-pad Upper Left Back Arrow Button rendered first for DOM focus hierarchy */}
       <button
         className="detailsPageBackBtn"
         onClick={() => navigate(-1)}
@@ -74,6 +89,8 @@ const CollectionPage = () => {
       >
         <FiArrowLeft />
       </button>
+
+      <TopNav />
 
       {loading ? (
         <div className="loadingSpinnerWrapper">
