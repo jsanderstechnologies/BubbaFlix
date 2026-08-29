@@ -633,7 +633,7 @@ class PlayerActivity : AppCompatActivity() {
 
         if (dur > 0) {
             val pct = (pos.toDouble() / dur.toDouble()) * 100.0
-            if (pct >= 90.0 || (dur - pos) < 60000) {
+            if (pct >= 95.0) {
                 prefs.edit().remove(key).apply()
             } else if (pos >= 10000) {
                 prefs.edit().putLong(key, pos).apply()

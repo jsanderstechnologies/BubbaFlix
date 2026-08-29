@@ -59,13 +59,13 @@ export const saveWatchProgress = ({
 
   const progressPercent = (currentTime / duration) * 100;
 
-  // If watched > 92% or less than 60s remaining, mark completed
-  if (progressPercent >= 92 || duration - currentTime < 60) {
+  // Only mark movie or episode as completed/watched when 95% has been watched
+  if (progressPercent >= 95) {
     delete all[key];
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
     } catch (e) {
-      e.printStackTrace();
+      console.error("[watchProgress] Error clearing progress:", e);
     }
     return;
   }
