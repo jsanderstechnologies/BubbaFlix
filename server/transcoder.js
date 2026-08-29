@@ -710,6 +710,28 @@ const server = http.createServer((req, res) => {
       subPath = `${base}?${queries}`;
     }
 
+    // Serve directly from background memory cache (eliminates page-load refresh)
+    if (req.method === "GET") {
+      if (subPath.includes("/epg/programs") || subPath.includes("/epg/grid") || subPath.includes("/cache/epg")) {
+        if (cachedEpgPrograms.length > 0) {
+          logMessage(`[Fast Server Cache] Served ${cachedEpgPrograms.length} cached EPG programs directly to [${initiator.initiatorComponent}] (${initiator.ip}).`);
+          return sendJson(res, 200, cachedEpgPrograms);
+        }
+      }
+      if (subPath.includes("/epg/recordings") || (subPath.includes("/channels/recordings") && !subPath.includes("/file/")) || subPath.includes("/cache/recordings")) {
+        if (cachedDvrRecordings.length > 0) {
+          logMessage(`[Fast Server Cache] Served ${cachedDvrRecordings.length} cached DVR recordings directly to [${initiator.initiatorComponent}] (${initiator.ip}).`);
+          return sendJson(res, 200, cachedDvrRecordings);
+        }
+      }
+      if (subPath.includes("/channels/channels") || subPath.includes("/cache/channels")) {
+        if (cachedChannelsList.length > 0) {
+          logMessage(`[Fast Server Cache] Served ${cachedChannelsList.length} cached channels directly to [${initiator.initiatorComponent}] (${initiator.ip}).`);
+          return sendJson(res, 200, cachedChannelsList);
+        }
+      }
+    }
+
     const targetDispatcharrUrl = `${rawDispatcharrUrl}${subPath.startsWith("/") ? "" : "/"}${subPath}`;
 
     const proxyHeaders = {};
