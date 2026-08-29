@@ -125,9 +125,31 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
         fetch(`/api/transcode/metadata?url=${encodeURIComponent(probeUrl)}`)
           .then((res) => res.json())
           .then((data) => {
-            if (data && data.duration > 0) {
-              console.log("[VideoPlayerModal] Probed media duration using ffprobe:", data.duration);
-              setCustomDuration(data.duration);
+            if (data) {
+              if (data.duration > 0) {
+                console.log("[VideoPlayerModal] Probed media duration using ffprobe:", data.duration);
+                setCustomDuration(data.duration);
+              }
+              if (Array.isArray(data.audioTracks) && data.audioTracks.length > 0) {
+                const formattedAudio = data.audioTracks.map((t) => ({
+                  id: t.index,
+                  name: t.title || t.language || `Audio Track #${t.index}`,
+                  lang: t.language || "eng"
+                }));
+                setAudioTracks(formattedAudio);
+              }
+              if (Array.isArray(data.subtitleTracks) && data.subtitleTracks.length > 0) {
+                const formattedSubs = data.subtitleTracks.map((t) => ({
+                  id: t.index,
+                  name: `${t.title || t.language || "Subtitle"} (${t.codec})`,
+                  lang: t.language || "eng",
+                  embedded: true
+                }));
+                setSubtitles((prev) => {
+                  const externals = prev.filter((s) => !s.embedded);
+                  return [...formattedSubs, ...externals];
+                });
+              }
             }
           })
           .catch((err) => {
@@ -369,7 +391,27 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
     setActiveAudioIdx(index);
     setShowAudioMenu(false);
 
-    if (hlsRef.current) {
+    if (currentUrl.includes("/api/transcode")) {
+      let baseUrl = currentUrl;
+      if (currentUrl.includes("audio_index=")) {
+        baseUrl = currentUrl.replace(/audio_index=\d+/, `audio_index=${index}`);
+      } else {
+        const sep = currentUrl.includes("?") ? "&" : "?";
+        baseUrl = `${currentUrl}${sep}audio_index=${index}`;
+      }
+      
+      const resumeTime = videoRef.current ? videoRef.current.currentTime : 0;
+      setCurrentUrl(baseUrl);
+      
+      if (videoRef.current) {
+        const onLoaded = () => {
+          videoRef.current.currentTime = resumeTime;
+          videoRef.current.play().catch(() => {});
+          videoRef.current.removeEventListener("loadedmetadata", onLoaded);
+        };
+        videoRef.current.addEventListener("loadedmetadata", onLoaded);
+      }
+    } else if (hlsRef.current) {
       hlsRef.current.audioTrack = index;
     } else if (videoRef.current && videoRef.current.audioTracks) {
       for (let i = 0; i < videoRef.current.audioTracks.length; i++) {
@@ -393,6 +435,21 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
     try {
       setActiveSubId(subTrack.id);
       setShowSubMenu(false);
+
+      if (subTrack.embedded) {
+        let sourceUrl = rawUrl || videoUrl || streamUrl || "";
+        if (sourceUrl.includes("/api/transcode")) {
+          try {
+            const urlParams = new URLSearchParams(sourceUrl.substring(sourceUrl.indexOf("?")));
+            sourceUrl = urlParams.get("url") || sourceUrl;
+          } catch (e) {
+            // fallback
+          }
+        }
+        const vttStreamUrl = `/api/transcode/subtitle?url=${encodeURIComponent(sourceUrl)}&index=${subTrack.id}`;
+        setActiveVttUrl(vttStreamUrl);
+        return;
+      }
 
       if (subTrack.downloadLink.endsWith(".vtt") || subTrack.format === "vtt") {
         setActiveVttUrl(subTrack.downloadLink);

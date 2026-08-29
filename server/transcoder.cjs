@@ -605,20 +605,82 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     }
 
     const { exec } = require("child_process");
-    // Run ffprobe to get duration in seconds
-    const probeCmd = `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${cleanedTargetUrl.replace(/"/g, '\\"')}"`;
+    // Run ffprobe to get duration, audio tracks, and subtitle tracks
+    const probeCmd = `ffprobe -v error -show_entries format=duration:stream=index,codec_type,codec_name,tags -of json "${cleanedTargetUrl.replace(/"/g, '\\"')}"`;
     
-    exec(probeCmd, { timeout: 10000 }, (error, stdout, stderr) => {
+    exec(probeCmd, { timeout: 12000 }, (error, stdout, stderr) => {
       if (error) {
-        logMessage(`[ffprobe Error] Failed to probe duration: ${error.message}`);
-        return sendJson(res, 500, { error: "Failed to probe media duration", details: error.message });
+        logMessage(`[ffprobe Error] Failed to probe metadata: ${error.message}`);
+        return sendJson(res, 500, { error: "Failed to probe media metadata", details: error.message });
       }
-      const dur = parseFloat(stdout.trim());
-      if (isNaN(dur) || dur <= 0) {
-        return sendJson(res, 200, { duration: 0 });
+      try {
+        const data = JSON.parse(stdout);
+        const duration = parseFloat(data.format?.duration || 0);
+        
+        const audioTracks = [];
+        const subtitleTracks = [];
+
+        if (Array.isArray(data.streams)) {
+          data.streams.forEach((stream) => {
+            const index = stream.index;
+            const codec = stream.codec_name;
+            const type = stream.codec_type;
+            const tags = stream.tags || {};
+            const language = tags.language || "und";
+            const title = tags.title || tags.handler_name || `${type.charAt(0).toUpperCase() + type.slice(1)} Track ${index}`;
+
+            if (type === "audio") {
+              audioTracks.push({ index, codec, language, title });
+            } else if (type === "subtitle") {
+              subtitleTracks.push({ index, codec, language, title });
+            }
+          });
+        }
+
+        return sendJson(res, 200, {
+          duration: isNaN(duration) ? 0 : duration,
+          audioTracks,
+          subtitleTracks
+        });
+      } catch (err) {
+        return sendJson(res, 500, { error: "Failed to parse ffprobe output", details: err.message });
       }
-      return sendJson(res, 200, { duration: dur });
     });
+    return;
+  }
+
+  // On-the-fly Subtitle Extraction & WebVTT Conversion Endpoint
+  if ((cleanPath === "/api/transcode/subtitle" || cleanPath === "/transcode/subtitle") && req.method === "GET") {
+    const targetUrl = parsedUrl.query.url;
+    const streamIndex = parsedUrl.query.index;
+
+    if (!targetUrl || !streamIndex) {
+      return sendJson(res, 400, { error: "Missing required query parameters: url, index" });
+    }
+
+    let cleanedTargetUrl = targetUrl;
+    try {
+      cleanedTargetUrl = encodeURI(decodeURI(targetUrl));
+    } catch (e) {
+      cleanedTargetUrl = targetUrl;
+    }
+
+    res.writeHead(200, {
+      "Content-Type": "text/vtt; charset=utf-8",
+      "Access-Control-Allow-Origin": "*",
+    });
+
+    const { spawn } = require("child_process");
+    const subProcess = spawn("ffmpeg", [
+      "-i", cleanedTargetUrl,
+      "-map", `0:${streamIndex}`,
+      "-f", "webvtt",
+      "pipe:1"
+    ]);
+
+    subProcess.stdout.pipe(res);
+    subProcess.stderr.on("data", () => {});
+    subProcess.on("error", () => {});
     return;
   }
 
@@ -703,6 +765,8 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
       const gpuInfo = detectGpuCapabilities();
       const isLiveStream = finalMediaUrl.includes("/proxy/ts/stream") || finalMediaUrl.includes("/stream/");
 
+      const audioIndex = parsedUrl.query.audio_index;
+
       const ffmpegArgs = [
         "-headers", headersStr,
         "-reconnect", "1",
@@ -715,6 +779,8 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
         "-threads", String(cpuCount),
         ...(gpuInfo.inputArgs || []),
         "-i", finalMediaUrl,
+        "-map", "0:v:0",
+        "-map", audioIndex ? `0:${audioIndex}` : "0:a:0",
         ...(gpuInfo.outputArgs || []),
         "-c:a", "aac",
         "-b:a", "192k",
