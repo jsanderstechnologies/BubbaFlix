@@ -1,0 +1,104 @@
+@import "../../mixins.scss";
+
+.collectionCard {
+  width: calc(50% - 10px);
+  margin-bottom: 25px;
+  cursor: pointer;
+  flex-shrink: 0;
+  outline: none;
+  border-radius: 12px;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+
+  @include md {
+    width: calc(25% - 15px);
+  }
+
+  @include lg {
+    width: calc(20% - 16px);
+  }
+
+  &:hover,
+  &:focus,
+  &:focus-visible {
+    transform: scale(1.05);
+    z-index: 10;
+
+    .posterBlock {
+      box-shadow: 0 10px 24px rgba(218, 47, 104, 0.4);
+      border-color: #da2f68;
+    }
+
+    .title {
+      color: #da2f68;
+    }
+  }
+
+  .posterBlock {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1.5;
+    background-size: cover;
+    background-position: center;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 10px;
+    transition: all 0.25s ease;
+    border-radius: 12px;
+    overflow: hidden;
+    background-color: #1a1b23;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+
+    .posterImg {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+    }
+
+    .collectionBadge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(15, 16, 20, 0.85);
+      border: 1px solid rgba(218, 47, 104, 0.6);
+      color: #ffd700;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(6px);
+
+      .badgeIcon {
+        font-size: 12px;
+        color: #da2f68;
+      }
+    }
+  }
+
+  .textBlock {
+    color: white;
+    display: flex;
+    flex-direction: column;
+
+    .title {
+      font-size: 15px;
+      margin-bottom: 4px;
+      line-height: 20px;
+      font-weight: 600;
+      @include ellipsis(1);
+      transition: color 0.2s ease;
+    }
+
+    .subtitle {
+      font-size: 12px;
+      opacity: 0.5;
+      font-weight: 500;
+    }
+  }
+}

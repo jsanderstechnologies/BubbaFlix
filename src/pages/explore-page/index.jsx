@@ -7,9 +7,10 @@ import "./index.scss";
 import { fetchDataFromAPI } from "../../utils/api";
 import ContentWrapper from "../../components/content-wrapper";
 import MovieCard from "../../components/movie-card";
+import CollectionCard from "../../components/collection-card";
 import Spinner from "../../components/spinner";
 import TopNav from "../../components/top-nav";
-import { FiSliders } from "react-icons/fi";
+import { FiSliders, FiLayers } from "react-icons/fi";
 
 let filters = {};
 
@@ -28,6 +29,7 @@ const Explore = () => {
 	const [pageNum, setPageNum] = useState(1);
 	const [loading, setLoading] = useState(false);
 	const [sortby, setSortby] = useState("popularity.desc");
+	const [collections, setCollections] = useState([]);
 	const { mediaType } = useParams();
 
 	const fetchInitialData = () => {
@@ -62,6 +64,16 @@ const Explore = () => {
 		setPageNum(1);
 		setSortby("popularity.desc");
 		fetchInitialData();
+
+		if (mediaType === "movie") {
+			const topColIds = [86311, 263, 10, 1241, 2344, 9485, 328, 645];
+			Promise.all(topColIds.map((id) => fetchDataFromAPI(`/collection/${id}`).catch(() => null)))
+				.then((list) => {
+					setCollections(list.filter(Boolean));
+				});
+		} else {
+			setCollections([]);
+		}
 	}, [mediaType]);
 
 	const handleSortChange = (e) => {
@@ -84,7 +96,7 @@ const Explore = () => {
 					<div className="pageTitle">
 						{mediaType === "tv"
 							? "Explore TV Series"
-							: "Explore Movies"}
+							: "Explore Movies & Franchises"}
 					</div>
 					<div className="filters">
 						<div className="selectWrapper">
@@ -104,6 +116,19 @@ const Explore = () => {
 						</div>
 					</div>
 				</div>
+
+				{mediaType === "movie" && collections.length > 0 && (
+					<div className="featuredCollectionsBlock" style={{ marginBottom: 36 }}>
+						<h2 className="collectionsTitle" style={{ fontSize: 22, fontWeight: 700, marginBottom: 16, display: "flex", alignItems: "center", gap: 8, color: "#ffffff" }}>
+							<FiLayers style={{ color: "var(--pink)" }} /> Top Movie Collections & Franchises
+						</h2>
+						<div className="collectionsGrid" style={{ display: "flex", flexFlow: "row wrap", gap: 16 }}>
+							{collections.map((col) => (
+								<CollectionCard key={`explore-col-${col.id}`} data={col} />
+							))}
+						</div>
+					</div>
+				)}
 
 				{loading && <Spinner initial={true} />}
 				{!loading && (

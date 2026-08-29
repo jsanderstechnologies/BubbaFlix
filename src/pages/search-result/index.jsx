@@ -2,13 +2,14 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import InfiniteScroll from "react-infinite-scroll-component";
 import { HiOutlineSearch, HiX } from "react-icons/hi";
-import { FiFilm, FiTv, FiGrid, FiUser, FiMic } from "react-icons/fi";
+import { FiFilm, FiTv, FiGrid, FiUser, FiMic, FiLayers } from "react-icons/fi";
 
 import "./index.scss";
 
 import { fetchDataFromAPI } from "../../utils/api";
 import ContentWrapper from "../../components/content-wrapper";
 import MovieCard from "../../components/movie-card";
+import CollectionCard from "../../components/collection-card";
 import Spinner from "../../components/spinner";
 import TopNav from "../../components/top-nav";
 
@@ -116,6 +117,37 @@ const SearchResult = () => {
     if (!queryStr) return;
     setLoading(true);
 
+    if (filterType === "collection") {
+      fetchDataFromAPI(`/search/collection?query=${encodeURIComponent(queryStr)}&page=${page}`)
+        .then((res) => {
+          const colList = (res?.results || []).map((item) => ({ ...item, media_type: "collection" }));
+          setData({ ...res, results: colList });
+          setPageNum(2);
+          setLoading(false);
+        })
+        .catch(() => setLoading(false));
+      return;
+    }
+
+    if (filterType === "all") {
+      Promise.all([
+        fetchDataFromAPI(`/search/multi?query=${encodeURIComponent(queryStr)}&page=${page}`),
+        fetchDataFromAPI(`/search/collection?query=${encodeURIComponent(queryStr)}&page=${page}`),
+      ])
+        .then(([multiRes, colRes]) => {
+          const multiList = filterEnglishResults(multiRes?.results || []);
+          const colList = (colRes?.results || []).map((item) => ({ ...item, media_type: "collection" }));
+          setData({
+            ...multiRes,
+            results: [...colList, ...multiList],
+          });
+          setPageNum(2);
+          setLoading(false);
+        })
+        .catch(() => setLoading(false));
+      return;
+    }
+
     let endpoint = `/search/multi?query=${encodeURIComponent(queryStr)}&page=${page}`;
     if (filterType === "movie") {
       endpoint = `/search/movie?query=${encodeURIComponent(queryStr)}&page=${page}`;
@@ -189,7 +221,8 @@ const SearchResult = () => {
     navigate(`/search/${encodeURIComponent(tag)}`, { replace: true });
   };
 
-  // Group filtered results into Movies, TV Shows, and Actors
+  // Group filtered results into Movies, TV Shows, Actors, and Collections
+  const collectionsList = data?.results?.filter((item) => item.media_type === "collection" || activeFilter === "collection") || [];
   const moviesList = data?.results?.filter((item) => item.media_type === "movie" || activeFilter === "movie") || [];
   const tvList = data?.results?.filter((item) => item.media_type === "tv" || activeFilter === "tv") || [];
   const peopleList = data?.results?.filter((item) => item.media_type === "person" || activeFilter === "person") || [];
@@ -201,8 +234,8 @@ const SearchResult = () => {
         {/* Dedicated Search Header & Input Box */}
         <div className="searchHeaderSection">
           <div className="searchTitleBlock">
-            <h1>Search Movies, TV Shows & Actors</h1>
-            <p>Find English language movies, TV series, actors, and directors</p>
+            <h1>Search Movies, TV Shows & Collections</h1>
+            <p>Find movies, TV series, franchise collections, and actors</p>
           </div>
 
           <div className="searchInputWrapper">
@@ -211,7 +244,7 @@ const SearchResult = () => {
               ref={inputRef}
               type="text"
               className="mainSearchInput"
-              placeholder="Type movie, TV show, or actor name..."
+              placeholder="Type movie, TV show, collection, or actor name..."
               value={searchQuery}
               onChange={handleInputChange}
               tabIndex="0"
@@ -247,6 +280,13 @@ const SearchResult = () => {
               tabIndex="0"
             >
               <FiGrid /> All Results
+            </button>
+            <button
+              className={`chip ${activeFilter === "collection" ? "active" : ""}`}
+              onClick={() => setActiveFilter("collection")}
+              tabIndex="0"
+            >
+              <FiLayers /> Collections ({collectionsList.length})
             </button>
             <button
               className={`chip ${activeFilter === "movie" ? "active" : ""}`}
@@ -304,7 +344,19 @@ const SearchResult = () => {
                 hasMore={pageNum <= data?.total_pages}
                 loader={<Spinner />}
               >
-                {/* 1. Movies Category Section */}
+                {/* 1. Movie Collections Category Section */}
+                {(activeFilter === "all" || activeFilter === "collection") && collectionsList.length > 0 && (
+                  <div className="searchCategorySection">
+                    <h2 className="categoryTitle"><FiLayers style={{ marginRight: 8, color: "var(--pink)" }} /> Movie Collections & Franchises</h2>
+                    <div className="contentGrid">
+                      {collectionsList.map((col, idx) => (
+                        <CollectionCard key={`collection-${col.id}-${idx}`} data={col} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. Movies Category Section */}
                 {(activeFilter === "all" || activeFilter === "movie") && moviesList.length > 0 && (
                   <div className="searchCategorySection">
                     <h2 className="categoryTitle"><FiFilm style={{ marginRight: 8, color: "var(--pink)" }} /> Movies</h2>

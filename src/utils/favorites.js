@@ -83,3 +83,50 @@ export const isFavoriteChannel = (channelId) => {
   const favorites = getFavoriteChannels();
   return favorites.includes(String(channelId));
 };
+
+// TMDB Collections Favorites Utility
+export const getFavoriteCollections = () => {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem("bubbaflix_favorite_collections");
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+};
+
+export const isFavoriteCollection = (collectionId) => {
+  if (!collectionId) return false;
+  const list = getFavoriteCollections();
+  const idStr = String(collectionId);
+  return list.some((c) => String(c.id) === idStr);
+};
+
+export const toggleFavoriteCollection = (collectionObj) => {
+  if (typeof window === "undefined" || !collectionObj || !collectionObj.id) return false;
+  let list = getFavoriteCollections();
+  const idStr = String(collectionObj.id);
+  const exists = list.some((c) => String(c.id) === idStr);
+  let isNowAdded = false;
+
+  if (exists) {
+    list = list.filter((c) => String(c.id) !== idStr);
+    isNowAdded = false;
+  } else {
+    list.unshift({
+      id: collectionObj.id,
+      name: collectionObj.name || collectionObj.title,
+      title: collectionObj.name || collectionObj.title,
+      poster_path: collectionObj.poster_path,
+      backdrop_path: collectionObj.backdrop_path,
+      overview: collectionObj.overview,
+      parts_count: collectionObj.parts?.length || collectionObj.parts_count || 0,
+      media_type: "collection",
+    });
+    isNowAdded = true;
+  }
+
+  localStorage.setItem("bubbaflix_favorite_collections", JSON.stringify(list));
+  window.dispatchEvent(new Event("bubbaflix_favorites_updated"));
+  return isNowAdded;
+};
