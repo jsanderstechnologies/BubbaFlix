@@ -28,20 +28,20 @@ export const isAndroidTvClient = () => {
     ua.includes("AndroidTV") ||
     ua.includes("SmartTV") ||
     ua.includes("BRAVIA") ||
-    ua.includes("MiTV")
+    ua.includes("MiTV") ||
+    /Android|Tablet|Mobile|Silk|Kindle|KFTRWI/i.test(ua)
   );
 };
 
 export const getTranscodedStreamUrl = (url) => {
   if (!url) return "";
   if (url.includes("/api/transcode")) return url;
-  // If playing on Android TV client, bypass FFmpeg server transcoding!
-  if (isAndroidTvClient()) {
-    console.log("[Android TV Client] Bypassing FFmpeg server transcoding for direct hardware decoding.");
+  // Devices (Android TV, Tablets, Mobile, Native App) perform direct hardware decoding!
+  if (isAndroidTvClient() || (typeof window !== "undefined" && window.AndroidPlayer)) {
+    console.log("[Direct Stream Router] Bypassing server transcoding for native hardware playback:", url);
     return url;
   }
-  const baseUrl = getServerUrl();
-  return `${baseUrl}/api/transcode?url=${encodeURIComponent(url)}`;
+  return url;
 };
 
 export const saveServerUrl = (url) => {
