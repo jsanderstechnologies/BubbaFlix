@@ -130,6 +130,12 @@ class PlayerActivity : AppCompatActivity() {
         errorLayout = findViewById(R.id.error_layout)
         txtErrorMsg = findViewById(R.id.txt_error_msg)
 
+        listOf(btnBack, btnAudio, btnSubtitles, btnRewind30, btnRewind10, btnPlayPause, btnFF10, btnFF30, seekBar).forEach { control ->
+            control.isFocusable = true
+            control.isFocusableInTouchMode = true
+        }
+        btnPlayPause.requestFocus()
+
         val videoUrl = intent.getStringExtra(EXTRA_VIDEO_URL) ?: ""
         val title = intent.getStringExtra(EXTRA_TITLE)
         val logoUrl = intent.getStringExtra(EXTRA_LOGO_URL)
@@ -689,25 +695,17 @@ class PlayerActivity : AppCompatActivity() {
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         resetControlsTimeout()
 
-        when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> {
-                btnPlayPause.performClick()
+        if (!controlsVisible) {
+            if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER ||
+                keyCode == KeyEvent.KEYCODE_DPAD_UP || keyCode == KeyEvent.KEYCODE_DPAD_DOWN ||
+                keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                showControls()
+                btnPlayPause.requestFocus()
                 return true
             }
-            KeyEvent.KEYCODE_DPAD_UP -> {
-                if (!controlsVisible) {
-                    showControls()
-                    btnPlayPause.requestFocus()
-                    return true
-                }
-            }
-            KeyEvent.KEYCODE_DPAD_DOWN -> {
-                if (!controlsVisible) {
-                    showControls()
-                    seekBar.requestFocus()
-                    return true
-                }
-            }
+        }
+
+        when (keyCode) {
             KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE -> {
                 btnPlayPause.performClick()
                 return true
