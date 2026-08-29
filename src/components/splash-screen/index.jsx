@@ -88,19 +88,19 @@ const SplashScreen = ({ onComplete }) => {
       }
 
       const master = ctx.createGain();
-      master.gain.value = 0.9;
+      master.gain.value = 2.5;
       master.connect(ctx.destination);
 
       const reverbGain = ctx.createGain();
-      reverbGain.gain.value = 0.35;
+      reverbGain.gain.value = 0.65;
       const convolver = ctx.createConvolver();
-      convolver.buffer = createReverbImpulse(ctx, 2.2, 2.5);
+      convolver.buffer = createReverbImpulse(ctx, 2.5, 2.2);
       reverbGain.connect(convolver);
       convolver.connect(master);
 
       const now = ctx.currentTime;
-      playThump(ctx, master, reverbGain, now + 0.05, 90, 0.8, 0.7);
-      playThump(ctx, master, reverbGain, now + 0.95, 62, 1.6, 0.95);
+      playThump(ctx, master, reverbGain, now + 0.05, 95, 0.85, 1.8);
+      playThump(ctx, master, reverbGain, now + 0.95, 65, 1.8, 2.4);
     } catch {
       // Browser autoplay restriction fallback
     }
