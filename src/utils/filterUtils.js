@@ -1,7 +1,14 @@
-// Global Filtering Utility to exclude Anime, Foreign Content, and Adult Material
+// Global Filtering Utility to exclude Anime, Foreign Content, Adult Material, and API/Axios Errors
+
+export const isAxiosError = (item) => {
+  if (!item || typeof item !== "object") return true;
+  if (item instanceof Error) return true;
+  if (item.isAxiosError || item.response || item.config || item.code === "ERR_BAD_REQUEST" || item.message) return true;
+  return false;
+};
 
 export const isAnime = (item) => {
-  if (!item) return false;
+  if (!item || isAxiosError(item)) return false;
 
   // 1. Japanese language check
   if (item.original_language) {
@@ -52,7 +59,8 @@ export const filterEnglishMedia = (items) => {
   const foreignScriptRegex = /[\u0400-\u04FF\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uac00-\ud7af\u0600-\u06FF\u0900-\u097F\u0E00-\u0E7F\u0370-\u03FF]/;
 
   return items.filter((item) => {
-    if (!item) return false;
+    if (!item || typeof item !== "object") return false;
+    if (isAxiosError(item)) return false;
 
     // Filter out explicit adult
     if (item.adult === true) return false;
@@ -65,7 +73,7 @@ export const filterEnglishMedia = (items) => {
 
     // Non-Latin title check
     const title = item.title || item.name || item.original_title || item.original_name || "";
-    if (foreignScriptRegex.test(title)) return false;
+    if (!title || foreignScriptRegex.test(title)) return false;
 
     // Language check if present
     if (item.original_language) {
@@ -90,13 +98,16 @@ export const filterEnglishCollections = (items) => {
   const foreignScriptRegex = /[\u0400-\u04FF\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uac00-\ud7af\u0600-\u06FF\u0900-\u097F\u0E00-\u0E7F\u0370-\u03FF]/;
 
   return items.filter((col) => {
-    if (!col) return false;
+    if (!col || typeof col !== "object") return false;
+    if (isAxiosError(col)) return false;
     if (col.adult === true) return false;
 
     // Filter out Anime collections
     if (isAnime(col)) return false;
 
     const name = (col.name || col.title || col.original_name || "").toLowerCase();
+    if (!name) return false;
+
     const overview = (col.overview || "").toLowerCase();
 
     // Check adult words
