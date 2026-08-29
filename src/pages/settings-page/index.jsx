@@ -474,14 +474,14 @@ const SettingsPage = () => {
                     border: "1px solid rgba(255, 255, 255, 0.08)",
                   }}
                 >
-                  <label style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", fontSize: 15, fontWeight: 500 }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", fontSize: 15, fontWeight: 500, color: "#ffffff" }}>
                     <input
                       type="checkbox"
                       checked={sec.enabled}
                       onChange={() => handleToggleHomeSection(sec.id)}
                       style={{ width: 18, height: 18, accentColor: "var(--pink)", cursor: "pointer" }}
                     />
-                    <span>{sec.title}</span>
+                    <span style={{ color: "#ffffff" }}>{sec.title}</span>
                   </label>
                   <div style={{ display: "flex", gap: 6 }}>
                     <button
@@ -536,7 +536,7 @@ const SettingsPage = () => {
                 type="button"
                 className="saveBtn"
                 onClick={handleSaveHomeSections}
-                style={{ background: "var(--pink)", borderColor: "var(--pink)", display: "flex", alignItems: "center", gap: 6 }}
+                style={{ background: "var(--pink)", borderColor: "var(--pink)", color: "#ffffff", display: "flex", alignItems: "center", gap: 6, padding: "10px 20px", borderRadius: 8, cursor: "pointer", fontWeight: 600 }}
               >
                 <FiSave /> Save Home Layout
               </button>
