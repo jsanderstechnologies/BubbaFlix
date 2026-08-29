@@ -22,6 +22,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
@@ -266,6 +267,8 @@ class PlayerActivity : AppCompatActivity() {
         val okHttpClient = OkHttpClient.Builder()
             .connectTimeout(20, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
+            .followRedirects(true)
+            .followSslRedirects(true)
             .build()
 
         val dataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
@@ -273,13 +276,18 @@ class PlayerActivity : AppCompatActivity() {
 
         val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
 
-        // Aggressive Ahead-Buffering Engine to Prevent Video Freezing / Stuttering
+        val isLiveStream = (intent.getStringExtra(EXTRA_MEDIA_TYPE) == "tv") ||
+                videoUrl.contains("/proxy/ts/") ||
+                videoUrl.contains("/transcode") ||
+                videoUrl.contains("/live/") ||
+                videoUrl.endsWith(".ts")
+
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                60000,   // Min buffer before start/resume: 60 seconds
-                300000,  // Max buffer ahead: 300 seconds (5 minutes ahead!)
-                2500,    // Buffer needed to start playback: 2.5 seconds
-                5000     // Buffer needed to resume after rebuffer: 5.0 seconds
+                if (isLiveStream) 1500 else 60000,
+                if (isLiveStream) 30000 else 300000,
+                if (isLiveStream) 1000 else 2500,
+                if (isLiveStream) 1500 else 5000
             )
             .setBackBuffer(30000, true)
             .build()
@@ -287,6 +295,8 @@ class PlayerActivity : AppCompatActivity() {
         playerView.setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
         (playerView.videoSurfaceView as? android.view.SurfaceView)?.setZOrderMediaOverlay(true)
         (playerView.videoSurfaceView as? android.view.TextureView)?.isOpaque = false
+
+        var hasRetriedWithFallback = false
 
         exoPlayer = ExoPlayer.Builder(this, renderersFactory)
             .setMediaSourceFactory(mediaSourceFactory)
@@ -303,8 +313,13 @@ class PlayerActivity : AppCompatActivity() {
                     .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
                     .build()
 
-                val mediaItem = MediaItem.fromUri(Uri.parse(videoUrl))
-                setMediaItem(mediaItem)
+                val mediaItemBuilder = MediaItem.Builder().setUri(Uri.parse(videoUrl))
+                if (isLiveStream || videoUrl.contains("/proxy/ts/") || videoUrl.endsWith(".ts")) {
+                    mediaItemBuilder.setMimeType(MimeTypes.VIDEO_MP2T)
+                } else if (videoUrl.contains(".m3u8")) {
+                    mediaItemBuilder.setMimeType(MimeTypes.APPLICATION_M3U8)
+                }
+                setMediaItem(mediaItemBuilder.build())
                 prepare()
                 playWhenReady = true
 
@@ -333,7 +348,19 @@ class PlayerActivity : AppCompatActivity() {
                     }
 
                     override fun onPlayerError(error: PlaybackException) {
-                        showError("Stream error: ${error.message ?: "Failed to decode codec"}")
+                        if (isLiveStream && !hasRetriedWithFallback) {
+                            hasRetriedWithFallback = true
+                            val fallbackMime = if (videoUrl.contains(".m3u8")) MimeTypes.APPLICATION_M3U8 else MimeTypes.VIDEO_MP2T
+                            val fallbackItem = MediaItem.Builder()
+                                .setUri(Uri.parse(videoUrl))
+                                .setMimeType(fallbackMime)
+                                .build()
+                            setMediaItem(fallbackItem)
+                            prepare()
+                            playWhenReady = true
+                            return
+                        }
+                        showError("Stream error: ${error.message ?: "Failed to decode stream format"}")
                     }
                 })
             }
