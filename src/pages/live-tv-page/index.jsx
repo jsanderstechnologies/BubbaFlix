@@ -592,7 +592,7 @@ const LiveTvPage = () => {
                                   const cellLeft = e.target.offsetLeft;
                                   const cellWidth = e.target.offsetWidth;
                                   const containerScroll = timelineRef.current.scrollLeft;
-                                  const containerWidth = timelineRef.current.clientWidth - 220;
+                                  const containerWidth = timelineRef.current.clientWidth - 300;
 
                                   if (cellLeft < containerScroll) {
                                     timelineRef.current.scrollTo({ left: Math.max(0, cellLeft - 40), behavior: "smooth" });

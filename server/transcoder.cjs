@@ -618,6 +618,7 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
       const headersStr = `User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\r\nAccept: */*\r\n${authHeaderStr}`;
 
       const gpuInfo = detectGpuCapabilities();
+      const isLiveStream = finalMediaUrl.includes("/proxy/ts/stream") || finalMediaUrl.includes("/stream/");
 
       const ffmpegArgs = [
         "-headers", headersStr,
@@ -626,8 +627,9 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
         "-reconnect_at_eof", "1",
         "-reconnect_streamed", "1",
         "-reconnect_delay_max", "3",
-        "-analyzeduration", "3000000",
-        "-probesize", "3000000",
+        ...(isLiveStream
+          ? ["-fflags", "+genpts+discardcorrupt", "-analyzeduration", "1500000", "-probesize", "1500000"]
+          : ["-analyzeduration", "3000000", "-probesize", "3000000"]),
         "-threads", String(cpuCount),
         ...(gpuInfo.inputArgs || []),
         "-i", finalMediaUrl,

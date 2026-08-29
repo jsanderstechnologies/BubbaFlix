@@ -230,10 +230,10 @@
 
     /* Sticky Channel Sidebar Column */
     .channelColumn {
-      width: 260px;
-      min-width: 260px;
-      max-width: 260px;
-      padding: 10px 14px;
+      width: 300px;
+      min-width: 300px;
+      max-width: 300px;
+      padding: 8px 14px;
       background: #14161f;
       border-right: 2px solid rgba(255, 255, 255, 0.15);
       position: sticky;
@@ -244,34 +244,34 @@
       gap: 12px;
 
       .channelBadge {
-        width: 58px;
-        height: 58px;
+        width: 48px;
+        height: 48px;
         flex-shrink: 0;
         display: flex;
         align-items: center;
         justify-content: center;
 
         .channelLogo {
-          width: 58px;
-          height: 58px;
-          max-width: 58px;
-          max-height: 58px;
+          width: 48px;
+          height: 48px;
+          max-width: 48px;
+          max-height: 48px;
           object-fit: contain;
           background: rgba(0, 0, 0, 0.35);
           border-radius: 8px;
-          padding: 4px;
+          padding: 3px;
           border: 1px solid rgba(255, 255, 255, 0.1);
         }
         .channelNumber {
-          width: 58px;
-          height: 58px;
+          width: 48px;
+          height: 48px;
           background: rgba(255, 255, 255, 0.1);
           border-radius: 8px;
           display: flex;
           align-items: center;
           justify-content: center;
           font-weight: 800;
-          font-size: 16px;
+          font-size: 15px;
           color: var(--pink);
         }
       }
@@ -281,7 +281,7 @@
         overflow: hidden;
 
         .channelName {
-          font-size: 15px;
+          font-size: 14.5px;
           font-weight: 700;
           color: white;
           white-space: nowrap;
@@ -321,7 +321,7 @@
     /* Program Grid Cells Area */
     .programTimeline {
       position: relative;
-      height: 80px;
+      height: 64px;
       box-sizing: border-box;
       background: repeating-linear-gradient(
         90deg,
