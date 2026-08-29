@@ -286,9 +286,6 @@ const LiveTvPage = () => {
         return isNaN(d.getTime()) ? null : d;
       }
       let formatted = trimmed.replace(" ", "T");
-      if (!formatted.endsWith("Z") && !formatted.includes("+") && !formatted.includes("-", 10)) {
-        formatted += "Z";
-      }
       const d = new Date(formatted);
       return isNaN(d.getTime()) ? null : d;
     }

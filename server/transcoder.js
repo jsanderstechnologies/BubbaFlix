@@ -6,6 +6,10 @@ const dgram = require("dgram");
 const os = require("os");
 const { spawn } = require("child_process");
 
+// Multi-Core & Hyperthreading Utilization Engine
+const cpuCount = os.cpus().length;
+process.env.UV_THREADPOOL_SIZE = String(Math.max(4, cpuCount));
+
 // Internal Node settings server port inside Docker container (always 5000 for Nginx proxy)
 const PORT = 5000;
 const UDP_DISCOVERY_PORT = 5151;
@@ -553,8 +557,14 @@ const server = http.createServer((req, res) => {
     });
     return;
   }
-  // Dispatcharr Proxy Endpoints for Live TV, Channels, EPG Guide, & Recordings
-  if (cleanPath.startsWith("/api/dispatcharr") || cleanPath.startsWith("/dispatcharr")) {
+  // Dispatcharr Proxy Endpoints for Live TV Streams, Channels, EPG Guide, & Recordings
+  if (
+    cleanPath.startsWith("/api/dispatcharr") ||
+    cleanPath.startsWith("/dispatcharr") ||
+    cleanPath.startsWith("/proxy/") ||
+    cleanPath.startsWith("/live/") ||
+    cleanPath.startsWith("/movie/")
+  ) {
     const settings = loadServerSettings();
     const rawDispatcharrUrl = (settings.dispatcharrUrl || "http://192.168.10.3:9191").replace(/\/$/, "");
     let apiKey = settings.dispatcharrApiKey || "";

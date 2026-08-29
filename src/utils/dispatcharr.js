@@ -300,7 +300,9 @@ export const getChannelStreamUrl = (channelId) => {
 export const getRecordingStreamUrl = (recording) => {
   if (!recording) return "";
   const baseUrl = getProxyBaseUrl();
-  if (recording.file_url) return recording.file_url;
-  if (recording.stream_url) return recording.stream_url;
+  if (recording.file_url && recording.file_url.startsWith("http")) return recording.file_url;
+  if (recording.file_url) return `${baseUrl}${recording.file_url.startsWith("/") ? "" : "/"}${recording.file_url}`;
+  if (recording.stream_url && recording.stream_url.startsWith("http")) return recording.stream_url;
+  if (recording.stream_url) return `${baseUrl}${recording.stream_url.startsWith("/") ? "" : "/"}${recording.stream_url}`;
   return `${baseUrl}/api/channels/recordings/${recording.id}/file/`;
 };
