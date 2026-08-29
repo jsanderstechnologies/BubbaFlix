@@ -392,8 +392,10 @@ export const getChannelStreamUrl = (channel) => {
     if (channel.stream_url) return `${baseUrl}${channel.stream_url.startsWith("/") ? "" : "/"}${channel.stream_url}`;
     if (channel.url && channel.url.startsWith("http")) return channel.url;
     if (channel.url) return `${baseUrl}${channel.url.startsWith("/") ? "" : "/"}${channel.url}`;
-    const id = channel.id || channel.channel_id || channel.number || channel.tvg_id;
-    return `${baseUrl}/proxy/ts/stream/${id}`;
+    const tvg = channel.tvg_id || channel.effective_tvg_id;
+    if (tvg) return `${baseUrl}/proxy/ts/stream/${tvg}`;
+    const id = channel.id || channel.channel_id || channel.number;
+    return `${baseUrl}/api/channels/channels/${id}/stream/`;
   }
   return `${baseUrl}/proxy/ts/stream/${channel}`;
 };

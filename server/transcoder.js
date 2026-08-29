@@ -855,20 +855,20 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
 
     // Serve directly from background memory cache (eliminates page-load refresh)
     if (req.method === "GET") {
-      if (subPath.includes("/epg/programs") || subPath.includes("/epg/grid") || subPath.includes("/cache/epg")) {
+      if ((subPath === "/epg/programs" || subPath.startsWith("/epg/programs/") || subPath.includes("/epg/grid") || subPath.includes("/cache/epg")) && !subPath.includes("/stream")) {
         if (cachedEpgPrograms.length > 0) {
           logMessage(`[Fast Server Cache] Served ${cachedEpgPrograms.length} cached EPG programs directly to [${initiator.initiatorComponent}] (${initiator.ip}).`);
           return sendJson(res, 200, cachedEpgPrograms);
         }
       }
-      if (subPath.includes("/epg/recordings") || (subPath.includes("/channels/recordings") && !subPath.includes("/file/")) || subPath.includes("/cache/recordings")) {
+      if (subPath.includes("/epg/recordings") || (subPath.includes("/channels/recordings") && !subPath.includes("/file/") && !subPath.includes("/stream/")) || subPath.includes("/cache/recordings")) {
         if (cachedDvrRecordings.length > 0) {
           logMessage(`[Fast Server Cache] Served ${cachedDvrRecordings.length} cached DVR recordings directly to [${initiator.initiatorComponent}] (${initiator.ip}).`);
           return sendJson(res, 200, cachedDvrRecordings);
         }
       }
-      if (subPath.includes("/channels/channels") || subPath.includes("/cache/channels")) {
-        if (cachedChannelsList.length > 0) {
+      if ((subPath === "/channels/channels" || subPath.startsWith("/channels/channels/") || subPath.includes("/cache/channels")) && !subPath.includes("/stream") && !subPath.includes("/watch") && !subPath.includes("/file/")) {
+        if (cachedChannelsList.length > 0 && !subPath.match(/\/channels\/channels\/\d+\//)) {
           logMessage(`[Fast Server Cache] Served ${cachedChannelsList.length} cached channels directly to [${initiator.initiatorComponent}] (${initiator.ip}).`);
           return sendJson(res, 200, cachedChannelsList);
         }
