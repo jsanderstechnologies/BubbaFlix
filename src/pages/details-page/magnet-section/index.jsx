@@ -60,12 +60,52 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
 
     let finalStreams = res.streams || [];
 
+    // Fetch Server Settings for stream resolutions and low-quality filter preferences
+    const { fetchServerSettings } = await import("../../../utils/serverSettings");
+    const serverSettings = await fetchServerSettings();
+
+    const allowedResolutions = serverSettings?.stream_resolutions || (
+      localStorage.getItem("stream_resolutions")
+        ? JSON.parse(localStorage.getItem("stream_resolutions"))
+        : ["2160p", "1080p", "720p", "480p"]
+    );
+
+    const excludeLowQuality = serverSettings?.stream_exclude_low_quality !== undefined
+      ? serverSettings.stream_exclude_low_quality
+      : (localStorage.getItem("stream_exclude_low_quality") !== null
+        ? JSON.parse(localStorage.getItem("stream_exclude_low_quality"))
+        : true);
+
+    // Parse stream resolution
+    const parseStreamResolution = (item) => {
+      const fullStr = `${item.quality || ""} ${item.title || ""} ${item.name || ""} ${item.metaText || ""}`;
+      if (/\b(4k|2160p|uhd|remux)\b/i.test(fullStr)) return "2160p";
+      if (/\b(1080p|fhd|fullhd)\b/i.test(fullStr)) return "1080p";
+      if (/\b(720p|hd)\b/i.test(fullStr)) return "720p";
+      if (/\b(480p|sd|360p|240p)\b/i.test(fullStr)) return "480p";
+      return "1080p";
+    };
+
+    const isLowQualityCamRelease = (item) => {
+      const fullStr = `${item.title || ""} ${item.name || ""} ${item.metaText || ""}`;
+      return /\b(hdcam|camrip|cam|telesync|tele-sync|hd-ts|hdts|workprint|screener|dvdscr)\b/i.test(fullStr);
+    };
+
     // Filter HEVC / x265 codec streams in web player mode only
     const isWebBrowserOnly = typeof window !== "undefined" && !isTvDevice() && !(window.AndroidPlayer && typeof window.AndroidPlayer.playStream === "function");
     if (isWebBrowserOnly) {
       console.log("[MagnetSection] Web Player mode: Filtering out HEVC / x265 streams for web browser compatibility.");
       finalStreams = finalStreams.filter((item) => !isHevcOrX265Stream(item));
     }
+
+    // Apply Resolution & Quality Filtering
+    finalStreams = finalStreams.filter((item) => {
+      if (excludeLowQuality && isLowQualityCamRelease(item)) {
+        return false;
+      }
+      const itemRes = parseStreamResolution(item);
+      return allowedResolutions.includes(itemRes);
+    });
 
     setStreams(finalStreams);
   };
