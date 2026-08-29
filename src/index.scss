@@ -33,6 +33,11 @@ html, body {
   overflow-y: auto;
   scroll-behavior: smooth;
   background-color: var(--black);
+  background-image: linear-gradient(to bottom, rgba(10, 5, 10, 0.72), rgba(8, 8, 8, 0.88)), url("/horror_background.jpg");
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
 }
 
 /* Hide Header Navigation Bar & Scrollbar completely when Web Video Player is active */
