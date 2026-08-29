@@ -154,6 +154,21 @@ export const fetchDispatcharrRecordings = async () => {
   const baseUrl = getProxyBaseUrl();
   let recordingsList = [];
 
+  // Optionally fetch EPG programs to cross-reference program_id / program metadata
+  let epgProgramsMap = new Map();
+  try {
+    const epgList = await fetchDispatcharrEpgPrograms();
+    if (Array.isArray(epgList)) {
+      epgList.forEach((p) => {
+        if (p && p.id) {
+          epgProgramsMap.set(String(p.id), p);
+        }
+      });
+    }
+  } catch (e) {
+    // EPG programs lookup is optional
+  }
+
   // 1. Fetch /api/channels/recordings/?page_size=1000
   try {
     const res = await axios.get(`${baseUrl}/api/channels/recordings/`, {
@@ -164,18 +179,64 @@ export const fetchDispatcharrRecordings = async () => {
     rawList.forEach((rec) => {
       if (!rec) return;
       const props = rec.custom_properties || {};
-      const fileUrl = rec.file_url || props.file_url || props.path || props.url;
+
+      // Look up nested program object or EPG program by ID
+      const progObj = typeof rec.program === "object" ? rec.program : (rec.program_data || rec.program_details || null);
+      const progId = typeof rec.program === "number" || typeof rec.program === "string" ? String(rec.program) : (rec.program_id ? String(rec.program_id) : null);
+      const matchedEpg = progId ? epgProgramsMap.get(progId) : null;
+      const prog = progObj || matchedEpg || {};
+
+      const title =
+        rec.title ||
+        props.title ||
+        props.name ||
+        rec.program_title ||
+        rec.name ||
+        prog.title ||
+        prog.name ||
+        rec.show_title ||
+        rec.series_title ||
+        "DVR Recording";
+
+      const description =
+        rec.description ||
+        props.description ||
+        rec.overview ||
+        prog.description ||
+        prog.overview ||
+        "";
+
+      const fileUrl = rec.file_url || props.file_url || props.path || props.url || rec.path;
       const status = rec.status || props.status || (fileUrl ? "completed" : "scheduled");
+
+      const channelObj = typeof rec.channel === "object" ? rec.channel : (typeof prog.channel === "object" ? prog.channel : null);
+      const channelName =
+        rec.channel_name ||
+        props.channel_name ||
+        channelObj?.name ||
+        (typeof rec.channel === "string" ? rec.channel : "") ||
+        prog.channel_name ||
+        "TV Channel";
+
+      const startTime = rec.start_time || props.start_time || prog.start_time || rec.created_at;
+      const endTime = rec.end_time || props.end_time || prog.end_time;
+      const artwork = rec.artwork || props.artwork || props.poster || props.image || rec.thumbnail || prog.artwork || prog.poster || prog.icon;
+
       recordingsList.push({
+        ...prog,
         ...rec,
-        id: rec.id,
-        title: rec.title || props.title || props.name || props.program_title || "DVR Recording",
+        id: rec.id || rec.recording_id,
+        title: title,
+        description: description,
+        overview: description,
         status: status,
         file_url: fileUrl,
-        artwork: rec.artwork || props.artwork || props.poster || props.image || rec.thumbnail,
-        channel_name: rec.channel_name || props.channel_name || (typeof rec.channel === "object" ? rec.channel?.name : rec.channel) || "TV Channel",
-        start_time: rec.start_time || props.start_time || rec.created_at,
-        end_time: rec.end_time || props.end_time,
+        artwork: artwork,
+        poster: artwork,
+        channel_name: channelName,
+        start_time: startTime,
+        end_time: endTime,
+        program_id: rec.program_id || rec.program || prog.id,
       });
     });
   } catch (err) {
