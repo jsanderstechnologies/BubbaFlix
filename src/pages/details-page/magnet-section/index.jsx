@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useState, useEffect } from "react";
-import { fetchAioStreams } from "../../../utils/aiostreams";
+import { fetchTorrentStreams } from "../../../utils/torrentScraper";
 import { markAsWatchedOnSimkl } from "../../../utils/simkl";
 import { getPremiumizeKey, resolveMagnetWithPremiumize } from "../../../utils/premiumize";
 import { isTvDevice } from "../../../utils/zoom";
@@ -37,20 +37,26 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
     setLoading(true);
     setUnconfigured(false);
 
-    const res = await fetchAioStreams({
+    const hasPremKey = !!getPremiumizeKey();
+    if (!hasPremKey) {
+      // Check if server settings have Premiumize key
+      const { fetchServerSettings } = await import("../../../utils/serverSettings");
+      const serverSettings = await fetchServerSettings();
+      if (!serverSettings?.premiumizeKey) {
+        setUnconfigured(true);
+      }
+    }
+
+    const res = await fetchTorrentStreams({
       tmdbId,
       mediaType: mediaType || (seasonNum !== undefined ? "tv" : "movie"),
       seasonNum,
       episodeNum,
+      title,
+      year,
     });
 
     setLoading(false);
-
-    if (res.unconfigured) {
-      setUnconfigured(true);
-      setStreams([]);
-      return;
-    }
 
     let finalStreams = res.streams || [];
 
@@ -152,12 +158,14 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
               <div className="unconfiguredNotice">
                 <FiAlertCircle className="icon" />
                 <div className="noticeText">
-                  <h4>No Stream Sources Found</h4>
+                  <h4>No Torrent Streams Found</h4>
                   <p>
-                    No stream links were returned for this title. You can retry querying AIOStreams or check your server configuration.
+                    {unconfigured
+                      ? "Please enter your Premiumize API Key in Settings to resolve magnet torrent streams."
+                      : "No torrent streams found for this title. You can try refreshing streams or check your search criteria."}
                   </p>
                   <button className="configBtn" onClick={loadStreams} style={{ cursor: "pointer" }}>
-                    <FiRefreshCw style={{ marginRight: 6 }} /> Refresh Streams
+                    Refresh Streams
                   </button>
                 </div>
               </div>

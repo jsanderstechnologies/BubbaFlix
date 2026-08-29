@@ -96,7 +96,6 @@ const getEnvDefaultSettings = () => {
   const defaultTmdb = process.env.TMDB_READ_ACCESS_TOKEN || process.env.VITE_APP_TMDB_KEY || process.env.TMDB_TOKEN || DEFAULT_TMDB_KEY;
   const defaultGroq = process.env.GROQ_API_KEY || process.env.GROQ_KEY || process.env.VITE_GROQ_API_KEY || "";
   const defaultSimkl = process.env.SIMKL_CLIENT_ID || process.env.VITE_SIMKL_CLIENT_ID || "";
-  const defaultAio = process.env.AIOSTREAMS_URL || process.env.VITE_AIOSTREAMS_URL || "https://aiostreams.elfhosted.com/";
   const defaultResolutions = process.env.STREAM_RESOLUTIONS
     ? process.env.STREAM_RESOLUTIONS.split(",").map((s) => s.trim())
     : ["2160p", "1080p", "720p", "480p"];
@@ -106,7 +105,6 @@ const getEnvDefaultSettings = () => {
 
   return {
     theme: process.env.THEME || process.env.DEFAULT_THEME || "dark-red",
-    aiostreams_url: defaultAio,
     simklClientId: defaultSimkl,
     groqKey: defaultGroq,
     tmdbToken: defaultTmdb,

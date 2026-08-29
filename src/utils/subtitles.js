@@ -1,5 +1,15 @@
 import axios from "axios";
-import { fetchImdbId } from "./aiostreams";
+import { fetchDataFromAPI } from "./api";
+
+const getImdbId = async (tmdbId, mediaType) => {
+  if (!tmdbId) return null;
+  try {
+    const res = await fetchDataFromAPI(`/${mediaType || "movie"}/${tmdbId}/external_ids`);
+    return res?.imdb_id || null;
+  } catch (err) {
+    return null;
+  }
+};
 
 export const convertSrtToVtt = (srtText) => {
   if (!srtText) return "";
@@ -14,7 +24,7 @@ export const convertSrtToVtt = (srtText) => {
 export const fetchOpenSubtitles = async ({ tmdbId, imdbId, mediaType = "movie", seasonNum, episodeNum }) => {
   let targetImdbId = imdbId;
   if (!targetImdbId && tmdbId) {
-    targetImdbId = await fetchImdbId(tmdbId, mediaType);
+    targetImdbId = await getImdbId(tmdbId, mediaType);
   }
 
   if (!targetImdbId) return [];

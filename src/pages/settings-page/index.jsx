@@ -3,7 +3,6 @@ import { useDispatch } from "react-redux";
 import ContentWrapper from "../../components/content-wrapper";
 import TopNav from "../../components/top-nav";
 import { fetchDataFromAPI, getActiveTmdbToken } from "../../utils/api";
-import { getAioStreamsUrl, saveAioStreamsUrl, testAioStreamsConnection, DEFAULT_AIOSTREAMS_URL } from "../../utils/aiostreams";
 import { getSimklConfig, testSimklConnection } from "../../utils/simkl";
 import { getGroqApiKey } from "../../utils/groqFilter";
 import { getPremiumizeKey, savePremiumizeKey } from "../../utils/premiumize";
@@ -29,12 +28,6 @@ const SettingsPage = () => {
   const [serverStatus, setServerStatus] = useState(null);
   const [testingServer, setTestingServer] = useState(false);
   const [hasCustomServer, setHasCustomServer] = useState(false);
-
-  // AIOStreams State
-  const [aioUrl, setAioUrl] = useState("");
-  const [aioStatus, setAioStatus] = useState(null);
-  const [testingAio, setTestingAio] = useState(false);
-  const [hasAioCustom, setHasAioCustom] = useState(false);
 
   // Premiumize.me API State
   const [premiumizeKey, setPremiumizeKey] = useState("");
@@ -81,10 +74,6 @@ const SettingsPage = () => {
     const currentTheme = serverSettings?.theme || getSavedTheme();
     setActiveTheme(currentTheme);
     applyTheme(currentTheme);
-
-    const activeAio = serverSettings?.aiostreams_url || getAioStreamsUrl() || DEFAULT_AIOSTREAMS_URL;
-    setAioUrl(activeAio);
-    setHasAioCustom(!!activeAio && activeAio !== DEFAULT_AIOSTREAMS_URL);
 
     const activeToken = serverSettings?.tmdbToken !== undefined ? serverSettings.tmdbToken : (localStorage.getItem("tmdb_token") || getActiveTmdbToken() || "");
     setToken(activeToken);
@@ -144,36 +133,6 @@ const SettingsPage = () => {
     setHasCustomServer(false);
     setServerStatus({ type: "info", text: "Server address reset to default relative host." });
     await loadAllSettings();
-  };
-
-  const handleSaveAioUrl = async (e) => {
-    e.preventDefault();
-    const cleanUrl = aioUrl.trim();
-    if (!cleanUrl) {
-      setAioStatus({ type: "error", text: "AIOStreams URL cannot be empty." });
-      return;
-    }
-    saveAioStreamsUrl(cleanUrl);
-    setHasAioCustom(cleanUrl !== DEFAULT_AIOSTREAMS_URL);
-    await updateServerSettings({ aiostreams_url: cleanUrl });
-
-    setTestingAio(true);
-    const testRes = await testAioStreamsConnection(cleanUrl);
-    setTestingAio(false);
-
-    if (testRes.success) {
-      setAioStatus({ type: "success", text: `${testRes.message} (Synced to Backend)` });
-    } else {
-      setAioStatus({ type: "error", text: testRes.message });
-    }
-  };
-
-  const handleClearAioUrl = async () => {
-    saveAioStreamsUrl(DEFAULT_AIOSTREAMS_URL);
-    setAioUrl(DEFAULT_AIOSTREAMS_URL);
-    setHasAioCustom(false);
-    await updateServerSettings({ aiostreams_url: DEFAULT_AIOSTREAMS_URL });
-    setAioStatus({ type: "info", text: "AIOStreams URL reset to default." });
   };
 
   const refreshConfig = async () => {
@@ -498,63 +457,6 @@ const SettingsPage = () => {
           {/* Centralized Server & API Configuration Cards (Hidden on TV Client, Only Visible on Web / Desktop) */}
           {!isTvClient && (
             <>
-              {/* AIOStreams Streaming Addon Card */}
-              <div className="settingsCard">
-                <div className="cardHeader">
-                  <h2><FiCloudLightning style={{ marginRight: 8 }} /> AIOStreams Streaming Addon URL</h2>
-                  <span className={`badge ${hasAioCustom ? "custom" : "default"}`}>
-                    <FiServer style={{ marginRight: 4 }} /> {hasAioCustom ? "Custom AIOStreams Active" : "ElfHosted Default Active"}
-                  </span>
-                </div>
-
-            <p className="description">
-              BubbaFlix uses AIOStreams (ElfHosted) to fetch torrents and resolve direct Premiumize streams without local client resolving.
-            </p>
-
-            <div className="apiInstruction">
-              <FiInfo style={{ marginRight: 6, verticalAlign: "middle" }} />
-              <strong>How to configure:</strong> Configure your Premiumize account at <a href="https://aiostreams.elfhosted.com/stremio/configure" target="_blank" rel="noreferrer">aiostreams.elfhosted.com <FiExternalLink style={{ verticalAlign: "middle", fontSize: 12 }} /></a>, then paste your generated manifest URL or instance link below.
-            </div>
-
-            <form onSubmit={handleSaveAioUrl} className="tokenForm" style={{ marginTop: 15 }}>
-              <div className="inputGroup">
-                <label htmlFor="aioUrl">AIOSTREAMS_MANIFEST_URL</label>
-                <div className="inputWrapper">
-                  <input
-                    id="aioUrl"
-                    type="text"
-                    value={aioUrl}
-                    onChange={(e) => setAioUrl(e.target.value)}
-                    placeholder="https://aiostreams.elfhosted.com/.../manifest.json"
-                  />
-                </div>
-              </div>
-
-              {aioStatus && (
-                <div className={`statusBanner ${aioStatus.type}`}>
-                  {aioStatus.type === "success" && <FiCheckCircle />}
-                  {aioStatus.type === "error" && <FiXCircle />}
-                  <span>{aioStatus.text}</span>
-                </div>
-              )}
-
-              <div className="buttonGroup">
-                <button type="submit" className="saveBtn" disabled={testingAio}>
-                  <FiSave /> {testingAio ? "Verifying..." : "Save AIOStreams URL"}
-                </button>
-                {hasAioCustom && (
-                  <button
-                    type="button"
-                    className="clearBtn"
-                    onClick={handleClearAioUrl}
-                  >
-                    Reset to Default
-                  </button>
-                )}
-              </div>
-            </form>
-          </div>
-
           {/* Backend Server Host & Address Card */}
           <div className="settingsCard">
             <div className="cardHeader">

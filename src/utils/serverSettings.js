@@ -1,7 +1,6 @@
 import axios from "axios";
 import { applyTheme } from "./theme";
 import { fetchUserSimklHistory } from "./simkl";
-import { saveAioStreamsUrl, DEFAULT_AIOSTREAMS_URL } from "./aiostreams";
 
 export const DEFAULT_SERVER_URL = "https://bubbaflix.sanders-technologies.net";
 
@@ -68,9 +67,6 @@ export const fetchServerSettings = async (forceRefresh = false) => {
     if (s.theme) {
       localStorage.setItem("bubbaflix_theme", s.theme);
       applyTheme(s.theme);
-    }
-    if (s.aiostreams_url) {
-      saveAioStreamsUrl(s.aiostreams_url);
     }
     if (s.simklClientId !== undefined) {
       localStorage.setItem("simkl_client_id", (s.simklClientId || "").trim());
