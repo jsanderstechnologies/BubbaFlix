@@ -262,6 +262,7 @@ class PlayerActivity : AppCompatActivity() {
 
         val renderersFactory = DefaultRenderersFactory(this).apply {
             setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
+            setEnableDecoderFallback(true)
         }
 
         val okHttpClient = OkHttpClient.Builder()
@@ -348,8 +349,26 @@ class PlayerActivity : AppCompatActivity() {
                     }
 
                     override fun onPlayerError(error: PlaybackException) {
-                        if (isLiveStream && !hasRetriedWithFallback) {
+                        val isAudioRendererError = (error.message?.contains("MediaCodecAudioRenderer", ignoreCase = true) == true) ||
+                                (error.message?.contains("mp4a-latm", ignoreCase = true) == true) ||
+                                (error.message?.contains("AudioTrack", ignoreCase = true) == true) ||
+                                (error.message?.contains("Codec", ignoreCase = true) == true) ||
+                                (error.message?.contains("format_supported=YES", ignoreCase = true) == true)
+
+                        if (!hasRetriedWithFallback && (isLiveStream || isAudioRendererError)) {
                             hasRetriedWithFallback = true
+                            if (isAudioRendererError && !videoUrl.contains("/api/transcode")) {
+                                val baseUrl = videoUrl.substringBefore("/api/dispatcharr").substringBefore("/api/channels")
+                                val transcodeUrl = "$baseUrl/api/transcode?url=${Uri.encode(videoUrl)}"
+                                val fallbackItem = MediaItem.Builder()
+                                    .setUri(Uri.parse(transcodeUrl))
+                                    .build()
+                                setMediaItem(fallbackItem)
+                                prepare()
+                                playWhenReady = true
+                                return
+                            }
+
                             val fallbackMime = if (videoUrl.contains(".m3u8")) MimeTypes.APPLICATION_M3U8 else MimeTypes.VIDEO_MP2T
                             val fallbackItem = MediaItem.Builder()
                                 .setUri(Uri.parse(videoUrl))
