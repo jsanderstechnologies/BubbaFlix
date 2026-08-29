@@ -244,7 +244,7 @@ const LiveTvPage = () => {
   };
 
   const handleWatchLive = (channel, program = null) => {
-    const streamUrl = getChannelStreamUrl(channel.id || channel.channel_id);
+    const streamUrl = getChannelStreamUrl(channel);
     const title = channel.name || channel.title || program?.title || "Live TV Channel";
     setActiveStreamUrl(streamUrl);
     setActiveStreamTitle(title);

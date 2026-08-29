@@ -477,7 +477,15 @@ const server = http.createServer((req, res) => {
 
 const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
   return new Promise((resolve) => {
-    if (maxRedirects <= 0 || !startUrl || !startUrl.startsWith("http")) {
+    if (
+      maxRedirects <= 0 ||
+      !startUrl ||
+      !startUrl.startsWith("http") ||
+      startUrl.includes("/proxy/ts/stream") ||
+      startUrl.includes("/stream") ||
+      startUrl.includes(".m3u8") ||
+      startUrl.includes(".ts")
+    ) {
       return resolve(startUrl);
     }
 
