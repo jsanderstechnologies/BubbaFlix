@@ -1,4 +1,4 @@
-// Global Filtering Utility to exclude Anime, Foreign Content, Adult Material, and API/Axios Errors
+// Global Filtering Utility to exclude Anime, Non-English Foreign Content, Adult Material, and API/Axios Errors
 
 export const isAxiosError = (item) => {
   if (!item || typeof item !== "object") return true;
@@ -6,6 +6,24 @@ export const isAxiosError = (item) => {
   if (item.isAxiosError || item.response || item.config || item.code === "ERR_BAD_REQUEST" || item.message) return true;
   return false;
 };
+
+// Non-English language & non-Latin script detection
+const FOREIGN_SCRIPT_REGEX = /[\u0400-\u04FF\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uac00-\ud7af\u0600-\u06FF\u0900-\u097F\u0E00-\u0E7F\u0370-\u03FF\u0590-\u05FF\u1EA0-\u1EF9]/;
+
+const FOREIGN_TITLE_TERMS = [
+  "coleccion", "colección", "trilogie", "trilogía", "trilogia", "tetralogia", "pentalogia",
+  "filmreihe", "série", "serie", "película", "pelicula", "peliculas", "películas",
+  "collection (fr)", "collection (french)", "collection (es)", "collection (spanish)",
+  "collection (de)", "collection (german)", "collection (it)", "collection (italian)",
+  "collection (ru)", "collection (russian)", "collection (ja)", "collection (japanese)",
+  "collection (ko)", "collection (korean)", "collection (zh)", "collection (chinese)",
+  "subbed", "dubbed", "subtitulado", "subtitulada", "version fr", "version es", "vf", "vostfr",
+  "cinéma", "cine", "filme", "filmes", "volumen", "bilingual", "subs"
+];
+
+const NON_ENGLISH_COUNTRIES = [
+  "JP", "CN", "KR", "RU", "FR", "DE", "ES", "IT", "IN", "TR", "TH", "MX", "BR", "AR", "PL", "NL", "SE", "DK", "NO", "FI", "GR", "CZ", "HU", "RO"
+];
 
 export const isAnime = (item) => {
   if (!item || isAxiosError(item)) return false;
@@ -56,8 +74,6 @@ export const isAnime = (item) => {
 export const filterEnglishMedia = (items) => {
   if (!Array.isArray(items)) return [];
 
-  const foreignScriptRegex = /[\u0400-\u04FF\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uac00-\ud7af\u0600-\u06FF\u0900-\u097F\u0E00-\u0E7F\u0370-\u03FF]/;
-
   return items.filter((item) => {
     if (!item || typeof item !== "object") return false;
     if (isAxiosError(item)) return false;
@@ -71,14 +87,28 @@ export const filterEnglishMedia = (items) => {
     // Retain Person entries in search
     if (item.media_type === "person") return true;
 
-    // Non-Latin title check
-    const title = item.title || item.name || item.original_title || item.original_name || "";
-    if (!title || foreignScriptRegex.test(title)) return false;
-
-    // Language check if present
+    // Non-English language check
     if (item.original_language) {
       const lang = item.original_language.toLowerCase();
       if (lang !== "en" && lang !== "eng") return false;
+    }
+
+    // Non-English origin country check (without English co-producers)
+    if (Array.isArray(item.origin_country) && item.origin_country.length > 0) {
+      const hasEnglishCountry = item.origin_country.some((c) => ["US", "GB", "CA", "AU", "NZ", "IE"].includes(c));
+      if (!hasEnglishCountry && item.origin_country.some((c) => NON_ENGLISH_COUNTRIES.includes(c))) {
+        return false;
+      }
+    }
+
+    // Non-Latin character script check
+    const title = item.title || item.name || item.original_title || item.original_name || "";
+    if (!title || FOREIGN_SCRIPT_REGEX.test(title)) return false;
+
+    // Foreign title descriptor terms check
+    const titleLower = title.toLowerCase();
+    if (FOREIGN_TITLE_TERMS.some((term) => titleLower.includes(term))) {
+      return false;
     }
 
     return true;
@@ -95,8 +125,6 @@ export const filterEnglishCollections = (items) => {
     "18+", "snuff", "escort", "swingers", "playmate", "hustler", "suicidegirls", "brazzers"
   ];
 
-  const foreignScriptRegex = /[\u0400-\u04FF\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uac00-\ud7af\u0600-\u06FF\u0900-\u097F\u0E00-\u0E7F\u0370-\u03FF]/;
-
   return items.filter((col) => {
     if (!col || typeof col !== "object") return false;
     if (isAxiosError(col)) return false;
@@ -104,6 +132,12 @@ export const filterEnglishCollections = (items) => {
 
     // Filter out Anime collections
     if (isAnime(col)) return false;
+
+    // Non-English language check
+    if (col.original_language) {
+      const lang = col.original_language.toLowerCase();
+      if (lang !== "en" && lang !== "eng") return false;
+    }
 
     const name = (col.name || col.title || col.original_name || "").toLowerCase();
     if (!name) return false;
@@ -116,12 +150,11 @@ export const filterEnglishCollections = (items) => {
     if (adultKeywords.some((kw) => name.includes(kw) || overview.includes(kw))) return false;
 
     // Foreign character script check
-    if (foreignScriptRegex.test(col.name || col.title || col.original_name || "")) return false;
+    if (FOREIGN_SCRIPT_REGEX.test(col.name || col.title || col.original_name || "")) return false;
 
-    // Language check if present
-    if (col.original_language) {
-      const lang = col.original_language.toLowerCase();
-      if (lang !== "en" && lang !== "eng") return false;
+    // Foreign title descriptor terms check
+    if (FOREIGN_TITLE_TERMS.some((term) => name.includes(term))) {
+      return false;
     }
 
     return true;
