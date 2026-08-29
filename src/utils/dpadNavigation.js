@@ -110,6 +110,26 @@ if (typeof document !== "undefined") {
     },
     true
   );
+
+  // Enable touchscreen input responsiveness
+  const handleTouchActive = (e) => {
+    const target = e.target;
+    if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
+      target.removeAttribute("readonly");
+      target.removeAttribute("inputmode");
+      target.setAttribute("data-editing-active", "true");
+      if (typeof target.focus === "function") {
+        target.focus();
+      }
+    }
+  };
+
+  document.addEventListener("touchstart", handleTouchActive, { passive: true, capture: true });
+  document.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "touch") {
+      handleTouchActive(e);
+    }
+  }, { passive: true, capture: true });
 }
 
 // Focus the top-leftmost poster element when changing pages

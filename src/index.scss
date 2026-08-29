@@ -24,6 +24,7 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html, body {
@@ -33,6 +34,7 @@ html, body {
   overflow-y: auto;
   scroll-behavior: smooth;
   background-color: var(--black);
+  touch-action: manipulation;
 }
 
 /* Hide Header Navigation Bar & Scrollbar completely when Web Video Player is active */

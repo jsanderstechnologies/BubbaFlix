@@ -107,7 +107,14 @@ class MainActivity : AppCompatActivity() {
         settings.useWideViewPort = true
         settings.loadWithOverviewMode = true
         settings.cacheMode = WebSettings.LOAD_NO_CACHE
+        settings.setSupportZoom(false)
+        settings.builtInZoomControls = false
+        settings.displayZoomControls = false
 
+        webView.isClickable = true
+        webView.isLongClickable = true
+        webView.isFocusable = true
+        webView.isFocusableInTouchMode = true
         webView.setInitialScale(80)
         WebView.setWebContentsDebuggingEnabled(true)
 
