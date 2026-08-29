@@ -177,9 +177,9 @@ const LiveTvPage = () => {
   const isProgramCurrentlyAiring = (prog) => {
     if (!prog || !prog.start_time || !prog.end_time) return false;
     const now = new Date();
-    const start = new Date(prog.start_time);
-    const end = new Date(prog.end_time);
-    return now >= start && now <= end;
+    const start = parseApiDate(prog.start_time);
+    const end = parseApiDate(prog.end_time);
+    return start && end && now >= start && now <= end;
   };
 
   const getRecordingForProgram = (prog) => {
@@ -252,9 +252,35 @@ const LiveTvPage = () => {
     }
   };
 
+  const parseApiDate = (val) => {
+    if (!val) return null;
+    if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+    if (typeof val === "number") {
+      const ms = val < 10000000000 ? val * 1000 : val;
+      const d = new Date(ms);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    if (typeof val === "string") {
+      const trimmed = val.trim();
+      if (!isNaN(trimmed) && trimmed.length >= 9) {
+        const num = Number(trimmed);
+        const ms = num < 10000000000 ? num * 1000 : num;
+        const d = new Date(ms);
+        return isNaN(d.getTime()) ? null : d;
+      }
+      let formatted = trimmed.replace(" ", "T");
+      if (!formatted.endsWith("Z") && !formatted.includes("+") && !formatted.includes("-", 10)) {
+        formatted += "Z";
+      }
+      const d = new Date(formatted);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    return null;
+  };
+
   const formatTime = (dateStr) => {
-    if (!dateStr) return "";
-    const date = new Date(dateStr);
+    const date = parseApiDate(dateStr);
+    if (!date) return "";
     return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   };
 
@@ -267,8 +293,8 @@ const LiveTvPage = () => {
 
   // Calculate position and width of a program chip on timeline
   const calculateChipStyle = (prog) => {
-    const start = new Date(prog.start_time);
-    const end = new Date(prog.end_time);
+    const start = parseApiDate(prog.start_time) || gridStartTime;
+    const end = parseApiDate(prog.end_time) || new Date(start.getTime() + 60 * 60 * 1000);
 
     const effStart = start < gridStartTime ? gridStartTime : start;
     const effEnd = end > gridEndTime ? gridEndTime : end;
@@ -362,9 +388,9 @@ const LiveTvPage = () => {
                 {channels.map((ch) => {
                   const channelPrograms = programs.filter((p) => {
                     if (!p || !p.start_time || !p.end_time) return false;
-                    const start = new Date(p.start_time);
-                    const end = new Date(p.end_time);
-                    if (isNaN(start.getTime()) || isNaN(end.getTime())) return false;
+                    const start = parseApiDate(p.start_time);
+                    const end = parseApiDate(p.end_time);
+                    if (!start || !end) return false;
                     if (end <= gridStartTime || start >= gridEndTime) return false;
 
                     const chIdStr = String(ch.id || "").toLowerCase();
