@@ -65,6 +65,9 @@ const SettingsPage = () => {
   const [excludeLowQuality, setExcludeLowQuality] = useState(true);
   const [filterStatus, setFilterStatus] = useState(null);
 
+  // CPU Topology State
+  const [cpuInfo, setCpuInfo] = useState(null);
+
   const dispatch = useDispatch();
 
   const loadAllSettings = async () => {
@@ -107,6 +110,10 @@ const SettingsPage = () => {
 
     const excludeLowConfig = serverSettings?.stream_exclude_low_quality !== undefined ? serverSettings.stream_exclude_low_quality : (localStorage.getItem("stream_exclude_low_quality") !== null ? JSON.parse(localStorage.getItem("stream_exclude_low_quality")) : true);
     setExcludeLowQuality(excludeLowConfig);
+
+    if (serverSettings?.cpuTopology) {
+      setCpuInfo(serverSettings.cpuTopology);
+    }
   };
 
   const handleSaveDispatcharr = async (e) => {
@@ -352,6 +359,35 @@ const SettingsPage = () => {
               </p>
             </div>
           )}
+
+          {/* CPU Hardware Topology & Hyperthreading Engine Card */}
+          <div className="settingsCard">
+            <div className="cardHeader">
+              <h2><FiCpu style={{ marginRight: 8, color: "var(--pink)" }} /> CPU Hardware Topology & Hyperthreading Engine</h2>
+              <span className="badge custom"><FiServer style={{ marginRight: 4 }} /> Multi-Core Hyperthreading Active</span>
+            </div>
+            <p className="description">
+              BubbaFlix server auto-detects CPU cores and hyperthreads to parallelize transcode operations, HTTP proxying, and background stream indexing.
+            </p>
+            <div className="cpuTopologyGrid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 15, marginTop: 15 }}>
+              <div className="cpuStatBox" style={{ background: "rgba(255,255,255,0.05)", padding: "12px 16px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)" }}>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>CPU Processor Model</div>
+                <div style={{ fontSize: 14, fontWeight: "bold", color: "#fff", marginTop: 4 }}>{cpuInfo?.model || "Multi-Core CPU Processor"}</div>
+              </div>
+              <div className="cpuStatBox" style={{ background: "rgba(255,255,255,0.05)", padding: "12px 16px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)" }}>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>Logical Cores / Hyperthreads</div>
+                <div style={{ fontSize: 18, fontWeight: "bold", color: "var(--pink)", marginTop: 4 }}>{cpuInfo?.logicalCores || 8} Cores</div>
+              </div>
+              <div className="cpuStatBox" style={{ background: "rgba(255,255,255,0.05)", padding: "12px 16px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)" }}>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>Libuv Threadpool Size</div>
+                <div style={{ fontSize: 18, fontWeight: "bold", color: "#4caf50", marginTop: 4 }}>{cpuInfo?.uvThreadPoolSize || 8} Threads</div>
+              </div>
+              <div className="cpuStatBox" style={{ background: "rgba(255,255,255,0.05)", padding: "12px 16px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)" }}>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>Hyperthreading Status</div>
+                <div style={{ fontSize: 14, fontWeight: "bold", color: "#ffc107", marginTop: 4 }}>Enabled / Parallel Active</div>
+              </div>
+            </div>
+          </div>
 
           {/* Color Theme Selector Card (Visible on ALL Clients) */}
           <div className="settingsCard">

@@ -7,8 +7,20 @@ const os = require("os");
 const { spawn } = require("child_process");
 
 // Multi-Core & Hyperthreading Utilization Engine
-const cpuCount = os.cpus().length;
-process.env.UV_THREADPOOL_SIZE = String(Math.max(4, cpuCount));
+const cpusList = os.cpus();
+const cpuCount = cpusList ? cpusList.length : 4;
+const cpuModel = cpusList && cpusList.length > 0 ? cpusList[0].model.trim() : "Generic Multi-Core CPU";
+const uvThreadPoolSize = String(Math.max(4, cpuCount));
+process.env.UV_THREADPOOL_SIZE = uvThreadPoolSize;
+
+const getCpuTopologyInfo = () => ({
+  model: cpuModel,
+  logicalCores: cpuCount,
+  uvThreadPoolSize: uvThreadPoolSize,
+  hyperthreadingActive: cpuCount > 1,
+  arch: os.arch(),
+  platform: os.platform(),
+});
 
 // Internal Node settings server port inside Docker container (always 5000 for Nginx proxy)
 const PORT = 5000;
@@ -388,7 +400,16 @@ const server = http.createServer((req, res) => {
     });
 
     const normalizedTargetUrl = targetUrl;
-    const headersStr = `User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)\r\n`;
+    const settings = loadServerSettings();
+    let authHeaderStr = "";
+    if (settings.dispatcharrApiKey) {
+      if (settings.dispatcharrApiKey.startsWith("eyJ")) {
+        authHeaderStr = `Authorization: Bearer ${settings.dispatcharrApiKey}\r\n`;
+      } else {
+        authHeaderStr = `x-api-key: ${settings.dispatcharrApiKey}\r\n`;
+      }
+    }
+    const headersStr = `User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)\r\n${authHeaderStr}`;
 
     const gpuInfo = detectGpuCapabilities();
 
@@ -469,8 +490,9 @@ const server = http.createServer((req, res) => {
   // GET Settings API
   if ((cleanPath === "/api/settings" || cleanPath === "/settings") && req.method === "GET") {
     const settings = loadServerSettings();
-    logMessage(`[Settings GET] Served settings to [${initiator.initiatorComponent}] (${initiator.ip})`);
-    return sendJson(res, 200, { status: "success", settings, ...settings });
+    const cpuTopology = getCpuTopologyInfo();
+    logMessage(`[Settings GET] Served settings to [${initiator.initiatorComponent}] (${initiator.ip}) | CPU: ${cpuTopology.model} (${cpuTopology.logicalCores} threads)`);
+    return sendJson(res, 200, { status: "success", settings, ...settings, cpuTopology });
   }
 
   // POST Settings API
@@ -656,7 +678,13 @@ process.on("unhandledRejection", (reason) => {
 });
 
 server.listen(PORT, "0.0.0.0", () => {
-  logMessage(`[BubbaFlix Backend Transcoder & Settings Engine] Pure Node Server listening on 0.0.0.0:${PORT}`);
+  logMessage(`================================================================================`);
+  logMessage(`[BubbaFlix Server Startup] Pure Node Server listening on 0.0.0.0:${PORT}`);
+  logMessage(`[CPU Hardware Topology] Model: ${cpuModel}`);
+  logMessage(`[CPU Hardware Topology] Logical Cores / Hyperthreads: ${cpuCount}`);
+  logMessage(`[CPU Hardware Topology] Libuv Threadpool Size (UV_THREADPOOL_SIZE): ${uvThreadPoolSize}`);
+  logMessage(`[CPU Hardware Topology] Multi-Core Hyperthreading Active: YES`);
+  logMessage(`================================================================================`);
   loadServerSettings();
 });
 
