@@ -26,7 +26,49 @@ const TopNav = () => {
 	};
 
 	const isActive = (path) => {
-		return location.pathname === path ? "active" : "";
+		const current = location.pathname;
+		
+		if (path === "/") {
+			// Home is active only if it is exactly "/" or not in any other known section
+			return current === "/" ? "active" : "";
+		}
+		
+		if (path === "/explore/movie") {
+			// Movies tab is active for explore/movie OR movie details OR collections
+			return (current.startsWith("/explore/movie") || current.startsWith("/movie/") || current.startsWith("/collection/")) ? "active" : "";
+		}
+		
+		if (path === "/explore/tv") {
+			// TV Series tab is active for explore/tv OR tv details
+			return (current.startsWith("/explore/tv") || current.startsWith("/tv/")) ? "active" : "";
+		}
+		
+		if (path === "/search") {
+			// Search tab is active for search homepage OR search results
+			return current.startsWith("/search") ? "active" : "";
+		}
+		
+		if (path === "/favorites") {
+			return current.startsWith("/favorites") ? "active" : "";
+		}
+		
+		if (path === "/livetv") {
+			return current.startsWith("/livetv") ? "active" : "";
+		}
+		
+		if (path === "/recordings") {
+			return current.startsWith("/recordings") ? "active" : "";
+		}
+
+		if (path === "/settings") {
+			return current.startsWith("/settings") ? "active" : "";
+		}
+
+		if (path === "/about") {
+			return current.startsWith("/about") ? "active" : "";
+		}
+
+		return current === path ? "active" : "";
 	};
 
 	return (

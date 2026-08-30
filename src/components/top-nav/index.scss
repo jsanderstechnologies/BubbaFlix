@@ -70,26 +70,26 @@
 			}
 
 			&.active {
-				background: var(--pink);
-				border-color: var(--pink);
-				color: white;
+				background: rgba(255, 255, 255, 0.08);
+				border-color: rgba(218, 47, 104, 0.5);
+				color: var(--pink);
 
 				.navIcon {
-					color: white;
+					color: var(--pink);
 				}
 			}
 
 			&:hover,
 			&:focus,
 			&:focus-visible {
-				border-color: var(--pink);
-				background: var(--pink);
-				color: white;
+				border-color: var(--pink) !important;
+				background: var(--pink) !important;
+				color: white !important;
 				transform: scale(1.08) translateY(-2px);
 				box-shadow: 0 0 18px var(--pink), 0 4px 20px rgba(218, 47, 104, 0.6);
 
 				.navIcon {
-					color: white;
+					color: white !important;
 				}
 			}
 		}
