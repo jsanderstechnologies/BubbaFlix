@@ -6,6 +6,7 @@ import { AiFillStar, AiOutlineStar } from "react-icons/ai";
 
 import { fetchDataFromAPI } from "../../utils/api";
 import { isFavoriteCollection, toggleFavoriteCollection } from "../../utils/favorites";
+import { restoreLastFocusedPoster } from "../../utils/focusManager";
 import ContentWrapper from "../../components/content-wrapper";
 import TopNav from "../../components/top-nav";
 import MovieCard from "../../components/movie-card";
@@ -37,6 +38,10 @@ const CollectionPage = () => {
         setLoading(false);
       });
   }, [id]);
+
+  useEffect(() => {
+    restoreLastFocusedPoster();
+  }, [collection]);
 
   const handleToggleFavorite = () => {
     if (collection) {

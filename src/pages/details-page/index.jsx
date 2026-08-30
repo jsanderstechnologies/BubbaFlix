@@ -6,6 +6,7 @@ import VideosSection from "./videos-section";
 import SeasonsSection from "./seasons-section";
 import TopNav from "../../components/top-nav";
 import { FiArrowLeft } from "react-icons/fi";
+import { restoreLastFocusedPoster } from "../../utils/focusManager";
 import "./index.scss";
 import { useParams, useNavigate } from "react-router-dom";
 
@@ -37,6 +38,10 @@ const DetailsPage = () => {
 			window.removeEventListener("keydown", handleDetailsKeyDown, true);
 		};
 	}, [navigate]);
+
+	useEffect(() => {
+		restoreLastFocusedPoster();
+	}, [detailsData]);
 
 	return (
 		<div className="details-page">
