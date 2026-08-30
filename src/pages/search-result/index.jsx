@@ -142,10 +142,7 @@ const SearchResult = () => {
     });
   };
 
-  const fetchSearchResults = (queryStr, page, filterType) => {
-    if (!queryStr) return;
-    setLoading(true);
-
+  const fetchNormalSearchResults = (queryStr, page, filterType) => {
     if (filterType === "collection") {
       fetchDataFromAPI(`/search/collection?query=${encodeURIComponent(queryStr)}&page=${page}`)
         .then((res) => {
@@ -201,7 +198,80 @@ const SearchResult = () => {
       });
   };
 
+  const fetchSearchResults = (queryStr, page, filterType) => {
+    if (!queryStr) return;
+    setLoading(true);
+
+    if (page === 1) {
+      fetchDataFromAPI(`/search/person?query=${encodeURIComponent(queryStr)}&page=1`)
+        .then((personRes) => {
+          const topPerson = personRes?.results?.[0];
+          const queryLower = queryStr.toLowerCase();
+          const nameLower = topPerson ? topPerson.name.toLowerCase() : "";
+
+          if (topPerson && (nameLower === queryLower || nameLower.includes(queryLower) || queryLower.includes(nameLower)) && topPerson.popularity > 8.0) {
+            // Fetch combined credits for the actor
+            fetchDataFromAPI(`/person/${topPerson.id}/combined_credits`)
+              .then((creditsRes) => {
+                const castList = creditsRes?.cast || [];
+                const englishCast = filterEnglishResults(castList);
+
+                const features = [];
+                const biosAndDocs = [];
+
+                englishCast.forEach((item) => {
+                  const character = (item.character || "").toLowerCase();
+                  const title = (item.title || item.name || "").toLowerCase();
+                  const isDocGenre = Array.isArray(item.genre_ids) && item.genre_ids.includes(99);
+
+                  const isBioOrDoc = 
+                    isDocGenre || 
+                    character === "himself" || 
+                    character === "herself" || 
+                    character.includes("archive footage") || 
+                    character.includes("archival footage") || 
+                    title.includes("documentary") || 
+                    title.includes("biography") || 
+                    title.includes("making of") || 
+                    title.includes("behind the scenes") ||
+                    title.includes("the story of");
+
+                  if (isBioOrDoc) {
+                    biosAndDocs.push(item);
+                  } else {
+                    features.push(item);
+                  }
+                });
+
+                features.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+                biosAndDocs.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+
+                setData({
+                  results: [],
+                  actorFeatures: features,
+                  actorBiosDocs: biosAndDocs,
+                  searchedActor: topPerson,
+                });
+                setLoading(false);
+              })
+              .catch(() => {
+                fetchNormalSearchResults(queryStr, page, filterType);
+              });
+          } else {
+            fetchNormalSearchResults(queryStr, page, filterType);
+          }
+        })
+        .catch(() => {
+          fetchNormalSearchResults(queryStr, page, filterType);
+        });
+      return;
+    }
+
+    fetchNormalSearchResults(queryStr, page, filterType);
+  };
+
   const fetchNextPageData = () => {
+    if (data?.searchedActor) return;
     const queryStr = searchQuery.trim();
     if (!queryStr) return;
 
@@ -251,10 +321,26 @@ const SearchResult = () => {
   };
 
   // Group filtered results into Movies, TV Shows, Actors, and Collections
-  const collectionsList = data?.results?.filter((item) => item.media_type === "collection" || activeFilter === "collection") || [];
-  const moviesList = data?.results?.filter((item) => item.media_type === "movie" || activeFilter === "movie") || [];
-  const tvList = data?.results?.filter((item) => item.media_type === "tv" || activeFilter === "tv") || [];
-  const peopleList = data?.results?.filter((item) => item.media_type === "person" || activeFilter === "person") || [];
+  const isActorSearch = !!data?.searchedActor;
+
+  const collectionsList = isActorSearch ? [] : (data?.results?.filter((item) => item.media_type === "collection" || activeFilter === "collection") || []);
+  const moviesList = isActorSearch 
+    ? (data?.actorFeatures?.filter((item) => item.media_type === "movie") || []) 
+    : (data?.results?.filter((item) => item.media_type === "movie" || activeFilter === "movie") || []);
+  const tvList = isActorSearch 
+    ? (data?.actorFeatures?.filter((item) => item.media_type === "tv") || []) 
+    : (data?.results?.filter((item) => item.media_type === "tv" || activeFilter === "tv") || []);
+  const peopleList = isActorSearch 
+    ? [data.searchedActor] 
+    : (data?.results?.filter((item) => item.media_type === "person" || activeFilter === "person") || []);
+
+  const actorBiosDocsFiltered = isActorSearch 
+    ? (data?.actorBiosDocs?.filter((item) => {
+        if (activeFilter === "movie") return item.media_type === "movie";
+        if (activeFilter === "tv") return item.media_type === "tv";
+        return true;
+      }) || [])
+    : [];
 
   return (
     <div className="searchResultsPage">
@@ -365,12 +451,12 @@ const SearchResult = () => {
           <>
             {loading && !data ? (
               <Spinner initial={true} />
-            ) : data?.results?.length > 0 ? (
+            ) : (data?.results?.length > 0 || (isActorSearch && ((data?.actorFeatures?.length || 0) > 0 || (data?.actorBiosDocs?.length || 0) > 0))) ? (
               <InfiniteScroll
                 className="infiniteScrollContainer"
-                dataLength={data?.results?.length || 0}
+                dataLength={isActorSearch ? ((data?.actorFeatures?.length || 0) + (data?.actorBiosDocs?.length || 0)) : (data?.results?.length || 0)}
                 next={fetchNextPageData}
-                hasMore={pageNum <= data?.total_pages}
+                hasMore={isActorSearch ? false : (pageNum <= data?.total_pages)}
                 loader={<Spinner />}
               >
                 {/* 1. Movie Collections Category Section */}
@@ -388,7 +474,10 @@ const SearchResult = () => {
                 {/* 2. Movies Category Section */}
                 {(activeFilter === "all" || activeFilter === "movie") && moviesList.length > 0 && (
                   <div className="searchCategorySection">
-                    <h2 className="categoryTitle"><FiFilm style={{ marginRight: 8, color: "var(--pink)" }} /> Movies</h2>
+                    <h2 className="categoryTitle">
+                      <FiFilm style={{ marginRight: 8, color: "var(--pink)" }} /> 
+                      {isActorSearch ? `${data.searchedActor.name}'s Feature Movies` : "Movies"}
+                    </h2>
                     <div className="contentGrid">
                       {moviesList.map((item, idx) => (
                         <MovieCard key={`movie-${item.id}-${idx}`} data={item} fromSearch={true} mediaType="movie" />
@@ -400,10 +489,28 @@ const SearchResult = () => {
                 {/* 2. TV Shows Category Section */}
                 {(activeFilter === "all" || activeFilter === "tv") && tvList.length > 0 && (
                   <div className="searchCategorySection">
-                    <h2 className="categoryTitle"><FiTv style={{ marginRight: 8, color: "var(--pink)" }} /> TV Shows & Series</h2>
+                    <h2 className="categoryTitle">
+                      <FiTv style={{ marginRight: 8, color: "var(--pink)" }} /> 
+                      {isActorSearch ? `${data.searchedActor.name}'s TV Shows & Series` : "TV Shows & Series"}
+                    </h2>
                     <div className="contentGrid">
                       {tvList.map((item, idx) => (
                         <MovieCard key={`tv-${item.id}-${idx}`} data={item} fromSearch={true} mediaType="tv" />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 2.5 Biographies, Documentaries & Specials Section */}
+                {isActorSearch && (activeFilter === "all" || activeFilter === "movie" || activeFilter === "tv") && actorBiosDocsFiltered.length > 0 && (
+                  <div className="searchCategorySection">
+                    <h2 className="categoryTitle">
+                      <FiUser style={{ marginRight: 8, color: "var(--pink)" }} />
+                      Biographies, Documentaries & Specials ({data.searchedActor.name})
+                    </h2>
+                    <div className="contentGrid">
+                      {actorBiosDocsFiltered.map((item, idx) => (
+                        <MovieCard key={`actor-bio-doc-${item.id}-${idx}`} data={item} fromSearch={true} mediaType={item.media_type} />
                       ))}
                     </div>
                   </div>
