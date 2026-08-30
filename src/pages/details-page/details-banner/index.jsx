@@ -1,7 +1,8 @@
 /* eslint-disable react/prop-types */
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
+import { FiLayers } from "react-icons/fi";
 import dayjs from "dayjs";
 import useFetch from "../../../hooks/useFetch";
 import ContentWrapper from "../../../components/content-wrapper";
@@ -20,6 +21,7 @@ const DetailsBanner = ({ video, crew }) => {
 	const [videoId, setVideoId] = useState(null);
 
 	const { mediaType, id } = useParams();
+	const navigate = useNavigate();
 	const { data, loading } = useFetch(`/${mediaType}/${id}`);
 
 	const { url } = useSelector((state) => state.home);
@@ -126,6 +128,27 @@ const DetailsBanner = ({ video, crew }) => {
 											mediaType={mediaType}
 											compact={true}
 										/>
+									</div>
+								)}
+
+								{mediaType === "movie" && data?.belongs_to_collection && (
+									<div className="collectionBannerSection">
+										<div className="collectionBannerContent">
+											<div className="collectionBannerLeft">
+												<FiLayers className="collectionLayersIcon" />
+												<div className="collectionTextWrapper">
+													<span className="collectionSubtext">Part of the Franchise</span>
+													<h3 className="collectionTitleText">{data.belongs_to_collection.name}</h3>
+												</div>
+											</div>
+											<button
+												className="viewCollectionBtn"
+												onClick={() => navigate(`/collection/${data.belongs_to_collection.id}`)}
+												tabIndex="0"
+											>
+												View Franchise
+											</button>
+										</div>
 									</div>
 								)}
 
