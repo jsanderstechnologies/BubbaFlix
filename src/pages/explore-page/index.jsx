@@ -16,6 +16,7 @@ import TopNav from "../../components/top-nav";
 import { FiSliders, FiLayers, FiFilm } from "react-icons/fi";
 
 let filters = {};
+let cachedCollections = null;
 
 const SORT_OPTIONS = [
 	{ value: "popularity.desc", label: "Sort by Popularity (High to Low)" },
@@ -158,28 +159,58 @@ const filterEnglishCollections = (items) => {
 		fetchInitialData();
 
 		if (mediaType === "movie") {
-			setCollectionsList([]);
 			setColKeywordIndex(0);
 			setColSubPage(1);
-			setColHasMore(true);
 
-			// Initial batch load for Collections (fill entire viewport initially)
-			const initialTopColIds = [
-				86311, 263, 10, 1241, 2344, 9485, 328, 645,
-				528, 295, 131292, 8650, 119, 87096, 403374, 84,
-				2150, 86066, 422834, 2602, 1570, 2562, 2980, 33514,
-				1771, 748, 531241, 9125
-			];
-			Promise.all(initialTopColIds.map((id) => fetchDataFromAPI(`/collection/${id}`).catch(() => null)))
-				.then((list) => {
-					setCollectionsList(filterEnglishCollections(list.filter(Boolean)));
-				});
+			if (cachedCollections) {
+				setCollectionsList(cachedCollections);
+				setColHasMore(false);
+			} else {
+				setCollectionsList([]);
+				setColHasMore(true);
+				setColLoading(true);
+
+				const allTopColIds = [
+					86311, 263, 10, 1241, 9485, 328, 645,
+					528, 295, 131292, 8650, 119, 87096, 403374, 84,
+					2150, 86066, 422834, 2602, 1570, 2562, 2980, 33514,
+					1771, 748, 531241, 9125, 10194, 147573, 121938, 8093,
+					9400, 22005, 185966, 405, 87086, 131084, 312, 37525,
+					333036, 41604, 9005, 10243, 8657, 9283, 367296, 231598,
+					472147, 279023, 10137, 91361, 91363, 91362, 9284, 313,
+					404609, 477156, 468222, 8945, 1733, 885, 470369, 1158,
+					157409, 9718, 251786, 558216, 10214, 10227, 10215, 10230,
+					382285
+				];
+
+				Promise.all(allTopColIds.map((id) => fetchDataFromAPI(`/collection/${id}`).catch(() => null)))
+					.then((list) => {
+						const validCols = list.filter(Boolean);
+						
+						validCols.forEach(col => {
+							col.calculatedPopularity = Array.isArray(col.parts)
+								? col.parts.reduce((sum, p) => sum + (p.popularity || 0), 0)
+								: (col.popularity || 0);
+						});
+
+						validCols.sort((a, b) => b.calculatedPopularity - a.calculatedPopularity);
+
+						const filtered = filterEnglishCollections(validCols);
+						cachedCollections = filtered;
+						setCollectionsList(filtered);
+						setColHasMore(false);
+						setColLoading(false);
+					})
+					.catch(() => {
+						setColLoading(false);
+					});
+			}
 		}
 	}, [mediaType]);
 
 	useEffect(() => {
-		if (movieTab === "collections" && collectionsList.length <= 20) {
-			fetchNextCollectionsPage();
+		if (movieTab === "collections" && collectionsList.length === 0) {
+			// fallback/trigger if not initialized
 		}
 	}, [movieTab]);
 
@@ -208,7 +239,7 @@ const filterEnglishCollections = (items) => {
 						{mediaType === "tv"
 							? "Explore TV Series"
 							: movieTab === "collections"
-							? "Explore Movie Collections & Franchises"
+							? "Explore Movie Collections"
 							: "Explore Movies"}
 					</div>
 
@@ -232,7 +263,7 @@ const filterEnglishCollections = (items) => {
 								}}
 								tabIndex="0"
 							>
-								<FiLayers /> Collections & Franchises
+								<FiLayers /> Collections
 							</button>
 						</div>
 					) : (
