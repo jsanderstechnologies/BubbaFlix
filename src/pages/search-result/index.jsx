@@ -203,13 +203,32 @@ const SearchResult = () => {
     setLoading(true);
 
     if (page === 1) {
-      fetchDataFromAPI(`/search/person?query=${encodeURIComponent(queryStr)}&page=1`)
-        .then((personRes) => {
+      Promise.all([
+        fetchDataFromAPI(`/search/person?query=${encodeURIComponent(queryStr)}&page=1`),
+        fetchDataFromAPI(`/search/movie?query=${encodeURIComponent(queryStr)}&page=1`)
+      ])
+        .then(([personRes, movieRes]) => {
           const topPerson = personRes?.results?.[0];
-          const queryLower = queryStr.toLowerCase();
-          const nameLower = topPerson ? topPerson.name.toLowerCase() : "";
+          const topMovie = movieRes?.results?.[0];
 
-          if (topPerson && (nameLower === queryLower || nameLower.includes(queryLower) || queryLower.includes(nameLower)) && topPerson.popularity > 8.0) {
+          const personPop = topPerson ? (topPerson.popularity || 0) : 0;
+          const moviePop = topMovie ? (topMovie.popularity || 0) : 0;
+
+          const queryLower = queryStr.toLowerCase();
+          const personNameLower = topPerson ? topPerson.name.toLowerCase() : "";
+
+          // Robust Actor Search Classification Heuristic:
+          // Checks if the top matched person is highly popular relative to top movie results,
+          // or is an exact match for the query, and meets minimum popularity criteria (> 6.0)
+          const isActorSearch = topPerson && (
+            personPop > 6.0 && (
+              personPop > moviePop || 
+              personNameLower === queryLower || 
+              personNameLower.includes(queryLower) && moviePop < 15.0
+            )
+          );
+
+          if (isActorSearch) {
             // Fetch combined credits for the actor
             fetchDataFromAPI(`/person/${topPerson.id}/combined_credits`)
               .then((creditsRes) => {
