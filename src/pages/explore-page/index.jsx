@@ -45,7 +45,7 @@ const Explore = () => {
 	const [sortby, setSortby] = useState("popularity.desc");
 	
 	// Movies vs Collections Sub-Tabs
-	const [movieTab, setMovieTab] = useState("movies"); // "movies" | "collections"
+	const [movieTab, setMovieTab] = useState(() => sessionStorage.getItem("explore_movie_tab") || "movies");
 	
 	// Collections Infinite Scroll State
 	const [collectionsList, setCollectionsList] = useState([]);
@@ -153,7 +153,8 @@ const filterEnglishCollections = (items) => {
 		setData(null);
 		setPageNum(1);
 		setSortby("popularity.desc");
-		setMovieTab("movies");
+		const savedTab = sessionStorage.getItem("explore_movie_tab") || "movies";
+		setMovieTab(savedTab);
 		fetchInitialData();
 
 		if (mediaType === "movie") {
@@ -215,14 +216,20 @@ const filterEnglishCollections = (items) => {
 						<div className="exploreTabSwitcher">
 							<button
 								className={`tabBtn ${movieTab === "movies" ? "active" : ""}`}
-								onClick={() => setMovieTab("movies")}
+								onClick={() => {
+									setMovieTab("movies");
+									sessionStorage.setItem("explore_movie_tab", "movies");
+								}}
 								tabIndex="0"
 							>
 								<FiFilm /> Movies
 							</button>
 							<button
 								className={`tabBtn ${movieTab === "collections" ? "active" : ""}`}
-								onClick={() => setMovieTab("collections")}
+								onClick={() => {
+									setMovieTab("collections");
+									sessionStorage.setItem("explore_movie_tab", "collections");
+								}}
 								tabIndex="0"
 							>
 								<FiLayers /> Collections & Franchises
