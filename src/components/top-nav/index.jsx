@@ -51,14 +51,6 @@ const TopNav = () => {
 		if (path === "/favorites") {
 			return current.startsWith("/favorites") ? "active" : "";
 		}
-		
-		if (path === "/livetv") {
-			return current.startsWith("/livetv") ? "active" : "";
-		}
-		
-		if (path === "/recordings") {
-			return current.startsWith("/recordings") ? "active" : "";
-		}
 
 		if (path === "/settings") {
 			return current.startsWith("/settings") ? "active" : "";
@@ -96,38 +88,6 @@ const TopNav = () => {
 						>
 							<FiHome className="navIcon" />
 							<span>Home</span>
-						</button>
-
-						<button
-							className={`navBtn ${isActive("/livetv")}`}
-							tabIndex="0"
-							onClick={() => navigate("/livetv")}
-							onKeyDown={(e) => {
-								const code = e.keyCode;
-								if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
-									e.preventDefault();
-									navigate("/livetv");
-								}
-							}}
-						>
-							<FiTv className="navIcon" />
-							<span>Live TV</span>
-						</button>
-
-						<button
-							className={`navBtn ${isActive("/recordings")}`}
-							tabIndex="0"
-							onClick={() => navigate("/recordings")}
-							onKeyDown={(e) => {
-								const code = e.keyCode;
-								if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
-									e.preventDefault();
-									navigate("/recordings");
-								}
-							}}
-						>
-							<FiVideo className="navIcon" />
-							<span>Recordings</span>
 						</button>
 
 						<button

@@ -58,10 +58,6 @@ const Header = () => {
 	const handleNavigation = (navigationType) => {
 		if (navigationType === "home") {
 			navigate("/");
-		} else if (navigationType === "livetv") {
-			navigate("/livetv");
-		} else if (navigationType === "recordings") {
-			navigate("/recordings");
 		} else if (navigationType === "search") {
 			navigate("/search");
 		} else if (navigationType === "favorites") {
@@ -88,8 +84,6 @@ const Header = () => {
 
 	const path = location.pathname;
 	const isHome = path === "/";
-	const isLiveTv = path.startsWith("/livetv");
-	const isRecordings = path.startsWith("/recordings");
 	const isSearch = path.startsWith("/search");
 	const isFavorites = path.startsWith("/favorites");
 	const isMovies = path.startsWith("/explore/movie");
@@ -115,24 +109,6 @@ const Header = () => {
 						onKeyDown={(e) => handleKeyActivate(e, () => handleNavigation("home"))}
 					>
 						Home
-					</li>
-					<li
-						className={`menuItem ${isLiveTv ? "active" : ""}`}
-						tabIndex="0"
-						role="button"
-						onClick={() => handleNavigation("livetv")}
-						onKeyDown={(e) => handleKeyActivate(e, () => handleNavigation("livetv"))}
-					>
-						Live TV
-					</li>
-					<li
-						className={`menuItem ${isRecordings ? "active" : ""}`}
-						tabIndex="0"
-						role="button"
-						onClick={() => handleNavigation("recordings")}
-						onKeyDown={(e) => handleKeyActivate(e, () => handleNavigation("recordings"))}
-					>
-						Recordings
 					</li>
 					<li
 						className={`menuItem ${isSearch ? "active" : ""}`}

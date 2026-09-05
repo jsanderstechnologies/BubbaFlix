@@ -22,8 +22,6 @@ import { fetchServerSettings } from "./utils/serverSettings";
 import AboutPage from "./pages/about-page";
 import TvInstallPrompt from "./components/tv-install-prompt";
 import BackgroundRotator from "./components/background-rotator";
-import LiveTvPage from "./pages/live-tv-page";
-import RecordingsPage from "./pages/recordings-page";
 
 const App = () => {
 	const dispatch = useDispatch();
@@ -73,8 +71,6 @@ const App = () => {
 				<div style={{ position: "relative", zIndex: 1, opacity: 1 }}>
 					<Routes>
 						<Route path="/" element={<HomePage />} />
-						<Route path="/livetv" element={<LiveTvPage />} />
-						<Route path="/recordings" element={<RecordingsPage />} />
 						<Route path="/about" element={<AboutPage />} />
 						<Route path="/favorites" element={<FavoritesPage />} />
 						<Route path="/settings" element={<SettingsPage />} />
