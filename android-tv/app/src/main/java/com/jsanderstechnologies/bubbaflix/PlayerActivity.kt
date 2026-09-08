@@ -889,17 +889,45 @@ class PlayerActivity : AppCompatActivity() {
         }
     }
 
-    private var loudnessEnhancer: LoudnessEnhancer? = null
+    private var loudnessEnhancer: android.media.audiofx.LoudnessEnhancer? = null
+    private var dynamicsProcessing: android.media.audiofx.DynamicsProcessing? = null
 
     private fun setupAudioNormalization(audioSessionId: Int) {
-        if (audioSessionId == C.AUDIO_SESSION_ID_UNSET || audioSessionId == 0) return
+        if (audioSessionId == androidx.media3.common.C.AUDIO_SESSION_ID_UNSET || audioSessionId == 0) return
 
         try {
-            // LoudnessEnhancer Normalization: Normalizes dynamic range and boosts dialogue (+1.5 dB / 1500 mB target gain)
-            if (loudnessEnhancer == null) {
-                loudnessEnhancer = LoudnessEnhancer(audioSessionId).apply {
-                    setTargetGain(1500)
-                    enabled = true
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                if (dynamicsProcessing == null) {
+                    val builder = android.media.audiofx.DynamicsProcessing.Config.Builder(
+                        android.media.audiofx.DynamicsProcessing.VARIANT_FAVOR_FREQUENCY_RESOLUTION,
+                        2,
+                        false, 0,
+                        false, 0,
+                        false, 0,
+                        true
+                    )
+
+                    // Dynamic Range Compression (Night Mode): Softens loud parts (explosions) and allows turning up volume for dialog
+                    val limiter = android.media.audiofx.DynamicsProcessing.Limiter(
+                        true, true, 0, 
+                        1.0f, 60.0f, 
+                        10.0f, 
+                        -15.0f, 
+                        5.0f
+                    )
+
+                    builder.setLimiterByChannelIndex(0, limiter)
+                    builder.setLimiterByChannelIndex(1, limiter)
+
+                    dynamicsProcessing = android.media.audiofx.DynamicsProcessing(0, audioSessionId, builder.build())
+                    dynamicsProcessing?.enabled = true
+                }
+            } else {
+                if (loudnessEnhancer == null) {
+                    loudnessEnhancer = android.media.audiofx.LoudnessEnhancer(audioSessionId).apply {
+                        setTargetGain(1500)
+                        enabled = true
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -921,6 +949,8 @@ class PlayerActivity : AppCompatActivity() {
         try {
             loudnessEnhancer?.release()
             loudnessEnhancer = null
+            dynamicsProcessing?.release()
+            dynamicsProcessing = null
         } catch (e: Exception) {}
 
         exoPlayer?.release()
