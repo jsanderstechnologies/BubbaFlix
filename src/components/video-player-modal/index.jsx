@@ -287,35 +287,15 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
 
     let hasStartedPlayback = false;
 
-    const checkBufferAndPlay = () => {
-      if (hasStartedPlayback) return;
-      if (videoNode.buffered && videoNode.buffered.length > 0) {
-        let maxBufferedEnd = 0;
-        for (let i = 0; i < videoNode.buffered.length; i++) {
-          if (videoNode.buffered.start(i) <= videoNode.currentTime && videoNode.currentTime <= videoNode.buffered.end(i)) {
-            maxBufferedEnd = videoNode.buffered.end(i);
-            break;
-          }
-        }
-        const bufferedDuration = maxBufferedEnd - videoNode.currentTime;
-        // Require at least 5.0 seconds of buffered content before starting to play
-        if (bufferedDuration >= 5.0 || (videoNode.duration > 0 && maxBufferedEnd >= videoNode.duration - 0.5)) {
-          console.log("[VideoPlayerModal] Buffer threshold reached:", bufferedDuration, "seconds. Starting playback...");
-          hasStartedPlayback = true;
-          setIsBuffering(false);
-          videoNode.play().catch((err) => {
-            console.warn("[Player Playback Start Error]:", err.message);
-          });
-        }
-      }
-    };
-
-    const handleProgress = () => {
-      checkBufferAndPlay();
-    };
-
     const handleCanPlay = () => {
-      checkBufferAndPlay();
+      if (!hasStartedPlayback) {
+        console.log("[VideoPlayerModal] canplay event fired. Starting playback...");
+        hasStartedPlayback = true;
+        setIsBuffering(false);
+        videoNode.play().catch((err) => {
+          console.warn("[Player Playback Start Error]:", err.message);
+        });
+      }
     };
 
     const handleWaiting = () => {
@@ -330,7 +310,6 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
       setIsBuffering(false);
     };
 
-    videoNode.addEventListener("progress", handleProgress);
     videoNode.addEventListener("canplay", handleCanPlay);
     videoNode.addEventListener("waiting", handleWaiting);
     videoNode.addEventListener("playing", handlePlaying);
@@ -412,7 +391,6 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
     }
 
     return () => {
-      videoNode.removeEventListener("progress", handleProgress);
       videoNode.removeEventListener("canplay", handleCanPlay);
       videoNode.removeEventListener("waiting", handleWaiting);
       videoNode.removeEventListener("playing", handlePlaying);
@@ -701,6 +679,7 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
           <video
             ref={videoRef}
             className="videoElement"
+            autoPlay
             onTimeUpdate={handleTimeUpdate}
             onEnded={() => {
               setIsPlaying(false);
