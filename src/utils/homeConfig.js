@@ -6,21 +6,28 @@ export const DEFAULT_HOME_SECTIONS = [
   { id: "popular_tv", title: "Popular TV Shows", enabled: true },
 ];
 
+export const validateHomeSections = (parsed) => {
+  if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_HOME_SECTIONS;
+  const validIds = new Set(DEFAULT_HOME_SECTIONS.map(s => s.id));
+  const filteredParsed = parsed.filter(s => validIds.has(s.id));
+  if (filteredParsed.length === 0) return DEFAULT_HOME_SECTIONS;
+
+  const map = new Map(filteredParsed.map((s) => [s.id, s]));
+  DEFAULT_HOME_SECTIONS.forEach((def) => {
+    if (!map.has(def.id)) {
+      map.set(def.id, def);
+    }
+  });
+  return Array.from(map.values());
+};
+
 export const getHomeSections = () => {
   if (typeof window === "undefined") return DEFAULT_HOME_SECTIONS;
   try {
     const raw = localStorage.getItem("bubbaflix_home_sections");
     if (!raw) return DEFAULT_HOME_SECTIONS;
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_HOME_SECTIONS;
-
-    const map = new Map(parsed.map((s) => [s.id, s]));
-    DEFAULT_HOME_SECTIONS.forEach((def) => {
-      if (!map.has(def.id)) {
-        map.set(def.id, def);
-      }
-    });
-    return Array.from(map.values());
+    return validateHomeSections(parsed);
   } catch (e) {
     return DEFAULT_HOME_SECTIONS;
   }

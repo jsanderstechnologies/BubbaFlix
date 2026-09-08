@@ -9,7 +9,7 @@ import { getPremiumizeKey, savePremiumizeKey } from "../../utils/premiumize";
 import { updateServerSettings, fetchServerSettings, getServerUrl, saveServerUrl, testBackendServerHealth } from "../../utils/serverSettings";
 import { getApiConfiguration } from "../../store/homeSlice";
 import { THEMES, getSavedTheme, applyTheme } from "../../utils/theme";
-import { getHomeSections, saveHomeSections, DEFAULT_HOME_SECTIONS } from "../../utils/homeConfig";
+import { getHomeSections, saveHomeSections, DEFAULT_HOME_SECTIONS, validateHomeSections } from "../../utils/homeConfig";
 import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning, FiCheckSquare, FiTv, FiPlus, FiMinus, FiServer, FiInfo, FiExternalLink, FiCloud, FiChevronUp, FiChevronDown, FiRotateCcw } from "react-icons/fi";
 import "./index.scss";
 
@@ -121,8 +121,9 @@ const SettingsPage = () => {
       setGpuInfo(serverSettings.gpuInfo);
     }
     if (serverSettings?.home_sections && Array.isArray(serverSettings.home_sections)) {
-      setHomeSections(serverSettings.home_sections);
-      saveHomeSections(serverSettings.home_sections);
+      const validSections = validateHomeSections(serverSettings.home_sections);
+      setHomeSections(validSections);
+      saveHomeSections(validSections);
     } else {
       setHomeSections(getHomeSections());
     }
