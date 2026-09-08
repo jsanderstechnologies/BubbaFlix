@@ -317,87 +317,29 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
     videoNode.addEventListener("waiting", handleWaiting);
     videoNode.addEventListener("playing", handlePlaying);
     videoNode.addEventListener("error", handleError);
-
-    const isHls = currentUrl.includes(".m3u8") || currentUrl.includes("/hls/") || currentUrl.includes("m3u8");
-
-    if (isHls && Hls.isSupported()) {
-      const hls = new Hls({
-        enableWorker: true,
-        lowLatencyMode: false,
-        backBufferLength: 3600,
-        liveBackBufferLength: 3600,
-        liveSyncDurationCount: 3,
-        liveMaxLatencyDurationCount: 10,
-        maxBufferLength: 120, // Keep up to 2 minutes of video buffered
-        maxMaxBufferLength: 300, // Limit maximum buffer length to 5 minutes
-        maxBufferSize: 250 * 1024 * 1024, // Allow up to 250 MB buffer size
-      });
-      hlsRef.current = hls;
-
-      hls.loadSource(currentUrl);
-      hls.attachMedia(videoNode);
-
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        console.log("[VideoPlayerModal] HLS Manifest parsed. Pre-buffering...");
-      });
-
-      // HLS Audio Track Updates & Default to English
-      hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, (event, data) => {
-        if (Array.isArray(data.audioTracks) && data.audioTracks.length > 0) {
-          setAudioTracks(data.audioTracks);
-
-          const engIndex = data.audioTracks.findIndex(
-            (t) => t.lang && (t.lang.toLowerCase() === "en" || t.lang.toLowerCase() === "eng" || (t.name && t.name.toLowerCase().includes("english")))
-          );
-          if (engIndex !== -1) {
-            hls.audioTrack = engIndex;
-            setActiveAudioIdx(engIndex);
-          }
-        }
-      });
-
-      hls.on(Hls.Events.ERROR, (event, data) => {
-        if (data.fatal) {
-          console.warn("[Player HLS Fatal Error]:", data);
-          if (currentUrl && !currentUrl.includes("/api/transcode")) {
-            console.log("[VideoPlayerModal] Direct HLS stream failed. Attempting backend transcoder fallback...");
-            setCurrentUrl(`/api/transcode?url=${encodeURIComponent(currentUrl)}`);
-          } else {
-            setHasError(true);
-            setErrorMessage("Failed to decode video stream. Please select another stream.");
-          }
-        }
-      });
-    } else {
-      videoNode.src = currentUrl;
-      console.log("[VideoPlayerModal] Native media source set. Pre-buffering...");
-
-      // Check for native HTML5 audio tracks if supported by browser
-      if (videoNode.audioTracks) {
-        const trks = Array.from(videoNode.audioTracks).map((t, i) => ({
-          id: i,
-          name: t.label || t.language || `Audio Track #${i + 1}`,
-          lang: t.language || "en"
-        }));
-        setAudioTracks(trks);
-
-        for (let i = 0; i < videoNode.audioTracks.length; i++) {
-          const trk = videoNode.audioTracks[i];
-          if (trk.language && (trk.language.toLowerCase() === "en" || trk.language.toLowerCase() === "eng" || (trk.label && trk.label.toLowerCase().includes("english")))) {
-            trk.enabled = true;
-            setActiveAudioIdx(i);
-          } else {
-            trk.enabled = false;
-          }
-        }
+    
+    // MoviPlayer specific state machine event
+    const handleStateChange = (e) => {
+      const state = e.detail;
+      if (state === "playing" || state === "ready") {
+        setIsBuffering(false);
+      } else if (state === "buffering" || state === "seeking" || state === "loading") {
+        setIsBuffering(true);
       }
-    }
+    };
+    videoNode.addEventListener("statechange", handleStateChange);
+
+    // MoviPlayer natively handles HLS streams via its internal wrapper!
+    // No need to initialize hls.js manually.
+    videoNode.src = currentUrl;
+    console.log("[VideoPlayerModal] MoviPlayer source set:", currentUrl);
 
     return () => {
       videoNode.removeEventListener("canplay", handleCanPlay);
       videoNode.removeEventListener("waiting", handleWaiting);
       videoNode.removeEventListener("playing", handlePlaying);
       videoNode.removeEventListener("error", handleError);
+      videoNode.removeEventListener("statechange", handleStateChange);
       if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
