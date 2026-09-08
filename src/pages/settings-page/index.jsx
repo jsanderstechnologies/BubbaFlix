@@ -394,7 +394,7 @@ const SettingsPage = () => {
                 <span className="badge custom">Backend Synced</span>
               </div>
               <p className="description">
-                Your Android TV app is automatically configured by your central BubbaFlix server (<code>{serverUrlState || "https://bubbaflix.sanders-technologies.net"}</code>). API tokens, Dispatcharr Live TV, AIOStreams Debrid, Premiumize, SIMKL, and Groq AI settings are managed globally on the server.
+                Your Android TV app is automatically configured by your central BubbaFlix server (<code>{serverUrlState || "https://bubbaflix.sanders-technologies.net"}</code>). API tokens, AIOStreams Debrid, Premiumize, SIMKL, and Groq AI settings are managed globally on the server.
               </p>
             </div>
           )}

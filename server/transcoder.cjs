@@ -23,11 +23,6 @@ const getCpuTopologyInfo = () => ({
   platform: os.platform(),
 });
 
-// In-Memory Fast Cache for EPG 6-Hour Schedule & DVR Recordings
-let cachedEpgPrograms = [];
-let cachedDvrRecordings = [];
-let cachedChannelsList = [];
-let lastEpgFetchTime = 0;
 
 // Internal Node settings server port (always 5000 for Nginx proxy inside container)
 const PORT = process.env.PORT || 5000;
@@ -119,8 +114,6 @@ const getEnvDefaultSettings = () => {
   const defaultTmdb = process.env.TMDB_READ_ACCESS_TOKEN || process.env.VITE_APP_TMDB_KEY || process.env.TMDB_TOKEN || DEFAULT_TMDB_KEY;
   const defaultGroq = process.env.GROQ_API_KEY || process.env.GROQ_KEY || process.env.VITE_GROQ_API_KEY || "";
   const defaultSimkl = process.env.SIMKL_CLIENT_ID || process.env.VITE_SIMKL_CLIENT_ID || "";
-  const defaultDispatcharrUrl = process.env.DISPATCHARR_URL || process.env.VITE_DISPATCHARR_URL || "http://192.168.10.3:9191";
-  const defaultDispatcharrApiKey = process.env.DISPATCHARR_API_KEY || process.env.VITE_DISPATCHARR_API_KEY || "";
   const defaultResolutions = process.env.STREAM_RESOLUTIONS
     ? process.env.STREAM_RESOLUTIONS.split(",").map((s) => s.trim())
     : ["2160p", "1080p", "720p", "480p"];
@@ -133,8 +126,6 @@ const getEnvDefaultSettings = () => {
     simklClientId: defaultSimkl,
     groqKey: defaultGroq,
     tmdbToken: defaultTmdb,
-    dispatcharrUrl: defaultDispatcharrUrl,
-    dispatcharrApiKey: defaultDispatcharrApiKey,
     stream_resolutions: defaultResolutions,
     stream_exclude_low_quality: defaultExcludeLow,
   };
@@ -154,12 +145,6 @@ const loadServerSettings = () => {
       }
       if (envDefaults.simklClientId && (!merged.simklClientId || merged.simklClientId.trim() === "")) {
         merged.simklClientId = envDefaults.simklClientId;
-      }
-      if (envDefaults.dispatcharrUrl && (!merged.dispatcharrUrl || merged.dispatcharrUrl.trim() === "" || merged.dispatcharrUrl === "http://192.168.1.100:9191")) {
-        merged.dispatcharrUrl = envDefaults.dispatcharrUrl;
-      }
-      if (envDefaults.dispatcharrApiKey && (!merged.dispatcharrApiKey || merged.dispatcharrApiKey.trim() === "")) {
-        merged.dispatcharrApiKey = envDefaults.dispatcharrApiKey;
       }
       if (!merged.tmdbToken || merged.tmdbToken.trim() === "") {
         merged.tmdbToken = DEFAULT_TMDB_KEY;
@@ -196,9 +181,7 @@ const getRequestInitiator = (req) => {
   const referer = req.headers["referer"] || req.headers["origin"] || "Direct Connection";
 
   let initiatorComponent = "Unknown Component";
-  if (referer.includes("/livetv")) {
-    initiatorComponent = "Live TV & EPG UI";
-  } else if (referer.includes("/settings")) {
+  if (referer.includes("/settings")) {
     initiatorComponent = "Settings Page UI";
   } else if (referer.includes("/movie") || referer.includes("/tv")) {
     initiatorComponent = "Video Player";
@@ -222,89 +205,9 @@ const sendJson = (res, statusCode, data) => {
   res.end(JSON.stringify(data));
 };
 
-// Background EPG (6-Hour Active Window) & DVR Recordings Reload Engine
-const fetchDispatcharrDataBackground = async () => {
-  const settings = loadServerSettings();
-  if (!settings.dispatcharrUrl) return;
-
-  const rawUrl = settings.dispatcharrUrl.replace(/\/$/, "");
-  const apiKey = settings.dispatcharrApiKey || "";
-
-  const headers = {
-    "User-Agent": "BubbaFlix-Server-BackgroundCache/1.0"
-  };
-  if (apiKey) {
-    if (apiKey.startsWith("eyJ")) {
-      headers["Authorization"] = `Bearer ${apiKey}`;
-    } else {
-      headers["x-api-key"] = apiKey;
-    }
-  }
-
-  logMessage(`[Background Cache Engine] Starting 1-hour background reload for EPG and DVR recordings...`);
-
-  const httpModule = rawUrl.startsWith("https:") ? require("https") : require("http");
-
-  const makeRequest = (endpoint) => {
-    return new Promise((resolve) => {
-      const fullUrl = `${rawUrl}${endpoint}`;
-      try {
-        const req = httpModule.get(fullUrl, { headers, timeout: 15000, rejectUnauthorized: false }, (res) => {
-          let body = "";
-          res.on("data", (chunk) => { body += chunk; });
-          res.on("end", () => {
-            try {
-              const parsed = JSON.parse(body);
-              resolve(Array.isArray(parsed) ? parsed : (parsed.results || parsed.data || []));
-            } catch (e) {
-              resolve([]);
-            }
-          });
-        });
-        req.on("error", () => resolve([]));
-      } catch (e) {
-        resolve([]);
-      }
-    });
-  };
-
-  try {
-    const [progs, recs, chans] = await Promise.all([
-      makeRequest("/api/epg/programs/?page_size=2000"),
-      makeRequest("/api/epg/recordings/?page_size=1000"),
-      makeRequest("/api/channels/channels/?page_size=1000")
-    ]);
-
-    const now = new Date();
-    const sixHoursLater = new Date(now.getTime() + 6 * 60 * 60 * 1000);
-
-    // Filter EPG: Only keep currently playing programs or those starting within the next 6 hours!
-    const filteredProgs = (progs || []).filter((p) => {
-      if (!p || !p.start_time || !p.end_time) return false;
-      const start = new Date(p.start_time);
-      const end = new Date(p.end_time);
-      if (isNaN(start.getTime()) || isNaN(end.getTime())) return false;
-      // Exclude expired past programs that ended before now
-      if (end <= now) return false;
-      // Exclude future programs starting beyond 6 hours
-      if (start > sixHoursLater) return false;
-      return true;
-    });
-
-    cachedEpgPrograms = filteredProgs;
-    cachedDvrRecordings = recs || [];
-    cachedChannelsList = chans || [];
-    lastEpgFetchTime = Date.now();
-
-    logMessage(`[Background Cache Engine] Refresh Complete! Cached ${cachedEpgPrograms.length} active/6h EPG programs, ${cachedDvrRecordings.length} DVR recordings, and ${cachedChannelsList.length} channels.`);
-  } catch (err) {
-    logMessage(`[Background Cache Engine] Background fetch warning: ${err.message}`, true);
-  }
-};
 
 // GPU Hardware Acceleration Auto-Detection Engine
 let cachedGpuConfig = null;
-let verifiedDispatcharrUrl = null;
 
 const detectGpuCapabilities = () => {
   if (cachedGpuConfig) return cachedGpuConfig;
@@ -715,34 +618,7 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     }
 
     const settings = loadServerSettings();
-    const rawDispatcharrUrl = (settings.dispatcharrUrl || "http://192.168.10.3:9191").replace(/\/$/, "");
-
-    const isDispatcharrTarget =
-      cleanedTargetUrl.includes("/api/dispatcharr/") ||
-      cleanedTargetUrl.includes("/dispatcharr/") ||
-      cleanedTargetUrl.includes(rawDispatcharrUrl) ||
-      cleanedTargetUrl.startsWith("http://192.168.") ||
-      cleanedTargetUrl.startsWith("http://10.") ||
-      cleanedTargetUrl.startsWith("http://172.16.");
-
-    let resolvedTargetUrl = cleanedTargetUrl;
-    if (isDispatcharrTarget) {
-      if (cleanedTargetUrl.includes("/api/dispatcharr/") || cleanedTargetUrl.includes("/dispatcharr/")) {
-        const subPath = cleanedTargetUrl.replace(/^https?:\/\/[^\/]+/, "").replace(/^\/api\/dispatcharr/, "").replace(/^\/dispatcharr/, "");
-        resolvedTargetUrl = `${rawDispatcharrUrl}${subPath.startsWith("/") ? "" : "/"}${subPath}`;
-        logMessage(`[Transcoder Direct Resolve] Rewrote internal proxy URL to direct Dispatcharr target: ${resolvedTargetUrl}`);
-      }
-
-      if (settings.dispatcharrApiKey && !resolvedTargetUrl.includes("api_key=") && !resolvedTargetUrl.includes("token=")) {
-        const sep = resolvedTargetUrl.includes("?") ? "&" : "?";
-        resolvedTargetUrl = `${resolvedTargetUrl}${sep}api_key=${encodeURIComponent(settings.dispatcharrApiKey)}`;
-      }
-    }
-
-    const preResolvePromise = isDispatcharrTarget
-      ? resolveFinalStreamUrl(resolvedTargetUrl, settings.dispatcharrApiKey)
-      : Promise.resolve(resolvedTargetUrl);
-
+    const preResolvePromise = Promise.resolve(cleanedTargetUrl);
     preResolvePromise.then((finalMediaUrl) => {
       res.writeHead(200, {
         "Content-Type": "video/mp4",
@@ -753,15 +629,7 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
         "Access-Control-Allow-Origin": "*",
       });
 
-      let authHeaderStr = "";
-      if (isDispatcharrTarget && settings.dispatcharrApiKey) {
-        if (settings.dispatcharrApiKey.startsWith("eyJ")) {
-          authHeaderStr = `Authorization: Bearer ${settings.dispatcharrApiKey}\r\n`;
-        } else {
-          authHeaderStr = `x-api-key: ${settings.dispatcharrApiKey}\r\n`;
-        }
-      }
-      const headersStr = `User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\r\nAccept: */*\r\n${authHeaderStr}`;
+      const headersStr = `User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\r\nAccept: */*\r\n`;
 
       const gpuInfo = detectGpuCapabilities();
       const isLiveStream = finalMediaUrl.includes("/proxy/ts/stream") || finalMediaUrl.includes("/stream/");
@@ -1026,208 +894,6 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     });
     return;
   }
-  // Dispatcharr Proxy Endpoints for Live TV Streams, Channels, EPG Guide, & Recordings
-  if (
-    cleanPath.startsWith("/api/dispatcharr") ||
-    cleanPath.startsWith("/dispatcharr") ||
-    cleanPath.startsWith("/api/channels") ||
-    cleanPath.startsWith("/api/epg") ||
-    cleanPath.startsWith("/api/recordings") ||
-    cleanPath.startsWith("/api/series-rules") ||
-    cleanPath.startsWith("/proxy/ts/")
-  ) {
-    const settings = loadServerSettings();
-    const rawDispatcharrUrl = (settings.dispatcharrUrl || "http://192.168.10.3:9191").replace(/\/$/, "");
-    let apiKey = settings.dispatcharrApiKey || "";
-
-    if (!apiKey) {
-      apiKey = req.headers["x-api-key"] || parsedUrl.query.api_key || parsedUrl.query.token || "";
-      if (req.headers["authorization"] && req.headers["authorization"].startsWith("Bearer ")) {
-        apiKey = req.headers["authorization"].replace(/^Bearer\s+/i, "");
-      }
-    }
-
-    let subPath = rawPath.replace(/^\/api\/dispatcharr/, "").replace(/^\/dispatcharr/, "") || "/";
-    if (subPath.includes("?")) {
-      const parts = subPath.split("?");
-      const base = parts[0];
-      const queries = parts.slice(1).filter(Boolean).join("&");
-      subPath = `${base}?${queries}`;
-    }
-
-    // Auto-rewrite non-numeric string TVG channel stream requests (e.g. /channels/channels/KAKE.us/stream/) to TS proxy endpoint
-    const apiChannelStreamMatch = subPath.match(/\/channels\/channels\/([^/]+)\/stream\/?/);
-    if (apiChannelStreamMatch) {
-      const targetId = apiChannelStreamMatch[1];
-      if (isNaN(Number(targetId))) {
-        subPath = `/proxy/ts/stream/${targetId}`;
-        logMessage(`[Dispatcharr Proxy Router] Rewrote string TVG channel stream request '${apiChannelStreamMatch[0]}' to direct TS stream endpoint: ${subPath}`);
-      }
-    }
-
-    // Serve directly from background memory cache (eliminates page-load refresh)
-    if (req.method === "GET") {
-      if ((subPath === "/epg/programs" || subPath.startsWith("/epg/programs/") || subPath.includes("/epg/grid") || subPath.includes("/cache/epg")) && !subPath.includes("/stream")) {
-        if (cachedEpgPrograms.length > 0) {
-          logMessage(`[Fast Server Cache] Served ${cachedEpgPrograms.length} cached EPG programs directly to [${initiator.initiatorComponent}] (${initiator.ip}).`);
-          return sendJson(res, 200, cachedEpgPrograms);
-        }
-      }
-      if (subPath.includes("/epg/recordings") || (subPath.includes("/channels/recordings") && !subPath.includes("/file/") && !subPath.includes("/stream/")) || subPath.includes("/cache/recordings")) {
-        if (cachedDvrRecordings.length > 0) {
-          logMessage(`[Fast Server Cache] Served ${cachedDvrRecordings.length} cached DVR recordings directly to [${initiator.initiatorComponent}] (${initiator.ip}).`);
-          return sendJson(res, 200, cachedDvrRecordings);
-        }
-      }
-      if ((subPath === "/channels/channels" || subPath.startsWith("/channels/channels/") || subPath.includes("/cache/channels")) && !subPath.includes("/stream") && !subPath.includes("/watch") && !subPath.includes("/file/")) {
-        if (cachedChannelsList.length > 0 && !subPath.match(/\/channels\/channels\/\d+\//)) {
-          logMessage(`[Fast Server Cache] Served ${cachedChannelsList.length} cached channels directly to [${initiator.initiatorComponent}] (${initiator.ip}).`);
-          return sendJson(res, 200, cachedChannelsList);
-        }
-      }
-    }
-
-    const targetDispatcharrUrl = `${rawDispatcharrUrl}${subPath.startsWith("/") ? "" : "/"}${subPath}`;
-
-    const proxyHeaders = {};
-    for (const key of Object.keys(req.headers)) {
-      const lower = key.toLowerCase();
-      if (lower !== "host" && lower !== "content-length" && lower !== "connection") {
-        proxyHeaders[key] = req.headers[key];
-      }
-    }
-
-    if (apiKey) {
-      proxyHeaders["x-api-key"] = apiKey;
-      if (apiKey.startsWith("eyJ")) {
-        proxyHeaders["authorization"] = `Bearer ${apiKey}`;
-      } else {
-        proxyHeaders["authorization"] = `Api-Key ${apiKey}`;
-      }
-    }
-
-    const proxyWithRedirects = (req, res, targetUrl, headers, maxRedirects = 5) => {
-      if (maxRedirects <= 0) {
-        if (!res.headersSent) sendJson(res, 502, { error: "Too many redirects from stream server." });
-        return;
-      }
-
-      try {
-        const targetParsed = new URL(targetUrl);
-        const isHttps = targetParsed.protocol === "https:";
-        const httpModule = isHttps ? require("https") : require("http");
-        const currentHeaders = { ...headers, host: targetParsed.host };
-
-        const proxyReq = httpModule.request(targetUrl, {
-          method: req.method,
-          headers: currentHeaders,
-          rejectUnauthorized: false,
-          timeout: 15000,
-        }, (proxyRes) => {
-          if ([301, 302, 303, 307, 308].includes(proxyRes.statusCode) && proxyRes.headers.location) {
-            let redirectUrl = proxyRes.headers.location;
-            if (!redirectUrl.startsWith("http")) {
-              redirectUrl = new URL(redirectUrl, targetUrl).toString();
-            }
-            logMessage(`[Dispatcharr Proxy Redirect ${proxyRes.statusCode}] Following redirect to: ${redirectUrl}`);
-            return proxyWithRedirects(req, res, redirectUrl, headers, maxRedirects - 1);
-          }
-
-          // Inspect response chunks on stream endpoints to parse JSON payloads and follow stream_url
-          const contentType = (proxyRes.headers["content-type"] || "").toLowerCase();
-          const isStreamEndpoint = targetUrl.includes("/stream") || targetUrl.includes("/channels/channels/");
-
-          if (isStreamEndpoint) {
-            let chunks = [];
-            let totalLen = 0;
-            let isJsonChecked = false;
-
-            const onData = (chunk) => {
-              chunks.push(chunk);
-              totalLen += chunk.length;
-
-              if (!isJsonChecked && totalLen >= 2) {
-                isJsonChecked = true;
-                const buf = Buffer.concat(chunks);
-                const firstChar = buf.toString("utf8", 0, 50).trim()[0];
-
-                if (firstChar === "{" || firstChar === "[" || contentType.includes("json")) {
-                  proxyRes.pause();
-                  let fullBody = buf.toString("utf8");
-                  proxyRes.on("data", (nextChunk) => {
-                    if (fullBody.length < 65536) fullBody += nextChunk.toString("utf8");
-                  });
-                  proxyRes.on("end", () => {
-                    try {
-                      const parsed = JSON.parse(fullBody);
-                      const extracted = parsed.stream_url || parsed.url || parsed.file_url || parsed.target;
-                      if (extracted && typeof extracted === "string" && extracted !== targetUrl) {
-                        let nextUrl = extracted;
-                        if (!nextUrl.startsWith("http")) {
-                          nextUrl = new URL(nextUrl, targetUrl).toString();
-                        }
-                        logMessage(`[Dispatcharr Stream Proxy JSON Resolver] Extracted target stream_url from JSON: ${nextUrl}`);
-                        return proxyWithRedirects(req, res, nextUrl, headers, maxRedirects - 1);
-                      }
-                    } catch (e) {}
-
-                    if (!res.headersSent) {
-                      res.writeHead(proxyRes.statusCode, {
-                        ...proxyRes.headers,
-                        "Access-Control-Allow-Origin": "*",
-                      });
-                      res.end(fullBody);
-                    }
-                  });
-                  proxyRes.resume();
-                } else {
-                  proxyRes.removeListener("data", onData);
-                  if (!res.headersSent) {
-                    res.writeHead(proxyRes.statusCode, {
-                      ...proxyRes.headers,
-                      "Access-Control-Allow-Origin": "*",
-                    });
-                    res.write(buf);
-                    proxyRes.pipe(res);
-                  }
-                }
-              }
-            };
-
-            proxyRes.on("data", onData);
-            return;
-          }
-
-          if (!res.headersSent) {
-            res.writeHead(proxyRes.statusCode, {
-              ...proxyRes.headers,
-              "Access-Control-Allow-Origin": "*",
-            });
-            proxyRes.pipe(res);
-          }
-        });
-
-        proxyReq.on("error", (err) => {
-          if (!res.headersSent) {
-            sendJson(res, 502, { error: `Dispatcharr proxy error: ${err.message}`, targetUrl });
-          }
-        });
-
-        if (req.method === "POST" || req.method === "PUT" || req.method === "PATCH" || req.method === "DELETE") {
-          req.pipe(proxyReq);
-        } else {
-          proxyReq.end();
-        }
-      } catch (e) {
-        if (!res.headersSent) {
-          sendJson(res, 500, { error: `Dispatcharr proxy exception: ${e.message}` });
-        }
-      }
-    };
-
-    proxyWithRedirects(req, res, targetDispatcharrUrl, proxyHeaders);
-    return;
-  }
 
   // Static File Serving for Production Vite Web App (dist folder)
   const candidateDirs = [
@@ -1323,9 +989,7 @@ server.listen(PORT, "0.0.0.0", () => {
   loadServerSettings();
 
   // Load EPG & DVR recordings in background immediately on startup
-  fetchDispatcharrDataBackground();
   // Schedule recurring reload every 1 hour (3600000 ms)
-  setInterval(fetchDispatcharrDataBackground, 3600000);
 });
 
 server.on("error", (err) => {

@@ -256,10 +256,7 @@ const AboutPage = () => {
                   <span className="specLabel">Audio Normalization</span>
                   <span className="specValue">Active (+1.5 dB Loudness DSP)</span>
                 </div>
-                <div className="specItem">
-                  <span className="specLabel">Live TV & DVR</span>
-                  <span className="specValue">Dispatcharr API & Backend Sync</span>
-                </div>
+
                 <div className="specItem">
                   <span className="specLabel">OTA Updater</span>
                   <span className="specValue">Dual-Channel GitHub CDN + Server Proxy</span>
