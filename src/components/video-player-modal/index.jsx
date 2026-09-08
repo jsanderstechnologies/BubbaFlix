@@ -238,19 +238,17 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
       hlsRef.current = null;
     }
 
-    // Set preload="auto" to force the browser to buffer as much as possible
-    videoNode.setAttribute("preload", "auto");
+    // MoviPlayer handles autoplay and buffering internally via its WASM engine.
+    // Do NOT call videoNode.play() or setAttribute("preload") — movi-player is
+    // not an HTMLVideoElement and will ignore/throw on those calls.
 
     let hasStartedPlayback = false;
 
     const handleCanPlay = () => {
       if (!hasStartedPlayback) {
-        console.log("[VideoPlayerModal] canplay event fired. Starting playback...");
+        console.log("[VideoPlayerModal] canplay event fired.");
         hasStartedPlayback = true;
         setIsBuffering(false);
-        videoNode.play().catch((err) => {
-          console.warn("[Player Playback Start Error]:", err.message);
-        });
       }
     };
 
@@ -259,6 +257,7 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
     };
 
     const handlePlaying = () => {
+      hasStartedPlayback = true;
       setIsBuffering(false);
     };
 
@@ -266,21 +265,32 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
       setIsBuffering(false);
     };
 
-    videoNode.addEventListener("canplay", handleCanPlay);
-    videoNode.addEventListener("waiting", handleWaiting);
-    videoNode.addEventListener("playing", handlePlaying);
-    videoNode.addEventListener("error", handleError);
-    
-    // MoviPlayer specific state machine event
+    // MoviPlayer fires stateChange (camelCase) — DOM also fires it lowercased.
+    // Listen to both to be safe.
     const handleStateChange = (e) => {
-      const state = e.detail;
-      if (state === "playing" || state === "ready") {
+      const state = (e.detail || "").toLowerCase();
+      if (state === "playing" || state === "ready" || state === "paused") {
+        hasStartedPlayback = true;
         setIsBuffering(false);
       } else if (state === "buffering" || state === "seeking" || state === "loading") {
         setIsBuffering(true);
       }
     };
+
+    videoNode.addEventListener("canplay", handleCanPlay);
+    videoNode.addEventListener("waiting", handleWaiting);
+    videoNode.addEventListener("playing", handlePlaying);
+    videoNode.addEventListener("error", handleError);
     videoNode.addEventListener("statechange", handleStateChange);
+    videoNode.addEventListener("stateChange", handleStateChange);
+
+    // Safety fallback: if no events fire within 8s, clear the spinner anyway
+    const bufferSafetyTimeout = setTimeout(() => {
+      if (!hasStartedPlayback) {
+        console.warn("[VideoPlayerModal] No playback events fired after 8s — clearing buffering overlay.");
+        setIsBuffering(false);
+      }
+    }, 8000);
 
     // MoviPlayer natively handles HLS streams via its internal wrapper!
     // No need to initialize hls.js manually.
@@ -288,11 +298,13 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
     console.log("[VideoPlayerModal] MoviPlayer source set:", currentUrl);
 
     return () => {
+      clearTimeout(bufferSafetyTimeout);
       videoNode.removeEventListener("canplay", handleCanPlay);
       videoNode.removeEventListener("waiting", handleWaiting);
       videoNode.removeEventListener("playing", handlePlaying);
       videoNode.removeEventListener("error", handleError);
       videoNode.removeEventListener("statechange", handleStateChange);
+      videoNode.removeEventListener("stateChange", handleStateChange);
       if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
