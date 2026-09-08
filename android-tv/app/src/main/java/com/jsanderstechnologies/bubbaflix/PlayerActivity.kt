@@ -163,7 +163,7 @@ class PlayerActivity : AppCompatActivity() {
 
         setupControlClickListeners()
         setupSeekBarListener()
-        fetchProbedMetadata(videoUrl)
+        // fetchProbedMetadata(videoUrl)
         initializeExoPlayer(videoUrl)
 
         btnPlayPause.requestFocus()
@@ -442,56 +442,6 @@ class PlayerActivity : AppCompatActivity() {
         } catch (e: Exception) {
             e.printStackTrace()
         }
-    }
-
-    private fun fetchProbedMetadata(videoUrl: String) {
-        val mediaType = intent.getStringExtra(EXTRA_MEDIA_TYPE) ?: "movie"
-        if (mediaType == "tv") return
-
-        var probeUrl = videoUrl
-        if (videoUrl.contains("/api/transcode")) {
-            try {
-                val uri = Uri.parse(videoUrl)
-                probeUrl = uri.getQueryParameter("url") ?: videoUrl
-            } catch (e: Exception) {
-                probeUrl = videoUrl
-            }
-        }
-
-        val prefs = getSharedPreferences("BubbaFlixTVPrefs", Context.MODE_PRIVATE)
-        val serverBase = prefs.getString("server_url", "https://bubbaflix.sanders-technologies.net") ?: "https://bubbaflix.sanders-technologies.net"
-        val cleanServerBase = serverBase.replace(Regex("""/+$"""), "")
-        val metadataUrl = "$cleanServerBase/api/transcode/metadata?url=${Uri.encode(probeUrl)}"
-
-        val client = OkHttpClient()
-        val request = Request.Builder().url(metadataUrl).build()
-
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                Log.w("PlayerActivity", "Failed to fetch probed metadata: ${e.message}")
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                response.use {
-                    if (response.isSuccessful) {
-                        try {
-                            val body = response.body?.string() ?: ""
-                            val json = JSONObject(body)
-                            val durationSec = json.optDouble("duration", 0.0)
-                            if (durationSec > 0.0) {
-                                runOnUiThread {
-                                    probedDurationMs = (durationSec * 1000).toLong()
-                                    Log.i("PlayerActivity", "Successfully probed media duration: $probedDurationMs ms")
-                                    updateProgress()
-                                }
-                            }
-                        } catch (e: Exception) {
-                            Log.w("PlayerActivity", "Error parsing probed metadata: ${e.message}")
-                        }
-                    }
-                }
-            }
-        })
     }
 
     private fun setupControlClickListeners() {

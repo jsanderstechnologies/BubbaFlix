@@ -114,53 +114,6 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
       setErrorMessage("");
       resetControlsTimeout();
 
-      // Fetch probed media duration from ffprobe metadata endpoint if not Live TV
-      if (mediaType !== "tv" && targetUrl) {
-        let probeUrl = targetUrl;
-        if (targetUrl.includes("/api/transcode")) {
-          try {
-            const urlParams = new URLSearchParams(targetUrl.substring(targetUrl.indexOf("?")));
-            probeUrl = urlParams.get("url") || targetUrl;
-          } catch (e) {
-            probeUrl = targetUrl;
-          }
-        }
-        fetch(`/api/transcode/metadata?url=${encodeURIComponent(probeUrl)}`)
-          .then((res) => res.json())
-          .then((data) => {
-            if (data) {
-              if (data.duration > 0) {
-                console.log("[VideoPlayerModal] Probed media duration using ffprobe:", data.duration);
-                setCustomDuration(data.duration);
-              }
-              if (Array.isArray(data.audioTracks) && data.audioTracks.length > 0) {
-                const formattedAudio = data.audioTracks.map((t) => ({
-                  id: t.index,
-                  name: t.title || t.language || `Audio Track #${t.index}`,
-                  lang: t.language || "eng"
-                }));
-                setAudioTracks(formattedAudio);
-              }
-              if (Array.isArray(data.subtitleTracks) && data.subtitleTracks.length > 0) {
-                const formattedSubs = data.subtitleTracks.map((t) => ({
-                  id: t.index,
-                  name: `${t.title || t.language || "Subtitle"} (${t.codec})`,
-                  lang: t.language || "eng",
-                  embedded: true
-                }));
-                setSubtitles((prev) => {
-                  const externals = prev.filter((s) => !s.embedded);
-                  return [...formattedSubs, ...externals];
-                });
-              }
-            }
-          })
-          .catch((err) => {
-            console.warn("[VideoPlayerModal] ffprobe duration resolve failed:", err.message);
-          });
-      } else {
-        setCustomDuration(0);
-      }
 
       // Fetch TMDB runtime as a fallback
       if (mediaType !== "tv" && tmdbId) {
