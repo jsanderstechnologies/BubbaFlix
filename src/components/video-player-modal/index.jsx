@@ -545,6 +545,7 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
     ? (customDuration > 0 ? customDuration : (tmdbRuntime > 0 ? tmdbRuntime : 0))
     : ((duration > 0 && duration !== Infinity && !isNaN(duration)) ? duration : (customDuration > 0 ? customDuration : (tmdbRuntime > 0 ? tmdbRuntime : 0)));
   const isLiveStream = actualDuration === 0 && (duration === Infinity || isNaN(duration));
+  const currentAbs = currentUrl.includes("/api/transcode") ? transcodedSeekOffset + currentTime : currentTime;
 
   const handleTimeUpdate = () => {
     if (videoRef.current) {
