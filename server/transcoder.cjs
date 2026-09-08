@@ -636,6 +636,7 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
       const isLiveStream = finalMediaUrl.includes("/proxy/ts/stream") || finalMediaUrl.includes("/stream/");
 
       const audioIndex = parsedUrl.query.audio_index;
+      const seekTime = parsedUrl.query.ss;
 
       const ffmpegArgs = [
         "-headers", headersStr,
@@ -643,6 +644,7 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
         "-reconnect_at_eof", "1",
         "-reconnect_streamed", "1",
         "-reconnect_delay_max", "3",
+        ...(seekTime ? ["-ss", seekTime] : []),
         ...(isLiveStream
           ? ["-fflags", "+genpts+discardcorrupt", "-analyzeduration", "1500000", "-probesize", "1500000"]
           : ["-analyzeduration", "3000000", "-probesize", "3000000"]),
