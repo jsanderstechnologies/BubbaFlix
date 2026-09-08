@@ -660,9 +660,17 @@ class PlayerActivity : AppCompatActivity() {
 
     private fun updateProgress() {
         val player = exoPlayer ?: return
-        val isLive = intent.getStringExtra(EXTRA_MEDIA_TYPE) == "tv"
         val current = player.currentPosition
         val buffered = player.bufferedPosition
+
+        val rawDur = player.duration
+        val isTranscoded = intent.getStringExtra(EXTRA_VIDEO_URL)?.contains("/api/transcode") == true
+        val dur = if (isTranscoded) {
+            if (probedDurationMs > 0) probedDurationMs else 0L
+        } else {
+            if (rawDur > 0 && rawDur != androidx.media3.common.C.TIME_UNSET) rawDur else (if (probedDurationMs > 0) probedDurationMs else 0L)
+        }
+        val isLive = dur <= 0L && (rawDur == androidx.media3.common.C.TIME_UNSET || rawDur <= 0L)
 
         if (isLive) {
             val liveEdge = player.duration.coerceAtLeast(player.bufferedPosition.coerceAtLeast(current))
@@ -691,14 +699,6 @@ class PlayerActivity : AppCompatActivity() {
                 txtDuration.setTextColor(android.graphics.Color.parseColor("#4CAF50"))
             }
         } else {
-            val rawDur = player.duration
-            val isTranscoded = intent.getStringExtra(EXTRA_VIDEO_URL)?.contains("/api/transcode") == true
-            val dur = if (isTranscoded) {
-                if (probedDurationMs > 0) probedDurationMs else 0L
-            } else {
-                if (rawDur > 0 && rawDur != androidx.media3.common.C.TIME_UNSET) rawDur else (if (probedDurationMs > 0) probedDurationMs else 0L)
-            }
-
             if (dur > 0) {
                 val progress = ((current * 1000) / dur).toInt()
                 val secondaryProgress = ((buffered * 1000) / dur).toInt()
