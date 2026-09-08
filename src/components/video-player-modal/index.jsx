@@ -56,7 +56,6 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
   const [currentUrl, setCurrentUrl] = useState("");
   const [isPlaying, setIsPlaying] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
-  const [transcodedSeekOffset, setTranscodedSeekOffset] = useState(0);
   const [duration, setDuration] = useState(0);
   const [customDuration, setCustomDuration] = useState(0);
   const [tmdbRuntime, setTmdbRuntime] = useState(0);
@@ -545,7 +544,6 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
     ? (customDuration > 0 ? customDuration : (tmdbRuntime > 0 ? tmdbRuntime : 0))
     : ((duration > 0 && duration !== Infinity && !isNaN(duration)) ? duration : (customDuration > 0 ? customDuration : (tmdbRuntime > 0 ? tmdbRuntime : 0)));
   const isLiveStream = actualDuration === 0 && (duration === Infinity || isNaN(duration));
-  const currentAbs = currentUrl.includes("/api/transcode") ? transcodedSeekOffset + currentTime : currentTime;
 
   const handleTimeUpdate = () => {
     if (videoRef.current) {
@@ -605,43 +603,32 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
   };
 
 
-  const performSeek = (targetTime) => {
-    resetControlsTimeout();
-    if (currentUrl.includes("/api/transcode")) {
-      setIsBuffering(true);
-      setTranscodedSeekOffset(targetTime);
-      setCurrentTime(0);
-      let base = currentUrl.split("&ss=")[0];
-      setCurrentUrl(`${base}&ss=${targetTime}`);
-    } else {
-      if (videoRef.current) {
-        videoRef.current.currentTime = targetTime;
-      }
-    }
-  };
+
 
   const seekRelative = (seconds) => {
     resetControlsTimeout();
     if (!videoRef.current) return;
     const v = videoRef.current;
-    const currentAbs = currentUrl.includes("/api/transcode") ? transcodedSeekOffset + v.currentTime : v.currentTime;
-    const maxSeek = isLiveStream ? Math.max(currentAbs, maxBufferedTime) : (actualDuration || 0);
-    const target = Math.min(Math.max(0, currentAbs + seconds), maxSeek);
-    performSeek(target);
+    const maxSeek = isLiveStream ? Math.max(v.currentTime, maxBufferedTime) : (actualDuration || 0);
+    const target = Math.min(Math.max(0, v.currentTime + seconds), maxSeek);
+    v.currentTime = target;
   };
 
   const jumpToLive = () => {
     resetControlsTimeout();
     if (!videoRef.current) return;
     const target = Math.max(0, maxBufferedTime - 0.5);
-    performSeek(target);
+    videoRef.current.currentTime = target;
+    videoRef.current.play().catch(() => {});
     setIsPlaying(true);
   };
 
   const handleScrubberChange = (e) => {
     resetControlsTimeout();
     const newTime = parseFloat(e.target.value);
-    performSeek(newTime);
+    if (videoRef.current) {
+      videoRef.current.currentTime = newTime;
+    }
   };
 
   const toggleFullscreen = () => {
@@ -694,19 +681,18 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
     >
       <div className="playerWindow">
         <div className="videoWrapper">
-          <video
+          <movi-player
             ref={videoRef}
-            className="videoElement"
-            autoPlay
-            onTimeUpdate={handleTimeUpdate}
-            onEnded={() => {
+            class="videoElement"
+            autoplay="true"
+            ontimeupdate={handleTimeUpdate}
+            onended={() => {
               setIsPlaying(false);
               if (typeof onClose === "function") onClose();
               else if (typeof setShow === "function") setShow(false);
             }}
-            onTouchStart={resetControlsTimeout}
-            onClick={resetControlsTimeout}
-            playsInline
+            src={currentUrl}
+            style={{ width: '100%', height: '100%' }}
           >
             {activeVttUrl && (
               <track
@@ -717,7 +703,7 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
                 default
               />
             )}
-          </video>
+          </movi-player>
         </div>
 
         {hasError && (
@@ -817,7 +803,7 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
           {/* Player Bottom Control Bar */}
           <div className="playerFooter">
             <div className="scrubberRow">
-              <span className="timeDisplay">{formatTime(currentAbs)}</span>
+              <span className="timeDisplay">{formatTime(currentTime)}</span>
               <div className="scrubberWrapper">
                 <div className="trackBackground" />
                 <div
@@ -829,7 +815,7 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
                   style={{
                     width: `${
                       (isLiveStream ? maxBufferedTime : actualDuration) > 0
-                        ? (currentAbs / (isLiveStream ? maxBufferedTime : actualDuration)) * 100
+                        ? (currentTime / (isLiveStream ? maxBufferedTime : actualDuration)) * 100
                         : 0
                     }%`
                   }}
@@ -839,14 +825,14 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
                   type="range"
                   min={0}
                   max={isLiveStream ? Math.max(10, maxBufferedTime) : (actualDuration || 100)}
-                  value={currentAbs}
+                  value={currentTime}
                   onChange={handleScrubberChange}
                   className="timelineScrubber"
                   tabIndex="0"
                 />
               </div>
               {isLiveStream ? (() => {
-                const behindLiveSecs = Math.max(0, maxBufferedTime - currentAbs);
+                const behindLiveSecs = Math.max(0, maxBufferedTime - currentTime);
                 return behindLiveSecs > 4 ? (
                   <button
                     className="liveBadgeBtn behind"

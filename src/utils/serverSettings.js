@@ -35,13 +35,9 @@ export const isAndroidTvClient = () => {
 
 export const getTranscodedStreamUrl = (url) => {
   if (!url) return "";
-  if (url.includes("/api/transcode")) return url;
-  // Devices (Android TV, Tablets, Mobile, Native App) perform direct hardware decoding!
-  if (isAndroidTvClient() || (typeof window !== "undefined" && window.AndroidPlayer)) {
-    console.log("[Direct Stream Router] Bypassing server transcoding for native hardware playback:", url);
-    return url;
-  }
-  return `/api/transcode?url=${encodeURIComponent(url)}`;
+  if (url.includes("/api/transcode")) return url.split("?url=")[1] || url;
+  console.log("[Direct Stream Router] Bypassing server transcoding for native hardware playback:", url);
+  return url;
 };
 
 export const saveServerUrl = (url) => {
