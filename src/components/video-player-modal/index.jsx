@@ -90,7 +90,7 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
 
   useEffect(() => {
     if (show) {
-      let targetUrl = rawUrl || videoUrl || streamUrl || "";
+      let targetUrl = getTranscodedStreamUrl(rawUrl || videoUrl || streamUrl || "");
 
       // Pre-fetch TMDB logo then handle native player or web player setup
       loadTmdbLogo().then((fetchedLogo) => {

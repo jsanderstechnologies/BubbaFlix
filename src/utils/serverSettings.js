@@ -41,7 +41,7 @@ export const getTranscodedStreamUrl = (url) => {
     console.log("[Direct Stream Router] Bypassing server transcoding for native hardware playback:", url);
     return url;
   }
-  return url;
+  return `/api/transcode?url=${encodeURIComponent(url)}`;
 };
 
 export const saveServerUrl = (url) => {
