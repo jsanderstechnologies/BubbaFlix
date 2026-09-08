@@ -2,6 +2,8 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import Hls from "hls.js";
+import "movi-player";
+
 import {
   FiArrowLeft,
   FiPlay,
@@ -239,50 +241,46 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
     }
 
     // MoviPlayer handles autoplay and buffering internally via its WASM engine.
-    // Do NOT call videoNode.play() or setAttribute("preload") — movi-player is
-    // not an HTMLVideoElement and will ignore/throw on those calls.
-
+    // IMPORTANT: movi-player does NOT fire playing/waiting/seeking as DOM events.
+    // Only statechange (lowercase) is emitted with a PlayerState string in e.detail.
+    // Standard play, pause, ended, loadeddata DO fire normally.
     let hasStartedPlayback = false;
 
-    const handleCanPlay = () => {
-      if (!hasStartedPlayback) {
-        console.log("[VideoPlayerModal] canplay event fired.");
-        hasStartedPlayback = true;
-        setIsBuffering(false);
-      }
-    };
-
-    const handleWaiting = () => {
-      setIsBuffering(true);
-    };
-
-    const handlePlaying = () => {
+    const handleLoadedData = () => {
+      console.log("[VideoPlayerModal] movi-player loadeddata — first frame ready.");
       hasStartedPlayback = true;
       setIsBuffering(false);
     };
 
-    const handleError = () => {
+    const handlePlay = () => {
+      hasStartedPlayback = true;
       setIsBuffering(false);
     };
 
-    // MoviPlayer fires stateChange (camelCase) — DOM also fires it lowercased.
-    // Listen to both to be safe.
+    const handleError = (e) => {
+      console.warn("[VideoPlayerModal] movi-player error:", e.detail || e);
+      setIsBuffering(false);
+    };
+
+    // statechange is the primary event — detail is a PlayerState string:
+    // idle | loading | ready | playing | paused | seeking | buffering | ended | error
     const handleStateChange = (e) => {
       const state = (e.detail || "").toLowerCase();
+      console.log("[VideoPlayerModal] statechange:", state);
       if (state === "playing" || state === "ready" || state === "paused") {
         hasStartedPlayback = true;
         setIsBuffering(false);
-      } else if (state === "buffering" || state === "seeking" || state === "loading") {
+      } else if (state === "buffering" || state === "loading") {
         setIsBuffering(true);
+      } else if (state === "error") {
+        setIsBuffering(false);
       }
     };
 
-    videoNode.addEventListener("canplay", handleCanPlay);
-    videoNode.addEventListener("waiting", handleWaiting);
-    videoNode.addEventListener("playing", handlePlaying);
+    videoNode.addEventListener("loadeddata", handleLoadedData);
+    videoNode.addEventListener("play", handlePlay);
     videoNode.addEventListener("error", handleError);
     videoNode.addEventListener("statechange", handleStateChange);
-    videoNode.addEventListener("stateChange", handleStateChange);
 
     // Safety fallback: if no events fire within 8s, clear the spinner anyway
     const bufferSafetyTimeout = setTimeout(() => {
@@ -292,6 +290,7 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
       }
     }, 8000);
 
+
     // MoviPlayer natively handles HLS streams via its internal wrapper!
     // No need to initialize hls.js manually.
     videoNode.src = currentUrl;
@@ -299,12 +298,10 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
 
     return () => {
       clearTimeout(bufferSafetyTimeout);
-      videoNode.removeEventListener("canplay", handleCanPlay);
-      videoNode.removeEventListener("waiting", handleWaiting);
-      videoNode.removeEventListener("playing", handlePlaying);
+      videoNode.removeEventListener("loadeddata", handleLoadedData);
+      videoNode.removeEventListener("play", handlePlay);
       videoNode.removeEventListener("error", handleError);
       videoNode.removeEventListener("statechange", handleStateChange);
-      videoNode.removeEventListener("stateChange", handleStateChange);
       if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
