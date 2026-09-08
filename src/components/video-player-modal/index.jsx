@@ -562,7 +562,7 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
   const actualDuration = isTranscoded
     ? (customDuration > 0 ? customDuration : (tmdbRuntime > 0 ? tmdbRuntime : 0))
     : ((duration > 0 && duration !== Infinity && !isNaN(duration)) ? duration : (customDuration > 0 ? customDuration : (tmdbRuntime > 0 ? tmdbRuntime : 0)));
-  const isLiveStream = mediaType === "tv" || (actualDuration === 0 && (duration === Infinity || isNaN(duration)));
+  const isLiveStream = actualDuration === 0 && (duration === Infinity || isNaN(duration));
 
   const handleTimeUpdate = () => {
     if (videoRef.current) {
