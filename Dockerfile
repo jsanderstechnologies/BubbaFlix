@@ -13,17 +13,13 @@ COPY . .
 # Build production bundle
 RUN npm run build
 
-# Stage 2: Serve application using Nginx + Native Node.js Backend + FFmpeg & VLC Transcoder Engine
+# Stage 2: Serve application using Nginx + Native Node.js Backend
 FROM nginx:alpine
 
-# Install Node.js runtime, FFmpeg, VLC, and universal GPU hardware acceleration drivers (Intel QSV/VAAPI, AMD VAAPI)
-RUN apk add --no-cache nodejs ffmpeg vlc libva libva-intel-driver intel-media-driver mesa-va-gallium mesa-dri-gallium
+# Install Node.js runtime
+RUN apk add --no-cache nodejs
 
-# Conditionally install Intel QSV hardware acceleration packages only on x86_64 architectures (to support multi-arch builds)
-ARG TARGETPLATFORM
-RUN if [ "$TARGETPLATFORM" = "linux/amd64" ] || [ "$(uname -m)" = "x86_64" ]; then \
-      apk add --no-cache libmfx intel-media-sdk libvpl || true; \
-    fi
+
 
 WORKDIR /app
 
