@@ -35,9 +35,18 @@ export const isAndroidTvClient = () => {
 
 export const getTranscodedStreamUrl = (url) => {
   if (!url) return "";
+  // Unwrap any old /api/transcode wrapper
   if (url.includes("/api/transcode")) return url.split("?url=")[1] || url;
-  console.log("[Direct Stream Router] Bypassing server transcoding for native hardware playback:", url);
-  return url;
+  // Android TV uses ExoPlayer which handles CORS natively — no proxy needed
+  if (isAndroidTvClient()) {
+    console.log("[Direct Stream Router] Android TV: bypassing proxy for native ExoPlayer:", url);
+    return url;
+  }
+  // Web clients: route through /api/proxy to add CORS headers for MoviPlayer WASM
+  const serverBase = getServerUrl();
+  const proxyUrl = `${serverBase}/api/proxy?url=${encodeURIComponent(url)}`;
+  console.log("[Direct Stream Router] Web: routing through CORS proxy:", proxyUrl.substring(0, 100) + "...");
+  return proxyUrl;
 };
 
 export const saveServerUrl = (url) => {

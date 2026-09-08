@@ -240,6 +240,76 @@ const server = http.createServer((req, res) => {
     });
   }
 
+  // CORS-transparent Stream Proxy Endpoint
+  // Allows MoviPlayer (WASM) to fetch video bytes from CDNs that don't send CORS headers.
+  // Pure pipe-through — zero transcoding, no FFmpeg.
+  if ((cleanPath === "/api/proxy" || cleanPath === "/proxy") && req.method === "GET") {
+    const targetUrl = parsedUrl.searchParams.get("url");
+    if (!targetUrl || !targetUrl.startsWith("http")) {
+      return sendJson(res, 400, { error: "Missing or invalid 'url' parameter." });
+    }
+
+    try {
+      const parsed = new URL(targetUrl);
+      const isHttps = parsed.protocol === "https:";
+      const httpModule = isHttps ? require("https") : require("http");
+
+      const proxyHeaders = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Accept": "*/*",
+        "Accept-Language": "en-US,en;q=0.9",
+      };
+
+      // Forward Range header if present (needed for seeking in MoviPlayer)
+      if (req.headers["range"]) {
+        proxyHeaders["Range"] = req.headers["range"];
+      }
+
+      logMessage(`[Stream Proxy] Forwarding request for [${initiator.initiatorComponent}] (${initiator.ip}): ${targetUrl.substring(0, 100)}...`);
+
+      const upstream = httpModule.request(targetUrl, {
+        method: "GET",
+        headers: proxyHeaders,
+        rejectUnauthorized: false,
+        timeout: 15000,
+      }, (upstreamRes) => {
+        const responseHeaders = {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Headers": "Range, Content-Type",
+          "Access-Control-Expose-Headers": "Content-Range, Content-Length, Accept-Ranges",
+        };
+
+        // Forward relevant upstream headers
+        const forwardHeaders = [
+          "content-type", "content-length", "content-range",
+          "accept-ranges", "last-modified", "etag"
+        ];
+        for (const h of forwardHeaders) {
+          if (upstreamRes.headers[h]) {
+            responseHeaders[h] = upstreamRes.headers[h];
+          }
+        }
+
+        res.writeHead(upstreamRes.statusCode || 200, responseHeaders);
+        upstreamRes.pipe(res);
+        req.on("close", () => upstream.destroy());
+      });
+
+      upstream.on("error", (err) => {
+        logMessage(`[Stream Proxy Error] ${err.message}`, true);
+        if (!res.headersSent) {
+          sendJson(res, 502, { error: "Upstream stream error." });
+        }
+      });
+
+      upstream.end();
+    } catch (err) {
+      logMessage(`[Stream Proxy Exception] ${err.message}`, true);
+      if (!res.headersSent) sendJson(res, 500, { error: err.message });
+    }
+    return;
+  }
+
   // GET Settings API
   if ((cleanPath === "/api/settings" || cleanPath === "/settings") && req.method === "GET") {
     const settings = loadServerSettings();
