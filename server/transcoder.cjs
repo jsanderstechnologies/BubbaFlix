@@ -206,6 +206,40 @@ const sendJson = (res, statusCode, data) => {
 };
 
 
+const server = http.createServer((req, res) => {
+  const startTime = Date.now();
+  const parsedUrl = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+  parsedUrl.query = Object.fromEntries(parsedUrl.searchParams);
+  const rawPath = (parsedUrl.pathname || "/") + (parsedUrl.search || "");
+  const rawClean = parsedUrl.pathname || "/";
+  const cleanPath = rawClean.length > 1 && rawClean.endsWith("/") ? rawClean.slice(0, -1) : rawClean;
+  const initiator = getRequestInitiator(req);
+
+  logMessage(`[HTTP Request] ${req.method} ${rawPath} | Initiator: [${initiator.initiatorComponent}] | Client IP: ${initiator.ip} | Referer: ${initiator.referer} | User-Agent: ${initiator.userAgent}`);
+
+  if (req.method === "OPTIONS") {
+    res.writeHead(204, {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, X-API-Key",
+    });
+    return res.end();
+  }
+
+  // Local Network Server Discovery Endpoint
+  if ((cleanPath === "/api/discover" || cleanPath === "/discover") && req.method === "GET") {
+    const localIp = getLocalIpAddress();
+    logMessage(`[Server Discovery] Responded to [${initiator.initiatorComponent}] (${initiator.ip})`);
+    return sendJson(res, 200, {
+      status: "ok",
+      service: "bubbaflix-server",
+      name: "BubbaFlix Media Server",
+      port: 5150,
+      ip: localIp,
+      url: `http://${localIp}:5150`
+    });
+  }
+
   // GET Settings API
   if ((cleanPath === "/api/settings" || cleanPath === "/settings") && req.method === "GET") {
     const settings = loadServerSettings();
