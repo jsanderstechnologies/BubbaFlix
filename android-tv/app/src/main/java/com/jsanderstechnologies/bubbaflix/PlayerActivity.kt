@@ -289,8 +289,7 @@ class PlayerActivity : AppCompatActivity() {
 
         val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
 
-        val isLiveStream = (intent.getStringExtra(EXTRA_MEDIA_TYPE) == "tv") ||
-                videoUrl.contains("/proxy/ts/") ||
+        val isLiveStream = videoUrl.contains("/proxy/ts/") ||
                 videoUrl.contains("/transcode") ||
                 videoUrl.contains("/live/") ||
                 videoUrl.endsWith(".ts")
@@ -615,15 +614,15 @@ class PlayerActivity : AppCompatActivity() {
         seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
                 if (fromUser && exoPlayer != null) {
-                    val isLive = intent.getStringExtra(EXTRA_MEDIA_TYPE) == "tv"
+                    val rawDur = exoPlayer!!.duration
+                    val isTranscoded = intent.getStringExtra(EXTRA_VIDEO_URL)?.contains("/api/transcode") == true
+                    val duration = if (isTranscoded) {
+                        if (probedDurationMs > 0) probedDurationMs else 0L
+                    } else {
+                        if (rawDur > 0 && rawDur != androidx.media3.common.C.TIME_UNSET) rawDur else (if (probedDurationMs > 0) probedDurationMs else 0L)
+                    }
+                    val isLive = duration <= 0L && (rawDur == androidx.media3.common.C.TIME_UNSET || rawDur <= 0L)
                     if (!isLive) {
-                        val rawDur = exoPlayer!!.duration
-                        val isTranscoded = intent.getStringExtra(EXTRA_VIDEO_URL)?.contains("/api/transcode") == true
-                        val duration = if (isTranscoded) {
-                            if (probedDurationMs > 0) probedDurationMs else 0L
-                        } else {
-                            if (rawDur > 0 && rawDur != androidx.media3.common.C.TIME_UNSET) rawDur else (if (probedDurationMs > 0) probedDurationMs else 0L)
-                        }
                         if (duration > 0) {
                             val newPos = (duration * progress) / 1000
                             txtCurrentTime.text = formatTime(newPos)
@@ -638,15 +637,15 @@ class PlayerActivity : AppCompatActivity() {
 
             override fun onStopTrackingTouch(sb: SeekBar?) {
                 if (exoPlayer != null && sb != null) {
-                    val isLive = intent.getStringExtra(EXTRA_MEDIA_TYPE) == "tv"
+                    val rawDur = exoPlayer!!.duration
+                    val isTranscoded = intent.getStringExtra(EXTRA_VIDEO_URL)?.contains("/api/transcode") == true
+                    val duration = if (isTranscoded) {
+                        if (probedDurationMs > 0) probedDurationMs else 0L
+                    } else {
+                        if (rawDur > 0 && rawDur != androidx.media3.common.C.TIME_UNSET) rawDur else (if (probedDurationMs > 0) probedDurationMs else 0L)
+                    }
+                    val isLive = duration <= 0L && (rawDur == androidx.media3.common.C.TIME_UNSET || rawDur <= 0L)
                     if (!isLive) {
-                        val rawDur = exoPlayer!!.duration
-                        val isTranscoded = intent.getStringExtra(EXTRA_VIDEO_URL)?.contains("/api/transcode") == true
-                        val duration = if (isTranscoded) {
-                            if (probedDurationMs > 0) probedDurationMs else 0L
-                        } else {
-                            if (rawDur > 0 && rawDur != androidx.media3.common.C.TIME_UNSET) rawDur else (if (probedDurationMs > 0) probedDurationMs else 0L)
-                        }
                         if (duration > 0) {
                             val newPos = (duration * sb.progress) / 1000
                             exoPlayer!!.seekTo(newPos)
@@ -718,7 +717,6 @@ class PlayerActivity : AppCompatActivity() {
     private fun seekRelative(offsetMs: Long) {
         resetControlsTimeout()
         exoPlayer?.let { player ->
-            val isLive = intent.getStringExtra(EXTRA_MEDIA_TYPE) == "tv"
             val rawDur = player.duration
             val isTranscoded = intent.getStringExtra(EXTRA_VIDEO_URL)?.contains("/api/transcode") == true
             val dur = if (isTranscoded) {
@@ -726,6 +724,7 @@ class PlayerActivity : AppCompatActivity() {
             } else {
                 if (rawDur > 0 && rawDur != androidx.media3.common.C.TIME_UNSET) rawDur else (if (probedDurationMs > 0) probedDurationMs else 0L)
             }
+            val isLive = dur <= 0L && (rawDur == androidx.media3.common.C.TIME_UNSET || rawDur <= 0L)
             val maxPos = if (isLive) player.bufferedPosition.coerceAtLeast(player.currentPosition) else dur.coerceAtLeast(0L)
             val newPos = (player.currentPosition + offsetMs).coerceIn(0L, if (maxPos > 0) maxPos else Long.MAX_VALUE)
             player.seekTo(newPos)
