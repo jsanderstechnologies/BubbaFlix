@@ -388,7 +388,6 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
       });
     } else {
       videoNode.src = currentUrl;
-      videoNode.load(); // Explicitly start loading direct stream
       console.log("[VideoPlayerModal] Native media source set. Pre-buffering...");
 
       // Check for native HTML5 audio tracks if supported by browser
