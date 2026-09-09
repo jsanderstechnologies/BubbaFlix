@@ -22,30 +22,41 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
   const [actualStreamUrl, setActualStreamUrl] = useState("");
   const controlsTimeoutRef = useRef(null);
 
+  const [audioTracks, setAudioTracks] = useState([]);
+  const [subtitleTracks, setSubtitleTracks] = useState([]);
+  const [selectedAudioIndex, setSelectedAudioIndex] = useState(null);
+  const [selectedSubtitleIndex, setSelectedSubtitleIndex] = useState(null);
+  const [showAudioMenu, setShowAudioMenu] = useState(false);
+  const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
+
   useEffect(() => {
-    // Check for saved resume progress
     const saved = getWatchProgress(tmdbId, mediaType, seasonNum, episodeNum);
+    let startOffset = 0;
     if (saved && saved.currentTime > 15 && (saved.duration - saved.currentTime) > 60) {
-      setSeekOffset(saved.currentTime);
-      setCurrentTime(saved.currentTime);
-      const urlWithSeek = streamUrl.includes("?") ? `${streamUrl}&ss=${saved.currentTime}` : `${streamUrl}?ss=${saved.currentTime}`;
-      setActualStreamUrl(urlWithSeek);
-    } else {
-      setActualStreamUrl(streamUrl);
+      startOffset = saved.currentTime;
     }
+    setSeekOffset(startOffset);
+    setCurrentTime(startOffset);
+    
+    let targetUrl = streamUrl;
+    if (startOffset > 0) {
+      targetUrl = targetUrl.includes("?") ? `${targetUrl}&ss=${startOffset}` : `${targetUrl}?ss=${startOffset}`;
+    }
+    setActualStreamUrl(targetUrl);
   }, [streamUrl, tmdbId, mediaType, seasonNum, episodeNum]);
 
   useEffect(() => {
-    // Fetch precise video duration from the transcoder metadata API
     const fetchMetadata = async () => {
       try {
         const serverBase = getServerUrl();
         const res = await axios.get(`${serverBase}/api/transcode/metadata?url=${encodeURIComponent(rawUrl)}`, { timeout: 10000 });
-        if (res.data?.duration) {
-          setDuration(res.data.duration);
+        if (res.data) {
+          if (res.data.duration) setDuration(res.data.duration);
+          if (res.data.audioTracks) setAudioTracks(res.data.audioTracks);
+          if (res.data.subtitleTracks) setSubtitleTracks(res.data.subtitleTracks);
         }
       } catch (err) {
-        console.warn("[CustomTranscodePlayer] Failed to probe video duration:", err.message);
+        console.warn("[CustomTranscodePlayer] Failed to probe metadata:", err.message);
       }
     };
     fetchMetadata();
@@ -69,9 +80,22 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
       const realTime = seekOffset + videoRef.current.currentTime;
       setCurrentTime(realTime);
       if (onTimeUpdate) {
-        // Pass a mock video object to the parent so it saves the correct seeked progress
         onTimeUpdate({ currentTime: realTime, duration });
       }
+    }
+  };
+
+  const executeSeek = (targetTime, audioIndex = selectedAudioIndex) => {
+    setSeekOffset(targetTime);
+    setCurrentTime(targetTime);
+    
+    let targetUrl = streamUrl;
+    if (targetTime > 0) targetUrl += (targetUrl.includes("?") ? "&" : "?") + `ss=${targetTime}`;
+    if (audioIndex !== null) targetUrl += (targetUrl.includes("?") ? "&" : "?") + `audio_index=${audioIndex}`;
+    
+    if (videoRef.current) {
+      videoRef.current.src = targetUrl;
+      videoRef.current.play();
     }
   };
 
@@ -80,17 +104,7 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
     const rect = e.currentTarget.getBoundingClientRect();
     const pos = (e.clientX - rect.left) / rect.width;
     const targetTime = pos * duration;
-    
-    setSeekOffset(targetTime);
-    setCurrentTime(targetTime);
-    
-    // The only way to seek a live FFmpeg pipe is to restart it with -ss
-    const seekUrl = streamUrl.includes("?") 
-      ? `${streamUrl}&ss=${targetTime}` 
-      : `${streamUrl}?ss=${targetTime}`;
-      
-    videoRef.current.src = seekUrl;
-    videoRef.current.play();
+    executeSeek(targetTime);
   };
 
   const handleRelativeSeek = (seconds) => {
@@ -98,17 +112,13 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
     let targetTime = currentTime + seconds;
     if (targetTime < 0) targetTime = 0;
     if (targetTime > duration) targetTime = duration;
+    executeSeek(targetTime);
+  };
 
-    setSeekOffset(targetTime);
-    setCurrentTime(targetTime);
-    
-    // Restart FFmpeg pipe at new offset
-    const seekUrl = streamUrl.includes("?") 
-      ? `${streamUrl}&ss=${targetTime}` 
-      : `${streamUrl}?ss=${targetTime}`;
-      
-    videoRef.current.src = seekUrl;
-    videoRef.current.play();
+  const handleAudioTrackChange = (index) => {
+    setSelectedAudioIndex(index);
+    setShowAudioMenu(false);
+    executeSeek(currentTime, index);
   };
 
   const togglePlay = () => {
@@ -144,7 +154,18 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
           onPlay={() => setIsPlaying(true)}
           onPause={() => setIsPlaying(false)}
           style={{ width: '100%', height: '100%', outline: 'none' }}
-        />
+          crossOrigin="anonymous"
+        >
+          {selectedSubtitleIndex !== null && (
+            <track 
+              kind="subtitles" 
+              src={`${getServerUrl()}/api/transcode/subtitle?url=${encodeURIComponent(rawUrl)}&index=${selectedSubtitleIndex}`} 
+              srcLang="en" 
+              label="Subtitle" 
+              default 
+            />
+          )}
+        </video>
       )}
       
       <div 
@@ -157,8 +178,9 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
           opacity: showControls ? 1 : 0, pointerEvents: showControls ? 'auto' : 'none'
         }}
       >
-        <div style={{ paddingBottom: '10px', fontSize: '18px', fontWeight: 'bold', textShadow: '1px 1px 2px black' }}>
-          {title}
+        <div style={{ paddingBottom: '10px', fontSize: '18px', fontWeight: 'bold', textShadow: '1px 1px 2px black', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>{title}</span>
+          <span style={{ fontSize: '14px', color: '#ccc', fontWeight: 'normal', cursor: 'pointer', padding: '5px', border: '1px solid #555', borderRadius: '4px', background: 'rgba(0,0,0,0.5)' }} title="Transcoded via FFmpeg from source file">ℹ️ Info</span>
         </div>
         
         <div className="progress-bar-container" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
@@ -198,9 +220,54 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
               30s ⏩
             </button>
           </div>
-          <button onClick={handleToggleFullscreen} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '20px' }}>
-            ⛶
-          </button>
+
+          <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+            {audioTracks.length > 1 && (
+              <div style={{ position: 'relative' }}>
+                {showAudioMenu && (
+                  <div style={{ position: 'absolute', bottom: '35px', right: '-10px', background: 'rgba(20,20,20,0.95)', padding: '10px', borderRadius: '8px', minWidth: '150px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                    <div style={{ fontSize: '12px', color: '#aaa', paddingBottom: '5px', borderBottom: '1px solid #444', marginBottom: '5px' }}>Audio Tracks</div>
+                    <button onClick={() => handleAudioTrackChange(null)} style={{ background: 'none', border: 'none', color: selectedAudioIndex === null ? '#E50914' : 'white', cursor: 'pointer', textAlign: 'left', fontSize: '14px', padding: '5px' }}>
+                      Default Track
+                    </button>
+                    {audioTracks.map(t => (
+                      <button key={t.index} onClick={() => handleAudioTrackChange(t.index)} style={{ background: 'none', border: 'none', color: selectedAudioIndex === t.index ? '#E50914' : 'white', cursor: 'pointer', textAlign: 'left', fontSize: '14px', padding: '5px' }}>
+                        {t.title} ({t.language})
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <button onClick={() => { setShowAudioMenu(!showAudioMenu); setShowSubtitleMenu(false); }} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '16px' }}>
+                  🔊 Audio
+                </button>
+              </div>
+            )}
+            
+            {subtitleTracks.length > 0 && (
+              <div style={{ position: 'relative' }}>
+                {showSubtitleMenu && (
+                  <div style={{ position: 'absolute', bottom: '35px', right: '-10px', background: 'rgba(20,20,20,0.95)', padding: '10px', borderRadius: '8px', minWidth: '150px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                    <div style={{ fontSize: '12px', color: '#aaa', paddingBottom: '5px', borderBottom: '1px solid #444', marginBottom: '5px' }}>Subtitles (CC)</div>
+                    <button onClick={() => { setSelectedSubtitleIndex(null); setShowSubtitleMenu(false); }} style={{ background: 'none', border: 'none', color: selectedSubtitleIndex === null ? '#E50914' : 'white', cursor: 'pointer', textAlign: 'left', fontSize: '14px', padding: '5px' }}>
+                      Off
+                    </button>
+                    {subtitleTracks.map(t => (
+                      <button key={t.index} onClick={() => { setSelectedSubtitleIndex(t.index); setShowSubtitleMenu(false); }} style={{ background: 'none', border: 'none', color: selectedSubtitleIndex === t.index ? '#E50914' : 'white', cursor: 'pointer', textAlign: 'left', fontSize: '14px', padding: '5px' }}>
+                        {t.title} ({t.language})
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <button onClick={() => { setShowSubtitleMenu(!showSubtitleMenu); setShowAudioMenu(false); }} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold' }}>
+                  CC
+                </button>
+              </div>
+            )}
+
+            <button onClick={handleToggleFullscreen} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '20px' }}>
+              ⛶
+            </button>
+          </div>
         </div>
       </div>
     </div>
