@@ -25,10 +25,12 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
 
   const [audioTracks, setAudioTracks] = useState([]);
   const [subtitleTracks, setSubtitleTracks] = useState([]);
+  const [chapters, setChapters] = useState([]);
   const [selectedAudioIndex, setSelectedAudioIndex] = useState(null);
   const [selectedSubtitleIndex, setSelectedSubtitleIndex] = useState(null);
   const [showAudioMenu, setShowAudioMenu] = useState(false);
   const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
+  const [showChapterMenu, setShowChapterMenu] = useState(false);
 
   useEffect(() => {
     const saved = getWatchProgress(tmdbId, mediaType, seasonNum, episodeNum);
@@ -55,6 +57,7 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
           if (res.data.duration) setDuration(res.data.duration);
           if (res.data.audioTracks) setAudioTracks(res.data.audioTracks);
           if (res.data.subtitleTracks) setSubtitleTracks(res.data.subtitleTracks);
+          if (res.data.chapters) setChapters(res.data.chapters);
         }
       } catch (err) {
         console.warn("[CustomTranscodePlayer] Failed to probe metadata:", err.message);
@@ -202,17 +205,28 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
               cursor: 'pointer', borderRadius: '4px', position: 'relative'
             }}
           >
+            {chapters.map(chap => (
+              <div 
+                key={chap.id}
+                style={{
+                  position: 'absolute', top: 0, bottom: 0,
+                  left: `${duration ? (chap.start_time / duration) * 100 : 0}%`,
+                  width: '2px', background: 'rgba(255,255,255,0.8)', zIndex: 3
+                }}
+                title={chap.title}
+              />
+            ))}
             <div className="buffered-filled" style={{
               position: 'absolute', top: 0, left: 0,
               width: `${duration ? (bufferedAmount / duration) * 100 : 0}%`,
               height: '100%', background: 'rgba(255,255,255,0.4)', borderRadius: '4px',
-              transition: 'width 0.2s linear'
+              transition: 'width 0.2s linear', zIndex: 1
             }} />
             <div className="progress-filled" style={{
               position: 'absolute', top: 0, left: 0,
               width: `${duration ? (currentTime / duration) * 100 : 0}%`,
               height: '100%', background: '#E50914', borderRadius: '4px',
-              transition: 'width 0.1s linear'
+              transition: 'width 0.1s linear', zIndex: 2
             }} />
           </div>
           <span style={{ fontSize: '14px', fontFamily: 'monospace' }}>{formatTime(duration)}</span>
@@ -238,10 +252,28 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
           </div>
 
           <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+            {chapters.length > 0 && (
+              <div style={{ position: 'relative' }}>
+                {showChapterMenu && (
+                  <div style={{ position: 'absolute', bottom: '35px', right: '-10px', background: 'rgba(20,20,20,0.95)', padding: '10px', borderRadius: '8px', minWidth: '200px', maxHeight: '300px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '5px', zIndex: 100 }}>
+                    <div style={{ fontSize: '12px', color: '#aaa', paddingBottom: '5px', borderBottom: '1px solid #444', marginBottom: '5px' }}>Chapters</div>
+                    {chapters.map(chap => (
+                      <button key={chap.id} onClick={() => { executeSeek(chap.start_time); setShowChapterMenu(false); }} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', textAlign: 'left', fontSize: '14px', padding: '5px' }}>
+                        {formatTime(chap.start_time)} - {chap.title}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <button onClick={() => { setShowChapterMenu(!showChapterMenu); setShowAudioMenu(false); setShowSubtitleMenu(false); }} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '16px' }}>
+                  📑 Chapters
+                </button>
+              </div>
+            )}
+
             {audioTracks.length > 1 && (
               <div style={{ position: 'relative' }}>
                 {showAudioMenu && (
-                  <div style={{ position: 'absolute', bottom: '35px', right: '-10px', background: 'rgba(20,20,20,0.95)', padding: '10px', borderRadius: '8px', minWidth: '150px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                  <div style={{ position: 'absolute', bottom: '35px', right: '-10px', background: 'rgba(20,20,20,0.95)', padding: '10px', borderRadius: '8px', minWidth: '150px', display: 'flex', flexDirection: 'column', gap: '5px', zIndex: 100 }}>
                     <div style={{ fontSize: '12px', color: '#aaa', paddingBottom: '5px', borderBottom: '1px solid #444', marginBottom: '5px' }}>Audio Tracks</div>
                     <button onClick={() => handleAudioTrackChange(null)} style={{ background: 'none', border: 'none', color: selectedAudioIndex === null ? '#E50914' : 'white', cursor: 'pointer', textAlign: 'left', fontSize: '14px', padding: '5px' }}>
                       Default Track
@@ -253,7 +285,7 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
                     ))}
                   </div>
                 )}
-                <button onClick={() => { setShowAudioMenu(!showAudioMenu); setShowSubtitleMenu(false); }} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '16px' }}>
+                <button onClick={() => { setShowAudioMenu(!showAudioMenu); setShowSubtitleMenu(false); setShowChapterMenu(false); }} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '16px' }}>
                   🔊 Audio
                 </button>
               </div>
@@ -262,7 +294,7 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
             {subtitleTracks.length > 0 && (
               <div style={{ position: 'relative' }}>
                 {showSubtitleMenu && (
-                  <div style={{ position: 'absolute', bottom: '35px', right: '-10px', background: 'rgba(20,20,20,0.95)', padding: '10px', borderRadius: '8px', minWidth: '150px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                  <div style={{ position: 'absolute', bottom: '35px', right: '-10px', background: 'rgba(20,20,20,0.95)', padding: '10px', borderRadius: '8px', minWidth: '150px', display: 'flex', flexDirection: 'column', gap: '5px', zIndex: 100 }}>
                     <div style={{ fontSize: '12px', color: '#aaa', paddingBottom: '5px', borderBottom: '1px solid #444', marginBottom: '5px' }}>Subtitles (CC)</div>
                     <button onClick={() => { setSelectedSubtitleIndex(null); setShowSubtitleMenu(false); }} style={{ background: 'none', border: 'none', color: selectedSubtitleIndex === null ? '#E50914' : 'white', cursor: 'pointer', textAlign: 'left', fontSize: '14px', padding: '5px' }}>
                       Off
@@ -274,7 +306,7 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
                     ))}
                   </div>
                 )}
-                <button onClick={() => { setShowSubtitleMenu(!showSubtitleMenu); setShowAudioMenu(false); }} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold' }}>
+                <button onClick={() => { setShowSubtitleMenu(!showSubtitleMenu); setShowAudioMenu(false); setShowChapterMenu(false); }} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold' }}>
                   CC
                 </button>
               </div>

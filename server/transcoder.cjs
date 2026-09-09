@@ -510,7 +510,7 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     const { exec } = require("child_process");
     const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
     // Run ffprobe with standard user-agent headers to prevent CDN 403 blocks
-    const probeCmd = `ffprobe -headers "User-Agent: ${userAgent}\r\n" -v error -show_entries format=duration:stream=index,codec_type,codec_name,tags -of json "${cleanedTargetUrl.replace(/"/g, '\\"')}"`;
+    const probeCmd = `ffprobe -headers "User-Agent: ${userAgent}\r\n" -v error -show_entries format=duration:stream=index,codec_type,codec_name,tags -show_chapters -of json "${cleanedTargetUrl.replace(/"/g, '\\"')}"`;
     
     exec(probeCmd, { timeout: 12000 }, (error, stdout, stderr) => {
       if (error) {
@@ -523,6 +523,18 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
         
         const audioTracks = [];
         const subtitleTracks = [];
+        const chapters = [];
+
+        if (Array.isArray(data.chapters)) {
+          data.chapters.forEach((chap) => {
+            chapters.push({
+              id: chap.id,
+              start_time: parseFloat(chap.start_time),
+              end_time: parseFloat(chap.end_time),
+              title: chap.tags?.title || `Chapter ${chapters.length + 1}`
+            });
+          });
+        }
 
         if (Array.isArray(data.streams)) {
           data.streams.forEach((stream) => {
@@ -544,7 +556,8 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
         return sendJson(res, 200, {
           duration: isNaN(duration) ? 0 : duration,
           audioTracks,
-          subtitleTracks
+          subtitleTracks,
+          chapters
         });
       } catch (err) {
         return sendJson(res, 500, { error: "Failed to parse ffprobe output", details: err.message });
