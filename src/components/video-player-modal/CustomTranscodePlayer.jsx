@@ -59,11 +59,15 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
         const res = await axios.get(`${serverBase}/api/transcode/metadata?url=${encodeURIComponent(rawUrl)}`, { timeout: 10000 });
         if (res.data) {
           if (res.data.duration) setDuration(res.data.duration);
-          if (res.data.subtitleTracks) setSubtitleTracks(res.data.subtitleTracks);
+          if (res.data.subtitleTracks) {
+            const engSubs = res.data.subtitleTracks.filter(t => !t.language || t.language === 'und' || t.language === 'eng' || t.language === 'en' || (t.title && t.title.toLowerCase().includes('english')));
+            setSubtitleTracks(engSubs);
+          }
           if (res.data.chapters) setChapters(res.data.chapters);
           
           if (res.data.audioTracks && res.data.audioTracks.length > 0) {
-            setAudioTracks(res.data.audioTracks);
+            const engAudio = res.data.audioTracks.filter(t => !t.language || t.language === 'und' || t.language === 'eng' || t.language === 'en' || (t.title && t.title.toLowerCase().includes('english')));
+            setAudioTracks(engAudio);
             // Default to English if not manually selected
             if (selectedAudioIndex === null) {
               const engTrack = res.data.audioTracks.find(t => t.language === 'eng' || t.language === 'en' || (t.title && t.title.toLowerCase().includes('english')));
@@ -154,9 +158,14 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("keydown", handleKeyDown);
-      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     };
   }, [currentTime, duration, selectedAudioIndex, streamUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    };
+  }, []);
 
   const handleTimeUpdate = () => {
     if (videoRef.current) {
@@ -230,6 +239,24 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
       document.exitFullscreen();
     }
   };
+
+  useEffect(() => {
+    if (showAudioMenu) {
+      setTimeout(() => { const btn = document.querySelector('.audio-menu-btn'); if (btn) btn.focus(); }, 100);
+    }
+  }, [showAudioMenu]);
+
+  useEffect(() => {
+    if (showSubtitleMenu) {
+      setTimeout(() => { const btn = document.querySelector('.sub-menu-btn'); if (btn) btn.focus(); }, 100);
+    }
+  }, [showSubtitleMenu]);
+
+  useEffect(() => {
+    if (showChapterMenu) {
+      setTimeout(() => { const btn = document.querySelector('.chapter-menu-btn'); if (btn) btn.focus(); }, 100);
+    }
+  }, [showChapterMenu]);
 
   return (
     <div className="custom-transcode-player" style={{ position: 'relative', width: '100%', height: '100%', background: 'black', overflow: 'hidden' }}>
@@ -353,8 +380,8 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
                 {showChapterMenu && (
                   <div style={{ position: 'absolute', bottom: '35px', right: '-10px', background: 'rgba(20,20,20,0.95)', padding: '10px', borderRadius: '8px', minWidth: '200px', maxHeight: '300px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '5px', zIndex: 100 }}>
                     <div style={{ fontSize: '12px', color: '#aaa', paddingBottom: '5px', borderBottom: '1px solid #444', marginBottom: '5px' }}>Chapters</div>
-                    {chapters.map(chap => (
-                      <button key={chap.id} onClick={() => { executeSeek(chap.start_time); setShowChapterMenu(false); }} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', textAlign: 'left', fontSize: '14px', padding: '5px' }}>
+                    {chapters.map((chap, i) => (
+                      <button key={chap.id} className={i === 0 ? "chapter-menu-btn" : ""} onClick={() => { executeSeek(chap.start_time); setShowChapterMenu(false); }} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', textAlign: 'left', fontSize: '14px', padding: '5px' }}>
                         {formatTime(chap.start_time)} - {chap.title}
                       </button>
                     ))}
@@ -371,7 +398,7 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
                 {showAudioMenu && (
                   <div style={{ position: 'absolute', bottom: '35px', right: '-10px', background: 'rgba(20,20,20,0.95)', padding: '10px', borderRadius: '8px', minWidth: '150px', display: 'flex', flexDirection: 'column', gap: '5px', zIndex: 100 }}>
                     <div style={{ fontSize: '12px', color: '#aaa', paddingBottom: '5px', borderBottom: '1px solid #444', marginBottom: '5px' }}>Audio Tracks</div>
-                    <button onClick={() => handleAudioTrackChange(null)} style={{ background: 'none', border: 'none', color: selectedAudioIndex === null ? '#E50914' : 'white', cursor: 'pointer', textAlign: 'left', fontSize: '14px', padding: '5px' }}>
+                    <button className="audio-menu-btn" onClick={() => handleAudioTrackChange(null)} style={{ background: 'none', border: 'none', color: selectedAudioIndex === null ? '#E50914' : 'white', cursor: 'pointer', textAlign: 'left', fontSize: '14px', padding: '5px' }}>
                       Default Track
                     </button>
                     {audioTracks.map(t => (
@@ -392,7 +419,7 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
                 {showSubtitleMenu && (
                   <div style={{ position: 'absolute', bottom: '35px', right: '-10px', background: 'rgba(20,20,20,0.95)', padding: '10px', borderRadius: '8px', minWidth: '150px', display: 'flex', flexDirection: 'column', gap: '5px', zIndex: 100 }}>
                     <div style={{ fontSize: '12px', color: '#aaa', paddingBottom: '5px', borderBottom: '1px solid #444', marginBottom: '5px' }}>Subtitles (CC)</div>
-                    <button onClick={() => { setSelectedSubtitleIndex(null); setShowSubtitleMenu(false); }} style={{ background: 'none', border: 'none', color: selectedSubtitleIndex === null ? '#E50914' : 'white', cursor: 'pointer', textAlign: 'left', fontSize: '14px', padding: '5px' }}>
+                    <button className="sub-menu-btn" onClick={() => { setSelectedSubtitleIndex(null); setShowSubtitleMenu(false); }} style={{ background: 'none', border: 'none', color: selectedSubtitleIndex === null ? '#E50914' : 'white', cursor: 'pointer', textAlign: 'left', fontSize: '14px', padding: '5px' }}>
                       Off
                     </button>
                     {subtitleTracks.map(t => (
