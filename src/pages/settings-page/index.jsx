@@ -12,6 +12,9 @@ import { THEMES, getSavedTheme, applyTheme } from "../../utils/theme";
 import { getHomeSections, saveHomeSections, DEFAULT_HOME_SECTIONS, validateHomeSections } from "../../utils/homeConfig";
 import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning, FiCheckSquare, FiTv, FiPlus, FiMinus, FiServer, FiInfo, FiExternalLink, FiCloud, FiChevronUp, FiChevronDown, FiRotateCcw } from "react-icons/fi";
 import "./index.scss";
+import { AuthContext } from "../../context/AuthContext";
+import { useContext } from "react";
+import axios from "axios";
 
 const ALL_RESOLUTIONS = [
   { id: "2160p", label: "4K / 2160p (UHD)" },
@@ -72,9 +75,36 @@ const SettingsPage = () => {
   const [homeSections, setHomeSections] = useState(getHomeSections());
   const [homeSectionStatus, setHomeSectionStatus] = useState(null);
 
+  // User Management State
+  const [usersList, setUsersList] = useState([]);
+  const [newUsername, setNewUsername] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newUserRole, setNewUserRole] = useState("normal");
+
+
   const dispatch = useDispatch();
+  const { user, updatePreferences } = useContext(AuthContext);
+  const isAdmin = user?.role === "admin";
+
+  
+  const fetchUsers = async () => {
+    if (!isAdmin) return;
+    try {
+      const baseUrl = getServerUrl();
+      const res = await axios.get(`${baseUrl}/api/users`, { headers: { Authorization: `Bearer ${localStorage.getItem('bubbaflix_token')}` }});
+      setUsersList(res.data.users);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const loadAllSettings = async () => {
+
+    // Fetch users if admin
+    if (user?.role === "admin") {
+      fetchUsers();
+    }
+
     // 1. Per-device Server Address
     const currentServer = getServerUrl();
     setServerUrlState(currentServer);
@@ -84,7 +114,7 @@ const SettingsPage = () => {
     const serverSettings = await fetchServerSettings();
 
     // 3. Populate state directly from backend serverSettings
-    const currentTheme = serverSettings?.theme || getSavedTheme();
+    const currentTheme = user?.preferences?.theme || serverSettings?.theme || getSavedTheme();
     setActiveTheme(currentTheme);
     applyTheme(currentTheme);
 
@@ -92,9 +122,9 @@ const SettingsPage = () => {
     setToken(activeToken);
     setIsCustom(!!activeToken);
 
-    const activeSimkl = serverSettings?.simklClientId !== undefined ? serverSettings.simklClientId : (getSimklConfig().clientId || "");
+    const activeSimkl = user?.preferences?.simklClientId || serverSettings?.simklClientId || getSimklConfig().clientId || "";
     setSimklClientId(activeSimkl);
-    const activeSimklSecret = serverSettings?.simklClientSecret !== undefined ? serverSettings.simklClientSecret : (getSimklConfig().clientSecret || "");
+    const activeSimklSecret = user?.preferences?.simklClientSecret || serverSettings?.simklClientSecret || getSimklConfig().clientSecret || "";
     setSimklClientSecret(activeSimklSecret);
     setHasSimklCustom(!!activeSimkl);
 
@@ -213,6 +243,31 @@ const SettingsPage = () => {
     }
   };
 
+  
+  const handleCreateUser = async (e) => {
+    e.preventDefault();
+    try {
+      const baseUrl = getServerUrl();
+      await axios.post(`${baseUrl}/api/users`, { username: newUsername, password: newPassword, role: newUserRole }, { headers: { Authorization: `Bearer ${localStorage.getItem('bubbaflix_token')}` }});
+      setNewUsername("");
+      setNewPassword("");
+      fetchUsers();
+    } catch (e) {
+      alert("Failed to create user: " + (e.response?.data?.error || e.message));
+    }
+  };
+
+  const handleDeleteUser = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this user?")) return;
+    try {
+      const baseUrl = getServerUrl();
+      await axios.delete(`${baseUrl}/api/users?id=${id}`, { headers: { Authorization: `Bearer ${localStorage.getItem('bubbaflix_token')}` }});
+      fetchUsers();
+    } catch (e) {
+      alert("Failed to delete user: " + (e.response?.data?.error || e.message));
+    }
+  };
+
   const handleSaveTmdb = async (e) => {
     e.preventDefault();
     const cleanToken = token.trim();
@@ -258,7 +313,7 @@ const SettingsPage = () => {
       localStorage.removeItem("simkl_client_secret");
     }
     setHasSimklCustom(true);
-    await updateServerSettings({ simklClientId: cleanId, simklClientSecret: cleanSecret });
+    await updatePreferences({ simklClientId: cleanId, simklClientSecret: cleanSecret });
 
     setTestingSimkl(true);
     const testRes = await testSimklConnection(cleanId);
@@ -278,7 +333,7 @@ const SettingsPage = () => {
     setSimklClientId("");
     setSimklClientSecret("");
     setHasSimklCustom(false);
-    await updateServerSettings({ simklClientId: "", simklClientSecret: "" });
+    await updatePreferences({ simklClientId: "", simklClientSecret: "" });
     setSimklStatus({ type: "info", text: "SIMKL credentials cleared on server." });
   };
 
@@ -710,6 +765,8 @@ const SettingsPage = () => {
             </form>
           </div>
 
+          </>)}
+
           {/* SIMKL Watch Tracker Card */}
           <div className="settingsCard">
             <div className="cardHeader">
@@ -970,6 +1027,54 @@ const SettingsPage = () => {
                   </div>
                 </form>
               </div>
+            
+              {/* User Management Card */}
+              <div className="settingsCard">
+                <div className="cardHeader">
+                  <h2><FiKey style={{ marginRight: 8 }} /> User Management</h2>
+                  <span className="badge custom"><FiServer style={{ marginRight: 4 }} /> Admin</span>
+                </div>
+                <p className="description">Manage access to BubbaFlix.</p>
+                
+                <div className="usersList" style={{ marginBottom: 20 }}>
+                  {usersList.map(u => (
+                    <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', padding: 10, background: 'rgba(0,0,0,0.2)', marginBottom: 5, borderRadius: 5 }}>
+                      <span><strong>{u.username}</strong> ({u.role})</span>
+                      {u.id !== user.id && (
+                        <button onClick={() => handleDeleteUser(u.id)} style={{ background: '#da2f68', color: 'white', border: 'none', padding: '5px 10px', borderRadius: 4, cursor: 'pointer' }}>Delete</button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <form onSubmit={handleCreateUser} className="tokenForm">
+                  <div className="inputGroup">
+                    <label>Username</label>
+                    <div className="inputWrapper">
+                      <input type="text" value={newUsername} onChange={e => setNewUsername(e.target.value)} required minLength={3} />
+                    </div>
+                  </div>
+                  <div className="inputGroup" style={{ marginTop: 10 }}>
+                    <label>Password</label>
+                    <div className="inputWrapper">
+                      <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={6} />
+                    </div>
+                  </div>
+                  <div className="inputGroup" style={{ marginTop: 10 }}>
+                    <label>Role</label>
+                    <div className="inputWrapper">
+                      <select value={newUserRole} onChange={e => setNewUserRole(e.target.value)} style={{ width: '100%', padding: 10, background: 'rgba(0,0,0,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 5 }}>
+                        <option value="normal">Normal User</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="buttonGroup" style={{ marginTop: 15 }}>
+                    <button type="submit" className="saveBtn"><FiPlus /> Create User</button>
+                  </div>
+                </form>
+              </div>
+
             </>
           )}
         </div>

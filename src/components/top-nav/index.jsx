@@ -2,13 +2,16 @@ import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { HiOutlineSearch, HiOutlineFilm } from "react-icons/hi";
 import { AiFillStar } from "react-icons/ai";
-import { FiSettings, FiHome, FiTv, FiInfo, FiVideo } from "react-icons/fi";
+import { FiSettings, FiHome, FiTv, FiInfo, FiVideo, FiLogOut } from "react-icons/fi";
+import { AuthContext } from "../../context/AuthContext";
+import { useContext } from "react";
 import ContentWrapper from "../content-wrapper";
 import "./index.scss";
 
 const TopNav = () => {
 	const [query, setQuery] = useState("");
 	const navigate = useNavigate();
+	const { logout } = useContext(AuthContext);
 	const location = useLocation();
 
 	const handleSearch = (e) => {
@@ -185,6 +188,23 @@ const TopNav = () => {
 							<FiInfo className="navIcon" />
 							<span>About</span>
 						</button>
+
+						<button
+							className="navBtn"
+							tabIndex="0"
+							onClick={logout}
+							onKeyDown={(e) => {
+								const code = e.keyCode;
+								if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+									e.preventDefault();
+									logout();
+								}
+							}}
+						>
+							<FiLogOut className="navIcon" />
+							<span>Sign Out</span>
+						</button>
+  
 					</div>
 				</div>
 			</ContentWrapper>

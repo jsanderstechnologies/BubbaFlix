@@ -23,69 +23,87 @@ import AboutPage from "./pages/about-page";
 import TvInstallPrompt from "./components/tv-install-prompt";
 import BackgroundRotator from "./components/background-rotator";
 
+import AuthPage from "./pages/auth-page";
+import { AuthProvider, AuthContext } from "./context/AuthContext";
+import { useContext } from "react";
+
+const AppContent = () => {
+  const dispatch = useDispatch();
+  const { url } = useSelector((state) => state.home);
+  const { user, loading, setupRequired } = useContext(AuthContext);
+  const [showSplash, setShowSplash] = useState(() => {
+    return !sessionStorage.getItem("bubbaflix_splash_shown");
+  });
+
+  useEffect(() => {
+    if (!user) return; // Only fetch data if logged in
+    const currentTheme = getSavedTheme();
+    applyTheme(currentTheme);
+
+    fetchApiConfig();
+    fetchUserSimklHistory();
+    fetchServerSettings();
+
+    const cleanupDpad = initDpadNavigation();
+    return () => {
+      if (cleanupDpad) cleanupDpad();
+    };
+  }, [user]);
+
+  const handleSplashComplete = () => {
+    sessionStorage.setItem("bubbaflix_splash_shown", "true");
+    setShowSplash(false);
+  };
+
+  const fetchApiConfig = () => {
+    fetchDataFromAPI("/configuration").then((res) => {
+      const url = {
+        backdrop: res.images.secure_base_url + "original",
+        poster: res.images.secure_base_url + "original",
+        profile: res.images.secure_base_url + "original",
+      };
+      dispatch(getApiConfiguration(url));
+    });
+  };
+
+  if (loading) return null; // Or a simple spinner
+  
+  if (setupRequired || !user) {
+    return <AuthPage />;
+  }
+
+  return (
+    <BrowserRouter>
+      {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
+      <TvInstallPrompt />
+      <BackgroundRotator />
+      {!showSplash && (
+        <div style={{ position: "relative", zIndex: 1, opacity: 1 }}>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/favorites" element={<FavoritesPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/collection/:id" element={<CollectionPage />} />
+            <Route path="/:mediaType/:id" element={<DetailsPage />} />
+            <Route path="/search" element={<SearchResult />} />
+            <Route path="/search/:query" element={<SearchResult />} />
+            <Route path="/explore/:mediaType" element={<ExplorePage />} />
+            <Route path="*" element={<Page404 />} />
+          </Routes>
+          <Footer />
+        </div>
+      )}
+    </BrowserRouter>
+  );
+};
+
 const App = () => {
-	const dispatch = useDispatch();
-	const { url } = useSelector((state) => state.home);
-	const [showSplash, setShowSplash] = useState(() => {
-		return !sessionStorage.getItem("bubbaflix_splash_shown");
-	});
-
-	useEffect(() => {
-		const currentTheme = getSavedTheme();
-		applyTheme(currentTheme);
-
-		// Fetch TMDB config and user history immediately
-		fetchApiConfig();
-		fetchUserSimklHistory();
-		fetchServerSettings();
-
-		const cleanupDpad = initDpadNavigation();
-		return () => {
-			if (cleanupDpad) cleanupDpad();
-		};
-	}, []);
-
-	const handleSplashComplete = () => {
-		sessionStorage.setItem("bubbaflix_splash_shown", "true");
-		setShowSplash(false);
-	};
-
-	const fetchApiConfig = () => {
-		fetchDataFromAPI("/configuration").then((res) => {
-			const config_url = {
-				backdrop: res?.images?.secure_base_url + "w1280",
-				poster: res?.images?.secure_base_url + "w500",
-				profile: res?.images?.secure_base_url + "w185",
-			};
-
-			dispatch(getApiConfiguration(config_url));
-		});
-	};
-
-	return (
-		<>
-			{showSplash && <SplashScreen onComplete={handleSplashComplete} />}
-			<TvInstallPrompt />
-			<BrowserRouter>
-				<BackgroundRotator />
-				<div style={{ position: "relative", zIndex: 1, opacity: 1 }}>
-					<Routes>
-						<Route path="/" element={<HomePage />} />
-						<Route path="/about" element={<AboutPage />} />
-						<Route path="/favorites" element={<FavoritesPage />} />
-						<Route path="/settings" element={<SettingsPage />} />
-						<Route path="/collection/:id" element={<CollectionPage />} />
-						<Route path="/:mediaType/:id" element={<DetailsPage />} />
-						<Route path="/search" element={<SearchResult />} />
-						<Route path="/search/:query" element={<SearchResult />} />
-						<Route path="/explore/:mediaType" element={<ExplorePage />} />
-						<Route path="*" element={<Page404 />} />
-					</Routes>
-					<Footer />
-				</div>
-			</BrowserRouter>
-		</>
-	);
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
 };
 
 export default App;

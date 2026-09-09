@@ -1,4 +1,28 @@
 import { markAsWatchedOnSimkl } from "./simkl";
+
+import axios from "axios";
+import { getServerUrl } from "./serverSettings";
+
+let syncTimeout = null;
+const syncProgressToServer = (all) => {
+  if (syncTimeout) clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(async () => {
+    try {
+      const baseUrl = getServerUrl();
+      const token = localStorage.getItem("bubbaflix_token");
+      if (token) {
+        await axios.put(
+          `${baseUrl}/api/users/preferences`, 
+          { watchProgress: all },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      }
+    } catch (e) {
+      console.error("Failed to sync watch progress to server", e);
+    }
+  }, 5000); // Debounce to 5 seconds
+};
+
 const STORAGE_KEY = "bubbaflix_watch_progress";
 
 /**
@@ -66,6 +90,9 @@ export const saveWatchProgress = ({
     delete all[key];
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+      syncProgressToServer(all);
+    syncProgressToServer(all);
+      syncProgressToServer(all);
     } catch (e) {
       console.error("[watchProgress] Error clearing progress:", e);
     }

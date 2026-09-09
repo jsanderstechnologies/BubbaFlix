@@ -78,3 +78,11 @@ export const applyTheme = (themeId) => {
   localStorage.setItem("app_theme", theme.id);
   return theme;
 };
+
+if (typeof window !== "undefined") {
+  window.addEventListener("user-preferences-loaded", (e) => {
+    if (e.detail && e.detail.theme) {
+      applyTheme(e.detail.theme);
+    }
+  });
+}

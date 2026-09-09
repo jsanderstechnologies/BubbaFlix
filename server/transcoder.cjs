@@ -31,6 +31,58 @@ const DATA_DIR = process.env.DATA_DIR || (fs.existsSync("/app/data") ? "/app/dat
 const SETTINGS_FILE = path.join(DATA_DIR, "settings.json");
 const LOG_FILE = path.join(DATA_DIR, "bubbaflix.log");
 
+const crypto = require("crypto");
+const USERS_FILE = path.join(DATA_DIR, "users.json");
+
+// In-memory sessions { token: { userId, role, expiresAt } }
+const activeSessions = {};
+const SESSION_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+const getUsers = () => {
+  if (fs.existsSync(USERS_FILE)) {
+    try {
+      return JSON.parse(fs.readFileSync(USERS_FILE, "utf-8"));
+    } catch (e) {
+      logMessage("Error reading users.json", true);
+    }
+  }
+  return {};
+};
+
+const saveUsers = (users) => {
+  try {
+    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), "utf-8");
+  } catch (e) {
+    logMessage("Error writing users.json", true);
+  }
+};
+
+const hashPassword = (password, salt) => {
+  return crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
+};
+
+const authenticate = (req) => {
+  const authHeader = req.headers['authorization'];
+  let token = null;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
+  }
+  if (!token) return null;
+  
+  const session = activeSessions[token];
+  if (!session) return null;
+  
+  if (Date.now() > session.expiresAt) {
+    delete activeSessions[token];
+    return null;
+  }
+  
+  // Extend session
+  session.expiresAt = Date.now() + SESSION_TTL;
+  return session;
+};
+
+
 const DEFAULT_TMDB_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmYjM3ODM3YzJiMDlkNzEyMDIwMDIxZjc0NGI5ZTQwNyIsInN1YiI6IjY0NjNlNzE5ZTNmYTJmMDEyNDQ3ODk1NCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.3Y0VloCdPlprLy-OMZQmqtZd4_Ti9GDfHo4SZXh3erU";
 
 // Dual-logging utility: writes to stdout/stderr AND appends to disk volume log file (/app/server/bubbaflix.log)
@@ -391,6 +443,178 @@ const server = http.createServer((req, res) => {
       ip: localIp,
       url: `http://${localIp}:5150`
     });
+  }
+
+  // ========== AUTHENTICATION & USER ENDPOINTS ==========
+  
+  // Status - check if setup is needed
+  if (cleanPath === "/api/auth/status" && req.method === "GET") {
+    const users = getUsers();
+    return sendJson(res, 200, { setupRequired: Object.keys(users).length === 0 });
+  }
+
+  // Setup first admin
+  if (cleanPath === "/api/auth/setup" && req.method === "POST") {
+    let body = "";
+    req.on("data", chunk => body += chunk);
+    req.on("end", () => {
+      try {
+        const { username, password } = JSON.parse(body);
+        const users = getUsers();
+        if (Object.keys(users).length > 0) {
+          return sendJson(res, 403, { error: "Setup already completed." });
+        }
+        if (!username || !password || password.length < 6) {
+          return sendJson(res, 400, { error: "Invalid username or password (min 6 chars)." });
+        }
+        
+        const salt = crypto.randomBytes(16).toString('hex');
+        const hash = hashPassword(password, salt);
+        const userId = crypto.randomUUID();
+        
+        users[userId] = {
+          id: userId,
+          username,
+          salt,
+          hash,
+          role: "admin",
+          preferences: {}
+        };
+        saveUsers(users);
+        
+        const token = crypto.randomBytes(32).toString('hex');
+        activeSessions[token] = { userId, role: "admin", expiresAt: Date.now() + SESSION_TTL };
+        
+        return sendJson(res, 201, { message: "Admin created.", token, user: { id: userId, username, role: "admin" } });
+      } catch (err) {
+        return sendJson(res, 400, { error: "Invalid JSON" });
+      }
+    });
+    return;
+  }
+
+  // Login
+  if (cleanPath === "/api/auth/login" && req.method === "POST") {
+    let body = "";
+    req.on("data", chunk => body += chunk);
+    req.on("end", () => {
+      try {
+        const { username, password } = JSON.parse(body);
+        const users = getUsers();
+        const user = Object.values(users).find(u => u.username === username);
+        if (!user) return sendJson(res, 401, { error: "Invalid credentials" });
+        
+        const hash = hashPassword(password, user.salt);
+        if (hash !== user.hash) return sendJson(res, 401, { error: "Invalid credentials" });
+        
+        const token = crypto.randomBytes(32).toString('hex');
+        activeSessions[token] = { userId: user.id, role: user.role, expiresAt: Date.now() + SESSION_TTL };
+        
+        return sendJson(res, 200, { token, user: { id: user.id, username: user.username, role: user.role, preferences: user.preferences } });
+      } catch (err) {
+        return sendJson(res, 400, { error: "Invalid JSON" });
+      }
+    });
+    return;
+  }
+
+  // Auth Me
+  if (cleanPath === "/api/auth/me" && req.method === "GET") {
+    const session = authenticate(req);
+    if (!session) return sendJson(res, 401, { error: "Unauthorized" });
+    const users = getUsers();
+    const user = users[session.userId];
+    if (!user) return sendJson(res, 401, { error: "User not found" });
+    
+    return sendJson(res, 200, { user: { id: user.id, username: user.username, role: user.role, preferences: user.preferences } });
+  }
+
+  // Logout
+  if (cleanPath === "/api/auth/logout" && req.method === "POST") {
+    const authHeader = req.headers['authorization'];
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      delete activeSessions[authHeader.split(' ')[1]];
+    }
+    return sendJson(res, 200, { message: "Logged out" });
+  }
+
+  // User Preferences sync
+  if (cleanPath === "/api/users/preferences" && req.method === "PUT") {
+    const session = authenticate(req);
+    if (!session) return sendJson(res, 401, { error: "Unauthorized" });
+    
+    let body = "";
+    req.on("data", chunk => body += chunk);
+    req.on("end", () => {
+      try {
+        const updates = JSON.parse(body);
+        const users = getUsers();
+        const user = users[session.userId];
+        if (!user) return sendJson(res, 401, { error: "User not found" });
+        
+        user.preferences = { ...user.preferences, ...updates };
+        saveUsers(users);
+        
+        return sendJson(res, 200, { preferences: user.preferences });
+      } catch (err) {
+        return sendJson(res, 400, { error: "Invalid JSON" });
+      }
+    });
+    return;
+  }
+  
+  if (cleanPath === "/api/users/preferences" && req.method === "GET") {
+    const session = authenticate(req);
+    if (!session) return sendJson(res, 401, { error: "Unauthorized" });
+    const users = getUsers();
+    return sendJson(res, 200, { preferences: users[session.userId]?.preferences || {} });
+  }
+
+  // Admin User Management
+  if (cleanPath.startsWith("/api/users") && (req.method === "GET" || req.method === "POST" || req.method === "DELETE") && cleanPath !== "/api/users/preferences") {
+    const session = authenticate(req);
+    if (!session || session.role !== "admin") return sendJson(res, 403, { error: "Admin access required" });
+    
+    const users = getUsers();
+    
+    if (req.method === "GET") {
+      const sanitized = Object.values(users).map(u => ({ id: u.id, username: u.username, role: u.role }));
+      return sendJson(res, 200, { users: sanitized });
+    }
+    
+    if (req.method === "POST") {
+      let body = "";
+      req.on("data", chunk => body += chunk);
+      req.on("end", () => {
+        try {
+          const { username, password, role } = JSON.parse(body);
+          if (Object.values(users).some(u => u.username === username)) {
+            return sendJson(res, 400, { error: "Username taken" });
+          }
+          if (!username || !password || password.length < 6) return sendJson(res, 400, { error: "Invalid data" });
+          
+          const salt = crypto.randomBytes(16).toString('hex');
+          const hash = hashPassword(password, salt);
+          const userId = crypto.randomUUID();
+          
+          users[userId] = { id: userId, username, salt, hash, role: role === 'admin' ? 'admin' : 'normal', preferences: {} };
+          saveUsers(users);
+          return sendJson(res, 201, { user: { id: userId, username, role: users[userId].role } });
+        } catch(e) { return sendJson(res, 400, { error: "Invalid JSON" }); }
+      });
+      return;
+    }
+    
+    if (req.method === "DELETE") {
+      const userId = parsedUrl.query.id;
+      if (userId === session.userId) return sendJson(res, 400, { error: "Cannot delete yourself" });
+      if (users[userId]) {
+        delete users[userId];
+        saveUsers(users);
+        return sendJson(res, 200, { message: "User deleted" });
+      }
+      return sendJson(res, 404, { error: "User not found" });
+    }
   }
 
   // Health check endpoint
@@ -858,6 +1082,8 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
 
   // GET Settings API
   if ((cleanPath === "/api/settings" || cleanPath === "/settings") && req.method === "GET") {
+    const session = authenticate(req);
+    if (!session || session.role !== "admin") return sendJson(res, 403, { error: "Admin access required" });
     const settings = loadServerSettings();
     const cpuTopology = getCpuTopologyInfo();
     const gpuInfo = detectGpuCapabilities();
@@ -867,6 +1093,8 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
 
   // POST Settings API
   if ((cleanPath === "/api/settings" || cleanPath === "/settings") && req.method === "POST") {
+    const session = authenticate(req);
+    if (!session || session.role !== "admin") return sendJson(res, 403, { error: "Admin access required" });
     let body = "";
     req.on("data", (chunk) => {
       body += chunk.toString();
