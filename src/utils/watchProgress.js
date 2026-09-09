@@ -1,3 +1,4 @@
+import { markAsWatchedOnSimkl } from "./simkl";
 const STORAGE_KEY = "bubbaflix_watch_progress";
 
 /**
@@ -61,12 +62,27 @@ export const saveWatchProgress = ({
 
   // Only mark movie or episode as completed/watched when 95% has been watched
   if (progressPercent >= 95) {
+    // Delete from in-progress list
     delete all[key];
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
     } catch (e) {
       console.error("[watchProgress] Error clearing progress:", e);
     }
+    
+    // Auto-sync SIMKL watch history since it's fully watched
+    markAsWatchedOnSimkl({
+      tmdbId,
+      title,
+      mediaType,
+      seasonNum,
+      episodeNum,
+    });
+    
+    // Trigger custom event so checkmarks in UI update instantly
+    const event = new CustomEvent("simkl-watch-updated", { detail: { tmdbId, mediaType, seasonNum, episodeNum } });
+    window.dispatchEvent(event);
+    
     return;
   }
 

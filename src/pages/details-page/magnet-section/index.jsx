@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useState, useEffect } from "react";
 import { fetchTorrentStreams } from "../../../utils/torrentScraper";
-import { markAsWatchedOnSimkl } from "../../../utils/simkl";
 import { getPremiumizeKey, resolveMagnetWithPremiumize } from "../../../utils/premiumize";
 import { isTvDevice } from "../../../utils/zoom";
 import ContentWrapper from "../../../components/content-wrapper";
@@ -137,17 +136,6 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
     setActiveVideoUrl(streamUrl);
     setActiveFilename(item.title || title);
     setShowPlayer(true);
-
-    // Auto-sync SIMKL watch history
-    if (tmdbId || title) {
-      markAsWatchedOnSimkl({
-        tmdbId,
-        title,
-        mediaType: mediaType || (seasonNum !== undefined ? "tv" : "movie"),
-        seasonNum,
-        episodeNum,
-      });
-    }
   };
 
   if (!loading && streams.length === 0 && !unconfigured) {
