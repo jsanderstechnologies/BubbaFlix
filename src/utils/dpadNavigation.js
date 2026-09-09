@@ -227,10 +227,7 @@ export const initDpadNavigation = () => {
       }
     }
 
-    // Ignore spatial navigation if video player modal is active
-    if (document.body.classList.contains("videoPlayerActive")) {
-      return;
-    }
+
 
     // Handle Smart TV Back Button
     if (key === "Escape" || key === "Back" || code === 27 || code === 10009 || code === 461 || code === 4) {

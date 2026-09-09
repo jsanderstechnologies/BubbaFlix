@@ -27,6 +27,7 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
   
   const [currentUrl, setCurrentUrl] = useState("");
   const [showControls, setShowControls] = useState(true);
+  const [fetchedLogo, setFetchedLogo] = useState(null);
   const controlsTimeoutRef = useRef(null);
   
   const displayTitle = cleanMediaTitle(title || "");
@@ -50,6 +51,22 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
     if (typeof setShow === "function") setShow(false);
     if (typeof onClose === "function") onClose();
   };
+
+  useEffect(() => {
+    if (!show || !tmdbId || channelLogo) return;
+    const fetchLogo = async () => {
+      try {
+        const { fetchDataFromAPI } = await import("../../utils/api");
+        const res = await fetchDataFromAPI(`/${mediaType || 'movie'}/${tmdbId}/images`, { include_image_language: "en,null" });
+        if (res && res.logos && res.logos.length > 0) {
+          setFetchedLogo(`https://image.tmdb.org/t/p/w500${res.logos[0].file_path}`);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch TMDB logo in modal", err);
+      }
+    };
+    fetchLogo();
+  }, [show, tmdbId, mediaType, channelLogo]);
 
   useEffect(() => {
     if (show) {
@@ -158,11 +175,11 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
             <FiArrowLeft size={20} /> Back
           </button>
           
-          {channelLogo && (
+          {(channelLogo || fetchedLogo) && (
             <img 
-              src={channelLogo} 
+              src={channelLogo || fetchedLogo} 
               alt="Logo" 
-              style={{ height: '40px', objectFit: 'contain', filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.8))' }} 
+              style={{ height: '90px', objectFit: 'contain', filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.8))' }} 
             />
           )}
         </div>

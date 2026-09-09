@@ -100,6 +100,14 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
     
     const handleKeyDown = (e) => {
       handleMouseMove();
+
+      const activeEl = document.activeElement;
+      if (activeEl && (activeEl.tagName === "BUTTON" || activeEl.closest('.custom-controls'))) {
+        if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter", " "].includes(e.key)) {
+          return; // Let native spatial navigation or default button click take over
+        }
+      }
+
       if (e.key === "ArrowRight") {
         setSeekOffset((prev) => {
           let target = currentTime + 10;
