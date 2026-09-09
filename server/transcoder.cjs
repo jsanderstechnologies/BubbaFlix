@@ -236,6 +236,11 @@ const detectGpuCapabilities = () => {
           const hasRenderNode = fs.existsSync("/dev/dri/renderD128");
           const vaapiDevice = hasRenderNode ? "-vaapi_device /dev/dri/renderD128 " : "";
           testCmd = `ffmpeg ${vaapiDevice}-f lavfi -i testsrc=duration=1:size=320x240:rate=30 -vf format=nv12,hwupload -c:v h264_vaapi -f null -`;
+        } else if (encoderName === "h264_qsv") {
+          const fs = require("fs");
+          const hasRenderNode = fs.existsSync("/dev/dri/renderD128");
+          const qsvDevice = hasRenderNode ? "-qsv_device /dev/dri/renderD128 " : "";
+          testCmd = `ffmpeg ${qsvDevice}-f lavfi -i testsrc=duration=1:size=320x240:rate=30 -c:v h264_qsv -f null -`;
         } else {
           testCmd = `ffmpeg -f lavfi -i testsrc=duration=1:size=320x240:rate=30 -c:v ${encoderName} -f null -`;
         }
@@ -276,8 +281,14 @@ const detectGpuCapabilities = () => {
     } else if (hasQsv) {
       gpuType = "Intel QuickSync Hardware Acceleration (QSV)";
       encoder = "h264_qsv";
-      inputArgs = hwaccelsOutput.includes("qsv") ? ["-hwaccel", "qsv"] : [];
+      const fs = require("fs");
+      const hasRenderNode = fs.existsSync("/dev/dri/renderD128");
+      inputArgs = ["-hwaccel", "qsv", "-hwaccel_output_format", "qsv"];
+      if (hasRenderNode) {
+        inputArgs.unshift("-qsv_device", "/dev/dri/renderD128");
+      }
       outputArgs = [
+        "-vf", "vpp_qsv=format=nv12",
         "-c:v", "h264_qsv",
         "-preset", "medium",
         "-global_quality", "21",
@@ -302,11 +313,12 @@ const detectGpuCapabilities = () => {
       encoder = "h264_vaapi";
       const fs = require("fs");
       const hasRenderNode = fs.existsSync("/dev/dri/renderD128");
-      inputArgs = hasRenderNode
-        ? ["-hwaccel", "vaapi", "-vaapi_device", "/dev/dri/renderD128"]
-        : ["-hwaccel", "vaapi"];
+      inputArgs = ["-hwaccel", "vaapi", "-hwaccel_output_format", "vaapi"];
+      if (hasRenderNode) {
+        inputArgs.unshift("-vaapi_device", "/dev/dri/renderD128");
+      }
       outputArgs = [
-        "-vf", "format=nv12,hwupload",
+        "-vf", "scale_vaapi=format=nv12",
         "-c:v", "h264_vaapi",
         "-qp", "21",
         "-b:v", "4M",
