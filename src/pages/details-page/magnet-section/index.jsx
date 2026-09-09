@@ -122,9 +122,9 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
       }
     }
 
-    if (transcodeMode && targetUrl.startsWith("magnet:")) {
+    if (targetUrl.startsWith("magnet:")) {
       alert(
-        "Magnet P2P streams require a Debrid account (Real-Debrid, Premiumize, TorBox) for server transcoding.\n\nPlease save your Premiumize API Key in Settings or select a direct HTTP stream."
+        "Magnet streams require a Premiumize API key to instantly resolve to HTTP.\n\nPlease save your Premiumize API Key in Settings to play this stream."
       );
       return;
     }
