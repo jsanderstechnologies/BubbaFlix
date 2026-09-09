@@ -12,6 +12,7 @@ const WatchCheckmark = ({
   episodeNum,
   label = "",
   size = "md",
+  onToggle,
 }) => {
   const [watched, setWatched] = useState(false);
   const [toggling, setToggling] = useState(false);
@@ -41,6 +42,9 @@ const WatchCheckmark = ({
     });
     setWatched(newStatus);
     setToggling(false);
+    if (typeof onToggle === "function") {
+      onToggle(newStatus);
+    }
   };
 
   return (

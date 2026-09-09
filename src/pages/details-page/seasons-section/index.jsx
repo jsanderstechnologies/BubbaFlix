@@ -128,6 +128,19 @@ const SeasonsSection = ({ tvId, seasons, showTitle }) => {
               seasonNum={selectedSeasonNumber}
               label={`Mark Season ${selectedSeasonNumber} Watched`}
               size="md"
+              onToggle={(newStatus) => {
+                if (newStatus === true) {
+                  const currentIndex = validSeasons.findIndex(s => s.season_number === selectedSeasonNumber);
+                  if (currentIndex !== -1 && currentIndex < validSeasons.length - 1) {
+                    const nextSeasonNum = validSeasons[currentIndex + 1].season_number;
+                    setSelectedSeasonNumber(nextSeasonNum);
+                    setTimeout(() => {
+                      const btn = document.querySelector('.seasonControls .watchCheckmark');
+                      if (btn) btn.focus();
+                    }, 100);
+                  }
+                }
+              }}
             />
           </div>
         </div>
