@@ -14,10 +14,18 @@ COPY . .
 RUN npm run build
 
 # Stage 2: Serve application using Nginx + Native Node.js Backend
-FROM node:20-bookworm-slim
+FROM ubuntu:22.04
 
-# Install Nginx, FFmpeg (with NVENC and VAAPI compiled in by default on Debian 12), and hardware acceleration drivers
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Prevent interactive timezone prompts during installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Configure Ubuntu multiverse repository, install Node.js 20, Nginx, FFmpeg, and Intel hardware drivers
+RUN apt-get update && apt-get install -y software-properties-common curl \
+    && add-apt-repository multiverse \
+    && apt-get update \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y --no-install-recommends \
+    nodejs \
     nginx \
     ffmpeg \
     libva-drm2 \
