@@ -52,5 +52,5 @@ RUN rm -f /etc/nginx/sites-enabled/default
 COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 5150 5000
-
+ENTRYPOINT []
 CMD ["/app/start.sh"]
