@@ -589,7 +589,7 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
   }
 
   // Real-Time Transcoding & Remuxing Proxy Stream Endpoint
-  if ((cleanPath === "/api/transcode" || cleanPath === "/transcode") && req.method === "GET") {
+  if ((cleanPath === "/api/transcode" || cleanPath === "/transcode") && (req.method === "GET" || req.method === "HEAD")) {
     const targetUrl = parsedUrl.query.url;
 
     if (!targetUrl) {
@@ -603,6 +603,15 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
       return res.end(JSON.stringify({
         error: "Magnet torrent links require a Debrid account. Please configure your AIOStreams Debrid URL in Settings or select a direct HTTP stream."
       }));
+    }
+
+    if (req.method === "HEAD") {
+      res.writeHead(200, {
+        "Content-Type": "video/mp4",
+        "Access-Control-Allow-Origin": "*",
+        "Accept-Ranges": "none"
+      });
+      return res.end();
     }
 
     logMessage(`====================================================`);
