@@ -78,6 +78,24 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, onTimeUpdate, onEnded
     videoRef.current.play();
   };
 
+  const handleRelativeSeek = (seconds) => {
+    if (duration <= 0) return;
+    let targetTime = currentTime + seconds;
+    if (targetTime < 0) targetTime = 0;
+    if (targetTime > duration) targetTime = duration;
+
+    setSeekOffset(targetTime);
+    setCurrentTime(targetTime);
+    
+    // Restart FFmpeg pipe at new offset
+    const seekUrl = streamUrl.includes("?") 
+      ? `${streamUrl}&ss=${targetTime}` 
+      : `${streamUrl}?ss=${targetTime}`;
+      
+    videoRef.current.src = seekUrl;
+    videoRef.current.play();
+  };
+
   const togglePlay = () => {
     if (videoRef.current) {
       if (videoRef.current.paused) {
@@ -146,9 +164,15 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, onTimeUpdate, onEnded
         </div>
         
         <div className="controls-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '5px' }}>
-          <div style={{ display: 'flex', gap: '20px' }}>
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+            <button onClick={() => handleRelativeSeek(-10)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              ⏪ 10s
+            </button>
             <button onClick={togglePlay} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '24px' }}>
               {isPlaying ? '⏸' : '▶'}
+            </button>
+            <button onClick={() => handleRelativeSeek(10)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              10s ⏩
             </button>
           </div>
           <button onClick={handleToggleFullscreen} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '20px' }}>

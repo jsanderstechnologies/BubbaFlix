@@ -132,14 +132,24 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
   return createPortal(
     <div ref={containerRef} className={`videoPlayerModal ${show ? "visible" : ""}`}>
       <div className="playerWindow">
-        {/* Simple back button overlapping top-left so user can close modal manually */}
-        <button 
-           className="backBtn minimalistBackBtn" 
-           onClick={handleClose}
-           style={{ position: 'absolute', top: '15px', left: '15px', zIndex: 9999, background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', padding: '10px 15px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px' }}
-        >
-          <FiArrowLeft size={20} /> Back
-        </button>
+        {/* Back button and logo overlapping top-left */}
+        <div style={{ position: 'absolute', top: '15px', left: '15px', zIndex: 9999, display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <button 
+             className="backBtn minimalistBackBtn" 
+             onClick={handleClose}
+             style={{ background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', padding: '10px 15px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px' }}
+          >
+            <FiArrowLeft size={20} /> Back
+          </button>
+          
+          {channelLogo && (
+            <img 
+              src={channelLogo} 
+              alt="Logo" 
+              style={{ height: '40px', objectFit: 'contain', filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.8))' }} 
+            />
+          )}
+        </div>
 
         <div className="videoWrapper" style={{ width: '100%', height: '100vh', background: 'black' }}>
           {currentUrl.includes('/api/transcode') ? (
