@@ -26,6 +26,9 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
   const containerRef = useRef(null);
   
   const [currentUrl, setCurrentUrl] = useState("");
+  const [showControls, setShowControls] = useState(true);
+  const controlsTimeoutRef = useRef(null);
+  
   const displayTitle = cleanMediaTitle(title || "");
 
   const handleClose = () => {
@@ -63,6 +66,17 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
       document.documentElement.classList.add("videoPlayerActive");
       setCurrentUrl(targetUrl);
 
+      const handleMouseMove = () => {
+        setShowControls(true);
+        if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+        controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 3000);
+      };
+
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+      controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 3000);
+
+      window.addEventListener("mousemove", handleMouseMove);
+
       // Keyboard handler for closing
       const handlePlayerKeyDown = (e) => {
         const key = e.key;
@@ -78,6 +92,8 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
 
       return () => {
         window.removeEventListener("keydown", handlePlayerKeyDown, true);
+        window.removeEventListener("mousemove", handleMouseMove);
+        if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
         document.body.classList.remove("videoPlayerActive");
         document.documentElement.classList.remove("videoPlayerActive");
       };
@@ -133,7 +149,12 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
     <div ref={containerRef} className={`videoPlayerModal ${show ? "visible" : ""}`}>
       <div className="playerWindow">
         {/* Back button and logo overlapping top-left */}
-        <div style={{ position: 'absolute', top: '15px', left: '15px', zIndex: 9999, display: 'flex', alignItems: 'center', gap: '15px' }}>
+        <div style={{ 
+          position: 'absolute', top: '15px', left: '15px', zIndex: 9999, display: 'flex', alignItems: 'center', gap: '15px',
+          opacity: showControls ? 1 : 0, 
+          transition: 'opacity 0.3s ease',
+          pointerEvents: showControls ? 'auto' : 'none'
+        }}>
           <button 
              className="backBtn minimalistBackBtn" 
              onClick={handleClose}
