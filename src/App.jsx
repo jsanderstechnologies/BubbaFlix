@@ -30,7 +30,7 @@ import { useContext } from "react";
 const AppContent = () => {
   const dispatch = useDispatch();
   const { url } = useSelector((state) => state.home);
-  const { user, loading, setupRequired } = useContext(AuthContext);
+  const { user, loading, setupRequired, updatePreferences } = useContext(AuthContext);
   const [showSplash, setShowSplash] = useState(() => {
     return !sessionStorage.getItem("bubbaflix_splash_shown");
   });
@@ -50,7 +50,30 @@ const AppContent = () => {
     fetchApiConfig();
     fetchUserSimklHistory();
     fetchServerSettings();
-  }, [user]);
+
+    const syncFavorites = () => {
+      try {
+        const rawFavs = localStorage.getItem("bubbaflix_favorites");
+        const rawFavCols = localStorage.getItem("bubbaflix_favorite_collections");
+        const rawFavChans = localStorage.getItem("bubbaflix_favorite_channels");
+        updatePreferences({
+          favorites: rawFavs ? JSON.parse(rawFavs) : [],
+          favoriteCollections: rawFavCols ? JSON.parse(rawFavCols) : [],
+          favoriteChannels: rawFavChans ? JSON.parse(rawFavChans) : []
+        });
+      } catch (e) {
+        console.error("Failed to sync favorites to backend", e);
+      }
+    };
+
+    window.addEventListener("bubbaflix_favorites_updated", syncFavorites);
+    window.addEventListener("favorite-channels-updated", syncFavorites);
+
+    return () => {
+      window.removeEventListener("bubbaflix_favorites_updated", syncFavorites);
+      window.removeEventListener("favorite-channels-updated", syncFavorites);
+    };
+  }, [user?.id]);
 
   const handleSplashComplete = () => {
     sessionStorage.setItem("bubbaflix_splash_shown", "true");

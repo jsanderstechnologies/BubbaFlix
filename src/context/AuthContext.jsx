@@ -43,8 +43,14 @@ export const AuthProvider = ({ children }) => {
             if (prefs.watchProgress) {
               localStorage.setItem("bubbaflix_watch_progress", JSON.stringify(prefs.watchProgress));
             }
-            if (prefs.allowedResolutions) {
-              // Usually managed via serverSettings, but let's sync locally if we want
+            if (prefs.favorites) {
+              localStorage.setItem("bubbaflix_favorites", JSON.stringify(prefs.favorites));
+            }
+            if (prefs.favoriteCollections) {
+              localStorage.setItem("bubbaflix_favorite_collections", JSON.stringify(prefs.favoriteCollections));
+            }
+            if (prefs.favoriteChannels) {
+              localStorage.setItem("bubbaflix_favorite_channels", JSON.stringify(prefs.favoriteChannels));
             }
             window.dispatchEvent(new CustomEvent("user-preferences-loaded", { detail: prefs }));
           }
@@ -76,6 +82,9 @@ export const AuthProvider = ({ children }) => {
       if (prefs.theme) localStorage.setItem("app_theme", prefs.theme);
       if (prefs.homeSections) localStorage.setItem("bubbaflix_home_sections", JSON.stringify(prefs.homeSections));
       if (prefs.watchProgress) localStorage.setItem("bubbaflix_watch_progress", JSON.stringify(prefs.watchProgress));
+      if (prefs.favorites) localStorage.setItem("bubbaflix_favorites", JSON.stringify(prefs.favorites));
+      if (prefs.favoriteCollections) localStorage.setItem("bubbaflix_favorite_collections", JSON.stringify(prefs.favoriteCollections));
+      if (prefs.favoriteChannels) localStorage.setItem("bubbaflix_favorite_channels", JSON.stringify(prefs.favoriteChannels));
     }
     axios.defaults.headers.common["Authorization"] = `Bearer ${res.data.token}`;
   };
@@ -89,6 +98,9 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     localStorage.removeItem("bubbaflix_token");
     localStorage.removeItem("simkl_access_token");
+    localStorage.removeItem("bubbaflix_favorites");
+    localStorage.removeItem("bubbaflix_favorite_collections");
+    localStorage.removeItem("bubbaflix_favorite_channels");
     delete axios.defaults.headers.common["Authorization"];
   };
   
