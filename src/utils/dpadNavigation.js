@@ -126,9 +126,7 @@ if (typeof document !== "undefined") {
 
   document.addEventListener("touchstart", handleTouchActive, { passive: true, capture: true });
   document.addEventListener("pointerdown", (e) => {
-    if (e.pointerType === "touch") {
-      handleTouchActive(e);
-    }
+    handleTouchActive(e);
   }, { passive: true, capture: true });
 }
 
@@ -222,7 +220,9 @@ export const initDpadNavigation = () => {
         return;
       }
       // Do not block normal typing keys
-      if (key !== "ArrowUp" && key !== "ArrowDown" && code !== 38 && code !== 40 && code !== 19 && code !== 20) {
+      if (key !== "ArrowUp" && key !== "ArrowDown" && code !== 38 && code !== 40 && code !== 19 && code !== 20 && key !== "Enter" && key !== "Select" && code !== 23 && code !== 66) {
+        activeEl.removeAttribute("readonly");
+        activeEl.setAttribute("data-editing-active", "true");
         return;
       }
     }
