@@ -1,6 +1,8 @@
 import axios from "axios";
 import { fetchServerSettings } from "./serverSettings";
 
+const premAxios = axios.create();
+
 export const getPremiumizeKey = () => {
   if (typeof window !== "undefined") {
     const saved = localStorage.getItem("premiumize_api_key");
@@ -48,7 +50,7 @@ export const resolveMagnetWithPremiumize = async (magnetUrl, customApiKey = null
     createParams.append("src", magnetUrl);
     createParams.append("apikey", apiKey);
 
-    const createRes = await axios.post("https://www.premiumize.me/api/transfer/create", createParams, {
+    const createRes = await premAxios.post("https://www.premiumize.me/api/transfer/create", createParams, {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       timeout: 12000,
     });
@@ -64,7 +66,7 @@ export const resolveMagnetWithPremiumize = async (magnetUrl, customApiKey = null
       const listParams = new URLSearchParams();
       listParams.append("apikey", apiKey);
 
-      const listRes = await axios.post("https://www.premiumize.me/api/transfer/list", listParams, {
+      const listRes = await premAxios.post("https://www.premiumize.me/api/transfer/list", listParams, {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         timeout: 10000,
       });
@@ -80,7 +82,7 @@ export const resolveMagnetWithPremiumize = async (magnetUrl, customApiKey = null
             itemParams.append("apikey", apiKey);
 
             if (match.file_id) {
-              const fileRes = await axios.post("https://www.premiumize.me/api/item/details", itemParams, {
+              const fileRes = await premAxios.post("https://www.premiumize.me/api/item/details", itemParams, {
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
                 timeout: 10000,
               });
@@ -93,7 +95,7 @@ export const resolveMagnetWithPremiumize = async (magnetUrl, customApiKey = null
                 };
               }
             } else if (match.folder_id) {
-              const folderRes = await axios.post("https://www.premiumize.me/api/folder/list", itemParams, {
+              const folderRes = await premAxios.post("https://www.premiumize.me/api/folder/list", itemParams, {
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
                 timeout: 10000,
               });
@@ -122,7 +124,7 @@ export const resolveMagnetWithPremiumize = async (magnetUrl, customApiKey = null
       const rootParams = new URLSearchParams();
       rootParams.append("apikey", apiKey);
 
-      const rootFolderRes = await axios.post("https://www.premiumize.me/api/folder/list", rootParams, {
+      const rootFolderRes = await premAxios.post("https://www.premiumize.me/api/folder/list", rootParams, {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         timeout: 10000,
       });

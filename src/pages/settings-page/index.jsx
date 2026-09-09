@@ -176,14 +176,14 @@ const SettingsPage = () => {
   const handleSaveHomeSections = async (e) => {
     if (e) e.preventDefault();
     saveHomeSections(homeSections);
-    await updateServerSettings({ home_sections: homeSections });
+    await updatePreferences({ home_sections: homeSections });
     setHomeSectionStatus({ type: "success", text: "Home screen layout saved & synced to all devices." });
   };
 
   const handleResetHomeSections = async () => {
     setHomeSections(DEFAULT_HOME_SECTIONS);
     saveHomeSections(DEFAULT_HOME_SECTIONS);
-    await updateServerSettings({ home_sections: DEFAULT_HOME_SECTIONS });
+    await updatePreferences({ home_sections: DEFAULT_HOME_SECTIONS });
     setHomeSectionStatus({ type: "info", text: "Home screen layout reset to defaults." });
   };
 
@@ -196,7 +196,7 @@ const SettingsPage = () => {
   const handleSelectTheme = (themeId) => {
     setActiveTheme(themeId);
     applyTheme(themeId);
-    updateServerSettings({ theme: themeId });
+    updatePreferences({ theme: themeId });
   };
 
   const handleSaveServerUrl = async (e) => {
@@ -381,7 +381,7 @@ const SettingsPage = () => {
     e.preventDefault();
     localStorage.setItem("stream_resolutions", JSON.stringify(selectedResolutions));
     localStorage.setItem("stream_exclude_low_quality", JSON.stringify(excludeLowQuality));
-    await updateServerSettings({
+    await updatePreferences({
       stream_resolutions: selectedResolutions,
       stream_exclude_low_quality: excludeLowQuality,
     });
@@ -442,7 +442,7 @@ const SettingsPage = () => {
           </div>
 
           {/* Android TV Centralized Settings Banner */}
-          {isTvClient && (
+          {isTvClient && isAdmin && (
             <div className="settingsCard">
               <div className="cardHeader">
                 <h2><FiServer style={{ marginRight: 8, color: "var(--pink)" }} /> Centralized Server Settings Active</h2>
@@ -455,33 +455,35 @@ const SettingsPage = () => {
           )}
 
           {/* CPU Hardware Topology & GPU Acceleration Engine Card */}
-          <div className="settingsCard">
-            <div className="cardHeader">
-              <h2><FiCpu style={{ marginRight: 8, color: "var(--pink)" }} /> CPU & GPU Hardware Transcode Engine</h2>
-              <span className="badge custom"><FiServer style={{ marginRight: 4 }} /> {gpuInfo?.enabled ? "GPU Acceleration Active" : "Multi-Core Hyperthreading Active"}</span>
+          {isAdmin && (
+            <div className="settingsCard">
+              <div className="cardHeader">
+                <h2><FiCpu style={{ marginRight: 8, color: "var(--pink)" }} /> CPU & GPU Hardware Transcode Engine</h2>
+                <span className="badge custom"><FiServer style={{ marginRight: 4 }} /> {gpuInfo?.enabled ? "GPU Acceleration Active" : "Multi-Core Hyperthreading Active"}</span>
+              </div>
+              <p className="description">
+                BubbaFlix server auto-detects GPU hardware accelerators (NVIDIA NVENC, Intel QuickSync QSV, AMD AMF, Linux VAAPI, Apple VideoToolbox) and CPU cores to power FFmpeg streams and eliminate buffering.
+              </p>
+              <div className="cpuTopologyGrid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 15, marginTop: 15 }}>
+                <div className="cpuStatBox" style={{ background: "rgba(255,255,255,0.05)", padding: "12px 16px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)" }}>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>Auto-Detected GPU Accelerator</div>
+                  <div style={{ fontSize: 14, fontWeight: "bold", color: gpuInfo?.enabled ? "#4caf50" : "#fff", marginTop: 4 }}>{gpuInfo?.type || "GPU Auto-Detection Active"}</div>
+                </div>
+                <div className="cpuStatBox" style={{ background: "rgba(255,255,255,0.05)", padding: "12px 16px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)" }}>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>FFmpeg Hardware Encoder</div>
+                  <div style={{ fontSize: 18, fontWeight: "bold", color: "var(--pink)", marginTop: 4 }}>{gpuInfo?.encoder || "libx264"}</div>
+                </div>
+                <div className="cpuStatBox" style={{ background: "rgba(255,255,255,0.05)", padding: "12px 16px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)" }}>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>CPU Logical Cores / Hyperthreads</div>
+                  <div style={{ fontSize: 18, fontWeight: "bold", color: "#4caf50", marginTop: 4 }}>{cpuInfo?.logicalCores || 8} Cores ({cpuInfo?.uvThreadPoolSize || 8} Threads)</div>
+                </div>
+                <div className="cpuStatBox" style={{ background: "rgba(255,255,255,0.05)", padding: "12px 16px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)" }}>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>CPU Processor Model</div>
+                  <div style={{ fontSize: 13, fontWeight: "bold", color: "#ffc107", marginTop: 4 }}>{cpuInfo?.model || "Generic CPU"}</div>
+                </div>
+              </div>
             </div>
-            <p className="description">
-              BubbaFlix server auto-detects GPU hardware accelerators (NVIDIA NVENC, Intel QuickSync QSV, AMD AMF, Linux VAAPI, Apple VideoToolbox) and CPU cores to power FFmpeg streams and eliminate buffering.
-            </p>
-            <div className="cpuTopologyGrid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 15, marginTop: 15 }}>
-              <div className="cpuStatBox" style={{ background: "rgba(255,255,255,0.05)", padding: "12px 16px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)" }}>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>Auto-Detected GPU Accelerator</div>
-                <div style={{ fontSize: 14, fontWeight: "bold", color: gpuInfo?.enabled ? "#4caf50" : "#fff", marginTop: 4 }}>{gpuInfo?.type || "GPU Auto-Detection Active"}</div>
-              </div>
-              <div className="cpuStatBox" style={{ background: "rgba(255,255,255,0.05)", padding: "12px 16px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)" }}>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>FFmpeg Hardware Encoder</div>
-                <div style={{ fontSize: 18, fontWeight: "bold", color: "var(--pink)", marginTop: 4 }}>{gpuInfo?.encoder || "libx264"}</div>
-              </div>
-              <div className="cpuStatBox" style={{ background: "rgba(255,255,255,0.05)", padding: "12px 16px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)" }}>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>CPU Logical Cores / Hyperthreads</div>
-                <div style={{ fontSize: 18, fontWeight: "bold", color: "#4caf50", marginTop: 4 }}>{cpuInfo?.logicalCores || 8} Cores ({cpuInfo?.uvThreadPoolSize || 8} Threads)</div>
-              </div>
-              <div className="cpuStatBox" style={{ background: "rgba(255,255,255,0.05)", padding: "12px 16px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)" }}>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>CPU Processor Model</div>
-                <div style={{ fontSize: 13, fontWeight: "bold", color: "#ffc107", marginTop: 4 }}>{cpuInfo?.model || "Generic CPU"}</div>
-              </div>
-            </div>
-          </div>
+          )}
 
           {/* Home Screen Category & Layout Manager Card */}
           <div className="settingsCard">
@@ -714,57 +716,6 @@ const SettingsPage = () => {
             </form>
           </div>
 
-          {/* Centralized Server & API Configuration Cards (Hidden on TV Client, Only Visible on Web / Desktop) */}
-          {!isTvClient && (
-            <>
-          {/* Backend Server Host & Address Card */}
-          <div className="settingsCard">
-            <div className="cardHeader">
-              <h2><FiServer style={{ marginRight: 8 }} /> Backend Server Address</h2>
-              <span className={`badge ${hasCustomServer ? "custom" : "default"}`}>
-                {hasCustomServer ? "Custom Host Active" : "Default Relative Host"}
-              </span>
-            </div>
-            <p className="description">
-              Specify a custom BubbaFlix backend server IP or URL for central settings storage and proxying (saved independently on each device).
-            </p>
-            <form onSubmit={handleSaveServerUrl} className="tokenForm">
-              <div className="inputGroup">
-                <label htmlFor="serverUrl">BACKEND_SERVER_URL</label>
-                <div className="inputWrapper">
-                  <input
-                    id="serverUrl"
-                    type="text"
-                    value={serverUrlState}
-                    onChange={(e) => setServerUrlState(e.target.value)}
-                    placeholder="e.g. http://192.168.10.10:5150 (or leave empty for default)"
-                  />
-                </div>
-              </div>
-              {serverStatus && (
-                <div className={`statusBanner ${serverStatus.type}`}>
-                  {serverStatus.type === "success" && <FiCheckCircle />}
-                  {serverStatus.type === "error" && <FiXCircle />}
-                  <span>{serverStatus.text}</span>
-                </div>
-              )}
-              <div className="buttonGroup">
-                <button type="submit" className="saveBtn" disabled={testingServer}>
-                  <FiSave /> {testingServer ? "Connecting..." : "Save Server Address"}
-                </button>
-                {hasCustomServer && (
-                  <button
-                    type="button"
-                    className="clearBtn"
-                    onClick={handleClearServerUrl}
-                  >
-                    Reset to Default
-                  </button>
-                )}
-              </div>
-            </form>
-          </div>
-
           {/* SIMKL Watch Tracker Card */}
           <div className="settingsCard">
             <div className="cardHeader">
@@ -830,6 +781,57 @@ const SettingsPage = () => {
                     onClick={handleClearSimkl}
                   >
                     Clear Credentials
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+
+\n          {/* Centralized Server & API Configuration Cards (Hidden on TV Client, Only Visible on Web / Desktop) */}
+          {!isTvClient && (
+            <>
+          {/* Backend Server Host & Address Card */}
+          <div className="settingsCard">
+            <div className="cardHeader">
+              <h2><FiServer style={{ marginRight: 8 }} /> Backend Server Address</h2>
+              <span className={`badge ${hasCustomServer ? "custom" : "default"}`}>
+                {hasCustomServer ? "Custom Host Active" : "Default Relative Host"}
+              </span>
+            </div>
+            <p className="description">
+              Specify a custom BubbaFlix backend server IP or URL for central settings storage and proxying (saved independently on each device).
+            </p>
+            <form onSubmit={handleSaveServerUrl} className="tokenForm">
+              <div className="inputGroup">
+                <label htmlFor="serverUrl">BACKEND_SERVER_URL</label>
+                <div className="inputWrapper">
+                  <input
+                    id="serverUrl"
+                    type="text"
+                    value={serverUrlState}
+                    onChange={(e) => setServerUrlState(e.target.value)}
+                    placeholder="e.g. http://192.168.10.10:5150 (or leave empty for default)"
+                  />
+                </div>
+              </div>
+              {serverStatus && (
+                <div className={`statusBanner ${serverStatus.type}`}>
+                  {serverStatus.type === "success" && <FiCheckCircle />}
+                  {serverStatus.type === "error" && <FiXCircle />}
+                  <span>{serverStatus.text}</span>
+                </div>
+              )}
+              <div className="buttonGroup">
+                <button type="submit" className="saveBtn" disabled={testingServer}>
+                  <FiSave /> {testingServer ? "Connecting..." : "Save Server Address"}
+                </button>
+                {hasCustomServer && (
+                  <button
+                    type="button"
+                    className="clearBtn"
+                    onClick={handleClearServerUrl}
+                  >
+                    Reset to Default
                   </button>
                 )}
               </div>
