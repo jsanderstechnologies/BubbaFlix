@@ -1037,7 +1037,7 @@ const SettingsPage = () => {
                 <div className="usersList" style={{ marginBottom: 20 }}>
                   {usersList.map(u => (
                     <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', padding: 10, background: 'rgba(0,0,0,0.2)', marginBottom: 5, borderRadius: 5 }}>
-                      <span><strong>{u.username}</strong> ({u.role})</span>
+                      <span style={{ color: 'white' }}><strong>{u.username}</strong> ({u.role})</span>
                       {u.id !== user.id && (
                         <button onClick={() => handleDeleteUser(u.id)} style={{ background: '#da2f68', color: 'white', border: 'none', padding: '5px 10px', borderRadius: 4, cursor: 'pointer' }}>Delete</button>
                       )}
