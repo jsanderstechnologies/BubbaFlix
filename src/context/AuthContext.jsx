@@ -48,7 +48,6 @@ export const AuthProvider = ({ children }) => {
             }
             window.dispatchEvent(new CustomEvent("user-preferences-loaded", { detail: prefs }));
           }
-          }
         }
       } catch (err) {
         console.error("Auth check failed", err);
