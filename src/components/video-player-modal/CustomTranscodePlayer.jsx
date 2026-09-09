@@ -33,22 +33,8 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
   const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
   const [showChapterMenu, setShowChapterMenu] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
-  const [mediaLogo, setMediaLogo] = useState(null);
 
-  useEffect(() => {
-    if (!tmdbId) return;
-    const fetchLogo = async () => {
-      try {
-        const res = await fetchDataFromAPI(`/${mediaType || 'movie'}/${tmdbId}/images`, { include_image_language: "en,null" });
-        if (res && res.logos && res.logos.length > 0) {
-          setMediaLogo(`https://image.tmdb.org/t/p/w500${res.logos[0].file_path}`);
-        }
-      } catch (err) {
-        console.warn("[CustomTranscodePlayer] Failed to fetch TMDB logo", err);
-      }
-    };
-    fetchLogo();
-  }, [tmdbId, mediaType]);
+
 
   useEffect(() => {
     const saved = getWatchProgress(tmdbId, mediaType, seasonNum, episodeNum);
@@ -230,11 +216,7 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
         }}
       >
         <div style={{ paddingBottom: '10px', fontSize: '18px', fontWeight: 'bold', textShadow: '1px 1px 2px black', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          {mediaLogo ? (
-            <img src={mediaLogo} alt={title} style={{ height: '45px', objectFit: 'contain', filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.8))' }} />
-          ) : (
-            <span>{title}</span>
-          )}
+          <span>{title}</span>
         </div>
         
         <div className="progress-bar-container" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
