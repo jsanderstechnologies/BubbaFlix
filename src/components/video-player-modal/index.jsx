@@ -139,20 +139,33 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
         </button>
 
         <div className="videoWrapper" style={{ width: '100%', height: '100vh', background: 'black' }}>
-          <movi-player
-            ref={videoRef}
-            class="videoElement"
-            controls="true"
-            autoplay="true"
-            theme="dark"
-            title={displayTitle}
-            showtitle="true"
-            thumb="true"
-            ontimeupdate={handleTimeUpdate}
-            onended={handleClose}
-            src={currentUrl}
-            style={{ width: '100%', height: '100%', outline: 'none' }}
-          />
+          {currentUrl.includes('/api/transcode') ? (
+            <video
+              ref={videoRef}
+              className="videoElement"
+              controls
+              autoPlay
+              onTimeUpdate={handleTimeUpdate}
+              onEnded={handleClose}
+              src={currentUrl}
+              style={{ width: '100%', height: '100%', outline: 'none' }}
+            />
+          ) : (
+            <movi-player
+              ref={videoRef}
+              class="videoElement"
+              controls="true"
+              autoplay="true"
+              theme="dark"
+              title={displayTitle}
+              showtitle="true"
+              thumb="true"
+              ontimeupdate={handleTimeUpdate}
+              onended={handleClose}
+              src={currentUrl}
+              style={{ width: '100%', height: '100%', outline: 'none' }}
+            />
+          )}
         </div>
       </div>
     </div>,
