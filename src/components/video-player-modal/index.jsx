@@ -157,6 +157,10 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
               streamUrl={currentUrl}
               rawUrl={rawUrl || videoUrl || streamUrl}
               title={displayTitle}
+              tmdbId={tmdbId}
+              mediaType={mediaType}
+              seasonNum={seasonNum}
+              episodeNum={episodeNum}
               onTimeUpdate={handleTimeUpdate}
               onEnded={handleClose}
             />

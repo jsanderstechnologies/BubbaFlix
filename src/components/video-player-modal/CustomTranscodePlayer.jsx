@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { getServerUrl } from "../../utils/serverSettings";
+import { getWatchProgress } from "../../utils/watchProgress";
 
 const formatTime = (seconds) => {
   if (!seconds || isNaN(seconds)) return "00:00";
@@ -11,14 +12,28 @@ const formatTime = (seconds) => {
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 };
 
-const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, onTimeUpdate, onEnded }) => {
+const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, seasonNum, episodeNum, onTimeUpdate, onEnded }) => {
   const videoRef = useRef(null);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [seekOffset, setSeekOffset] = useState(0);
   const [showControls, setShowControls] = useState(true);
+  const [actualStreamUrl, setActualStreamUrl] = useState("");
   const controlsTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    // Check for saved resume progress
+    const saved = getWatchProgress(tmdbId, mediaType, seasonNum, episodeNum);
+    if (saved && saved.currentTime > 15 && (saved.duration - saved.currentTime) > 60) {
+      setSeekOffset(saved.currentTime);
+      setCurrentTime(saved.currentTime);
+      const urlWithSeek = streamUrl.includes("?") ? `${streamUrl}&ss=${saved.currentTime}` : `${streamUrl}?ss=${saved.currentTime}`;
+      setActualStreamUrl(urlWithSeek);
+    } else {
+      setActualStreamUrl(streamUrl);
+    }
+  }, [streamUrl, tmdbId, mediaType, seasonNum, episodeNum]);
 
   useEffect(() => {
     // Fetch precise video duration from the transcoder metadata API
@@ -118,17 +133,19 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, onTimeUpdate, onEnded
 
   return (
     <div className="custom-transcode-player" style={{ position: 'relative', width: '100%', height: '100%', background: 'black', overflow: 'hidden' }}>
-      <video
-        ref={videoRef}
-        autoPlay
-        src={streamUrl}
-        onTimeUpdate={handleTimeUpdate}
-        onEnded={onEnded}
-        onClick={togglePlay}
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
-        style={{ width: '100%', height: '100%', outline: 'none' }}
-      />
+      {actualStreamUrl && (
+        <video
+          ref={videoRef}
+          autoPlay
+          src={actualStreamUrl}
+          onTimeUpdate={handleTimeUpdate}
+          onEnded={onEnded}
+          onClick={togglePlay}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
+          style={{ width: '100%', height: '100%', outline: 'none' }}
+        />
+      )}
       
       <div 
         className="custom-controls" 
