@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { getServerUrl } from "../../utils/serverSettings";
 import { getWatchProgress } from "../../utils/watchProgress";
+import { fetchDataFromAPI } from "../../utils/api";
 
 const formatTime = (seconds) => {
   if (!seconds || isNaN(seconds)) return "00:00";
@@ -32,6 +33,22 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
   const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
   const [showChapterMenu, setShowChapterMenu] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
+  const [mediaLogo, setMediaLogo] = useState(null);
+
+  useEffect(() => {
+    if (!tmdbId) return;
+    const fetchLogo = async () => {
+      try {
+        const res = await fetchDataFromAPI(`/${mediaType || 'movie'}/${tmdbId}/images`, { include_image_language: "en,null" });
+        if (res && res.logos && res.logos.length > 0) {
+          setMediaLogo(`https://image.tmdb.org/t/p/w500${res.logos[0].file_path}`);
+        }
+      } catch (err) {
+        console.warn("[CustomTranscodePlayer] Failed to fetch TMDB logo", err);
+      }
+    };
+    fetchLogo();
+  }, [tmdbId, mediaType]);
 
   useEffect(() => {
     const saved = getWatchProgress(tmdbId, mediaType, seasonNum, episodeNum);
@@ -56,9 +73,30 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
         const res = await axios.get(`${serverBase}/api/transcode/metadata?url=${encodeURIComponent(rawUrl)}`, { timeout: 10000 });
         if (res.data) {
           if (res.data.duration) setDuration(res.data.duration);
-          if (res.data.audioTracks) setAudioTracks(res.data.audioTracks);
           if (res.data.subtitleTracks) setSubtitleTracks(res.data.subtitleTracks);
           if (res.data.chapters) setChapters(res.data.chapters);
+          
+          if (res.data.audioTracks && res.data.audioTracks.length > 0) {
+            setAudioTracks(res.data.audioTracks);
+            // Default to English if not manually selected
+            if (selectedAudioIndex === null) {
+              const engTrack = res.data.audioTracks.find(t => t.language === 'eng' || t.language === 'en' || (t.title && t.title.toLowerCase().includes('english')));
+              if (engTrack && res.data.audioTracks[0] && engTrack.index !== res.data.audioTracks[0].index) {
+                const currentRealTime = seekOffset + (videoRef.current ? videoRef.current.currentTime : 0);
+                setSelectedAudioIndex(engTrack.index);
+                setSeekOffset(currentRealTime);
+                setCurrentTime(currentRealTime);
+                let targetUrl = streamUrl;
+                if (currentRealTime > 0) targetUrl += (targetUrl.includes("?") ? "&" : "?") + `ss=${currentRealTime}`;
+                targetUrl += (targetUrl.includes("?") ? "&" : "?") + `audio_index=${engTrack.index}`;
+                setActualStreamUrl(targetUrl);
+                if (videoRef.current) {
+                  videoRef.current.src = targetUrl;
+                  videoRef.current.play();
+                }
+              }
+            }
+          }
         }
       } catch (err) {
         console.warn("[CustomTranscodePlayer] Failed to probe metadata:", err.message);
@@ -192,7 +230,11 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
         }}
       >
         <div style={{ paddingBottom: '10px', fontSize: '18px', fontWeight: 'bold', textShadow: '1px 1px 2px black', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>{title}</span>
+          {mediaLogo ? (
+            <img src={mediaLogo} alt={title} style={{ height: '45px', objectFit: 'contain', filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.8))' }} />
+          ) : (
+            <span>{title}</span>
+          )}
         </div>
         
         <div className="progress-bar-container" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
@@ -298,7 +340,7 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
                     </button>
                     {audioTracks.map(t => (
                       <button key={t.index} onClick={() => handleAudioTrackChange(t.index)} style={{ background: 'none', border: 'none', color: selectedAudioIndex === t.index ? '#E50914' : 'white', cursor: 'pointer', textAlign: 'left', fontSize: '14px', padding: '5px' }}>
-                        {t.title} ({t.language})
+                        {t.title} {t.language && t.language !== 'und' ? `(${t.language})` : ''}
                       </button>
                     ))}
                   </div>
@@ -319,7 +361,7 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
                     </button>
                     {subtitleTracks.map(t => (
                       <button key={t.index} onClick={() => { setSelectedSubtitleIndex(t.index); setShowSubtitleMenu(false); }} style={{ background: 'none', border: 'none', color: selectedSubtitleIndex === t.index ? '#E50914' : 'white', cursor: 'pointer', textAlign: 'left', fontSize: '14px', padding: '5px' }}>
-                        {t.title} ({t.language})
+                        {t.title} {t.language && t.language !== 'und' ? `(${t.language})` : ''}
                       </button>
                     ))}
                   </div>
