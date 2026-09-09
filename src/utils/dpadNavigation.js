@@ -209,6 +209,7 @@ export const initDpadNavigation = () => {
   };
 
   const handleKeyDown = (e) => {
+    if (e.defaultPrevented) return;
     const key = e.key || e.keyCode;
     const code = e.keyCode;
     const activeEl = document.activeElement;
