@@ -31,6 +31,7 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
   const [showAudioMenu, setShowAudioMenu] = useState(false);
   const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
   const [showChapterMenu, setShowChapterMenu] = useState(false);
+  const [showInfoModal, setShowInfoModal] = useState(false);
 
   useEffect(() => {
     const saved = getWatchProgress(tmdbId, mediaType, seasonNum, episodeNum);
@@ -192,7 +193,6 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
       >
         <div style={{ paddingBottom: '10px', fontSize: '18px', fontWeight: 'bold', textShadow: '1px 1px 2px black', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>{title}</span>
-          <span style={{ fontSize: '14px', color: '#ccc', fontWeight: 'normal', cursor: 'pointer', padding: '5px', border: '1px solid #555', borderRadius: '4px', background: 'rgba(0,0,0,0.5)' }} title="Transcoded via FFmpeg from source file">ℹ️ Info</span>
         </div>
         
         <div className="progress-bar-container" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
@@ -252,6 +252,24 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
           </div>
 
           <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+            
+            <div style={{ position: 'relative' }}>
+              {showInfoModal && (
+                <div style={{ position: 'absolute', bottom: '35px', right: '-10px', background: 'rgba(20,20,20,0.95)', padding: '15px', borderRadius: '8px', minWidth: '250px', zIndex: 100, border: '1px solid #444' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '10px' }}>Media Info</div>
+                  <div style={{ fontSize: '12px', color: '#ccc', marginBottom: '5px' }}><strong>Title:</strong> {title}</div>
+                  {mediaType === 'tv' && (
+                    <div style={{ fontSize: '12px', color: '#ccc', marginBottom: '5px' }}><strong>Episode:</strong> S{seasonNum} E{episodeNum}</div>
+                  )}
+                  <div style={{ fontSize: '12px', color: '#ccc', marginBottom: '5px' }}><strong>Duration:</strong> {formatTime(duration)}</div>
+                  <div style={{ fontSize: '12px', color: '#ccc', marginBottom: '5px' }}><strong>Transcoder:</strong> Active (FFmpeg Pipe)</div>
+                </div>
+              )}
+              <button onClick={() => { setShowInfoModal(!showInfoModal); setShowChapterMenu(false); setShowAudioMenu(false); setShowSubtitleMenu(false); }} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '16px' }}>
+                ℹ️ Info
+              </button>
+            </div>
+
             {chapters.length > 0 && (
               <div style={{ position: 'relative' }}>
                 {showChapterMenu && (
@@ -264,13 +282,13 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
                     ))}
                   </div>
                 )}
-                <button onClick={() => { setShowChapterMenu(!showChapterMenu); setShowAudioMenu(false); setShowSubtitleMenu(false); }} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '16px' }}>
+                <button onClick={() => { setShowChapterMenu(!showChapterMenu); setShowInfoModal(false); setShowAudioMenu(false); setShowSubtitleMenu(false); }} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '16px' }}>
                   📑 Chapters
                 </button>
               </div>
             )}
 
-            {audioTracks.length > 1 && (
+            {audioTracks.length > 0 && (
               <div style={{ position: 'relative' }}>
                 {showAudioMenu && (
                   <div style={{ position: 'absolute', bottom: '35px', right: '-10px', background: 'rgba(20,20,20,0.95)', padding: '10px', borderRadius: '8px', minWidth: '150px', display: 'flex', flexDirection: 'column', gap: '5px', zIndex: 100 }}>
@@ -285,7 +303,7 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
                     ))}
                   </div>
                 )}
-                <button onClick={() => { setShowAudioMenu(!showAudioMenu); setShowSubtitleMenu(false); setShowChapterMenu(false); }} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '16px' }}>
+                <button onClick={() => { setShowAudioMenu(!showAudioMenu); setShowInfoModal(false); setShowSubtitleMenu(false); setShowChapterMenu(false); }} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '16px' }}>
                   🔊 Audio
                 </button>
               </div>
@@ -306,7 +324,7 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
                     ))}
                   </div>
                 )}
-                <button onClick={() => { setShowSubtitleMenu(!showSubtitleMenu); setShowAudioMenu(false); setShowChapterMenu(false); }} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold' }}>
+                <button onClick={() => { setShowSubtitleMenu(!showSubtitleMenu); setShowInfoModal(false); setShowAudioMenu(false); setShowChapterMenu(false); }} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold' }}>
                   CC
                 </button>
               </div>
