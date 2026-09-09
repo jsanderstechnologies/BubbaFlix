@@ -243,7 +243,7 @@ const server = http.createServer((req, res) => {
   // CORS-transparent Stream Proxy Endpoint
   // Allows MoviPlayer (WASM) to fetch video bytes from CDNs that don't send CORS headers.
   // Pure pipe-through — zero transcoding, no FFmpeg.
-  if ((cleanPath === "/api/proxy" || cleanPath === "/proxy") && req.method === "GET") {
+  if ((cleanPath === "/api/proxy" || cleanPath === "/proxy") && (req.method === "GET" || req.method === "HEAD")) {
     const targetUrl = parsedUrl.searchParams.get("url");
     if (!targetUrl || !targetUrl.startsWith("http")) {
       return sendJson(res, 400, { error: "Missing or invalid 'url' parameter." });
@@ -265,10 +265,10 @@ const server = http.createServer((req, res) => {
         proxyHeaders["Range"] = req.headers["range"];
       }
 
-      logMessage(`[Stream Proxy] Forwarding request for [${initiator.initiatorComponent}] (${initiator.ip}): ${targetUrl.substring(0, 100)}...`);
+      logMessage(`[Stream Proxy] Forwarding ${req.method} request for [${initiator.initiatorComponent}] (${initiator.ip}): ${targetUrl.substring(0, 100)}...`);
 
       const upstream = httpModule.request(targetUrl, {
-        method: "GET",
+        method: req.method,
         headers: proxyHeaders,
         rejectUnauthorized: false,
         timeout: 15000,
