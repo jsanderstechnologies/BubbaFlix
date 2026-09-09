@@ -173,7 +173,7 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
         </div>
 
         <div className="videoWrapper" style={{ width: '100%', height: '100vh', background: 'black' }}>
-          {currentUrl.includes('/api/transcode') ? (
+          {(currentUrl.includes('/api/transcode') || (typeof window !== 'undefined' && window.AndroidPlayer)) ? (
             <CustomTranscodePlayer
               streamUrl={currentUrl}
               rawUrl={rawUrl || videoUrl || streamUrl}

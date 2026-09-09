@@ -97,12 +97,58 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
       if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
       controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 3000);
     };
+    
+    const handleKeyDown = (e) => {
+      handleMouseMove();
+      if (e.key === "ArrowRight") {
+        setSeekOffset((prev) => {
+          let target = currentTime + 10;
+          if (duration > 0 && target > duration) target = duration;
+          executeSeek(target);
+          return prev;
+        });
+        e.preventDefault();
+      } else if (e.key === "ArrowLeft") {
+        setSeekOffset((prev) => {
+          let target = currentTime - 10;
+          if (target < 0) target = 0;
+          executeSeek(target);
+          return prev;
+        });
+        e.preventDefault();
+      } else if (e.key === "Enter" || e.key === " ") {
+        togglePlay();
+        e.preventDefault();
+      } else if (e.key === "MediaPlayPause" || e.key === "MediaPlay" || e.key === "MediaPause") {
+        togglePlay();
+        e.preventDefault();
+      } else if (e.key === "MediaFastForward") {
+        setSeekOffset((prev) => {
+          let target = currentTime + 10;
+          if (duration > 0 && target > duration) target = duration;
+          executeSeek(target);
+          return prev;
+        });
+        e.preventDefault();
+      } else if (e.key === "MediaRewind") {
+        setSeekOffset((prev) => {
+          let target = currentTime - 10;
+          if (target < 0) target = 0;
+          executeSeek(target);
+          return prev;
+        });
+        e.preventDefault();
+      }
+    };
+
     window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("keydown", handleKeyDown);
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("keydown", handleKeyDown);
       if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     };
-  }, []);
+  }, [currentTime, duration, selectedAudioIndex, streamUrl]);
 
   const handleTimeUpdate = () => {
     if (videoRef.current) {
