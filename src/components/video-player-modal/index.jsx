@@ -148,7 +148,6 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
             title={displayTitle}
             showtitle="true"
             thumb="true"
-            sw="true"
             ontimeupdate={handleTimeUpdate}
             onended={handleClose}
             src={currentUrl}

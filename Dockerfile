@@ -16,8 +16,8 @@ RUN npm run build
 # Stage 2: Serve application using Nginx + Native Node.js Backend
 FROM nginx:alpine
 
-# Install Node.js runtime
-RUN apk add --no-cache nodejs
+# Install Node.js runtime and FFmpeg for transcoding HEVC web streams
+RUN apk add --no-cache nodejs ffmpeg
 
 
 

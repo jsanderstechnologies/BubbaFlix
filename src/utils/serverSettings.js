@@ -42,11 +42,20 @@ export const getTranscodedStreamUrl = (url) => {
     console.log("[Direct Stream Router] Android TV: bypassing proxy for native ExoPlayer:", url);
     return url;
   }
-  // Web clients: route through /api/proxy to add CORS headers for MoviPlayer WASM
+  // Web clients: route through backend FFmpeg for HEVC, otherwise use raw CORS proxy
   const serverBase = getServerUrl();
-  const proxyUrl = `${serverBase}/api/proxy?url=${encodeURIComponent(url)}`;
-  console.log("[Direct Stream Router] Web: routing through CORS proxy:", proxyUrl.substring(0, 100) + "...");
-  return proxyUrl;
+  const lowerUrl = url.toLowerCase();
+  const isHevc = lowerUrl.includes("hevc") || lowerUrl.includes("x265") || lowerUrl.includes("h265");
+
+  if (isHevc) {
+    const transcodeUrl = `${serverBase}/api/transcode?url=${encodeURIComponent(url)}`;
+    console.log("[Direct Stream Router] Web: routing HEVC stream through backend FFmpeg transcoder:", transcodeUrl.substring(0, 100) + "...");
+    return transcodeUrl;
+  } else {
+    const proxyUrl = `${serverBase}/api/proxy?url=${encodeURIComponent(url)}`;
+    console.log("[Direct Stream Router] Web: routing standard stream through CORS proxy:", proxyUrl.substring(0, 100) + "...");
+    return proxyUrl;
+  }
 };
 
 export const saveServerUrl = (url) => {
