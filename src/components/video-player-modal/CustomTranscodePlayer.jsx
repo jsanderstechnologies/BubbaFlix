@@ -33,14 +33,24 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
   const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
   const [showChapterMenu, setShowChapterMenu] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
-
-
+  const [showResumePrompt, setShowResumePrompt] = useState(false);
+  const [pendingSavedProgress, setPendingSavedProgress] = useState(null);
 
   useEffect(() => {
     const saved = getWatchProgress(tmdbId, mediaType, seasonNum, episodeNum);
-    let startOffset = 0;
     if (saved && saved.currentTime > 15 && (saved.duration - saved.currentTime) > 60) {
-      startOffset = saved.currentTime;
+      setPendingSavedProgress(saved);
+      setShowResumePrompt(true);
+    } else {
+      setActualStreamUrl(streamUrl);
+    }
+  }, [streamUrl, tmdbId, mediaType, seasonNum, episodeNum]);
+
+  const handleResumeChoice = (resume) => {
+    setShowResumePrompt(false);
+    let startOffset = 0;
+    if (resume && pendingSavedProgress) {
+      startOffset = pendingSavedProgress.currentTime;
     }
     setSeekOffset(startOffset);
     setCurrentTime(startOffset);
@@ -50,7 +60,8 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
       targetUrl = targetUrl.includes("?") ? `${targetUrl}&ss=${startOffset}` : `${targetUrl}?ss=${startOffset}`;
     }
     setActualStreamUrl(targetUrl);
-  }, [streamUrl, tmdbId, mediaType, seasonNum, episodeNum]);
+  };
+
 
   useEffect(() => {
     const fetchMetadata = async () => {
@@ -260,6 +271,35 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
 
   return (
     <div className="custom-transcode-player" style={{ position: 'relative', width: '100%', height: '100%', background: 'black', overflow: 'hidden' }}>
+      
+      {showResumePrompt && pendingSavedProgress && (
+        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+          <h2 style={{ color: 'white', marginBottom: 20 }}>Resume Playback?</h2>
+          <p style={{ color: '#ccc', marginBottom: 30, fontSize: 16 }}>
+            You left off at {formatTime(pendingSavedProgress.currentTime)}. Would you like to resume?
+          </p>
+          <div style={{ display: 'flex', gap: 15 }}>
+            <button 
+              autoFocus
+              onClick={() => handleResumeChoice(true)}
+              style={{ padding: '12px 24px', background: 'var(--pink)', color: 'white', border: 'none', borderRadius: 8, fontSize: 16, cursor: 'pointer', outline: 'none' }}
+              onFocus={(e) => e.target.style.boxShadow = '0 0 0 3px rgba(255,255,255,0.5)'}
+              onBlur={(e) => e.target.style.boxShadow = 'none'}
+            >
+              Resume
+            </button>
+            <button 
+              onClick={() => handleResumeChoice(false)}
+              style={{ padding: '12px 24px', background: 'rgba(255,255,255,0.2)', color: 'white', border: 'none', borderRadius: 8, fontSize: 16, cursor: 'pointer', outline: 'none' }}
+              onFocus={(e) => e.target.style.boxShadow = '0 0 0 3px rgba(255,255,255,0.5)'}
+              onBlur={(e) => e.target.style.boxShadow = 'none'}
+            >
+              Start Over
+            </button>
+          </div>
+        </div>
+      )}
+
       {actualStreamUrl && (
         <video
           ref={videoRef}

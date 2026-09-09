@@ -101,6 +101,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("bubbaflix_favorites");
     localStorage.removeItem("bubbaflix_favorite_collections");
     localStorage.removeItem("bubbaflix_favorite_channels");
+    localStorage.removeItem("bubbaflix_watch_progress");
     delete axios.defaults.headers.common["Authorization"];
   };
   
