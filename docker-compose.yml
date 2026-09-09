@@ -25,6 +25,13 @@ services:
     devices:
       # Map host GPU render devices for Intel QuickSync/VAAPI and AMD hardware transcoding
       - /dev/dri:/dev/dri
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu, video]
 
 volumes:
   bubbaflix-data:

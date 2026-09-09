@@ -14,16 +14,19 @@ COPY . .
 RUN npm run build
 
 # Stage 2: Serve application using Nginx + Native Node.js Backend
-FROM nginx:alpine
+FROM node:20-bookworm-slim
 
-# Install Node.js runtime, FFmpeg, and universal GPU hardware acceleration drivers (Intel QSV/VAAPI, AMD VAAPI)
-RUN apk add --no-cache nodejs ffmpeg libva libva-intel-driver intel-media-driver mesa-va-gallium mesa-dri-gallium
+# Install Nginx, FFmpeg (with NVENC and VAAPI compiled in by default on Debian 12), and hardware acceleration drivers
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    nginx \
+    ffmpeg \
+    libva-drm2 \
+    libva2 \
+    intel-media-va-driver-non-free \
+    i965-va-driver \
+    mesa-va-drivers \
+    && rm -rf /var/lib/apt/lists/*
 
-# Conditionally install Intel QSV hardware acceleration packages only on x86_64 architectures
-ARG TARGETPLATFORM
-RUN if [ "$TARGETPLATFORM" = "linux/amd64" ] || [ "$(uname -m)" = "x86_64" ]; then \
-      apk add --no-cache libmfx intel-media-sdk libvpl || true; \
-    fi
 WORKDIR /app
 
 # Copy server backend and startup script
@@ -35,6 +38,7 @@ RUN chmod +x ./start.sh
 
 # Copy custom Nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+RUN rm -f /etc/nginx/sites-enabled/default
 
 # Copy compiled static HTML/JS/CSS output from build stage
 COPY --from=build /app/dist /usr/share/nginx/html
