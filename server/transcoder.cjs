@@ -615,7 +615,33 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
 
     const subProcess = spawn("ffmpeg", ffmpegArgs);
 
-    subProcess.stdout.pipe(res);
+    const { Transform } = require("stream");
+    let leftover = "";
+    const vttFixer = new Transform({
+      transform(chunk, encoding, callback) {
+        let text = leftover + chunk.toString("utf8");
+        const lastNewline = text.lastIndexOf('\n');
+        if (lastNewline !== -1) {
+          let processText = text.slice(0, lastNewline + 1);
+          leftover = text.slice(lastNewline + 1);
+          // Fix negative timestamps that cause WebVTT parsers to instantly abort
+          processText = processText.replace(/-\d{2}:\d{2}:\d{2}\.\d{3}/g, "00:00:00.000");
+          this.push(Buffer.from(processText, "utf8"));
+        } else {
+          leftover = text;
+        }
+        callback();
+      },
+      flush(callback) {
+        if (leftover) {
+          leftover = leftover.replace(/-\d{2}:\d{2}:\d{2}\.\d{3}/g, "00:00:00.000");
+          this.push(Buffer.from(leftover, "utf8"));
+        }
+        callback();
+      }
+    });
+
+    subProcess.stdout.pipe(vttFixer).pipe(res);
     subProcess.stderr.on("data", () => {});
     subProcess.on("error", () => {});
     return;
