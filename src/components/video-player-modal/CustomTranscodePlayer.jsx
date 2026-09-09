@@ -182,6 +182,9 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
         
         <div className="controls-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '5px' }}>
           <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+            <button onClick={() => handleRelativeSeek(-30)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              ⏪ 30s
+            </button>
             <button onClick={() => handleRelativeSeek(-10)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '5px' }}>
               ⏪ 10s
             </button>
@@ -190,6 +193,9 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
             </button>
             <button onClick={() => handleRelativeSeek(10)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '5px' }}>
               10s ⏩
+            </button>
+            <button onClick={() => handleRelativeSeek(30)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              30s ⏩
             </button>
           </div>
           <button onClick={handleToggleFullscreen} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '20px' }}>
