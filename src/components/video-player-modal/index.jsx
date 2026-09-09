@@ -8,6 +8,8 @@ import { getWatchProgress, saveWatchProgress, clearWatchProgress } from "../../u
 import { getTranscodedStreamUrl } from "../../utils/serverSettings";
 import "./index.scss";
 
+import CustomTranscodePlayer from "./CustomTranscodePlayer";
+
 const cleanMediaTitle = (rawTitle) => {
   if (!rawTitle) return "";
   let clean = rawTitle;
@@ -109,15 +111,16 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
     };
   }, [show, currentUrl, tmdbId, mediaType, seasonNum, episodeNum]);
 
-  const handleTimeUpdate = () => {
-     if (videoRef.current && videoRef.current.currentTime > 15 && videoRef.current.duration > 0) {
+  const handleTimeUpdate = (mockVideoNode) => {
+     const v = mockVideoNode || videoRef.current;
+     if (v && v.currentTime > 15 && v.duration > 0) {
          saveWatchProgress({
             tmdbId,
             mediaType,
             seasonNum,
             episodeNum,
-            currentTime: videoRef.current.currentTime,
-            duration: videoRef.current.duration,
+            currentTime: v.currentTime,
+            duration: v.duration,
             title: displayTitle
          });
      }
@@ -140,15 +143,12 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
 
         <div className="videoWrapper" style={{ width: '100%', height: '100vh', background: 'black' }}>
           {currentUrl.includes('/api/transcode') ? (
-            <video
-              ref={videoRef}
-              className="videoElement"
-              controls
-              autoPlay
+            <CustomTranscodePlayer
+              streamUrl={currentUrl}
+              rawUrl={rawUrl || videoUrl || streamUrl}
+              title={displayTitle}
               onTimeUpdate={handleTimeUpdate}
               onEnded={handleClose}
-              src={currentUrl}
-              style={{ width: '100%', height: '100%', outline: 'none' }}
             />
           ) : (
             <movi-player
@@ -160,7 +160,7 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
               title={displayTitle}
               showtitle="true"
               thumb="true"
-              ontimeupdate={handleTimeUpdate}
+              ontimeupdate={() => handleTimeUpdate()}
               onended={handleClose}
               src={currentUrl}
               style={{ width: '100%', height: '100%', outline: 'none' }}
