@@ -1,6 +1,8 @@
 import axios from "axios";
-import { getServerUrl } from "./serverSettings";
+import { getServerUrl, getServerSettings } from "./serverSettings";
 import versionData from "../../version.json";
+
+const simklAxios = axios.create();
 
 const APP_NAME = "BubbaFlix";
 const APP_VERSION = versionData?.versionName || "1.0.1";
@@ -127,7 +129,7 @@ export const fetchUserSimklHistory = async (forceManualSync = false) => {
     // PHASE 2: Check Activities First (Required SIMKL Rule)
     console.log("[SIMKL Sync Phase 2] Checking /sync/activities first...");
     const actQuery = getRequiredQueryParams(clientId);
-    const actRes = await axios.get(`${baseUrl}/api/simkl/sync/activities?${actQuery}`, { headers, timeout: 8000 });
+    const actRes = await simklAxios.get(`${baseUrl}/api/simkl/sync/activities?${actQuery}`, { headers, timeout: 8000 });
 
     const latestActivity = actRes.data?.all || actRes.data?.movies || actRes.data?.shows || null;
 
@@ -142,7 +144,7 @@ export const fetchUserSimklHistory = async (forceManualSync = false) => {
     if (savedActivityDate) {
       console.log(`[SIMKL Sync Phase 2] Fetching delta changes with date_from=${savedActivityDate}...`);
       const deltaQuery = getRequiredQueryParams(clientId, { date_from: savedActivityDate });
-      const deltaRes = await axios.get(`${baseUrl}/api/simkl/sync/all-items/?${deltaQuery}`, { headers, timeout: 10000 });
+      const deltaRes = await simklAxios.get(`${baseUrl}/api/simkl/sync/all-items/?${deltaQuery}`, { headers, timeout: 10000 });
 
       if (Array.isArray(deltaRes.data?.movies)) {
         deltaRes.data.movies.forEach((m) => {
@@ -175,7 +177,7 @@ export const fetchUserSimklHistory = async (forceManualSync = false) => {
       const baseQuery = getRequiredQueryParams(clientId);
 
       // 1. Fetch movies library
-      const moviesRes = await axios.get(`${baseUrl}/api/simkl/sync/movies?${baseQuery}`, { headers, timeout: 10000 });
+      const moviesRes = await simklAxios.get(`${baseUrl}/api/simkl/sync/movies?${baseQuery}`, { headers, timeout: 10000 });
       if (Array.isArray(moviesRes.data?.movies)) {
         moviesRes.data.movies.forEach((m) => {
           if (m.ids?.tmdb) cache.movies[String(m.ids.tmdb)] = true;
@@ -183,7 +185,7 @@ export const fetchUserSimklHistory = async (forceManualSync = false) => {
       }
 
       // 2. Fetch shows library (sequential wait)
-      const showsRes = await axios.get(`${baseUrl}/api/simkl/sync/shows?${baseQuery}`, { headers, timeout: 10000 });
+      const showsRes = await simklAxios.get(`${baseUrl}/api/simkl/sync/shows?${baseQuery}`, { headers, timeout: 10000 });
       if (Array.isArray(showsRes.data?.shows)) {
         showsRes.data.shows.forEach((show) => {
           const showId = show.ids?.tmdb ? String(show.ids.tmdb) : null;
@@ -205,7 +207,7 @@ export const fetchUserSimklHistory = async (forceManualSync = false) => {
       }
 
       // 3. Fetch anime library (sequential wait)
-      const animeRes = await axios.get(`${baseUrl}/api/simkl/sync/anime?${baseQuery}`, { headers, timeout: 10000 });
+      const animeRes = await simklAxios.get(`${baseUrl}/api/simkl/sync/anime?${baseQuery}`, { headers, timeout: 10000 });
       if (Array.isArray(animeRes.data?.anime)) {
         animeRes.data.anime.forEach((a) => {
           if (a.ids?.tmdb) cache.movies[String(a.ids.tmdb)] = true;
@@ -286,7 +288,7 @@ export const toggleSimklWatched = async ({ tmdbId, title, mediaType, seasonNum, 
   try {
     console.log(`[SIMKL API] ${currentlyWatched ? "Removing from" : "Adding to"} SIMKL history:`, payload);
     const baseUrl = getServerUrl();
-    await axios.post(`${baseUrl}${endpointPath}?${queryParams}`, payload, { headers, timeout: 8000 });
+    await simklAxios.post(`${baseUrl}${endpointPath}?${queryParams}`, payload, { headers, timeout: 8000 });
   } catch (err) {
     console.warn(`[SIMKL API Sync Error]:`, err.message);
   }
@@ -322,7 +324,7 @@ export const updateWatchlistStatusSimkl = async ({ tmdbId, title, mediaType, sta
 
     console.log(`[SIMKL API] Updating watchlist status to '${status}':`, payload);
     const baseUrl = getServerUrl();
-    await axios.post(`${baseUrl}/api/simkl/sync/add-to-list?${queryParams}`, payload, {
+    await simklAxios.post(`${baseUrl}/api/simkl/sync/add-to-list?${queryParams}`, payload, {
       headers,
       timeout: 8000,
     });
@@ -347,7 +349,7 @@ export const testSimklConnection = async (clientId) => {
 
   try {
     const searchParams = getRequiredQueryParams(cId, { tmdb: "550" });
-    const response = await axios.get(`${baseUrl}/api/simkl/search/id?${searchParams}`, {
+    const response = await simklAxios.get(`${baseUrl}/api/simkl/search/id?${searchParams}`, {
       headers,
       timeout: 8000,
     });
