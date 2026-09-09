@@ -39,10 +39,10 @@ WORKDIR /app
 
 # Copy server backend and startup script
 COPY server ./server
-COPY start.sh ./start.sh
+COPY start.sh /docker-entrypoint.sh
 
-# Ensure start.sh script is executable
-RUN chmod +x ./start.sh
+# Ensure script is executable
+RUN chmod +x /docker-entrypoint.sh
 
 # Copy custom Nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
@@ -52,5 +52,5 @@ RUN rm -f /etc/nginx/sites-enabled/default
 COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 5150 5000
-ENTRYPOINT []
-CMD ["/app/start.sh"]
+ENTRYPOINT ["/docker-entrypoint.sh"]
+CMD []
