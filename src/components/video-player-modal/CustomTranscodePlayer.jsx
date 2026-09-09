@@ -16,6 +16,7 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
   const videoRef = useRef(null);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
+  const [bufferedAmount, setBufferedAmount] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [seekOffset, setSeekOffset] = useState(0);
   const [showControls, setShowControls] = useState(true);
@@ -85,6 +86,13 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
     }
   };
 
+  const handleProgress = () => {
+    if (videoRef.current && videoRef.current.buffered.length > 0) {
+      const bufferedEnd = videoRef.current.buffered.end(videoRef.current.buffered.length - 1);
+      setBufferedAmount(seekOffset + bufferedEnd);
+    }
+  };
+
   const executeSeek = (targetTime, audioIndex = selectedAudioIndex) => {
     setSeekOffset(targetTime);
     setCurrentTime(targetTime);
@@ -149,6 +157,7 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
           autoPlay
           src={actualStreamUrl}
           onTimeUpdate={handleTimeUpdate}
+          onProgress={handleProgress}
           onEnded={onEnded}
           onClick={togglePlay}
           onPlay={() => setIsPlaying(true)}
@@ -193,7 +202,14 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
               cursor: 'pointer', borderRadius: '4px', position: 'relative'
             }}
           >
+            <div className="buffered-filled" style={{
+              position: 'absolute', top: 0, left: 0,
+              width: `${duration ? (bufferedAmount / duration) * 100 : 0}%`,
+              height: '100%', background: 'rgba(255,255,255,0.4)', borderRadius: '4px',
+              transition: 'width 0.2s linear'
+            }} />
             <div className="progress-filled" style={{
+              position: 'absolute', top: 0, left: 0,
               width: `${duration ? (currentTime / duration) * 100 : 0}%`,
               height: '100%', background: '#E50914', borderRadius: '4px',
               transition: 'width 0.1s linear'
