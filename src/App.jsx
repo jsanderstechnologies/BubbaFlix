@@ -36,6 +36,13 @@ const AppContent = () => {
   });
 
   useEffect(() => {
+    const cleanupDpad = initDpadNavigation();
+    return () => {
+      if (cleanupDpad) cleanupDpad();
+    };
+  }, []);
+
+  useEffect(() => {
     if (!user) return; // Only fetch data if logged in
     const currentTheme = getSavedTheme();
     applyTheme(currentTheme);
@@ -43,11 +50,6 @@ const AppContent = () => {
     fetchApiConfig();
     fetchUserSimklHistory();
     fetchServerSettings();
-
-    const cleanupDpad = initDpadNavigation();
-    return () => {
-      if (cleanupDpad) cleanupDpad();
-    };
   }, [user]);
 
   const handleSplashComplete = () => {
