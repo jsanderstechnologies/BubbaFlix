@@ -276,8 +276,9 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
         >
           {selectedSubtitleIndex !== null && (
             <track 
+              key={`${selectedSubtitleIndex}-${seekOffset}`}
               kind="subtitles" 
-              src={`${getServerUrl()}/api/transcode/subtitle?url=${encodeURIComponent(rawUrl)}&index=${selectedSubtitleIndex}`} 
+              src={`${getServerUrl()}/api/transcode/subtitle?url=${encodeURIComponent(rawUrl)}&index=${selectedSubtitleIndex}&ss=${seekOffset}`} 
               srcLang="en" 
               label="Subtitle" 
               default 

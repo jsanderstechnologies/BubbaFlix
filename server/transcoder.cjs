@@ -600,12 +600,20 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     });
 
     const { spawn } = require("child_process");
-    const subProcess = spawn("ffmpeg", [
+    
+    const seekTime = parsedUrl.query.ss;
+    const ffmpegArgs = [];
+    if (seekTime && parseFloat(seekTime) > 0) {
+      ffmpegArgs.push("-ss", seekTime);
+    }
+    ffmpegArgs.push(
       "-i", cleanedTargetUrl,
       "-map", `0:${streamIndex}`,
       "-f", "webvtt",
       "pipe:1"
-    ]);
+    );
+
+    const subProcess = spawn("ffmpeg", ffmpegArgs);
 
     subProcess.stdout.pipe(res);
     subProcess.stderr.on("data", () => {});
