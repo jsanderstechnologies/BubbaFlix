@@ -46,6 +46,13 @@ export const getTranscodedStreamUrl = (url) => {
   return transcodeUrl;
 };
 
+export const getProxiedImageUrl = (url) => {
+  if (!url) return "";
+  if (!url.startsWith("http")) return url; // Already relative or invalid
+  const serverBase = getServerUrl();
+  return `${serverBase}/api/image?url=${encodeURIComponent(url)}`;
+};
+
 export const saveServerUrl = (url) => {
   if (typeof window === "undefined") return;
   if (!url || url.trim().length === 0) {

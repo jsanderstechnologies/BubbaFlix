@@ -28,8 +28,13 @@ const getCpuTopologyInfo = () => ({
 const PORT = process.env.PORT || 5000;
 const UDP_DISCOVERY_PORT = 5151;
 const DATA_DIR = process.env.DATA_DIR || (fs.existsSync("/app/data") ? "/app/data" : __dirname);
+const IMAGE_CACHE_DIR = path.join(DATA_DIR, "image_cache");
+if (!fs.existsSync(IMAGE_CACHE_DIR)) {
+  fs.mkdirSync(IMAGE_CACHE_DIR, { recursive: true });
+}
 const SETTINGS_FILE = path.join(DATA_DIR, "settings.json");
 const LOG_FILE = path.join(DATA_DIR, "bubbaflix.log");
+const https = require("https");
 
 const crypto = require("crypto");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
@@ -674,6 +679,48 @@ const server = http.createServer((req, res) => {
       }
       return sendJson(res, 404, { error: "User not found" });
     }
+  }
+
+  // Image caching proxy endpoint
+  if (cleanPath === "/api/image" && req.method === "GET") {
+    const imageUrl = parsedUrl.query.url;
+    if (!imageUrl) return sendJson(res, 400, { error: "Missing image url" });
+    
+    // Validate it's a TMDB image
+    if (!imageUrl.startsWith("https://image.tmdb.org/")) {
+      return sendJson(res, 403, { error: "Only TMDB images are allowed" });
+    }
+    
+    // Hash the URL for safe filename
+    const hash = crypto.createHash("md5").update(imageUrl).digest("hex");
+    const ext = path.extname(new URL(imageUrl).pathname) || ".jpg";
+    const cachePath = path.join(IMAGE_CACHE_DIR, hash + ext);
+    
+    if (fs.existsSync(cachePath)) {
+      res.setHeader("Content-Type", "image/jpeg");
+      res.setHeader("Cache-Control", "public, max-age=31536000");
+      const stream = fs.createReadStream(cachePath);
+      return stream.pipe(res);
+    }
+    
+    // Fetch and cache
+    https.get(imageUrl, (imageRes) => {
+      if (imageRes.statusCode !== 200) {
+        res.writeHead(imageRes.statusCode);
+        return res.end();
+      }
+      res.setHeader("Content-Type", imageRes.headers["content-type"] || "image/jpeg");
+      res.setHeader("Cache-Control", "public, max-age=31536000");
+      
+      const fileStream = fs.createWriteStream(cachePath);
+      imageRes.pipe(fileStream);
+      imageRes.pipe(res);
+    }).on("error", (err) => {
+      console.error("[Image Proxy Error]", err.message);
+      res.writeHead(500);
+      res.end();
+    });
+    return;
   }
 
   // Health check endpoint

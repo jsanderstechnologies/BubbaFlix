@@ -14,13 +14,14 @@ import MovieCard from "../../components/movie-card";
 import CollectionCard from "../../components/collection-card";
 import Spinner from "../../components/spinner";
 import TopNav from "../../components/top-nav";
+import { getProxiedImageUrl } from "../../utils/serverSettings";
 
 const POPULAR_TAGS = ["Action", "Comedy", "Marvel", "Sci-Fi", "Horror", "Drama", "Animation", "Thriller"];
 
 const PersonCard = ({ person }) => {
   const navigate = useNavigate();
   const avatarUrl = person.profile_path
-    ? `https://image.tmdb.org/t/p/w500${person.profile_path}`
+    ? getProxiedImageUrl(`https://image.tmdb.org/t/p/w500${person.profile_path}`)
     : "/assets/avatar.png";
 
   return (

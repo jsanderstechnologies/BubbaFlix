@@ -59,7 +59,8 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
         const { fetchDataFromAPI } = await import("../../utils/api");
         const res = await fetchDataFromAPI(`/${mediaType || 'movie'}/${tmdbId}/images`, { include_image_language: "en,null" });
         if (res && res.logos && res.logos.length > 0) {
-          setFetchedLogo(`https://image.tmdb.org/t/p/w500${res.logos[0].file_path}`);
+          const { getProxiedImageUrl } = await import("../../utils/serverSettings");
+          setFetchedLogo(getProxiedImageUrl(`https://image.tmdb.org/t/p/w500${res.logos[0].file_path}`));
         }
       } catch (err) {
         console.warn("Failed to fetch TMDB logo in modal", err);
