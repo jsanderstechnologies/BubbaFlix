@@ -1457,7 +1457,13 @@ process.on("unhandledRejection", (reason) => {
 server.listen(PORT, "0.0.0.0", () => {
   const gpuInfo = detectGpuCapabilities();
   logMessage(`================================================================================`);
-  logMessage(`[BubbaFlix Server Startup] Pure Node Server listening on 0.0.0.0:${PORT}`);
+  logMessage(`[BubbaFlix Server] HTTP API & Transcoder listening on port ${PORT}`);
+  let serverVersion = "v1.0.3";
+  try {
+    const versionData = JSON.parse(fs.readFileSync(path.join(__dirname, "../version.json"), "utf8"));
+    serverVersion = versionData.versionName || serverVersion;
+  } catch (e) {}
+  logMessage(`[BubbaFlix Server] Version: v${serverVersion}`);
   logMessage(`[CPU Hardware Topology] Model: ${cpuModel}`);
   logMessage(`[CPU Hardware Topology] Logical Cores / Hyperthreads: ${cpuCount}`);
   logMessage(`[CPU Hardware Topology] Libuv Threadpool Size (UV_THREADPOOL_SIZE): ${uvThreadPoolSize}`);

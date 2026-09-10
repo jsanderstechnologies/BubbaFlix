@@ -20,7 +20,6 @@ const FOCUSABLE_SELECTOR = [
   ".menuItem",
   ".headerIconBtn",
   ".movieCard",
-  ".posterBlock",
   ".carouselItem",
   ".themeCard",
   ".tabItem",
@@ -153,7 +152,7 @@ export const focusTopLeftPoster = () => {
     }
 
     const posters = Array.from(
-      document.querySelectorAll(".movieCard, .posterBlock, .carouselItem, .seasonCard, .episodeItem")
+      document.querySelectorAll(".movieCard, .carouselItem, .seasonCard, .episodeItem")
     ).filter((el) => {
       const rect = el.getBoundingClientRect();
       if (rect.width <= 0 || rect.height <= 0) return false;
@@ -323,12 +322,12 @@ export const initDpadNavigation = () => {
 
     // 2. ROW-BOUNDARY VERTICAL & HORIZONTAL NAVIGATION ENGINE
     let candidates = [];
-    const inTopNav = activeEl.closest(".topNav") || activeEl.closest(".header") || activeEl.closest(".navLinks") || activeEl.closest(".navSearch");
+    const inTopNav = activeEl.closest(".topNav") || activeEl.closest(".header") || activeEl.closest(".navLinks") || activeEl.closest(".navSearch") || activeEl.classList.contains("detailsPageBackBtn");
 
     if (direction === "ArrowDown") {
       if (inTopNav) {
         candidates = focusables.filter((el) => {
-          return !el.closest(".topNav") && !el.closest(".header") && !el.closest(".navLinks") && !el.closest(".navSearch");
+          return el !== activeEl && !el.closest(".topNav") && !el.closest(".header") && !el.closest(".navLinks") && !el.closest(".navSearch") && !el.classList.contains("detailsPageBackBtn");
         });
       } else {
         candidates = focusables.filter((el) => {
