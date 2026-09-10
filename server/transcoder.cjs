@@ -444,6 +444,7 @@ const detectGpuCapabilities = (videoCodec = null) => {
     cachedGpuConfig = baseConfig;
     logMessage(`[GPU Transcoder Engine] GPU auto-detection fallback to CPU libx264: ${err.message}`);
   }
+  }
 
   // Disable hardware decoding for unsupported codecs
   const finalConfig = JSON.parse(JSON.stringify(baseConfig));
