@@ -20,7 +20,7 @@ const ContinueWatchingCarousel = ({ items, title }) => {
   const handleSelect = (item) => {
     const type = item.mediaType === "tv" ? "tv" : "movie";
     saveLastClickedPoster(item.tmdbId, type);
-    navigate(//);
+    navigate(`/${type}/${item.tmdbId}`);
   };
 
   return (
@@ -37,10 +37,10 @@ const ContinueWatchingCarousel = ({ items, title }) => {
 
             const subtitle =
               item.mediaType === "tv" && item.seasonNum != null && item.episodeNum != null
-                ? S E
+                ? `S${item.seasonNum} E${item.episodeNum}`
                 : null;
 
-            const posterKey = poster--;
+            const posterKey = `poster-${item.mediaType}-${item.tmdbId}`;
 
             return (
               <div
@@ -74,7 +74,7 @@ const ContinueWatchingCarousel = ({ items, title }) => {
                   <div className="continueProgressBar">
                     <div
                       className="continueProgressFill"
-                      style={{ width: ${item.progressPercent || 0}% }}
+                      style={{ width: `${item.progressPercent || 0}%` }}
                     />
                   </div>
                 </div>
