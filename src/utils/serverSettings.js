@@ -6,7 +6,13 @@ export const DEFAULT_SERVER_URL = "https://bubbaflix.sanders-technologies.net";
 
 export const getServerUrl = () => {
   if (typeof window === "undefined") return DEFAULT_SERVER_URL;
-  const saved = localStorage.getItem("bubbaflix_server_url");
+  let saved = localStorage.getItem("bubbaflix_server_url");
+  
+  if (saved && saved.startsWith("http://") && window.location.protocol === "https:") {
+    console.warn("Ignoring saved HTTP server URL to prevent Mixed Content blocking on HTTPS client.");
+    saved = null;
+  }
+  
   if (saved && saved.trim().length > 0) {
     let url = saved.trim();
     if (url.endsWith("/")) url = url.slice(0, -1);
