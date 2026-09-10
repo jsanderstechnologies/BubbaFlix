@@ -13,6 +13,28 @@ const formatTime = (seconds) => {
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 };
 
+const languageMap = {
+  eng: 'English', en: 'English',
+  fre: 'French', fra: 'French', fr: 'French',
+  spa: 'Spanish', es: 'Spanish',
+  ger: 'German', deu: 'German', de: 'German',
+  ita: 'Italian', it: 'Italian',
+  jpn: 'Japanese', ja: 'Japanese',
+  kor: 'Korean', ko: 'Korean',
+  chi: 'Chinese', zho: 'Chinese', zh: 'Chinese',
+  rus: 'Russian', ru: 'Russian',
+  por: 'Portuguese', pt: 'Portuguese',
+  hin: 'Hindi', hi: 'Hindi',
+  pol: 'Polish', pl: 'Polish',
+  ara: 'Arabic', ar: 'Arabic'
+};
+
+const formatLang = (lang) => {
+  if (!lang || lang === 'und') return '';
+  const l = lang.toLowerCase();
+  return languageMap[l] || lang.toUpperCase();
+};
+
 const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, seasonNum, episodeNum, onTimeUpdate, onEnded }) => {
   const videoRef = useRef(null);
   const [duration, setDuration] = useState(0);
@@ -459,7 +481,7 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
                     </button>
                     {audioTracks.map(t => (
                       <button key={t.index} onClick={() => handleAudioTrackChange(t.index)} style={{ background: 'none', border: 'none', color: selectedAudioIndex === t.index ? '#E50914' : 'white', cursor: 'pointer', textAlign: 'left', fontSize: '14px', padding: '5px' }}>
-                        {t.title} {t.language && t.language !== 'und' ? `(${t.language})` : ''}
+                        {t.title} {formatLang(t.language) ? `(${formatLang(t.language)})` : ''}
                       </button>
                     ))}
                   </div>
@@ -480,7 +502,7 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
                     </button>
                     {subtitleTracks.map(t => (
                       <button key={t.index} onClick={() => { setSelectedSubtitleIndex(t.index); setShowSubtitleMenu(false); }} style={{ background: 'none', border: 'none', color: selectedSubtitleIndex === t.index ? '#E50914' : 'white', cursor: 'pointer', textAlign: 'left', fontSize: '14px', padding: '5px' }}>
-                        {t.title} {t.language && t.language !== 'und' ? `(${t.language})` : ''}
+                        {t.title} {formatLang(t.language) ? `(${formatLang(t.language)})` : ''}
                       </button>
                     ))}
                   </div>

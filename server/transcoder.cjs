@@ -838,8 +838,8 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
             const codec = stream.codec_name;
             const type = stream.codec_type;
             const tags = stream.tags || {};
-            const language = tags.language || "und";
-            const title = tags.title || tags.handler_name || `${type.charAt(0).toUpperCase() + type.slice(1)} Track ${index}`;
+            const language = tags.language || tags.LANGUAGE || tags.Language || "und";
+            const title = tags.title || tags.TITLE || tags.Title || tags.handler_name || `${type.charAt(0).toUpperCase() + type.slice(1)} Track ${index}`;
 
             if (type === "video" && !videoCodec) {
               videoCodec = codec;
