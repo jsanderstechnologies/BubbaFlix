@@ -787,8 +787,8 @@ const SettingsPage = () => {
             </form>
           </div>
 
-\n          {/* Centralized Server & API Configuration Cards (Hidden on TV Client, Only Visible on Web / Desktop) */}
-          {!isTvClient && (
+          {/* Centralized Server & API Configuration Cards (Only Visible to Admin Users) */}
+          {isAdmin && (
             <>
           {/* Backend Server Host & Address Card */}
           <div className="settingsCard">
