@@ -449,7 +449,8 @@ const detectGpuCapabilities = (videoCodec = null) => {
   // Disable hardware decoding for unsupported codecs
   const finalConfig = JSON.parse(JSON.stringify(baseConfig));
   if (videoCodec && videoCodec !== "h264" && videoCodec !== "hevc" && videoCodec !== "vp9" && videoCodec !== "av1") {
-    finalConfig.inputArgs = [];
+    // Keep device init args (like -vaapi_device) but strip the hardware decoder accelerators
+    finalConfig.inputArgs = finalConfig.inputArgs.filter(arg => arg !== "-hwaccel" && arg !== "vaapi" && arg !== "qsv" && arg !== "-hwaccel_output_format");
     if (finalConfig.encoder === "h264_nvenc") {
       finalConfig.outputArgs = finalConfig.outputArgs.filter(arg => arg !== "-hwaccel_output_format" && arg !== "cuda");
     } else if (finalConfig.encoder === "h264_vaapi" || finalConfig.encoder === "h264_qsv") {
