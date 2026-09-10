@@ -33,10 +33,41 @@ const LOG_FILE = path.join(DATA_DIR, "bubbaflix.log");
 
 const crypto = require("crypto");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
+const SESSIONS_FILE = path.join(DATA_DIR, "sessions.json");
 
 // In-memory sessions { token: { userId, role, expiresAt } }
-const activeSessions = {};
+let activeSessions = {};
 const SESSION_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+const loadSessions = () => {
+  if (fs.existsSync(SESSIONS_FILE)) {
+    try {
+      activeSessions = JSON.parse(fs.readFileSync(SESSIONS_FILE, "utf-8"));
+      // Cleanup expired sessions on load
+      const now = Date.now();
+      let changed = false;
+      for (const [token, session] of Object.entries(activeSessions)) {
+        if (now > session.expiresAt) {
+          delete activeSessions[token];
+          changed = true;
+        }
+      }
+      if (changed) saveSessions();
+    } catch (e) {
+      console.error("Error reading sessions.json");
+    }
+  }
+};
+
+const saveSessions = () => {
+  try {
+    fs.writeFileSync(SESSIONS_FILE, JSON.stringify(activeSessions, null, 2), "utf-8");
+  } catch (e) {
+    console.error("Error writing sessions.json");
+  }
+};
+
+loadSessions();
 
 const getUsers = () => {
   if (fs.existsSync(USERS_FILE)) {
@@ -74,11 +105,13 @@ const authenticate = (req) => {
   
   if (Date.now() > session.expiresAt) {
     delete activeSessions[token];
+    saveSessions();
     return null;
   }
   
   // Extend session
   session.expiresAt = Date.now() + SESSION_TTL;
+  saveSessions();
   return session;
 };
 
@@ -484,6 +517,7 @@ const server = http.createServer((req, res) => {
         
         const token = crypto.randomBytes(32).toString('hex');
         activeSessions[token] = { userId, role: "admin", expiresAt: Date.now() + SESSION_TTL };
+        saveSessions();
         
         return sendJson(res, 201, { message: "Admin created.", token, user: { id: userId, username, role: "admin" } });
       } catch (err) {
@@ -509,6 +543,7 @@ const server = http.createServer((req, res) => {
         
         const token = crypto.randomBytes(32).toString('hex');
         activeSessions[token] = { userId: user.id, role: user.role, expiresAt: Date.now() + SESSION_TTL };
+        saveSessions();
         
         return sendJson(res, 200, { token, user: { id: user.id, username: user.username, role: user.role, preferences: user.preferences } });
       } catch (err) {
@@ -534,6 +569,7 @@ const server = http.createServer((req, res) => {
     const authHeader = req.headers['authorization'];
     if (authHeader && authHeader.startsWith('Bearer ')) {
       delete activeSessions[authHeader.split(' ')[1]];
+      saveSessions();
     }
     return sendJson(res, 200, { message: "Logged out" });
   }
