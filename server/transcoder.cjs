@@ -1194,7 +1194,7 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
   // GET Settings API
   if ((cleanPath === "/api/settings" || cleanPath === "/settings") && req.method === "GET") {
     const session = authenticate(req);
-    if (!session || session.role !== "admin") return sendJson(res, 403, { error: "Admin access required" });
+    if (!session) return sendJson(res, 401, { error: "Unauthorized" });
     const settings = loadServerSettings();
     const cpuTopology = getCpuTopologyInfo();
     const gpuInfo = detectGpuCapabilities();
