@@ -35,6 +35,9 @@ const AuthPage = () => {
   return (
     <div className="authPage">
       <div className="authContainer">
+        <div className="authLogoWrapper" style={{ textAlign: "center", marginBottom: "20px" }}>
+          <img src="/logo.png" alt="BubbaFlix TV" style={{ height: "60px", objectFit: "contain" }} />
+        </div>
         <h1>{setupRequired ? "Welcome to BubbaFlix" : "Sign In"}</h1>
         <p>{setupRequired ? "Create your initial Admin account to get started." : "Enter your credentials to continue."}</p>
         
