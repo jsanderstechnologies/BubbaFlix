@@ -138,7 +138,7 @@ const AboutPage = () => {
 
           <div className="aboutGrid">
             {/* Version & Update Card */}
-            <div className="infoCard" tabIndex="0">
+            <div className="infoCard">
               <div className="cardHeader">
                 <FiRefreshCw className="cardIcon" />
                 <h3>App Version & Updates</h3>
@@ -211,7 +211,7 @@ const AboutPage = () => {
             </div>
 
             {/* GitHub & Open Source Info */}
-            <div className="infoCard" tabIndex="0">
+            <div className="infoCard">
               <div className="cardHeader">
                 <FiGithub className="cardIcon" />
                 <h3>GitHub Repository & Source</h3>
@@ -236,7 +236,7 @@ const AboutPage = () => {
             </div>
 
             {/* Tech Stack & Specs */}
-            <div className="infoCard fullWidth" tabIndex="0">
+            <div className="infoCard fullWidth">
               <div className="cardHeader">
                 <FiCpu className="cardIcon" />
                 <h3>Client & Server Specifications</h3>
