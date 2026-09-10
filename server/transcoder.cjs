@@ -27,8 +27,12 @@ const getCpuTopologyInfo = () => ({
 // Internal Node settings server port (always 5000 for Nginx proxy inside container)
 const PORT = process.env.PORT || 5000;
 const UDP_DISCOVERY_PORT = 5151;
-const DATA_DIR = process.env.DATA_DIR || (fs.existsSync("/app/data") ? "/app/data" : __dirname);
-const IMAGE_CACHE_DIR = path.join(DATA_DIR, "image_cache");
+const DATA_DIR = path.join(__dirname, "..", "data");
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+const IMAGE_CACHE_DIR = path.join(DATA_DIR, "cache", "images");
 if (!fs.existsSync(IMAGE_CACHE_DIR)) {
   fs.mkdirSync(IMAGE_CACHE_DIR, { recursive: true });
 }
@@ -697,10 +701,16 @@ const server = http.createServer((req, res) => {
     const cachePath = path.join(IMAGE_CACHE_DIR, hash + ext);
     
     if (fs.existsSync(cachePath)) {
-      res.setHeader("Content-Type", "image/jpeg");
-      res.setHeader("Cache-Control", "public, max-age=31536000");
-      const stream = fs.createReadStream(cachePath);
-      return stream.pipe(res);
+      const stats = fs.statSync(cachePath);
+      if (stats.size > 0) {
+        res.setHeader("Content-Type", "image/jpeg");
+        res.setHeader("Cache-Control", "public, max-age=31536000");
+        res.setHeader("X-Cache", "HIT");
+        const stream = fs.createReadStream(cachePath);
+        return stream.pipe(res);
+      } else {
+        try { fs.unlinkSync(cachePath); } catch (e) {}
+      }
     }
     
     // Fetch and cache
@@ -711,6 +721,7 @@ const server = http.createServer((req, res) => {
       }
       res.setHeader("Content-Type", imageRes.headers["content-type"] || "image/jpeg");
       res.setHeader("Cache-Control", "public, max-age=31536000");
+      res.setHeader("X-Cache", "MISS");
       
       const fileStream = fs.createWriteStream(cachePath);
       imageRes.pipe(fileStream);
