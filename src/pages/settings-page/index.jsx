@@ -756,7 +756,7 @@ const SettingsPage = () => {
                   />
                   <button
                     type="button"
-                    className="toggleVisBtn"
+                    className="toggleVisibility"
                     onClick={() => setShowSimklSecret(!showSimklSecret)}
                   >
                     {showSimklSecret ? <FiEyeOff /> : <FiEye />}
@@ -1064,8 +1064,8 @@ const SettingsPage = () => {
                     <label>Role</label>
                     <div className="inputWrapper">
                       <select value={newUserRole} onChange={e => setNewUserRole(e.target.value)} style={{ width: '100%', padding: 10, background: 'rgba(0,0,0,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 5 }}>
-                        <option value="normal">Normal User</option>
-                        <option value="admin">Admin</option>
+                        <option value="normal" style={{ background: '#222', color: 'white' }}>Normal User</option>
+                        <option value="admin" style={{ background: '#222', color: 'white' }}>Admin</option>
                       </select>
                     </div>
                   </div>

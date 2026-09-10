@@ -112,7 +112,7 @@ const SeasonsSection = ({ tvId, seasons, showTitle }) => {
                   const yearText = year ? ` (${year})` : "";
                   const countText = s.episode_count ? ` — ${s.episode_count} Episodes` : "";
                   return (
-                    <option key={s.id || s.season_number} value={s.season_number}>
+                    <option key={s.id || s.season_number} value={s.season_number} style={{ background: '#222', color: 'white' }}>
                       Season {s.season_number}{yearText}{countText}
                     </option>
                   );

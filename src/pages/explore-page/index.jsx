@@ -277,7 +277,7 @@ const filterEnglishCollections = (items) => {
 									tabIndex="0"
 								>
 									{SORT_OPTIONS.map((opt) => (
-										<option key={opt.value} value={opt.value}>
+										<option key={opt.value} value={opt.value} style={{ background: '#222', color: 'white' }}>
 											{opt.label}
 										</option>
 									))}
