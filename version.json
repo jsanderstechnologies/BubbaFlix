@@ -1,6 +1,6 @@
 {
-  "versionCode": 3,
-  "versionName": "1.0.2",
+  "versionCode": 4,
+  "versionName": "1.0.3",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
   "releaseNotes": "BubbaFlix TV v1.0.1 with 80% APK zoom, automatic EPG & DVR page/tab refresh, Live TV timeshift (Pause, Rewind, Fast-Forward, Jump to Live), NEW episode badges, and DVR recording indicators."
 }
