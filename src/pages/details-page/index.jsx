@@ -6,7 +6,6 @@ import VideosSection from "./videos-section";
 import SeasonsSection from "./seasons-section";
 import TopNav from "../../components/top-nav";
 import { FiArrowLeft } from "react-icons/fi";
-import { restoreLastFocusedPoster } from "../../utils/focusManager";
 import "./index.scss";
 import { useParams, useNavigate } from "react-router-dom";
 
@@ -27,6 +26,7 @@ const DetailsPage = () => {
 			const key = e.key;
 			const code = e.keyCode;
 			if (key === "Escape" || key === "Back" || code === 27 || code === 4 || code === 10009 || code === 461) {
+				if (document.body.classList.contains("videoPlayerActive")) return;
 				e.preventDefault();
 				e.stopPropagation();
 				navigate(-1);
@@ -39,9 +39,7 @@ const DetailsPage = () => {
 		};
 	}, [navigate]);
 
-	useEffect(() => {
-		restoreLastFocusedPoster();
-	}, [detailsData]);
+
 
 	return (
 		<div className="details-page">
