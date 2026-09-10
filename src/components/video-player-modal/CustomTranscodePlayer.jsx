@@ -452,6 +452,7 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
                     <div style={{ fontSize: '12px', color: '#ccc', marginBottom: '5px' }}><strong>Episode:</strong> S{seasonNum} E{episodeNum}</div>
                   )}
                   <div style={{ fontSize: '12px', color: '#ccc', marginBottom: '5px' }}><strong>Duration:</strong> {formatTime(duration)}</div>
+                  <div style={{ fontSize: '12px', color: '#ccc', marginBottom: '5px' }}><strong>Forward Buffer:</strong> {Math.max(0, Math.round(bufferedAmount - currentTime))}s ahead</div>
                   <div style={{ fontSize: '12px', color: '#ccc', marginBottom: '5px' }}><strong>Resolution:</strong> {mediaInfo?.resolution}</div>
                   <div style={{ fontSize: '12px', color: '#ccc', marginBottom: '5px' }}><strong>Video Codec:</strong> {mediaInfo?.videoCodec}</div>
                   <div style={{ fontSize: '12px', color: '#ccc', marginBottom: '5px' }}><strong>Transcoder:</strong> Active (FFmpeg Pipe)</div>
