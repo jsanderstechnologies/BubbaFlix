@@ -1,0 +1,136 @@
+.continueWatchingSection {
+  margin-bottom: 40px;
+}
+
+.continueCarouselItems {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding: 10px 4px 16px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+
+  &::-webkit-scrollbar {
+    height: 4px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+  }
+}
+
+.continueItem {
+  flex: 0 0 140px;
+  cursor: pointer;
+  outline: none;
+  border-radius: 8px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover,
+  &:focus {
+    transform: scale(1.05);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+
+    .resumeOverlay {
+      opacity: 1;
+    }
+  }
+
+  @media (min-width: 768px) {
+    flex: 0 0 160px;
+  }
+
+  @media (min-width: 1200px) {
+    flex: 0 0 180px;
+  }
+}
+
+.continuePosterBlock {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #1a1a2e;
+
+  .continuePosterImg,
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+}
+
+.resumeOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  border-radius: 8px;
+
+  .resumeIcon {
+    font-size: 2rem;
+    color: #fff;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
+  }
+
+  .resumeLabel {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #fff;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+}
+
+.continueProgressBar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 0 0 8px 8px;
+
+  .continueProgressFill {
+    height: 100%;
+    background: #e50914;
+    border-radius: 0 0 0 8px;
+    transition: width 0.3s ease;
+  }
+}
+
+.continueTextBlock {
+  margin-top: 8px;
+  padding: 0 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  .continueTitle {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+  }
+
+  .continueSubtitle {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.55);
+    font-weight: 400;
+  }
+}

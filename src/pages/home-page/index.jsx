@@ -7,7 +7,9 @@ import useFetch from "../../hooks/useFetch";
 import { fetchDataFromAPI } from "../../utils/api";
 import { getHomeSections, saveHomeSections } from "../../utils/homeConfig";
 import { restoreLastFocusedPoster } from "../../utils/focusManager";
+import { getAllWatchProgress } from "../../utils/watchProgress";
 import VideoPlayerModal from "../../components/video-player-modal";
+import ContinueWatchingCarousel from "../../components/continue-watching-carousel";
 import {
   FiSliders,
   FiCheck,
@@ -89,8 +91,33 @@ const DynamicSection = ({ section }) => {
     );
   }
 
+  if (section.id === "continue_movies") {
+    const all = getAllWatchProgress();
+    const items = Object.values(all)
+      .filter((p) => p.mediaType === "movie")
+      .sort((a, b) => b.updatedAt - a.updatedAt);
+    if (items.length === 0) return null;
+    return (
+      <ContinueWatchingCarousel
+        items={items}
+        title="Continue Watching: Movies"
+      />
+    );
+  }
 
-
+  if (section.id === "continue_tv") {
+    const all = getAllWatchProgress();
+    const items = Object.values(all)
+      .filter((p) => p.mediaType === "tv")
+      .sort((a, b) => b.updatedAt - a.updatedAt);
+    if (items.length === 0) return null;
+    return (
+      <ContinueWatchingCarousel
+        items={items}
+        title="Continue Watching: TV Episodes"
+      />
+    );
+  }
 
   return null;
 };
