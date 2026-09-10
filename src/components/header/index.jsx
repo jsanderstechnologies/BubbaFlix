@@ -202,9 +202,6 @@ const Header = () => {
 								onChange={(e) => setQuery(e.target.value)}
 								onFocus={() => {
 									setIsReadOnly(false);
-									if (window.AndroidPlayer && typeof window.AndroidPlayer.showKeyboard === "function") {
-										window.AndroidPlayer.showKeyboard();
-									}
 								}}
 								onClick={() => {
 									setIsReadOnly(false);
