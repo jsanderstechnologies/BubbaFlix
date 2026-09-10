@@ -1060,6 +1060,7 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
         "-c:a", "aac",
         "-b:a", "192k",
         "-ac", "2",
+        "-af", "loudnorm=I=-16:TP=-1.5:LRA=11",
         "-movflags", "frag_keyframe+empty_moov+default_base_moof",
         "-f", "mp4",
         "pipe:1"
