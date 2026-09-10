@@ -1,3 +1,5 @@
+import { getServerUrl } from "./serverSettings";
+
 export const DEFAULT_HOME_SECTIONS = [
   { id: "trending", title: "Trending Content", enabled: true },
   { id: "new_movies", title: "New Release Movies", enabled: true },
@@ -40,4 +42,17 @@ export const saveHomeSections = (sections) => {
   if (typeof window === "undefined") return;
   localStorage.setItem("bubbaflix_home_sections", JSON.stringify(sections));
   window.dispatchEvent(new Event("home-sections-updated"));
+
+  // Sync to server so layout follows the user across devices
+  const token = localStorage.getItem("bubbaflix_token");
+  if (token) {
+    fetch(`${getServerUrl()}/api/users/preferences`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ homeSections: sections }),
+    }).catch((e) => console.warn("[homeConfig] Failed to sync home layout to server", e));
+  }
 };
