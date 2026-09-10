@@ -98,6 +98,21 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
               }
             }
           }
+
+          if (res.data.videoCodec) {
+             setActualStreamUrl(prevUrl => {
+                if (prevUrl.includes("video_codec=")) return prevUrl;
+                const newUrl = prevUrl + (prevUrl.includes("?") ? "&" : "?") + `video_codec=${res.data.videoCodec}`;
+                if (videoRef.current && videoRef.current.src !== newUrl) {
+                  const isPlaying = !videoRef.current.paused;
+                  const cTime = videoRef.current.currentTime;
+                  videoRef.current.src = newUrl;
+                  if (cTime > 0) videoRef.current.currentTime = cTime;
+                  if (isPlaying) videoRef.current.play();
+                }
+                return newUrl;
+             });
+          }
         }
       } catch (err) {
         console.warn("[CustomTranscodePlayer] Failed to probe metadata:", err.message);

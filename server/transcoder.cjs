@@ -294,11 +294,13 @@ const sendJson = (res, statusCode, data) => {
 // GPU Hardware Acceleration Auto-Detection Engine
 let cachedGpuConfig = null;
 
-const detectGpuCapabilities = () => {
-  if (cachedGpuConfig) return cachedGpuConfig;
+const detectGpuCapabilities = (videoCodec = null) => {
+  if (cachedGpuConfig && !videoCodec) return cachedGpuConfig;
+  let baseConfig = cachedGpuConfig;
 
-  let encodersOutput = "";
-  let hwaccelsOutput = "";
+  if (!baseConfig) {
+    let encodersOutput = "";
+    let hwaccelsOutput = "";
 
   try {
     const { execSync } = require("child_process");
@@ -421,7 +423,7 @@ const detectGpuCapabilities = () => {
       ];
     }
 
-    cachedGpuConfig = {
+    baseConfig = {
       enabled: encoder !== "libx264",
       type: gpuType,
       encoder: encoder,
@@ -429,20 +431,39 @@ const detectGpuCapabilities = () => {
       outputArgs: outputArgs
     };
 
+    cachedGpuConfig = baseConfig;
     logMessage(`[GPU Transcoder Engine] Auto-Detected Hardware Accelerator: ${gpuType} (${encoder})`);
-    return cachedGpuConfig;
   } catch (err) {
-    cachedGpuConfig = {
+    baseConfig = {
       enabled: false,
       type: "CPU Software (libx264)",
       encoder: "libx264",
       inputArgs: [],
       outputArgs: ["-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-crf", "23"]
     };
+    cachedGpuConfig = baseConfig;
     logMessage(`[GPU Transcoder Engine] GPU auto-detection fallback to CPU libx264: ${err.message}`);
-    return cachedGpuConfig;
   }
+
+  // Disable hardware decoding for unsupported codecs
+  const finalConfig = JSON.parse(JSON.stringify(baseConfig));
+  if (videoCodec && videoCodec !== "h264" && videoCodec !== "hevc" && videoCodec !== "vp9" && videoCodec !== "av1") {
+    finalConfig.inputArgs = [];
+    if (finalConfig.encoder === "h264_nvenc") {
+      finalConfig.outputArgs = finalConfig.outputArgs.filter(arg => arg !== "-hwaccel_output_format" && arg !== "cuda");
+    } else if (finalConfig.encoder === "h264_vaapi" || finalConfig.encoder === "h264_qsv") {
+      // VAAPI/QSV encoders require a hardware frame upload filter if decoded in software
+      finalConfig.outputArgs = finalConfig.outputArgs.map(arg => {
+        if (arg === "scale_vaapi=format=nv12") return "format=nv12,hwupload";
+        if (arg === "vpp_qsv=format=nv12") return "format=nv12,hwupload";
+        return arg;
+      });
+    }
+  }
+
+  return finalConfig;
 };
+
 
 const server = http.createServer((req, res) => {
   const startTime = Date.now();
@@ -808,6 +829,7 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
           });
         }
 
+        let videoCodec = null;
         if (Array.isArray(data.streams)) {
           data.streams.forEach((stream) => {
             const index = stream.index;
@@ -817,7 +839,9 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
             const language = tags.language || "und";
             const title = tags.title || tags.handler_name || `${type.charAt(0).toUpperCase() + type.slice(1)} Track ${index}`;
 
-            if (type === "audio") {
+            if (type === "video" && !videoCodec) {
+              videoCodec = codec;
+            } else if (type === "audio") {
               audioTracks.push({ index, codec, language, title });
             } else if (type === "subtitle") {
               subtitleTracks.push({ index, codec, language, title });
@@ -827,6 +851,7 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
 
         return sendJson(res, 200, {
           duration: isNaN(duration) ? 0 : duration,
+          videoCodec,
           audioTracks,
           subtitleTracks,
           chapters
@@ -960,7 +985,8 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
 
       const headersStr = `User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\r\nAccept: */*\r\n`;
 
-      const gpuInfo = detectGpuCapabilities();
+      const videoCodec = parsedUrl.query.video_codec;
+      const gpuInfo = detectGpuCapabilities(videoCodec);
       const isLiveStream = finalMediaUrl.includes("/proxy/ts/stream") || finalMediaUrl.includes("/stream/");
 
       const audioIndex = parsedUrl.query.audio_index;
