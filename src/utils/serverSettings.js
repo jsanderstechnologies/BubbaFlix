@@ -37,11 +37,7 @@ export const getTranscodedStreamUrl = (url) => {
   if (!url) return "";
   // Unwrap any old /api/transcode wrapper
   if (url.includes("/api/transcode")) return url.split("?url=")[1] || url;
-  // Android TV uses ExoPlayer which handles CORS natively — no proxy needed
-  if (isAndroidTvClient()) {
-    console.log("[Direct Stream Router] Android TV: bypassing proxy for native ExoPlayer:", url);
-    return url;
-  }
+
 
   // Web clients: route through backend FFmpeg to remux/transcode unsupported containers (like MKV) to MP4
   const serverBase = getServerUrl();
