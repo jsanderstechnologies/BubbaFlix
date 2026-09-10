@@ -51,6 +51,7 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
   const [chapters, setChapters] = useState([]);
   const [selectedAudioIndex, setSelectedAudioIndex] = useState(null);
   const [selectedSubtitleIndex, setSelectedSubtitleIndex] = useState(null);
+  const [mediaInfo, setMediaInfo] = useState({ resolution: "Unknown", videoCodec: "Unknown" });
   const [showAudioMenu, setShowAudioMenu] = useState(false);
   const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
   const [showChapterMenu, setShowChapterMenu] = useState(false);
@@ -97,6 +98,9 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
             setSubtitleTracks(engSubs);
           }
           if (res.data.chapters) setChapters(res.data.chapters);
+          if (res.data.resolution || res.data.videoCodec) {
+            setMediaInfo({ resolution: res.data.resolution || "Unknown", videoCodec: res.data.videoCodec || "Unknown" });
+          }
           
           if (res.data.audioTracks && res.data.audioTracks.length > 0) {
             const engAudio = res.data.audioTracks.filter(t => !t.language || t.language === 'und' || t.language === 'eng' || t.language === 'en' || (t.title && t.title.toLowerCase().includes('english')));
@@ -211,10 +215,12 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
   }, [currentTime, duration, selectedAudioIndex, streamUrl]);
 
   useEffect(() => {
+    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    controlsTimeoutRef.current = setTimeout(() => { setShowControls(false); if (onControlsToggle) onControlsToggle(false); }, 3000);
     return () => {
       if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     };
-  }, []);
+  }, [onControlsToggle]);
 
   const handleTimeUpdate = () => {
     if (videoRef.current) {
@@ -446,6 +452,8 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
                     <div style={{ fontSize: '12px', color: '#ccc', marginBottom: '5px' }}><strong>Episode:</strong> S{seasonNum} E{episodeNum}</div>
                   )}
                   <div style={{ fontSize: '12px', color: '#ccc', marginBottom: '5px' }}><strong>Duration:</strong> {formatTime(duration)}</div>
+                  <div style={{ fontSize: '12px', color: '#ccc', marginBottom: '5px' }}><strong>Resolution:</strong> {mediaInfo?.resolution}</div>
+                  <div style={{ fontSize: '12px', color: '#ccc', marginBottom: '5px' }}><strong>Video Codec:</strong> {mediaInfo?.videoCodec}</div>
                   <div style={{ fontSize: '12px', color: '#ccc', marginBottom: '5px' }}><strong>Transcoder:</strong> Active (FFmpeg Pipe)</div>
                 </div>
               )}
