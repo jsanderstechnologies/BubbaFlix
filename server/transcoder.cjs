@@ -1075,19 +1075,30 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     let clientClosedConnection = false;
 
     ffmpegProcess.stderr.on("data", (data) => {
-      const logLine = data.toString();
-      logMessage(`[FFmpeg Output] ${logLine.trim()}`);
-      if (
-        logLine.includes("Device creation failed") ||
-        logLine.includes("No device available") ||
-        logLine.includes("Hardware device setup failed") ||
-        logLine.includes("CUDA_ERROR") ||
-        logLine.includes("Cannot load libcuda") ||
-        logLine.includes("Failed to create Nvenc") ||
-        logLine.includes("Error creating CUDA context") ||
-        logLine.includes("MFX session failed")
-      ) {
-        hasGpuDeviceError = true;
+      const lines = data.toString().split("\n");
+      for (let line of lines) {
+        line = line.trim();
+        if (!line) continue;
+        
+        // Suppress HEVC NAL unit and other meaningless spam
+        if (line.includes("Skipping NAL unit") || line.includes("PPS id out of range")) {
+          continue;
+        }
+
+        logMessage(`[FFmpeg Output] ${line}`);
+
+        if (
+          line.includes("Device creation failed") ||
+          line.includes("No device available") ||
+          line.includes("Hardware device setup failed") ||
+          line.includes("CUDA_ERROR") ||
+          line.includes("Cannot load libcuda") ||
+          line.includes("Failed to create Nvenc") ||
+          line.includes("Error creating CUDA context") ||
+          line.includes("MFX session failed")
+        ) {
+          hasGpuDeviceError = true;
+        }
       }
     });
 
