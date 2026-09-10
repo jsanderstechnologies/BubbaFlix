@@ -382,6 +382,16 @@ const SearchResult = () => {
               placeholder="Type movie, TV show, collection, or actor name..."
               value={searchQuery}
               onChange={handleInputChange}
+              onFocus={() => {
+                if (window.AndroidPlayer && typeof window.AndroidPlayer.showKeyboard === "function") {
+                  window.AndroidPlayer.showKeyboard();
+                }
+              }}
+              onClick={() => {
+                if (window.AndroidPlayer && typeof window.AndroidPlayer.showKeyboard === "function") {
+                  window.AndroidPlayer.showKeyboard();
+                }
+              }}
               tabIndex="0"
               autoFocus
             />

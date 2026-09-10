@@ -535,11 +535,12 @@ class MainActivity : AppCompatActivity() {
                 "(function() {" +
                 "  if (document.body.classList.contains('videoPlayerActive')) return 'player';" +
                 "  if (document.body.classList.contains('detailsPageActive')) return 'details';" +
+                "  if (document.body.classList.contains('collectionDetailsActive')) return 'collection';" +
                 "  return 'none';" +
                 "})();"
             ) { activeContext ->
                 val ctx = activeContext?.replace("\"", "")?.trim()
-                if (ctx == "player" || ctx == "details") {
+                if (ctx == "player" || ctx == "details" || ctx == "collection") {
                     webView.evaluateJavascript(
                         "window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, bubbles: true }));",
                         null

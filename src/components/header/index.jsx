@@ -200,7 +200,18 @@ const Header = () => {
 								value={query}
 								readOnly={isReadOnly}
 								onChange={(e) => setQuery(e.target.value)}
-								onClick={() => setIsReadOnly(false)}
+								onFocus={() => {
+									setIsReadOnly(false);
+									if (window.AndroidPlayer && typeof window.AndroidPlayer.showKeyboard === "function") {
+										window.AndroidPlayer.showKeyboard();
+									}
+								}}
+								onClick={() => {
+									setIsReadOnly(false);
+									if (window.AndroidPlayer && typeof window.AndroidPlayer.showKeyboard === "function") {
+										window.AndroidPlayer.showKeyboard();
+									}
+								}}
 								onBlur={() => setIsReadOnly(true)}
 								onKeyDown={(e) => {
 									const code = e.keyCode;
@@ -208,6 +219,9 @@ const Header = () => {
 										if (isReadOnly) {
 											e.preventDefault();
 											setIsReadOnly(false);
+											if (window.AndroidPlayer && typeof window.AndroidPlayer.showKeyboard === "function") {
+												window.AndroidPlayer.showKeyboard();
+											}
 										} else {
 											searchQuery(e);
 										}

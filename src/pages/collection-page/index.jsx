@@ -67,6 +67,7 @@ const CollectionPage = () => {
 
   // Remote & Keyboard D-pad Back Key Handler
   useEffect(() => {
+    document.body.classList.add("collectionDetailsActive");
     const handleCollectionKeyDown = (e) => {
       const key = e.key;
       const code = e.keyCode;
@@ -78,6 +79,7 @@ const CollectionPage = () => {
     };
     window.addEventListener("keydown", handleCollectionKeyDown, true);
     return () => {
+      document.body.classList.remove("collectionDetailsActive");
       window.removeEventListener("keydown", handleCollectionKeyDown, true);
     };
   }, [navigate]);
