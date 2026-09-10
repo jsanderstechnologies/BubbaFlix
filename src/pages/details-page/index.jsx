@@ -61,6 +61,7 @@ const DetailsPage = () => {
 					tvId={id}
 					seasons={detailsData?.seasons}
 					showTitle={title}
+					posterPath={detailsData?.poster_path}
 				/>
 			)}
 

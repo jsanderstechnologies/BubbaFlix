@@ -21,7 +21,7 @@ const cleanMediaTitle = (rawTitle) => {
   return clean || rawTitle;
 };
 
-const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, streamUrl, title, tmdbId, mediaType = "movie", seasonNum, episodeNum, channelLogo }) => {
+const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, streamUrl, title, tmdbId, mediaType = "movie", seasonNum, episodeNum, channelLogo, posterPath = "" }) => {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   
@@ -44,7 +44,8 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
             episodeNum,
             currentTime: v.currentTime,
             duration: v.duration,
-            title: displayTitle
+            title: displayTitle,
+            posterPath,
          });
       }
     }
@@ -159,7 +160,8 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
             episodeNum,
             currentTime: v.currentTime,
             duration: v.duration,
-            title: displayTitle
+            title: displayTitle,
+            posterPath,
          });
      }
   };

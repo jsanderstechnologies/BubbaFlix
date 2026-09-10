@@ -15,7 +15,7 @@ const isHevcOrX265Stream = (item) => {
   return /\b(hevc|x265|h265|h\.265)\b/i.test(fullStr);
 };
 
-const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, compact = false }) => {
+const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, compact = false, posterPath = "" }) => {
   const [streams, setStreams] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false); // Closed by default
@@ -234,6 +234,7 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
           mediaType={mediaType || (seasonNum !== undefined ? "tv" : "movie")}
           seasonNum={seasonNum}
           episodeNum={episodeNum}
+          posterPath={posterPath}
         />
       </div>
     </div>

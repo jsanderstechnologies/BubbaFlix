@@ -12,7 +12,7 @@ import dayjs from "dayjs";
 import { FiTv, FiCalendar, FiClock, FiAlertCircle } from "react-icons/fi";
 import "./index.scss";
 
-const SeasonsSection = ({ tvId, seasons, showTitle }) => {
+const SeasonsSection = ({ tvId, seasons, showTitle, posterPath }) => {
   const { url } = useSelector((state) => state.home);
 
   const validSeasons = Array.isArray(seasons) && seasons.length > 0
@@ -228,6 +228,7 @@ const SeasonsSection = ({ tvId, seasons, showTitle }) => {
                         tmdbId={tvId}
                         mediaType="tv"
                         compact={true}
+                        posterPath={posterPath}
                       />
                     ) : (
                       <div className="unreleasedNotice">

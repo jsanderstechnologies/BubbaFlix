@@ -127,6 +127,7 @@ const DetailsBanner = ({ video, crew }) => {
 											tmdbId={id}
 											mediaType={mediaType}
 											compact={true}
+											posterPath={data?.poster_path}
 										/>
 									</div>
 								)}
