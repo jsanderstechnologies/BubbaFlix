@@ -485,7 +485,9 @@ const server = http.createServer((req, res) => {
   const cleanPath = rawClean.length > 1 && rawClean.endsWith("/") ? rawClean.slice(0, -1) : rawClean;
   const initiator = getRequestInitiator(req);
 
-  logMessage(`[HTTP Request] ${req.method} ${rawPath} | Initiator: [${initiator.initiatorComponent}] | Client IP: ${initiator.ip} | Referer: ${initiator.referer} | User-Agent: ${initiator.userAgent}`);
+  if (!rawPath.startsWith("/api/image")) {
+    logMessage(`[HTTP Request] ${req.method} ${rawPath} | Initiator: [${initiator.initiatorComponent}] | Client IP: ${initiator.ip} | Referer: ${initiator.referer} | User-Agent: ${initiator.userAgent}`);
+  }
 
   if (req.method === "OPTIONS") {
     res.writeHead(204, {
