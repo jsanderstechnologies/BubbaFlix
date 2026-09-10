@@ -34,7 +34,15 @@ const FOCUSABLE_SELECTOR = [
 ].join(", ");
 
 const getFocusableElements = () => {
-  return Array.from(document.querySelectorAll(FOCUSABLE_SELECTOR)).filter((el) => {
+  let root = document;
+  if (document.body.classList.contains("videoPlayerActive")) {
+    const playerContainer = document.querySelector(".videoPlayerModal");
+    if (playerContainer) {
+      root = playerContainer;
+    }
+  }
+
+  return Array.from(root.querySelectorAll(FOCUSABLE_SELECTOR)).filter((el) => {
     // Exclude logo elements and carousel arrows from D-Pad spatial navigation focus
     if (
       el.classList.contains("logo") ||
