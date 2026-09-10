@@ -145,7 +145,7 @@ const SplashScreen = ({ onComplete }) => {
     playIntroSound();
 
     const start = performance.now();
-    const duration = 3200;
+    const duration = 5000;
 
     const ease = (t, p) => 1 - Math.pow(1 - t, p);
 
@@ -227,7 +227,7 @@ const SplashScreen = ({ onComplete }) => {
     // Hard fallback safety timer to guarantee splash screen disappears
     const safetyTimer = setTimeout(() => {
       finishSplash();
-    }, 3200);
+    }, 5000);
 
     // Keyboard / remote dpad handler to skip or trigger audio
     const handleKeyDown = (e) => {
