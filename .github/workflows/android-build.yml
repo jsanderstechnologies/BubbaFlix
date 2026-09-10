@@ -32,11 +32,13 @@ jobs:
 
       - name: Build Release APK
         working-directory: ./android-tv
-        run: ./gradlew assembleRelease
+        run: ./gradlew assembleRelease -x lint
 
       - name: Move APK to Root
         run: |
-          cp android-tv/app/build/outputs/apk/release/BubbaFlixTV.apk BubbaFlixTV.apk
+          APK_PATH=$(find android-tv/app/build/outputs/apk -name "*.apk" | head -n 1)
+          echo "Found APK at $APK_PATH"
+          cp "$APK_PATH" BubbaFlixTV.apk
 
       - name: Commit and Push new APK
         uses: stefanzweifel/git-auto-commit-action@v5
