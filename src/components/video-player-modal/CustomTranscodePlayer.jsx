@@ -35,7 +35,7 @@ const formatLang = (lang) => {
   return languageMap[l] || lang.toUpperCase();
 };
 
-const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, seasonNum, episodeNum, onTimeUpdate, onEnded }) => {
+const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, seasonNum, episodeNum, onTimeUpdate, onEnded, onControlsToggle }) => {
   const videoRef = useRef(null);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
@@ -146,8 +146,9 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
   useEffect(() => {
     const handleMouseMove = () => {
       setShowControls(true);
+      if (onControlsToggle) onControlsToggle(true);
       if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-      controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 3000);
+      controlsTimeoutRef.current = setTimeout(() => { setShowControls(false); if (onControlsToggle) onControlsToggle(false); }, 3000);
     };
     
     const handleKeyDown = (e) => {

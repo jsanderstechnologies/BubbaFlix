@@ -68,6 +68,13 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
     fetchLogo();
   }, [show, tmdbId, mediaType, channelLogo]);
 
+  const handleControlsToggle = (visible) => {
+    setShowControls(visible);
+    if (visible && controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+    }
+  };
+
   useEffect(() => {
     if (show) {
       let targetUrl = getTranscodedStreamUrl(rawUrl || videoUrl || streamUrl || "");
@@ -77,6 +84,8 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
       document.body.classList.add("videoPlayerActive");
       document.documentElement.classList.add("videoPlayerActive");
       setCurrentUrl(targetUrl);
+
+
 
       const handleMouseMove = () => {
         setShowControls(true);
@@ -196,6 +205,7 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
               episodeNum={episodeNum}
               onTimeUpdate={handleTimeUpdate}
               onEnded={handleClose}
+              onControlsToggle={handleControlsToggle}
             />
           ) : (
             <movi-player
