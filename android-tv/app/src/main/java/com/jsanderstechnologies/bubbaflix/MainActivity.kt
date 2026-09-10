@@ -76,7 +76,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val PREFS_NAME = "BubbaFlixTVPrefs"
         private const val KEY_SERVER_URL = "server_url"
-        private const val DEFAULT_URL = "http://192.168.1.50:5150"
+        private const val DEFAULT_URL = "https://bubbaflix.sanders-technologies.net"
     }
 
     class AndroidPlayerBridge(private val context: Context, private val activity: Activity) {
@@ -410,7 +410,7 @@ class MainActivity : AppCompatActivity() {
                 maxLines = 1
                 inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_URI
                 imeOptions = EditorInfo.IME_ACTION_GO or EditorInfo.IME_ACTION_DONE
-                hint = "http://192.168.1.50:5150"
+                hint = "https://bubbaflix.sanders-technologies.net"
                 setText(savedUrl)
                 setSelection(text.length)
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f)

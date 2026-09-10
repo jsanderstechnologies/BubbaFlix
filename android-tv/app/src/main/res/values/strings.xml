@@ -1,4 +1,4 @@
 <resources>
     <string name="app_name">BubbaFlix TV</string>
-    <string name="default_server_url">http://192.168.1.50:5150</string>
+    <string name="default_server_url">https://bubbaflix.sanders-technologies.net</string>
 </resources>
