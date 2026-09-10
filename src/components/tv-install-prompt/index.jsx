@@ -9,7 +9,7 @@ const DOWNLOADER_CODE = "7862216";
 
 const TvInstallPrompt = () => {
   const [showPrompt, setShowPrompt] = useState(false);
-  const [versionName, setVersionName] = useState(versionData?.versionName || "1.0.1");
+  const [versionName, setVersionName] = useState(versionData?.versionName || "1.0.2");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
