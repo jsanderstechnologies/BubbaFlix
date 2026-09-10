@@ -85,7 +85,12 @@ const focusAndScroll = (el) => {
       });
     }
   } else {
-    el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+    const episodeCard = el.closest(".episodeCard");
+    if (episodeCard) {
+      episodeCard.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+    } else {
+      el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+    }
   }
 };
 
