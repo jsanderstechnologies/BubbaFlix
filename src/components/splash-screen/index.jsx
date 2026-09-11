@@ -88,7 +88,7 @@ const SplashScreen = ({ onComplete }) => {
       }
 
       const master = ctx.createGain();
-      master.gain.value = 2.4;
+      master.gain.value = 0.6;
       master.connect(ctx.destination);
 
       const reverbGain = ctx.createGain();
