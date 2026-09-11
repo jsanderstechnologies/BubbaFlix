@@ -87,6 +87,10 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
 
 
   useEffect(() => {
+    // Reset selections on new video load
+    setSelectedAudioIndex(null);
+    setSelectedSubtitleIndex(null);
+
     const fetchMetadata = async () => {
       try {
         const serverBase = getServerUrl();
@@ -103,24 +107,27 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
           
           if (res.data.audioTracks && res.data.audioTracks.length > 0) {
             setAudioTracks(res.data.audioTracks);
-            // Default to English if not manually selected
-            if (selectedAudioIndex === null) {
-              const engTrack = res.data.audioTracks.find(t => t.language === 'eng' || t.language === 'en' || (t.title && t.title.toLowerCase().includes('english')));
-              if (engTrack && res.data.audioTracks[0] && engTrack.index !== res.data.audioTracks[0].index) {
-                const currentRealTime = seekOffset + (videoRef.current ? videoRef.current.currentTime : 0);
-                setSelectedAudioIndex(engTrack.index);
-                setSeekOffset(currentRealTime);
-                setCurrentTime(currentRealTime);
-                let targetUrl = streamUrl;
-                if (currentRealTime > 0) targetUrl += (targetUrl.includes("?") ? "&" : "?") + `ss=${currentRealTime}`;
-                targetUrl += (targetUrl.includes("?") ? "&" : "?") + `audio_index=${engTrack.index}`;
-                setActualStreamUrl(targetUrl);
-                if (videoRef.current) {
-                  videoRef.current.src = targetUrl;
-                  videoRef.current.play();
-                }
+            // Default to English track on new video load
+            const engTrack = res.data.audioTracks.find(t => t.language === 'eng' || t.language === 'en' || (t.title && t.title.toLowerCase().includes('english')));
+            if (engTrack && res.data.audioTracks[0] && engTrack.index !== res.data.audioTracks[0].index) {
+              const currentRealTime = seekOffset + (videoRef.current ? videoRef.current.currentTime : 0);
+              setSelectedAudioIndex(engTrack.index);
+              setSeekOffset(currentRealTime);
+              setCurrentTime(currentRealTime);
+              let targetUrl = streamUrl;
+              if (currentRealTime > 0) targetUrl += (targetUrl.includes("?") ? "&" : "?") + `ss=${currentRealTime}`;
+              targetUrl += (targetUrl.includes("?") ? "&" : "?") + `audio_index=${engTrack.index}`;
+              setActualStreamUrl(targetUrl);
+              if (videoRef.current) {
+                videoRef.current.src = targetUrl;
+                videoRef.current.play();
               }
+            } else {
+              // No english track, or it's the default anyway, explicitly reset the selection
+              setSelectedAudioIndex(null);
             }
+          } else {
+            setSelectedAudioIndex(null);
           }
 
           if (res.data.videoCodec) {
