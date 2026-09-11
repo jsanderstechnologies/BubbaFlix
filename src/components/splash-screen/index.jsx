@@ -12,7 +12,6 @@ const SplashScreen = ({ onComplete }) => {
   const logoImgRef = useRef(null);
   const shineRef = useRef(null);
   const glowRef = useRef(null);
-  const flashRef = useRef(null);
   const captionRef = useRef(null);
 
   // Synthesize cinematic reverb impulse
@@ -153,11 +152,10 @@ const SplashScreen = ({ onComplete }) => {
       const t = now - start;
       const logoWrap = logoWrapRef.current;
       const glow = glowRef.current;
-      const flash = flashRef.current;
       const shine = shineRef.current;
       const caption = captionRef.current;
 
-      if (!logoWrap || !glow || !flash || !shine || !caption) {
+      if (!logoWrap || !glow || !shine || !caption) {
         finishSplash();
         return;
       }
@@ -178,11 +176,6 @@ const SplashScreen = ({ onComplete }) => {
         logoWrap.style.transform = `scale(${bounce}) rotate(0deg)`;
         glow.style.opacity = `${0.5 + Math.sin(p2 * Math.PI) * 0.4}`;
         glow.style.transform = `scale(${1.1 + Math.sin(p2 * Math.PI) * 0.25})`;
-        if (p2 < 0.15) {
-          flash.style.opacity = `${(0.15 - p2) * 3}`;
-        } else {
-          flash.style.opacity = "0";
-        }
       } else if (t < 2600) {
         const p3 = (t - 1300) / 1300;
         logoWrap.style.opacity = "1";
@@ -284,7 +277,6 @@ const SplashScreen = ({ onComplete }) => {
         />
         <div id="splashShine" ref={shineRef}></div>
       </div>
-      <div id="splashFlash" ref={flashRef}></div>
       <div id="splashCaption" ref={captionRef}>
         BubbaFlix Streaming
       </div>
