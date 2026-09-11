@@ -129,12 +129,8 @@ export const fetchServerSettings = async (forceRefresh = false) => {
         localStorage.removeItem("premiumize_api_key");
       }
     }
-    if (s.stream_resolutions) {
-      localStorage.setItem("stream_resolutions", JSON.stringify(s.stream_resolutions));
-    }
-    if (s.stream_exclude_low_quality !== undefined) {
-      localStorage.setItem("stream_exclude_low_quality", JSON.stringify(s.stream_exclude_low_quality));
-    }
+    // We intentionally do not overwrite user stream_resolutions or stream_exclude_low_quality 
+    // with global server settings so that the user's cross-device preferences take precedence.
 
     console.log("[Server Settings Sync] Successfully pulled backend server settings.");
 

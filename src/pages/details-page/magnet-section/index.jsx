@@ -63,17 +63,17 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
     const { fetchServerSettings } = await import("../../../utils/serverSettings");
     const serverSettings = await fetchServerSettings();
 
-    const allowedResolutions = serverSettings?.stream_resolutions || (
+    const allowedResolutions = (
       localStorage.getItem("stream_resolutions")
         ? JSON.parse(localStorage.getItem("stream_resolutions"))
-        : ["2160p", "1080p", "720p", "480p"]
-    );
+        : null
+    ) || serverSettings?.stream_resolutions || ["2160p", "1080p", "720p", "480p"];
 
-    const excludeLowQuality = serverSettings?.stream_exclude_low_quality !== undefined
-      ? serverSettings.stream_exclude_low_quality
-      : (localStorage.getItem("stream_exclude_low_quality") !== null
+    const excludeLowQuality = (
+      localStorage.getItem("stream_exclude_low_quality") !== null
         ? JSON.parse(localStorage.getItem("stream_exclude_low_quality"))
-        : true);
+        : null
+    ) ?? serverSettings?.stream_exclude_low_quality ?? true;
 
     // Parse stream resolution
     const parseStreamResolution = (item) => {

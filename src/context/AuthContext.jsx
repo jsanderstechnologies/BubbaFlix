@@ -37,8 +37,8 @@ export const AuthProvider = ({ children }) => {
             if (prefs.theme) {
               localStorage.setItem("app_theme", prefs.theme);
             }
-            if (prefs.homeSections) {
-              localStorage.setItem("bubbaflix_home_sections", JSON.stringify(prefs.homeSections));
+            if (prefs.homeSections || prefs.home_sections) {
+              localStorage.setItem("bubbaflix_home_sections", JSON.stringify(prefs.homeSections || prefs.home_sections));
             }
             if (prefs.watchProgress) {
               localStorage.setItem("bubbaflix_watch_progress", JSON.stringify(prefs.watchProgress));
@@ -51,6 +51,12 @@ export const AuthProvider = ({ children }) => {
             }
             if (prefs.favoriteChannels) {
               localStorage.setItem("bubbaflix_favorite_channels", JSON.stringify(prefs.favoriteChannels));
+            }
+            if (prefs.stream_resolutions) {
+              localStorage.setItem("stream_resolutions", JSON.stringify(prefs.stream_resolutions));
+            }
+            if (prefs.stream_exclude_low_quality !== undefined) {
+              localStorage.setItem("stream_exclude_low_quality", JSON.stringify(prefs.stream_exclude_low_quality));
             }
             window.dispatchEvent(new CustomEvent("user-preferences-loaded", { detail: prefs }));
           }
@@ -80,11 +86,13 @@ export const AuthProvider = ({ children }) => {
       const prefs = res.data.user.preferences;
       if (prefs.simkl_access_token) localStorage.setItem("simkl_access_token", prefs.simkl_access_token);
       if (prefs.theme) localStorage.setItem("app_theme", prefs.theme);
-      if (prefs.homeSections) localStorage.setItem("bubbaflix_home_sections", JSON.stringify(prefs.homeSections));
+      if (prefs.homeSections || prefs.home_sections) localStorage.setItem("bubbaflix_home_sections", JSON.stringify(prefs.homeSections || prefs.home_sections));
       if (prefs.watchProgress) localStorage.setItem("bubbaflix_watch_progress", JSON.stringify(prefs.watchProgress));
       if (prefs.favorites) localStorage.setItem("bubbaflix_favorites", JSON.stringify(prefs.favorites));
       if (prefs.favoriteCollections) localStorage.setItem("bubbaflix_favorite_collections", JSON.stringify(prefs.favoriteCollections));
       if (prefs.favoriteChannels) localStorage.setItem("bubbaflix_favorite_channels", JSON.stringify(prefs.favoriteChannels));
+      if (prefs.stream_resolutions) localStorage.setItem("stream_resolutions", JSON.stringify(prefs.stream_resolutions));
+      if (prefs.stream_exclude_low_quality !== undefined) localStorage.setItem("stream_exclude_low_quality", JSON.stringify(prefs.stream_exclude_low_quality));
     }
     axios.defaults.headers.common["Authorization"] = `Bearer ${res.data.token}`;
   };

@@ -138,10 +138,10 @@ const SettingsPage = () => {
 
 
 
-    const resConfig = serverSettings?.stream_resolutions || (localStorage.getItem("stream_resolutions") ? JSON.parse(localStorage.getItem("stream_resolutions")) : ["2160p", "1080p", "720p", "480p"]);
+    const resConfig = (localStorage.getItem("stream_resolutions") ? JSON.parse(localStorage.getItem("stream_resolutions")) : null) || serverSettings?.stream_resolutions || ["2160p", "1080p", "720p", "480p"];
     setSelectedResolutions(resConfig);
 
-    const excludeLowConfig = serverSettings?.stream_exclude_low_quality !== undefined ? serverSettings.stream_exclude_low_quality : (localStorage.getItem("stream_exclude_low_quality") !== null ? JSON.parse(localStorage.getItem("stream_exclude_low_quality")) : true);
+    const excludeLowConfig = (localStorage.getItem("stream_exclude_low_quality") !== null ? JSON.parse(localStorage.getItem("stream_exclude_low_quality")) : null) ?? serverSettings?.stream_exclude_low_quality ?? true;
     setExcludeLowQuality(excludeLowConfig);
 
     if (serverSettings?.cpuTopology) {
@@ -176,14 +176,14 @@ const SettingsPage = () => {
   const handleSaveHomeSections = async (e) => {
     if (e) e.preventDefault();
     saveHomeSections(homeSections);
-    await updatePreferences({ home_sections: homeSections });
+    await updatePreferences({ homeSections: homeSections });
     setHomeSectionStatus({ type: "success", text: "Home screen layout saved & synced to all devices." });
   };
 
   const handleResetHomeSections = async () => {
     setHomeSections(DEFAULT_HOME_SECTIONS);
     saveHomeSections(DEFAULT_HOME_SECTIONS);
-    await updatePreferences({ home_sections: DEFAULT_HOME_SECTIONS });
+    await updatePreferences({ homeSections: DEFAULT_HOME_SECTIONS });
     setHomeSectionStatus({ type: "info", text: "Home screen layout reset to defaults." });
   };
 
