@@ -865,7 +865,7 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     const { exec } = require("child_process");
     const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
     // Run ffprobe with standard user-agent headers to prevent CDN 403 blocks
-    const probeCmd = `ffprobe -headers "User-Agent: ${userAgent}\r\n" -v error -show_entries format=duration:stream=index,codec_type,codec_name,width,height,tags -show_chapters -of json "${cleanedTargetUrl.replace(/"/g, '\\"')}"`;
+    const probeCmd = `ffprobe -headers "User-Agent: ${userAgent}\r\n" -v error -show_entries format=duration:stream=index,codec_type,codec_name,width,height:stream_tags -show_chapters -of json "${cleanedTargetUrl.replace(/"/g, '\\"')}"`;
     
     exec(probeCmd, { timeout: 12000 }, (error, stdout, stderr) => {
       if (error) {
