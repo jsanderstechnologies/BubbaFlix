@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getServerUrl, getServerSettings } from "./serverSettings";
+import { getServerUrl } from "./serverSettings";
 import versionData from "../../version.json";
 
 const simklAxios = axios.create();
