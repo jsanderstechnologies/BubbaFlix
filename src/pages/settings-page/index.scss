@@ -441,23 +441,24 @@
         }
       }
 
-      .apiInstruction {
-        margin-top: 10px;
-        margin-bottom: 5px;
-        padding: 8px 12px;
-        background-color: rgba(255, 255, 255, 0.04);
-        border-radius: 6px;
-        font-size: 13px;
-        color: rgba(255, 255, 255, 0.7);
+    }
 
-        strong {
-          color: white;
-        }
+    .apiInstruction {
+      margin-top: 10px;
+      margin-bottom: 5px;
+      padding: 8px 12px;
+      background-color: rgba(255, 255, 255, 0.04);
+      border-radius: 6px;
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.7);
 
-        a {
-          color: var(--pink);
-          text-decoration: underline;
-        }
+      strong {
+        color: white;
+      }
+
+      a {
+        color: var(--pink);
+        text-decoration: underline;
       }
     }
   }

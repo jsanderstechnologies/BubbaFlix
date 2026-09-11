@@ -188,14 +188,17 @@ const HomePage = () => {
             <div className="sectionList">
               {sections.map((sec, idx) => (
                 <div key={sec.id} className="sectionRow">
-                  <label className="checkboxLabel">
-                    <input
-                      type="checkbox"
-                      checked={sec.enabled}
-                      onChange={() => toggleSection(sec.id)}
-                    />
+                  <button
+                    type="button"
+                    className="checkboxLabel"
+                    onClick={() => toggleSection(sec.id)}
+                    style={{ background: "transparent", border: "none", padding: 0, color: "inherit", font: "inherit", textAlign: "left", width: "100%", justifyContent: "flex-start" }}
+                  >
+                    <div style={{ width: 18, height: 18, border: "2px solid var(--pink)", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", background: sec.enabled ? "var(--pink)" : "transparent", flexShrink: 0 }}>
+                      {sec.enabled && <FiCheck size={14} color="#fff" />}
+                    </div>
                     <span>{sec.title}</span>
-                  </label>
+                  </button>
                   <div className="rowActions">
                     <button
                       className="arrowBtn"

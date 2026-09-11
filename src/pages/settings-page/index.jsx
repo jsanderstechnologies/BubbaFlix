@@ -510,15 +510,16 @@ const SettingsPage = () => {
                     border: "1px solid rgba(255, 255, 255, 0.08)",
                   }}
                 >
-                  <label style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", fontSize: 15, fontWeight: 500, color: "#ffffff" }}>
-                    <input
-                      type="checkbox"
-                      checked={sec.enabled}
-                      onChange={() => handleToggleHomeSection(sec.id)}
-                      style={{ width: 18, height: 18, accentColor: "var(--pink)", cursor: "pointer" }}
-                    />
+                  <button
+                    type="button"
+                    onClick={() => handleToggleHomeSection(sec.id)}
+                    style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", fontSize: 15, fontWeight: 500, color: "#ffffff", background: "transparent", border: "none", padding: 0 }}
+                  >
+                    <div style={{ width: 18, height: 18, border: "2px solid var(--pink)", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", background: sec.enabled ? "var(--pink)" : "transparent" }}>
+                      {sec.enabled && <FiCheck size={14} color="#fff" />}
+                    </div>
                     <span style={{ color: "#ffffff" }}>{sec.title}</span>
-                  </label>
+                  </button>
                   <div style={{ display: "flex", gap: 6 }}>
                     <button
                       type="button"
