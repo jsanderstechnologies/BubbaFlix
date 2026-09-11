@@ -1,4 +1,4 @@
-# BubbaFlix TV 📺 - Native Android TV, Google TV & Fire TV App (v1.0.4)
+# BubbaFlix TV 📺 - Native Android TV, Google TV & Fire TV App (v1.0.5)
 
 **BubbaFlix TV** is the official native Android application for Android TV, Google TV, Chromecast with Google TV, Nvidia Shield, and Amazon Fire TV devices.
 

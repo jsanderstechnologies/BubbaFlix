@@ -2,11 +2,11 @@
   <img src="public/tv_banner.png" alt="BubbaFlix Logo" width="280" />
 </p>
 
-# BubbaFlix 🎬 - Movie & TV Show Streaming, Live TV & Discovery App (v1.0.4)
+# BubbaFlix 🎬 - Movie & TV Show Streaming, Live TV & Discovery App (v1.0.5)
 
 BubbaFlix is a modern, high-performance movie and TV show streaming discovery platform built with **React 18**, **Redux Toolkit**, **React Router v6**, **Vite**, **Pure Node.js**, **Native Android TV (Kotlin / ExoPlayer)**, and integrated with **Dispatcharr Live TV & EPG**, **AIOStreams (ElfHosted + Premiumize)**, **TMDB**, **Groq AI**, and **SIMKL**.
 
-BubbaFlix features **📡 Dispatcharr Live TV & EPG Integration**, **🔍 Dedicated Interactive Search Page (`/search`)**, **⭐ Favorites Section & Star Toggle Persistence**, **Native Android TV App (`android-tv/`) with ExoPlayer 5-Minute Ahead-Buffering & Automatic Dispatcharr Settings Inheritance**, **Automatic Web Audio Transcoder (AC3/EAC3/DTS → AAC)**, **Unlocked Smart TV D-Pad Spatial Navigation with Focus Retention**, **Canonical OTA Version Updates (`version.json`)**, **Groq AI Llama 3 Stream Title Filtering**, **Official SIMKL Watch History Sync**, and **Centralized Backend Transcoder Proxy**.
+BubbaFlix features **📡 Dispatcharr Live TV & EPG Integration**, **🔍 Dedicated Interactive Search Page (`/search`)**, **⭐ Favorites Section & Star Toggle Persistence**, **Native Android TV App (`android-tv/`) with ExoPlayer 5-Minute Ahead-Buffering & Automatic Dispatcharr Settings Inheritance**, **Automatic Web Audio Transcoder (AC3/EAC3/DTS → AAC) with FFprobe Multi-Language Audio Extraction**, **Customizable & Syncable Home Screen Layouts**, **Unlocked Smart TV D-Pad Spatial Navigation with Focus Retention**, **Canonical OTA Version Updates (`version.json`)**, **Groq AI Llama 3 Stream Title Filtering**, **Official SIMKL Watch History Sync**, and **Centralized Backend Transcoder Proxy**.
 
 ---
 
