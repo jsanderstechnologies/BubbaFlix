@@ -94,8 +94,7 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
         if (res.data) {
           if (res.data.duration) setDuration(res.data.duration);
           if (res.data.subtitleTracks) {
-            const engSubs = res.data.subtitleTracks.filter(t => !t.language || t.language === 'und' || t.language === 'eng' || t.language === 'en' || (t.title && t.title.toLowerCase().includes('english')));
-            setSubtitleTracks(engSubs);
+            setSubtitleTracks(res.data.subtitleTracks);
           }
           if (res.data.chapters) setChapters(res.data.chapters);
           if (res.data.resolution || res.data.videoCodec) {
@@ -103,8 +102,7 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
           }
           
           if (res.data.audioTracks && res.data.audioTracks.length > 0) {
-            const engAudio = res.data.audioTracks.filter(t => !t.language || t.language === 'und' || t.language === 'eng' || t.language === 'en' || (t.title && t.title.toLowerCase().includes('english')));
-            setAudioTracks(engAudio);
+            setAudioTracks(res.data.audioTracks);
             // Default to English if not manually selected
             if (selectedAudioIndex === null) {
               const engTrack = res.data.audioTracks.find(t => t.language === 'eng' || t.language === 'en' || (t.title && t.title.toLowerCase().includes('english')));
