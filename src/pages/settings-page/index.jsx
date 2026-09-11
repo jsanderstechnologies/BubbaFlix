@@ -150,13 +150,7 @@ const SettingsPage = () => {
     if (serverSettings?.gpuInfo) {
       setGpuInfo(serverSettings.gpuInfo);
     }
-    if (serverSettings?.home_sections && Array.isArray(serverSettings.home_sections)) {
-      const validSections = validateHomeSections(serverSettings.home_sections);
-      setHomeSections(validSections);
-      saveHomeSections(validSections);
-    } else {
-      setHomeSections(getHomeSections());
-    }
+    setHomeSections(getHomeSections());
   };
 
   const handleToggleHomeSection = (id) => {
