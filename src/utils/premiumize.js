@@ -61,20 +61,28 @@ export const resolveMagnetWithPremiumize = async (magnetUrl, customApiKey = null
       console.log(`[Premiumize API] Transfer successfully created in Cloud Transfers: ID=${transferId}, Name=${transferName}`);
 
       // 2. Query transfer status / file list to get direct CDN stream link
-      await new Promise((r) => setTimeout(r, 1000));
+      let match = null;
+      let attempts = 0;
+      
+      while (!match && attempts < 5) {
+        await new Promise((r) => setTimeout(r, 1500));
+        
+        const listParams = new URLSearchParams();
+        listParams.append("apikey", apiKey);
 
-      const listParams = new URLSearchParams();
-      listParams.append("apikey", apiKey);
+        const listRes = await premAxios.post("https://www.premiumize.me/api/transfer/list", listParams, {
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          timeout: 10000,
+        });
 
-      const listRes = await premAxios.post("https://www.premiumize.me/api/transfer/list", listParams, {
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        timeout: 10000,
-      });
+        if (listRes.data && listRes.data.status === "success" && Array.isArray(listRes.data.transfers)) {
+          match = listRes.data.transfers.find((t) => t.id === transferId || t.name === transferName);
+        }
+        
+        attempts++;
+      }
 
-      if (listRes.data && listRes.data.status === "success" && Array.isArray(listRes.data.transfers)) {
-        const match = listRes.data.transfers.find((t) => t.id === transferId || t.name === transferName) || listRes.data.transfers[0];
-
-        if (match) {
+      if (match) {
           const targetId = match.file_id || match.folder_id;
           if (targetId) {
             const itemParams = new URLSearchParams();
@@ -118,7 +126,6 @@ export const resolveMagnetWithPremiumize = async (magnetUrl, customApiKey = null
             }
           }
         }
-      }
 
       // Fallback check root folder list for recent downloads
       const rootParams = new URLSearchParams();
