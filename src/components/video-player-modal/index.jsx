@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import "movi-player";
 
 import { FiArrowLeft } from "react-icons/fi";
-import { getWatchProgress, saveWatchProgress, clearWatchProgress } from "../../utils/watchProgress";
+import { getWatchProgress, saveWatchProgress, clearWatchProgress, saveStreamUrl } from "../../utils/watchProgress";
 import { getTranscodedStreamUrl } from "../../utils/serverSettings";
 import "./index.scss";
 
@@ -46,8 +46,9 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
             duration: v.duration,
             title: displayTitle,
             posterPath,
-            streamUrl: videoUrl,
          });
+         // Save the raw stream URL separately so "Continue Watching" can resume the same file
+         if (videoUrl) saveStreamUrl(tmdbId, mediaType, seasonNum, episodeNum, videoUrl);
       }
     }
     if (typeof setShow === "function") setShow(false);
@@ -163,7 +164,6 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
             duration: v.duration,
             title: displayTitle,
             posterPath,
-            streamUrl: videoUrl,
          });
      }
   };

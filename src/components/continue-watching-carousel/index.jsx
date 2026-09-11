@@ -10,7 +10,7 @@ import "./index.scss";
 
 const DEFAULT_IMAGE_BASE = "https://image.tmdb.org/t/p/original";
 
-const ContinueWatchingCarousel = ({ items, title }) => {
+const ContinueWatchingCarousel = ({ items, title, onPlayResume }) => {
   const navigate = useNavigate();
   const { url } = useSelector((state) => state.home);
   const posterBase = url?.poster || DEFAULT_IMAGE_BASE;
@@ -18,6 +18,10 @@ const ContinueWatchingCarousel = ({ items, title }) => {
   if (!items || items.length === 0) return null;
 
   const handleSelect = (item) => {
+    if (onPlayResume) {
+      onPlayResume(item);
+      return;
+    }
     const type = item.mediaType === "tv" ? "tv" : "movie";
     saveLastClickedPoster(item.tmdbId, type);
     navigate(`/${type}/${item.tmdbId}`);

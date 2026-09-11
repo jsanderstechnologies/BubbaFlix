@@ -7,7 +7,7 @@ import useFetch from "../../hooks/useFetch";
 import { fetchDataFromAPI } from "../../utils/api";
 import { getHomeSections, saveHomeSections } from "../../utils/homeConfig";
 import { restoreLastFocusedPoster } from "../../utils/focusManager";
-import { getAllWatchProgress } from "../../utils/watchProgress";
+import { getAllWatchProgress, getStreamUrl } from "../../utils/watchProgress";
 import VideoPlayerModal from "../../components/video-player-modal";
 import ContinueWatchingCarousel from "../../components/continue-watching-carousel";
 import {
@@ -135,8 +135,9 @@ const HomePage = () => {
   const [activeStreamMeta, setActiveStreamMeta] = useState(null);
 
   const handlePlayResume = (item) => {
-    if (item.streamUrl) {
-      setActiveStreamUrl(item.streamUrl);
+    const savedUrl = getStreamUrl(item.tmdbId, item.mediaType, item.seasonNum, item.episodeNum);
+    if (savedUrl) {
+      setActiveStreamUrl(savedUrl);
       setActiveStreamTitle(item.title || "Continue Watching");
       setActiveStreamMeta(item);
       setShowPlayer(true);

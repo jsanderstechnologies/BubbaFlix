@@ -126,7 +126,6 @@ export const saveWatchProgress = ({
     title,
     posterPath,
     backdropPath,
-    streamUrl,
     updatedAt: Date.now()
   };
 
@@ -169,5 +168,41 @@ export const formatTimeDisplay = (totalSeconds) => {
   }
   return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
 };
+
+const STREAM_URL_KEY = "bubbaflix_stream_urls";
+
+/**
+ * Save the last-played stream URL for a media item separately from watch progress.
+ * This avoids interfering with the resume timestamp/prompt logic.
+ */
+export const saveStreamUrl = (tmdbId, mediaType, seasonNum, episodeNum, url) => {
+  if (!tmdbId || !url) return;
+  const key = getMediaProgressKey(tmdbId, mediaType, seasonNum, episodeNum);
+  if (!key) return;
+  try {
+    const raw = localStorage.getItem(STREAM_URL_KEY);
+    const all = raw ? JSON.parse(raw) : {};
+    all[key] = url;
+    localStorage.setItem(STREAM_URL_KEY, JSON.stringify(all));
+  } catch (e) {
+    console.error("[saveStreamUrl Error]:", e);
+  }
+};
+
+/**
+ * Get the last-played stream URL for a media item.
+ */
+export const getStreamUrl = (tmdbId, mediaType, seasonNum, episodeNum) => {
+  const key = getMediaProgressKey(tmdbId, mediaType, seasonNum, episodeNum);
+  if (!key) return null;
+  try {
+    const raw = localStorage.getItem(STREAM_URL_KEY);
+    const all = raw ? JSON.parse(raw) : {};
+    return all[key] || null;
+  } catch (e) {
+    return null;
+  }
+};
+
 
 
