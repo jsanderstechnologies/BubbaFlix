@@ -113,7 +113,7 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
     // Auto-resolve magnet link via Premiumize Cloud API (adds to 7-day cloud retention)
     if (targetUrl.startsWith("magnet:")) {
       console.log("[MagnetSection] Resolving magnet via Premiumize Cloud API...");
-      const premRes = await resolveMagnetWithPremiumize(targetUrl);
+      const premRes = await resolveMagnetWithPremiumize(targetUrl, null, seasonNum, episodeNum);
       if (premRes.success && premRes.streamUrl) {
         targetUrl = premRes.streamUrl;
         console.log("[MagnetSection] Successfully resolved Premiumize HTTP CDN stream URL:", targetUrl);

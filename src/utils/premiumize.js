@@ -26,7 +26,7 @@ export const savePremiumizeKey = (key) => {
  * Resolves a magnet link into a direct high-speed HTTP/HTTPS CDN video stream via Premiumize.me API
  * Automatically adds the magnet transfer to the user's Premiumize cloud storage (7-day retention)
  */
-export const resolveMagnetWithPremiumize = async (magnetUrl, customApiKey = null) => {
+export const resolveMagnetWithPremiumize = async (magnetUrl, customApiKey = null, seasonNum = null, episodeNum = null) => {
   try {
     let apiKey = customApiKey || getPremiumizeKey();
 
@@ -108,14 +108,28 @@ export const resolveMagnetWithPremiumize = async (magnetUrl, customApiKey = null
                 timeout: 10000,
               });
               if (folderRes.data && Array.isArray(folderRes.data.content)) {
-                // Find largest video file in folder
                 const videoFiles = folderRes.data.content
                   .filter((item) => item.type === "file" && item.link)
                   .sort((a, b) => (b.size || 0) - (a.size || 0));
 
-                if (videoFiles.length > 0) {
-                  const bestFile = videoFiles[0];
-                  console.log(`[Premiumize API] Folder Largest Video File Resolved: ${bestFile.name} -> ${bestFile.link}`);
+                let bestFile = videoFiles.length > 0 ? videoFiles[0] : null;
+
+                if (seasonNum != null && episodeNum != null && videoFiles.length > 0) {
+                  const s = String(seasonNum).padStart(2, '0');
+                  const e = String(episodeNum).padStart(2, '0');
+                  const rx1 = new RegExp(`s${s}e${e}`, 'i');
+                  const rx2 = new RegExp(`${seasonNum}x${episodeNum}`, 'i');
+                  const rx3 = new RegExp(`s0?${seasonNum}e0?${episodeNum}`, 'i');
+
+                  const epFile = videoFiles.find(f => {
+                     const name = f.name || "";
+                     return rx1.test(name) || rx2.test(name) || rx3.test(name);
+                  });
+                  if (epFile) bestFile = epFile;
+                }
+
+                if (bestFile) {
+                  console.log(`[Premiumize API] Folder Video File Resolved: ${bestFile.name} -> ${bestFile.link}`);
                   return {
                     success: true,
                     streamUrl: bestFile.stream_link || bestFile.link,
@@ -141,8 +155,23 @@ export const resolveMagnetWithPremiumize = async (magnetUrl, customApiKey = null
           .filter((item) => item.type === "file" && item.link)
           .sort((a, b) => (b.size || 0) - (a.size || 0));
 
-        if (videoFiles.length > 0) {
-          const bestFile = videoFiles[0];
+        let bestFile = videoFiles.length > 0 ? videoFiles[0] : null;
+
+        if (seasonNum != null && episodeNum != null && videoFiles.length > 0) {
+          const s = String(seasonNum).padStart(2, '0');
+          const e = String(episodeNum).padStart(2, '0');
+          const rx1 = new RegExp(`s${s}e${e}`, 'i');
+          const rx2 = new RegExp(`${seasonNum}x${episodeNum}`, 'i');
+          const rx3 = new RegExp(`s0?${seasonNum}e0?${episodeNum}`, 'i');
+
+          const epFile = videoFiles.find(f => {
+             const name = f.name || "";
+             return rx1.test(name) || rx2.test(name) || rx3.test(name);
+          });
+          if (epFile) bestFile = epFile;
+        }
+
+        if (bestFile) {
           return {
             success: true,
             streamUrl: bestFile.stream_link || bestFile.link,
