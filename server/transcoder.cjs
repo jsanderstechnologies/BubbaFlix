@@ -1056,10 +1056,12 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
 
       const ffmpegArgs = [
         "-headers", headersStr,
-        "-reconnect", "1",
-        "-reconnect_at_eof", "1",
-        "-reconnect_streamed", "1",
-        "-reconnect_delay_max", "3",
+        ...(!seekTime ? [
+          "-reconnect", "1",
+          "-reconnect_at_eof", "1",
+          "-reconnect_streamed", "1",
+          "-reconnect_delay_max", "3"
+        ] : []),
         ...(seekTime ? ["-ss", seekTime] : []),
         ...(isLiveStream
           ? ["-fflags", "+genpts+discardcorrupt", "-analyzeduration", "1500000", "-probesize", "1500000"]
