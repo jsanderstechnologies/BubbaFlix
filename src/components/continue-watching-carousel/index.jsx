@@ -24,11 +24,9 @@ const ContinueWatchingCarousel = ({ items, title }) => {
   };
 
   return (
-    <div className="carouselSection continueWatchingSection">
+    <div className="carousel continueWatchingSection">
       <ContentWrapper>
-        <span className="carouselTitle">{title}</span>
-      </ContentWrapper>
-      <ContentWrapper>
+        {title && <div className="carouselTitle">{title}</div>}
         <div className="continueCarouselItems">
           {items.map((item) => {
             const posterUrl = item.posterPath
