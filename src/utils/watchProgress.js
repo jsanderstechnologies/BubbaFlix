@@ -72,7 +72,8 @@ export const saveWatchProgress = ({
   duration = 0,
   title = "",
   posterPath = "",
-  backdropPath = ""
+  backdropPath = "",
+  streamUrl = ""
 }) => {
   const key = getMediaProgressKey(tmdbId, mediaType, seasonNum, episodeNum);
   if (!key || !duration || duration <= 0) return;
@@ -125,6 +126,7 @@ export const saveWatchProgress = ({
     title,
     posterPath,
     backdropPath,
+    streamUrl,
     updatedAt: Date.now()
   };
 
@@ -167,3 +169,5 @@ export const formatTimeDisplay = (totalSeconds) => {
   }
   return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
 };
+
+

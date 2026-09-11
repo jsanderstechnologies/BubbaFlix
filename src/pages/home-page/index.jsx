@@ -26,7 +26,7 @@ import {
 } from "react-icons/fi";
 import "./index.scss";
 
-const DynamicSection = ({ section }) => {
+const DynamicSection = ({ section, onPlayResume }) => {
   const navigate = useNavigate();
 
   // Endpoints for TMDB queries
@@ -101,6 +101,7 @@ const DynamicSection = ({ section }) => {
       <ContinueWatchingCarousel
         items={items}
         title="Continue Watching: Movies"
+        onPlayResume={onPlayResume}
       />
     );
   }
@@ -115,6 +116,7 @@ const DynamicSection = ({ section }) => {
       <ContinueWatchingCarousel
         items={items}
         title="Continue Watching: TV Episodes"
+        onPlayResume={onPlayResume}
       />
     );
   }
@@ -130,6 +132,16 @@ const HomePage = () => {
   const [showPlayer, setShowPlayer] = useState(false);
   const [activeStreamUrl, setActiveStreamUrl] = useState("");
   const [activeStreamTitle, setActiveStreamTitle] = useState("");
+  const [activeStreamMeta, setActiveStreamMeta] = useState(null);
+
+  const handlePlayResume = (item) => {
+    if (item.streamUrl) {
+      setActiveStreamUrl(item.streamUrl);
+      setActiveStreamTitle(item.title || "Continue Watching");
+      setActiveStreamMeta(item);
+      setShowPlayer(true);
+    }
+  };
 
   useEffect(() => {
     const handleUpdate = () => {
@@ -172,6 +184,7 @@ const HomePage = () => {
           <DynamicSection
             key={s.id}
             section={s}
+            onPlayResume={handlePlayResume}
           />
         ))}
 
@@ -234,6 +247,11 @@ const HomePage = () => {
         setShow={setShowPlayer}
         videoUrl={activeStreamUrl}
         title={activeStreamTitle}
+        tmdbId={activeStreamMeta?.tmdbId}
+        mediaType={activeStreamMeta?.mediaType}
+        seasonNum={activeStreamMeta?.seasonNum}
+        episodeNum={activeStreamMeta?.episodeNum}
+        posterPath={activeStreamMeta?.posterPath}
       />
     </div>
   );

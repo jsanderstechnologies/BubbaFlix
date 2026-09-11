@@ -46,6 +46,7 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
             duration: v.duration,
             title: displayTitle,
             posterPath,
+            streamUrl: videoUrl,
          });
       }
     }
@@ -162,6 +163,7 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
             duration: v.duration,
             title: displayTitle,
             posterPath,
+            streamUrl: videoUrl,
          });
      }
   };
