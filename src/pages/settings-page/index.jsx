@@ -10,7 +10,7 @@ import { updateServerSettings, fetchServerSettings, getServerUrl, saveServerUrl,
 import { getApiConfiguration } from "../../store/homeSlice";
 import { THEMES, getSavedTheme, applyTheme } from "../../utils/theme";
 import { getHomeSections, saveHomeSections, DEFAULT_HOME_SECTIONS, validateHomeSections } from "../../utils/homeConfig";
-import { FiKey, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning, FiCheckSquare, FiTv, FiPlus, FiMinus, FiServer, FiInfo, FiExternalLink, FiCloud, FiChevronUp, FiChevronDown, FiRotateCcw } from "react-icons/fi";
+import { FiKey, FiCheck, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning, FiCheckSquare, FiTv, FiPlus, FiMinus, FiServer, FiInfo, FiExternalLink, FiCloud, FiChevronUp, FiChevronDown, FiRotateCcw } from "react-icons/fi";
 import "./index.scss";
 import { AuthContext } from "../../context/AuthContext";
 import { useContext } from "react";
