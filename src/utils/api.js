@@ -22,6 +22,7 @@ export const fetchDataFromAPI = async (url, params) => {
     const customParams = {
       language: "en-US",
       with_original_language: "en",
+      include_adult: false,
       ...params,
     };
 

@@ -71,6 +71,28 @@ export const isAnime = (item) => {
   return false;
 };
 
+const ADULT_KEYWORDS = [
+  "xxx", "adult", "erotic", "porn", "hentai", "nude", "sex", "uncensored", 
+  "striptease", "playboy", "penthouse", "softcore", "hardcore", "erotica", "sensual",
+  "taboo", "fetish", "babe", "vixen", "desire", "passion", "lust", "naughty", "explicit",
+  "18+", "snuff", "escort", "swingers", "playmate", "hustler", "suicidegirls", "brazzers",
+  "orgy", "threesome", "incest", "gangbang", "bdsm"
+];
+
+export const isAdult = (item) => {
+  if (!item || isAxiosError(item)) return false;
+  if (item.adult === true) return true;
+
+  const title = (item.title || item.name || item.original_title || item.original_name || "").toLowerCase();
+  const overview = (item.overview || "").toLowerCase();
+
+  const words = title.split(/[\s,._\-:;]+/);
+  if (words.some((w) => ADULT_KEYWORDS.includes(w))) return true;
+  if (ADULT_KEYWORDS.some((kw) => title.includes(kw) || overview.includes(kw))) return true;
+
+  return false;
+};
+
 export const filterEnglishMedia = (items) => {
   if (!Array.isArray(items)) return [];
 
@@ -78,8 +100,8 @@ export const filterEnglishMedia = (items) => {
     if (!item || typeof item !== "object") return false;
     if (isAxiosError(item)) return false;
 
-    // Filter out explicit adult
-    if (item.adult === true) return false;
+    // Filter out explicit adult and softcore
+    if (isAdult(item)) return false;
 
     // Filter out Anime
     if (isAnime(item)) return false;
@@ -97,7 +119,7 @@ export const filterEnglishMedia = (items) => {
     const title = item.title || item.name || item.original_title || item.original_name || "";
     if (!title || FOREIGN_SCRIPT_REGEX.test(title)) return false;
 
-    // 3. Foreign title descriptor terms check (e.g. "colección", "trilogie", "película")
+    // 3. Foreign title descriptor terms check (e.g. "coleccin", "trilogie", "pelcula")
     const titleLower = title.toLowerCase();
     if (FOREIGN_TITLE_TERMS.some((term) => titleLower.includes(term))) {
       return false;
@@ -118,17 +140,12 @@ export const filterEnglishMedia = (items) => {
 export const filterEnglishCollections = (items) => {
   if (!Array.isArray(items)) return [];
 
-  const adultKeywords = [
-    "xxx", "adult", "erotic", "porn", "hentai", "nude", "sex", "uncensored", 
-    "striptease", "playboy", "penthouse", "softcore", "hardcore", "erotica", "sensual",
-    "taboo", "fetish", "babe", "vixen", "desire", "passion", "lust", "naughty", "explicit",
-    "18+", "snuff", "escort", "swingers", "playmate", "hustler", "suicidegirls", "brazzers"
-  ];
-
   return items.filter((col) => {
     if (!col || typeof col !== "object") return false;
     if (isAxiosError(col)) return false;
-    if (col.adult === true) return false;
+    
+    // Filter out explicit adult and softcore
+    if (isAdult(col)) return false;
 
     // Filter out Anime collections
     if (isAnime(col)) return false;
@@ -141,13 +158,6 @@ export const filterEnglishCollections = (items) => {
 
     const name = (col.name || col.title || col.original_name || "").toLowerCase();
     if (!name) return false;
-
-    const overview = (col.overview || "").toLowerCase();
-
-    // Check adult words
-    const words = name.split(/[\s,._\-:;]+/);
-    if (words.some((w) => adultKeywords.includes(w))) return false;
-    if (adultKeywords.some((kw) => name.includes(kw) || overview.includes(kw))) return false;
 
     // Foreign character script check
     if (FOREIGN_SCRIPT_REGEX.test(col.name || col.title || col.original_name || "")) return false;
