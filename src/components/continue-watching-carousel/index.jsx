@@ -6,6 +6,7 @@ import ContentWrapper from "../content-wrapper";
 import Img from "../lazy-load";
 import PosterFallback from "../../assets/no-poster.png";
 import { saveLastClickedPoster } from "../../utils/focusManager";
+import { getStreamUrl } from "../../utils/watchProgress";
 import "./index.scss";
 
 const DEFAULT_IMAGE_BASE = "https://image.tmdb.org/t/p/original";
@@ -18,7 +19,8 @@ const ContinueWatchingCarousel = ({ items, title, onPlayResume }) => {
   if (!items || items.length === 0) return null;
 
   const handleSelect = (item) => {
-    if (onPlayResume) {
+    const savedUrl = getStreamUrl(item.tmdbId, item.mediaType, item.seasonNum, item.episodeNum);
+    if (onPlayResume && savedUrl) {
       onPlayResume(item);
       return;
     }

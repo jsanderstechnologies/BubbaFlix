@@ -198,7 +198,13 @@ export const getStreamUrl = (tmdbId, mediaType, seasonNum, episodeNum) => {
   try {
     const raw = localStorage.getItem(STREAM_URL_KEY);
     const all = raw ? JSON.parse(raw) : {};
-    return all[key] || null;
+    if (all[key]) return all[key];
+
+    // Fallback for older items that had streamUrl saved in the main watch progress object
+    const prog = getWatchProgress(tmdbId, mediaType, seasonNum, episodeNum);
+    if (prog && prog.streamUrl) return prog.streamUrl;
+
+    return null;
   } catch (e) {
     return null;
   }
