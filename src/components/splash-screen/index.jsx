@@ -99,31 +99,31 @@ const SplashScreen = ({ onComplete }) => {
 
       const now = ctx.currentTime;
 
-      // 1. "TA" - Initial punchy percussive knock (t = 0.05s)
-      playThump(ctx, master, reverbGain, now + 0.05, 145, 0.35, 1.8);
+      // 1. "TA" - Initial punchy percussive knock (t = 0.67s)
+      playThump(ctx, master, reverbGain, now + 0.67, 145, 0.35, 1.8);
 
-      // 2. "DUM" - Main heavy sub-bass impact (t = 0.28s)
-      playThump(ctx, master, reverbGain, now + 0.28, 54, 2.4, 2.8);
+      // 2. "DUM" - Main heavy sub-bass impact (t = 0.90s)
+      playThump(ctx, master, reverbGain, now + 0.90, 54, 2.4, 2.8);
 
-      // 3. Harmonic Cinematic Shimmer (t = 0.28s) - Warm overtone bloom tail
+      // 3. Harmonic Cinematic Shimmer (t = 0.90s) - Warm overtone bloom tail
       const freqs = [146.83, 220.0, 293.66, 440.0, 587.33];
       freqs.forEach((f, idx) => {
         const osc = ctx.createOscillator();
         osc.type = idx % 2 === 0 ? "sine" : "triangle";
-        osc.frequency.setValueAtTime(f, now + 0.28);
+        osc.frequency.setValueAtTime(f, now + 0.90);
 
         const oscGain = ctx.createGain();
         const vol = 0.18 / (idx + 1);
-        oscGain.gain.setValueAtTime(0.0001, now + 0.28);
-        oscGain.gain.linearRampToValueAtTime(vol, now + 0.33);
-        oscGain.gain.exponentialRampToValueAtTime(0.0001, now + 2.5);
+        oscGain.gain.setValueAtTime(0.0001, now + 0.90);
+        oscGain.gain.linearRampToValueAtTime(vol, now + 0.95);
+        oscGain.gain.exponentialRampToValueAtTime(0.0001, now + 3.12);
 
         osc.connect(oscGain);
         oscGain.connect(master);
         oscGain.connect(reverbGain);
 
-        osc.start(now + 0.28);
-        osc.stop(now + 2.6);
+        osc.start(now + 0.90);
+        osc.stop(now + 3.22);
       });
     } catch {
       // Browser autoplay restriction fallback
