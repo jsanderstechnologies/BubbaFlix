@@ -38,8 +38,23 @@ const AppContent = () => {
 
   useEffect(() => {
     const cleanupDpad = initDpadNavigation();
+
+    const handleGlobalKeyDown = (e) => {
+      // Prevent PageUp/PageDown/Home/End from scrolling the view out of sync with D-pad focus
+      if (
+        e.key === "PageUp" || e.keyCode === 33 || e.keyCode === 427 || 
+        e.key === "PageDown" || e.keyCode === 34 || e.keyCode === 428 || 
+        e.key === "Home" || e.keyCode === 36 || 
+        e.key === "End" || e.keyCode === 35
+      ) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("keydown", handleGlobalKeyDown, { capture: true, passive: false });
+
     return () => {
       if (cleanupDpad) cleanupDpad();
+      window.removeEventListener("keydown", handleGlobalKeyDown, { capture: true });
     };
   }, []);
 
