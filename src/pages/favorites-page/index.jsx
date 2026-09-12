@@ -110,53 +110,71 @@ const FavoritesPage = () => {
             <span className="countBadge">{totalCount} Saved</span>
           </div>
           
-          <div className="headerControls">
-              <button 
-                  className="tvSortBtn" 
-                  tabIndex="0" 
-                  onClick={() => setShowSortModal(true)}
-                  onKeyDown={(e) => {
-                      const code = e.keyCode;
-                      if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
-                          e.preventDefault();
-                          setShowSortModal(true);
-                      }
-                  }}
-              >
-                  <FiSliders className="selectIcon" style={{ marginRight: '8px' }} />
-                  Sort Options
-              </button>
-              
-              <div className="tabSelector">
-            <button
-              className={`tabItem ${activeTab === "all" ? "active" : ""}`}
-              tabIndex="0"
-              onClick={() => setActiveTab("all")}
-            >
-              All ({totalCount})
-            </button>
-            <button
-              className={`tabItem ${activeTab === "movie" ? "active" : ""}`}
-              tabIndex="0"
-              onClick={() => setActiveTab("movie")}
-            >
-              <FiFilm style={{ marginRight: 6 }} /> Movies ({movieFavs.length})
-            </button>
-            <button
-              className={`tabItem ${activeTab === "tv" ? "active" : ""}`}
-              tabIndex="0"
-              onClick={() => setActiveTab("tv")}
-            >
-              <FiTv style={{ marginRight: 6 }} /> TV Series ({tvFavs.length})
-            </button>
-            <button
-              className={`tabItem ${activeTab === "collection" ? "active" : ""}`}
-              tabIndex="0"
-              onClick={() => setActiveTab("collection")}
-            >
-              <FiLayers style={{ marginRight: 6 }} /> Collections ({favCollections.length})
-            </button>
-          </div>
+          <div className="headerControls" style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
+              <div className="tabSelector" style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
+                  <button
+                    className={`tabItem ${activeTab === "all" ? "active" : ""}`}
+                    tabIndex="0"
+                    onClick={() => setActiveTab("all")}
+                  >
+                    All ({totalCount})
+                  </button>
+                  <button
+                    className={`tabItem ${activeTab === "movie" ? "active" : ""}`}
+                    tabIndex="0"
+                    onClick={() => setActiveTab("movie")}
+                  >
+                    <FiFilm style={{ marginRight: 6 }} /> Movies ({movieFavs.length})
+                  </button>
+                  <button
+                    className={`tabItem ${activeTab === "tv" ? "active" : ""}`}
+                    tabIndex="0"
+                    onClick={() => setActiveTab("tv")}
+                  >
+                    <FiTv style={{ marginRight: 6 }} /> TV Shows ({tvFavs.length})
+                  </button>
+                  <button
+                    className={`tabItem ${activeTab === "collection" ? "active" : ""}`}
+                    tabIndex="0"
+                    onClick={() => setActiveTab("collection")}
+                  >
+                    <FiLayers style={{ marginRight: 6 }} /> Collections ({favCollections.length})
+                  </button>
+
+                  <div className="tabItem selectContainer" style={{ padding: 0, position: "relative", overflow: "hidden", border: "none", cursor: "pointer" }}>
+                      <div style={{ position: "absolute", left: "20px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none", display: "flex", alignItems: "center", color: "inherit" }}>
+                          <FiSliders style={{ marginRight: "6px" }}/> Sort:
+                      </div>
+                      <select
+                          className="tvSortSelect"
+                          value={sortby}
+                          onChange={(e) => setSortby(e.target.value)}
+                          tabIndex="0"
+                          style={{ 
+                              appearance: "none", 
+                              background: "transparent", 
+                              border: "none", 
+                              color: "inherit", 
+                              padding: "10px 40px 10px 90px", 
+                              fontSize: "14px", 
+                              fontWeight: 600, 
+                              cursor: "pointer", 
+                              outline: "none", 
+                              width: "100%",
+                              height: "100%"
+                          }}
+                      >
+                          {FAV_SORT_OPTIONS.map((opt) => (
+                              <option key={opt.value} value={opt.value} style={{ background: "#04152d", color: "#fff" }}>
+                                  {opt.label}
+                              </option>
+                          ))}
+                      </select>
+                      <div style={{ position: "absolute", right: "15px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "inherit" }}>
+                          <FiChevronDown />
+                      </div>
+                  </div>
+              </div>
           </div>
         </div>
 
