@@ -109,10 +109,14 @@ export const filterEnglishMedia = (items) => {
     // Retain Person entries in search
     if (item.media_type === "person") return true;
 
-    // 1. Primary Rule: If original_language is present, enforce English ("en" or "eng")
+    // 1. Primary Rule: Enforce English, BUT allow universally popular international hits (like The Fifth Element, Parasite)
     if (item.original_language) {
       const lang = item.original_language.toLowerCase();
-      if (lang !== "en" && lang !== "eng") return false;
+      if (lang !== "en" && lang !== "eng") {
+        if (!item.vote_count || item.vote_count < 1500) {
+          return false;
+        }
+      }
     }
 
     // 2. Non-Latin character script check (Cyrillic, CJK, Arabic, Hindi, etc.)

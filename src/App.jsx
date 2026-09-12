@@ -24,6 +24,7 @@ import { fetchServerSettings } from "./utils/serverSettings";
 import AboutPage from "./pages/about-page";
 import TvInstallPrompt from "./components/tv-install-prompt";
 import BackgroundRotator from "./components/background-rotator";
+import GlobalSearchListener from "./components/global-search-listener";
 
 import AuthPage from "./pages/auth-page";
 import { AuthProvider, AuthContext } from "./context/AuthContext";

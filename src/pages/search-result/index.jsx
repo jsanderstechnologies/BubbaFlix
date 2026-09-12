@@ -64,18 +64,7 @@ const SearchResult = () => {
     return filterEnglishMedia(items);
   };
 
-  useEffect(() => {
-    window.onVoiceSearchResult = (spokenQuery) => {
-      if (spokenQuery && spokenQuery.trim()) {
-        const clean = spokenQuery.trim();
-        setSearchQuery(clean);
-        navigate(`/search/${encodeURIComponent(clean)}`, { replace: true });
-      }
-    };
-    return () => {
-      window.onVoiceSearchResult = null;
-    };
-  }, [navigate]);
+
 
   const handleVoiceSearch = () => {
     if (window.AndroidPlayer && typeof window.AndroidPlayer.startVoiceSearch === "function") {
