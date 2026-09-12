@@ -64,7 +64,7 @@ export const resolveMagnetWithPremiumize = async (magnetUrl, customApiKey = null
       let match = null;
       let attempts = 0;
       
-      while (!match && attempts < 5) {
+      while (!match && attempts < 10) {
         await new Promise((r) => setTimeout(r, 1500));
         
         const listParams = new URLSearchParams();
@@ -76,7 +76,10 @@ export const resolveMagnetWithPremiumize = async (magnetUrl, customApiKey = null
         });
 
         if (listRes.data && listRes.data.status === "success" && Array.isArray(listRes.data.transfers)) {
-          match = listRes.data.transfers.find((t) => t.id === transferId || t.name === transferName);
+          const found = listRes.data.transfers.find((t) => t.id === transferId || t.name === transferName);
+          if (found && (found.file_id || found.folder_id || found.status === "finished")) {
+            match = found;
+          }
         }
         
         attempts++;
@@ -141,44 +144,6 @@ export const resolveMagnetWithPremiumize = async (magnetUrl, customApiKey = null
           }
         }
 
-      // Fallback check root folder list for recent downloads
-      const rootParams = new URLSearchParams();
-      rootParams.append("apikey", apiKey);
-
-      const rootFolderRes = await premAxios.post("https://www.premiumize.me/api/folder/list", rootParams, {
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        timeout: 10000,
-      });
-
-      if (rootFolderRes.data && Array.isArray(rootFolderRes.data.content)) {
-        const videoFiles = rootFolderRes.data.content
-          .filter((item) => item.type === "file" && item.link)
-          .sort((a, b) => (b.size || 0) - (a.size || 0));
-
-        let bestFile = videoFiles.length > 0 ? videoFiles[0] : null;
-
-        if (seasonNum != null && episodeNum != null && videoFiles.length > 0) {
-          const s = String(seasonNum).padStart(2, '0');
-          const e = String(episodeNum).padStart(2, '0');
-          const rx1 = new RegExp(`s${s}e${e}`, 'i');
-          const rx2 = new RegExp(`${seasonNum}x${episodeNum}`, 'i');
-          const rx3 = new RegExp(`s0?${seasonNum}e0?${episodeNum}`, 'i');
-
-          const epFile = videoFiles.find(f => {
-             const name = f.name || "";
-             return rx1.test(name) || rx2.test(name) || rx3.test(name);
-          });
-          if (epFile) bestFile = epFile;
-        }
-
-        if (bestFile) {
-          return {
-            success: true,
-            streamUrl: bestFile.stream_link || bestFile.link,
-            title: bestFile.name,
-          };
-        }
-      }
     } else if (createRes.data && createRes.data.message) {
       console.warn("[Premiumize API Notice]:", createRes.data.message);
       return {
