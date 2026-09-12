@@ -49,7 +49,27 @@
       display: flex;
       gap: 10px;
 
-      .tabItem {
+              .tabItem.selectContainer {
+            &:has(.tvSortSelect:focus), &:has(.tvSortSelect.isFocused) {
+                background: white;
+                color: black;
+                transform: scale(1.05);
+                box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+                border-color: transparent;
+                
+                .tvSortSelect {
+                    color: black !important;
+                }
+                div {
+                    color: black !important;
+                }
+            }
+            &:hover {
+                background: rgba(255, 255, 255, 0.2);
+            }
+        }
+
+        .tabItem {
         display: inline-flex;
         align-items: center;
         background: rgba(255, 255, 255, 0.08);
