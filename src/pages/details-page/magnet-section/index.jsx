@@ -111,23 +111,23 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
     let targetUrl = item.url;
 
     // Auto-resolve magnet link via Premiumize Cloud API (adds to 7-day cloud retention)
-    if (targetUrl.startsWith("magnet:")) {
-      console.log("[MagnetSection] Resolving magnet via Premiumize Cloud API...");
-      const premRes = await resolveMagnetWithPremiumize(targetUrl, null, seasonNum, episodeNum);
-      if (premRes.success && premRes.streamUrl) {
-        targetUrl = premRes.streamUrl;
-        console.log("[MagnetSection] Successfully resolved Premiumize HTTP CDN stream URL:", targetUrl);
-      } else if (premRes.message) {
-        console.warn("[MagnetSection Premiumize Notice]:", premRes.message);
+      let premErrorMsg = "Magnet streams require a Premiumize API key to instantly resolve to HTTP.\n\nPlease save your Premiumize API Key in Settings to play this stream.";
+      if (targetUrl.startsWith("magnet:")) {
+        console.log("[MagnetSection] Resolving magnet via Premiumize Cloud API...");
+        const premRes = await resolveMagnetWithPremiumize(targetUrl, null, seasonNum, episodeNum);
+        if (premRes.success && premRes.streamUrl) {
+          targetUrl = premRes.streamUrl;
+          console.log("[MagnetSection] Successfully resolved Premiumize HTTP CDN stream URL:", targetUrl);
+        } else if (premRes.message) {
+          console.warn("[MagnetSection Premiumize Notice]:", premRes.message);
+          premErrorMsg = premRes.message;
+        }
       }
-    }
 
-    if (targetUrl.startsWith("magnet:")) {
-      alert(
-        "Magnet streams require a Premiumize API key to instantly resolve to HTTP.\n\nPlease save your Premiumize API Key in Settings to play this stream."
-      );
-      return;
-    }
+      if (targetUrl.startsWith("magnet:")) {
+        alert(premErrorMsg);
+        return;
+      }
 
     const streamUrl = transcodeMode
       ? `/api/transcode?url=${encodeURIComponent(targetUrl)}`
