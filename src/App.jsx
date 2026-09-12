@@ -41,10 +41,8 @@ const AppContent = () => {
     const cleanupDpad = initDpadNavigation();
 
     const handleGlobalKeyDown = (e) => {
-      // Prevent PageUp/PageDown/Home/End from scrolling the view out of sync with D-pad focus
+      // Prevent Home/End from scrolling the view out of sync with D-pad focus (PageUp/Down handled by dpad engine)
       if (
-        e.key === "PageUp" || e.keyCode === 33 || e.keyCode === 427 || 
-        e.key === "PageDown" || e.keyCode === 34 || e.keyCode === 428 || 
         e.key === "Home" || e.keyCode === 36 || 
         e.key === "End" || e.keyCode === 35
       ) {
