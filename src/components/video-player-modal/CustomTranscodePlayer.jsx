@@ -106,25 +106,22 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
             setMediaInfo({ resolution: res.data.resolution || "Unknown", videoCodec: res.data.videoCodec || "Unknown" });
           }
           
+          let finalUrl = streamUrl;
+          const currentRealTime = seekOffset + (videoRef.current ? videoRef.current.currentTime : 0);
+          let shouldUpdatePlayer = false;
+
           if (res.data.audioTracks && res.data.audioTracks.length > 0) {
             setAudioTracks(res.data.audioTracks);
             // Default to English track on new video load
             const engTrack = res.data.audioTracks.find(t => t.language === 'eng' || t.language === 'en' || (t.title && t.title.toLowerCase().includes('english')));
             if (engTrack && res.data.audioTracks[0] && engTrack.index !== res.data.audioTracks[0].index) {
-              const currentRealTime = seekOffset + (videoRef.current ? videoRef.current.currentTime : 0);
               setSelectedAudioIndex(engTrack.index);
               setSeekOffset(currentRealTime);
               setCurrentTime(currentRealTime);
-              let targetUrl = streamUrl;
-              if (currentRealTime > 0) targetUrl += (targetUrl.includes("?") ? "&" : "?") + `ss=${currentRealTime}`;
-              targetUrl += (targetUrl.includes("?") ? "&" : "?") + `audio_index=${engTrack.index}`;
-              setActualStreamUrl(targetUrl);
-              if (videoRef.current) {
-                videoRef.current.src = targetUrl;
-                videoRef.current.play();
-              }
+              if (currentRealTime > 0) finalUrl += (finalUrl.includes("?") ? "&" : "?") + `ss=${currentRealTime}`;
+              finalUrl += (finalUrl.includes("?") ? "&" : "?") + `audio_index=${engTrack.index}`;
+              shouldUpdatePlayer = true;
             } else {
-              // No english track, or it's the default anyway, explicitly reset the selection
               setSelectedAudioIndex(null);
             }
           } else {
@@ -132,18 +129,21 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
           }
 
           if (res.data.videoCodec) {
-             setActualStreamUrl(prevUrl => {
-                if (prevUrl.includes("video_codec=")) return prevUrl;
-                const newUrl = prevUrl + (prevUrl.includes("?") ? "&" : "?") + `video_codec=${res.data.videoCodec}`;
-                if (videoRef.current && videoRef.current.src !== newUrl) {
-                  const isPlaying = !videoRef.current.paused;
-                  const cTime = videoRef.current.currentTime;
-                  videoRef.current.src = newUrl;
-                  if (cTime > 0) videoRef.current.currentTime = cTime;
-                  if (isPlaying) videoRef.current.play();
-                }
-                return newUrl;
-             });
+             if (!finalUrl.includes("video_codec=")) {
+                if (!shouldUpdatePlayer && currentRealTime > 0) finalUrl += (finalUrl.includes("?") ? "&" : "?") + `ss=${currentRealTime}`;
+                finalUrl += (finalUrl.includes("?") ? "&" : "?") + `video_codec=${res.data.videoCodec}`;
+                shouldUpdatePlayer = true;
+             }
+          }
+
+          if (shouldUpdatePlayer) {
+             setActualStreamUrl(finalUrl);
+             if (videoRef.current) {
+                const isPlaying = !videoRef.current.paused;
+                videoRef.current.src = finalUrl;
+                if (currentRealTime > 0) videoRef.current.currentTime = currentRealTime;
+                if (isPlaying) videoRef.current.play();
+             }
           }
         }
       } catch (err) {
