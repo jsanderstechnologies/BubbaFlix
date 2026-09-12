@@ -6,7 +6,7 @@ import "./index.scss";
 
 import { fetchDataFromAPI } from "../../utils/api";
 import { filterEnglishMedia, filterEnglishCollections } from "../../utils/filterUtils";
-import { filterCollectionsWithGroq } from "../../utils/groqFilter";
+import { filterCollectionsWithGroq, filterExploreMediaWithGroq } from "../../utils/groqFilter";
 import { restoreLastFocusedPoster } from "../../utils/focusManager";
 import ContentWrapper from "../../components/content-wrapper";
 import MovieCard from "../../components/movie-card";
@@ -60,8 +60,9 @@ const Explore = () => {
 
 	const fetchInitialData = () => {
 		setLoading(true);
-		fetchDataFromAPI(`/discover/${mediaType}`, filters).then((res) => {
-			const filtered = filterEnglishMedia(res?.results || []);
+		fetchDataFromAPI(`/discover/${mediaType}`, filters).then(async (res) => {
+			let filtered = filterEnglishMedia(res?.results || []);
+			filtered = await filterExploreMediaWithGroq(filtered, mediaType);
 			setData({ ...res, results: filtered });
 			setPageNum((prev) => prev + 1);
 			setLoading(false);
@@ -72,16 +73,21 @@ const Explore = () => {
 		fetchDataFromAPI(
 			`/discover/${mediaType}?page=${pageNum}`,
 			filters
-		).then((res) => {
-			const filteredNext = filterEnglishMedia(res?.results || []);
-			if (data?.results) {
-				setData({
-					...data,
-					results: [...data.results, ...filteredNext],
-				});
-			} else {
-				setData({ ...res, results: filteredNext });
-			}
+		).then(async (res) => {
+			let filteredNext = filterEnglishMedia(res?.results || []);
+			filteredNext = await filterExploreMediaWithGroq(filteredNext, mediaType);
+			
+			// We have to use a functional state update to ensure we don't capture stale `data`
+			setData((prevData) => {
+				if (prevData?.results) {
+					return {
+						...prevData,
+						results: [...prevData.results, ...filteredNext],
+					};
+				} else {
+					return { ...res, results: filteredNext };
+				}
+			});
 			setPageNum((prev) => prev + 1);
 		});
 	};
@@ -151,7 +157,11 @@ const filterEnglishCollections = (items) => {
 	};
 
 	useEffect(() => {
-		filters = { sort_by: "popularity.desc" };
+		filters = { 
+			sort_by: "popularity.desc",
+			with_original_language: "en",
+			"vote_count.gte": 10
+		};
 		setData(null);
 		setPageNum(1);
 		setSortby("popularity.desc");
