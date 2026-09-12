@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import "movi-player";
 
 import { FiArrowLeft } from "react-icons/fi";
-import { getWatchProgress, saveWatchProgress, clearWatchProgress, saveStreamUrl } from "../../utils/watchProgress";
+import { getWatchProgress, saveWatchProgress, clearWatchProgress, saveStreamUrl, forceSyncProgressToServer } from "../../utils/watchProgress";
 import { getTranscodedStreamUrl } from "../../utils/serverSettings";
 import "./index.scss";
 
@@ -51,7 +51,8 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
          if (videoUrl) saveStreamUrl(tmdbId, mediaType, seasonNum, episodeNum, videoUrl);
       }
     }
-    if (typeof setShow === "function") setShow(false);
+    forceSyncProgressToServer();
+      if (typeof setShow === "function") setShow(false);
     if (typeof onClose === "function") onClose();
   };
 

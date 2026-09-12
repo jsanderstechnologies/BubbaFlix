@@ -4,23 +4,33 @@ import axios from "axios";
 import { getServerUrl } from "./serverSettings";
 
 let syncTimeout = null;
-const syncProgressToServer = (all) => {
-  if (syncTimeout) clearTimeout(syncTimeout);
-  syncTimeout = setTimeout(async () => {
-    try {
-      const baseUrl = getServerUrl();
-      const token = localStorage.getItem("bubbaflix_token");
-      if (token) {
-        await axios.put(
-          `${baseUrl}/api/users/preferences`, 
-          { watchProgress: all },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-      }
-    } catch (e) {
-      console.error("Failed to sync watch progress to server", e);
+export const forceSyncProgressToServer = async () => {
+  if (syncTimeout) {
+    clearTimeout(syncTimeout);
+    syncTimeout = null;
+  }
+  try {
+    const baseUrl = getServerUrl();
+    const token = localStorage.getItem("bubbaflix_token");
+    if (token) {
+      const all = JSON.parse(localStorage.getItem("bubbaflix_watch_progress") || "{}");
+      await axios.put(
+        `${baseUrl}/api/users/preferences`, 
+        { watchProgress: all },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
     }
-  }, 5000); // Debounce to 5 seconds
+  } catch (e) {
+    console.error("Failed to sync watch progress to server", e);
+  }
+};
+
+const syncProgressToServer = () => {
+  if (syncTimeout) return;
+  syncTimeout = setTimeout(() => {
+    syncTimeout = null;
+    forceSyncProgressToServer();
+  }, 5000); // Throttle to 1 sync per 5 seconds
 };
 
 const STORAGE_KEY = "bubbaflix_watch_progress";
@@ -91,9 +101,7 @@ export const saveWatchProgress = ({
     delete all[key];
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
-      syncProgressToServer(all);
-    syncProgressToServer(all);
-      syncProgressToServer(all);
+      syncProgressToServer();
     } catch (e) {
       console.error("[watchProgress] Error clearing progress:", e);
     }
@@ -131,6 +139,7 @@ export const saveWatchProgress = ({
 
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+    syncProgressToServer();
   } catch (e) {
     console.error("[saveWatchProgress Error]:", e);
   }
@@ -147,6 +156,7 @@ export const clearWatchProgress = (tmdbId, mediaType = "movie", seasonNum = null
     delete all[key];
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+      syncProgressToServer();
     } catch (e) {
       console.error("[clearWatchProgress Error]:", e);
     }
