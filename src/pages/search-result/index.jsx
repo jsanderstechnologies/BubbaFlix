@@ -382,6 +382,16 @@ const SearchResult = () => {
               placeholder="Type movie, TV show, collection, or actor name..."
               value={searchQuery}
               onChange={handleInputChange}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.keyCode === 13) {
+                  e.preventDefault();
+                  if (inputRef.current) inputRef.current.blur();
+                  // Optional: tell AndroidPlayer specifically to hide if we want
+                  if (window.AndroidPlayer && typeof window.AndroidPlayer.hideKeyboard === "function") {
+                    window.AndroidPlayer.hideKeyboard();
+                  }
+                }
+              }}
               onClick={() => {
                 if (window.AndroidPlayer && typeof window.AndroidPlayer.showKeyboard === "function") {
                   window.AndroidPlayer.showKeyboard();
