@@ -2,7 +2,6 @@ import React, { useEffect } from "react";
 import useFetch from "../../hooks/useFetch";
 import Cast from "./cast-section";
 import DetailsBanner from "./details-banner";
-import VideosSection from "./videos-section";
 import SeasonsSection from "./seasons-section";
 import TopNav from "../../components/top-nav";
 import { FiArrowLeft } from "react-icons/fi";
@@ -73,8 +72,7 @@ const DetailsPage = () => {
 			)}
 
 			<Cast data={credits?.cast} loading={creditsLoading} />
-			<VideosSection data={data} loading={loading} />
-		</div>
+					</div>
 	);
 };
 
