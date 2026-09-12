@@ -17,8 +17,8 @@ const PersonPage = () => {
     const navigate = useNavigate();
     const { url } = useSelector((state) => state.home);
 
-    const { data: person, loading: personLoading } = useFetch(/person/);
-    const { data: credits, loading: creditsLoading } = useFetch(/person//combined_credits);
+    const { data: person, loading: personLoading } = useFetch(`/person/${id}`);
+    const { data: credits, loading: creditsLoading } = useFetch(`/person/${id}/combined_credits`);
 
     const [filteredCredits, setFilteredCredits] = useState([]);
 
