@@ -6,7 +6,6 @@ import ContentWrapper from "../../components/content-wrapper";
 import MovieCard from "../../components/movie-card";
 import CollectionCard from "../../components/collection-card";
 import TopNav from "../../components/top-nav";
-import SortModal from "../../components/sort-modal";
 import { FiSliders } from "react-icons/fi";
 import { getFavorites, getFavoriteCollections } from "../../utils/favorites";
 import { restoreLastFocusedPoster } from "../../utils/focusManager";
@@ -17,7 +16,6 @@ const FavoritesPage = () => {
   const [favCollections, setFavCollections] = useState([]);
   const [activeTab, setActiveTab] = useState("all"); // "all", "movie", "tv", "collection"
   const [sortby, setSortby] = useState("added.desc");
-  const [showSortModal, setShowSortModal] = useState(false);
   
   const FAV_SORT_OPTIONS = [
     { value: "added.desc", label: "Date Added (Newest)" },
@@ -212,13 +210,6 @@ const FavoritesPage = () => {
           )
         )}
       </ContentWrapper>
-      <SortModal 
-          show={showSortModal} 
-          setShow={setShowSortModal} 
-          options={FAV_SORT_OPTIONS}
-          selectedValue={sortby}
-          onSelect={(val) => setSortby(val)}
-      />
     </div>
   );
 };
