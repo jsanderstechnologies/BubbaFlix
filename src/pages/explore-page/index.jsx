@@ -19,11 +19,12 @@ import { FiSliders, FiLayers, FiFilm } from "react-icons/fi";
 let filters = {};
 let cachedCollections = null;
 
-const SORT_OPTIONS = [
+const getSortOptions = (mediaType) => [
 	{ value: "popularity.desc", label: "Sort by Popularity (High to Low)" },
 	{ value: "vote_average.desc", label: "Sort by Rating (Top Rated)" },
 	{ value: "primary_release_date.desc", label: "Sort by Release Date (Newest)" },
-	{ value: "original_title.asc", label: "Sort by Title (A-Z)" },
+	{ value: mediaType === "tv" ? "name.asc" : "original_title.asc", label: "Sort Alphabetically (A-Z)" },
+	{ value: mediaType === "tv" ? "name.desc" : "original_title.desc", label: "Sort Alphabetically (Z-A)" },
 	{ value: "popularity.asc", label: "Sort by Popularity (Low to High)" },
 	{ value: "vote_average.asc", label: "Sort by Rating (Lowest)" },
 	{ value: "primary_release_date.asc", label: "Sort by Release Date (Oldest)" },
