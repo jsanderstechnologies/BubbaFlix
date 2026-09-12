@@ -18,9 +18,24 @@
 			margin: 0;
 			padding: 0;
 		}
+
 		.listItem {
 			text-align: center;
 			color: white;
+			cursor: pointer;
+			transition: all 0.2s ease;
+			outline: none;
+
+			&:hover, &:focus {
+				transform: scale(1.05);
+				.profileImg {
+					border: 3px solid var(--pink);
+				}
+				.name {
+					color: var(--pink);
+				}
+			}
+
 			.profileImg {
 				width: 125px;
 				height: 125px;

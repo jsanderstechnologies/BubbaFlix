@@ -8,6 +8,7 @@ import TopNav from "../../components/top-nav";
 import { FiArrowLeft } from "react-icons/fi";
 import "./index.scss";
 import { useParams, useNavigate } from "react-router-dom";
+import { restoreLastFocusedPoster } from "../../utils/focusManager";
 
 const DetailsPage = () => {
 	const { mediaType, id } = useParams();
@@ -19,6 +20,12 @@ const DetailsPage = () => {
 	);
 
 	const title = detailsData?.title || detailsData?.name;
+
+	useEffect(() => {
+		if (!loading && !creditsLoading) {
+			setTimeout(restoreLastFocusedPoster, 200);
+		}
+	}, [loading, creditsLoading]);
 
 	useEffect(() => {
 		document.body.classList.add("detailsPageActive");

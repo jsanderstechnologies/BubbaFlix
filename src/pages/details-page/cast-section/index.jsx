@@ -1,5 +1,7 @@
 /* eslint-disable react/prop-types */
 import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { saveLastClickedPoster } from "../../../utils/focusManager";
 
 import "./index.scss";
 
@@ -9,6 +11,7 @@ import avatar from "../../../assets/avatar.png";
 
 const Cast = ({ data, loading }) => {
 	const { url } = useSelector((state) => state.home);
+	const navigate = useNavigate();
 
 	const skeleton = () => {
 		return (
@@ -31,7 +34,24 @@ const Cast = ({ data, loading }) => {
 								? profileBase + item.profile_path
 								: avatar;
 							return (
-								<div key={item.id} className="listItem">
+								<div 
+									key={item.id} 
+									id={`poster-person-${item.id}`}
+									className="listItem"
+									tabIndex="0"
+									role="button"
+									onClick={() => {
+										saveLastClickedPoster(item.id, "person");
+										navigate(`/person/${item.id}`);
+									}}
+									onKeyDown={(e) => {
+										if (e.key === "Enter" || e.keyCode === 13 || e.keyCode === 23 || e.keyCode === 66) {
+											e.preventDefault();
+											saveLastClickedPoster(item.id, "person");
+											navigate(`/person/${item.id}`);
+										}
+									}}
+								>
 									<div className="profileImg">
 										<Img src={avatarUrl} />
 									</div>

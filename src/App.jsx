@@ -10,6 +10,7 @@ import ExplorePage from "./pages/explore-page";
 import FavoritesPage from "./pages/favorites-page";
 import SettingsPage from "./pages/settings-page";
 import CollectionPage from "./pages/collection-page";
+import PersonPage from "./pages/person-page";
 import Page404 from "./pages/404-page";
 import Footer from "./components/footer";
 import SplashScreen from "./components/splash-screen";
@@ -110,6 +111,7 @@ const AppContent = () => {
             <Route path="/favorites" element={<FavoritesPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/collection/:id" element={<CollectionPage />} />
+            <Route path="/person/:id" element={<PersonPage />} />
             <Route path="/:mediaType/:id" element={<DetailsPage />} />
             <Route path="/search" element={<SearchResult />} />
             <Route path="/search/:query" element={<SearchResult />} />
