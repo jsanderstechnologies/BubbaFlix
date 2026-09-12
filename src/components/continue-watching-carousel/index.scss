@@ -199,3 +199,51 @@
     opacity: 0.55;
   }
 }
+
+.clearProgressBtn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 10;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease, background 0.15s ease;
+  font-size: 14px;
+  padding: 0;
+
+  svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+  }
+
+  &:hover {
+    background: var(--pink);
+    transform: scale(1.15);
+  }
+
+  &:focus,
+  &:focus-visible {
+    opacity: 1 !important;
+    background: var(--pink);
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+    transform: scale(1.15);
+  }
+}
+
+// Show X button when parent tile is hovered or focused
+.continueItem:hover .clearProgressBtn,
+.continueItem:focus .clearProgressBtn,
+.continueItem:focus-within .clearProgressBtn {
+  opacity: 1;
+}

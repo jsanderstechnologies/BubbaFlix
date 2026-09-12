@@ -148,6 +148,27 @@ export const saveWatchProgress = ({
 /**
  * Clear watch progress for a specific media item.
  */
+export const clearAllShowProgress = (tmdbId) => {
+  if (!tmdbId) return;
+  const all = getAllWatchProgress();
+  let modified = false;
+  const prefix = `tv_${tmdbId}_`;
+  Object.keys(all).forEach(k => {
+    if (k.startsWith(prefix)) {
+      delete all[k];
+      modified = true;
+    }
+  });
+  if (modified) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+      syncProgressToServer();
+    } catch (e) {
+      console.error("[clearAllShowProgress Error]:", e);
+    }
+  }
+};
+
 export const clearWatchProgress = (tmdbId, mediaType = "movie", seasonNum = null, episodeNum = null) => {
   const key = getMediaProgressKey(tmdbId, mediaType, seasonNum, episodeNum);
   if (!key) return;

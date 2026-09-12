@@ -5,6 +5,9 @@
     padding-top: 100px;
     padding-bottom: 60px;
     background-color: var(--black);
+    // Ensure this page is always scrollable regardless of TV mode
+    overflow-y: auto !important;
+    position: relative;
 
     .usageHeader {
         margin-bottom: 40px;

@@ -59,6 +59,14 @@ body.videoPlayerActive {
   }
 }
 
+/* Allow scrolling on the Usage (admin) page even in TV mode */
+body.usagePageActive,
+html.usagePageActive {
+  overflow-y: auto !important;
+  height: auto !important;
+  max-height: none !important;
+}
+
 /* Hide container slider arrows & scrollbars on Smart TV / Android TV D-Pad Mode */
 body.tvModeActive,
 html.tvModeActive {

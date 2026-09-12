@@ -39,6 +39,26 @@ const UsagePage = () => {
         fetchUsage();
     }, [isAdmin, navigate]);
 
+    // Enable PageUp / PageDown scrolling for TV remotes
+    useEffect(() => {
+        const handleKey = (e) => {
+            if (e.keyCode === 33) { // PageUp
+                e.preventDefault();
+                window.scrollBy({ top: -window.innerHeight * 0.8, behavior: "smooth" });
+            } else if (e.keyCode === 34) { // PageDown
+                e.preventDefault();
+                window.scrollBy({ top: window.innerHeight * 0.8, behavior: "smooth" });
+            }
+        };
+        window.addEventListener("keydown", handleKey);
+        // Add class to body so SCSS can re-enable scrolling
+        document.body.classList.add("usagePageActive");
+        return () => {
+            window.removeEventListener("keydown", handleKey);
+            document.body.classList.remove("usagePageActive");
+        };
+    }, []);
+
     const formatTimestamp = (ts) => {
         if (!ts) return "Unknown";
         return new Date(ts).toLocaleString();

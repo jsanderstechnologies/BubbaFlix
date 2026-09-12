@@ -1,20 +1,24 @@
 /* eslint-disable react/prop-types */
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { FiPlay } from "react-icons/fi";
+import { FiPlay, FiX } from "react-icons/fi";
 import ContentWrapper from "../content-wrapper";
 import Img from "../lazy-load";
 import PosterFallback from "../../assets/no-poster.png";
 import { saveLastClickedPoster } from "../../utils/focusManager";
-import { getStreamUrl } from "../../utils/watchProgress";
+import { getStreamUrl, clearWatchProgress } from "../../utils/watchProgress";
 import "./index.scss";
 
 const DEFAULT_IMAGE_BASE = "https://image.tmdb.org/t/p/original";
 
-const ContinueWatchingCarousel = ({ items, title, onPlayResume }) => {
+const ContinueWatchingCarousel = ({ items: initialItems, title, onPlayResume }) => {
   const navigate = useNavigate();
   const { url } = useSelector((state) => state.home);
   const posterBase = url?.poster || DEFAULT_IMAGE_BASE;
+
+  // Local state so removing items is instant without a page refresh
+  const [items, setItems] = useState(initialItems || []);
 
   if (!items || items.length === 0) return null;
 
@@ -27,6 +31,12 @@ const ContinueWatchingCarousel = ({ items, title, onPlayResume }) => {
     const type = item.mediaType === "tv" ? "tv" : "movie";
     saveLastClickedPoster(item.tmdbId, type);
     navigate(`/${type}/${item.tmdbId}`);
+  };
+
+  const handleClearProgress = (e, item) => {
+    e.stopPropagation();
+    clearWatchProgress(item.tmdbId, item.mediaType, item.seasonNum, item.episodeNum);
+    setItems((prev) => prev.filter((i) => i.key !== item.key));
   };
 
   return (
@@ -75,6 +85,21 @@ const ContinueWatchingCarousel = ({ items, title, onPlayResume }) => {
                     <FiPlay className="resumeIcon" />
                     <span className="resumeLabel">Resume</span>
                   </div>
+                  <button
+                    className="clearProgressBtn"
+                    title="Remove from Continue Watching"
+                    tabIndex="0"
+                    onClick={(e) => handleClearProgress(e, item)}
+                    onKeyDown={(e) => {
+                      const code = e.keyCode;
+                      if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+                        e.preventDefault();
+                        handleClearProgress(e, item);
+                      }
+                    }}
+                  >
+                    <FiX />
+                  </button>
                   <div className="continueProgressBar">
                     <div
                       className="continueProgressFill"
