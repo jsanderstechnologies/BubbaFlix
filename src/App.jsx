@@ -9,6 +9,7 @@ import SearchResult from "./pages/search-result";
 import ExplorePage from "./pages/explore-page";
 import FavoritesPage from "./pages/favorites-page";
 import SettingsPage from "./pages/settings-page";
+import UsagePage from "./pages/usage-page";
 import CollectionPage from "./pages/collection-page";
 import PersonPage from "./pages/person-page";
 import Page404 from "./pages/404-page";
@@ -125,6 +126,7 @@ const AppContent = () => {
             <Route path="/about" element={<AboutPage />} />
             <Route path="/favorites" element={<FavoritesPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/usage" element={<UsagePage />} />
             <Route path="/collection/:id" element={<CollectionPage />} />
             <Route path="/person/:id" element={<PersonPage />} />
             <Route path="/:mediaType/:id" element={<DetailsPage />} />

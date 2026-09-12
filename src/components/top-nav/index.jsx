@@ -11,7 +11,7 @@ import "./index.scss";
 const TopNav = () => {
 	const [query, setQuery] = useState("");
 	const navigate = useNavigate();
-	const { logout } = useContext(AuthContext);
+	const { logout, user } = useContext(AuthContext);
 	const location = useLocation();
 
 	const handleSearch = (e) => {
@@ -157,7 +157,24 @@ const TopNav = () => {
 							<span>TV Series</span>
 						</button>
 
-						<button
+						
+  						{user?.role === "admin" && (
+  						<button
+  							className={`navBtn ${isActive("/usage")}`}
+  							tabIndex="0"
+  							onClick={() => navigate("/usage")}
+  							onKeyDown={(e) => {
+  								if (e.key === "Enter" || e.keyCode === 13 || e.keyCode === 23 || e.keyCode === 66) {
+  									e.preventDefault();
+  									navigate("/usage");
+  								}
+  							}}
+  						>
+  							<FiInfo /> Usage
+  						</button>
+  						)}
+
+  						<button
 							className={`navBtn ${isActive("/settings")}`}
 							tabIndex="0"
 							onClick={() => navigate("/settings")}

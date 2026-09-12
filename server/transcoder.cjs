@@ -648,7 +648,7 @@ const server = http.createServer((req, res) => {
     const users = getUsers();
     
     if (req.method === "GET") {
-      const sanitized = Object.values(users).map(u => ({ id: u.id, username: u.username, role: u.role }));
+      const sanitized = Object.values(users).map(u => ({ id: u.id, username: u.username, role: u.role, preferences: u.preferences }));
       return sendJson(res, 200, { users: sanitized });
     }
     
