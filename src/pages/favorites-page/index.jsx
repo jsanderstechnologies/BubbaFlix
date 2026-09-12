@@ -6,6 +6,8 @@ import ContentWrapper from "../../components/content-wrapper";
 import MovieCard from "../../components/movie-card";
 import CollectionCard from "../../components/collection-card";
 import TopNav from "../../components/top-nav";
+import SortModal from "../../components/sort-modal";
+import { FiSliders } from "react-icons/fi";
 import { getFavorites, getFavoriteCollections } from "../../utils/favorites";
 import { restoreLastFocusedPoster } from "../../utils/focusManager";
 import "./index.scss";
@@ -14,6 +16,45 @@ const FavoritesPage = () => {
   const [favorites, setFavorites] = useState([]);
   const [favCollections, setFavCollections] = useState([]);
   const [activeTab, setActiveTab] = useState("all"); // "all", "movie", "tv", "collection"
+  const [sortby, setSortby] = useState("added.desc");
+  const [showSortModal, setShowSortModal] = useState(false);
+  
+  const FAV_SORT_OPTIONS = [
+    { value: "added.desc", label: "Date Added (Newest)" },
+    { value: "added.asc", label: "Date Added (Oldest)" },
+    { value: "title.asc", label: "Title (A-Z)" },
+    { value: "title.desc", label: "Title (Z-A)" },
+    { value: "rating.desc", label: "Rating (High to Low)" },
+    { value: "release.desc", label: "Release Date (Newest)" },
+    { value: "release.asc", label: "Release Date (Oldest)" }
+  ];
+
+  const sortItems = (items) => {
+    let sorted = [...items];
+    switch (sortby) {
+        case "added.desc":
+            break;
+        case "added.asc":
+            sorted.reverse();
+            break;
+        case "title.asc":
+            sorted.sort((a, b) => (a.title || a.name || "").localeCompare(b.title || b.name || ""));
+            break;
+        case "title.desc":
+            sorted.sort((a, b) => (b.title || b.name || "").localeCompare(a.title || a.name || ""));
+            break;
+        case "rating.desc":
+            sorted.sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0));
+            break;
+        case "release.desc":
+            sorted.sort((a, b) => new Date(b.release_date || b.first_air_date || 0) - new Date(a.release_date || a.first_air_date || 0));
+            break;
+        case "release.asc":
+            sorted.sort((a, b) => new Date(a.release_date || a.first_air_date || 0) - new Date(b.release_date || b.first_air_date || 0));
+            break;
+    }
+    return sorted;
+  };
   const navigate = useNavigate();
 
   const loadFavs = () => {
@@ -49,12 +90,15 @@ const FavoritesPage = () => {
 
   const totalCount = favorites.length + favCollections.length;
 
-  const displayedItems =
+  const displayedItems = sortItems(
     activeTab === "movie"
       ? movieFavs
       : activeTab === "tv"
       ? tvFavs
-      : favorites;
+      : favorites
+  );
+  
+  const displayedCollections = sortItems(favCollections);
 
   return (
     <div className="favoritesPage">
@@ -67,8 +111,25 @@ const FavoritesPage = () => {
             <h1>My Favorites</h1>
             <span className="countBadge">{totalCount} Saved</span>
           </div>
-
-          <div className="tabSelector">
+          
+          <div className="headerControls">
+              <button 
+                  className="tvSortBtn" 
+                  tabIndex="0" 
+                  onClick={() => setShowSortModal(true)}
+                  onKeyDown={(e) => {
+                      const code = e.keyCode;
+                      if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+                          e.preventDefault();
+                          setShowSortModal(true);
+                      }
+                  }}
+              >
+                  <FiSliders className="selectIcon" style={{ marginRight: '8px' }} />
+                  Sort Options
+              </button>
+              
+              <div className="tabSelector">
             <button
               className={`tabItem ${activeTab === "all" ? "active" : ""}`}
               tabIndex="0"
@@ -98,12 +159,13 @@ const FavoritesPage = () => {
               <FiLayers style={{ marginRight: 6 }} /> Collections ({favCollections.length})
             </button>
           </div>
+          </div>
         </div>
 
         {activeTab === "collection" ? (
           favCollections.length > 0 ? (
             <div className="content">
-              {favCollections.map((col) => (
+              {displayedCollections.map((col) => (
                 <CollectionCard key={`fav-col-${col.id}`} data={col} />
               ))}
             </div>
@@ -150,6 +212,13 @@ const FavoritesPage = () => {
           )
         )}
       </ContentWrapper>
+      <SortModal 
+          show={showSortModal} 
+          setShow={setShowSortModal} 
+          options={FAV_SORT_OPTIONS}
+          selectedValue={sortby}
+          onSelect={(val) => setSortby(val)}
+      />
     </div>
   );
 };

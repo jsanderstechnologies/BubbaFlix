@@ -13,6 +13,7 @@ import MovieCard from "../../components/movie-card";
 import CollectionCard from "../../components/collection-card";
 import Spinner from "../../components/spinner";
 import TopNav from "../../components/top-nav";
+import SortModal from "../../components/sort-modal";
 import { FiSliders, FiLayers, FiFilm } from "react-icons/fi";
 
 let filters = {};
@@ -43,7 +44,8 @@ const Explore = () => {
 	const [data, setData] = useState(null);
 	const [pageNum, setPageNum] = useState(1);
 	const [loading, setLoading] = useState(false);
-	const [sortby, setSortby] = useState("popularity.desc");
+		const [sortby, setSortby] = useState("popularity.desc");
+	const [showSortModal, setShowSortModal] = useState(false);
 	
 	// Movies vs Collections Sub-Tabs
 	const [movieTab, setMovieTab] = useState(() => sessionStorage.getItem("explore_movie_tab") || "movies");
@@ -269,19 +271,21 @@ const filterEnglishCollections = (items) => {
 					) : (
 						<div className="filters">
 							<div className="selectWrapper">
-								<FiSliders className="selectIcon" />
-								<select
-									className="tvSortSelect"
-									value={sortby}
-									onChange={handleSortChange}
-									tabIndex="0"
+								<button 
+									className="tvSortBtn" 
+									tabIndex="0" 
+									onClick={() => setShowSortModal(true)}
+									onKeyDown={(e) => {
+										const code = e.keyCode;
+										if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+											e.preventDefault();
+											setShowSortModal(true);
+										}
+									}}
 								>
-									{SORT_OPTIONS.map((opt) => (
-										<option key={opt.value} value={opt.value} style={{ background: '#222', color: 'white' }}>
-											{opt.label}
-										</option>
-									))}
-								</select>
+									<FiSliders className="selectIcon" style={{ marginRight: '8px' }} />
+									Sort Options
+								</button>
 							</div>
 						</div>
 					)}
