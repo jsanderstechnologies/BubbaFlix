@@ -282,10 +282,13 @@ export const initDpadNavigation = () => {
     }
 
     let direction = null;
+    let isPageJump = false;
     if (key === "ArrowUp" || code === 38 || code === 19) direction = "ArrowUp";
     else if (key === "ArrowDown" || code === 40 || code === 20) direction = "ArrowDown";
     else if (key === "ArrowLeft" || code === 37 || code === 21) direction = "ArrowLeft";
     else if (key === "ArrowRight" || code === 39 || code === 22) direction = "ArrowRight";
+    else if (key === "PageUp" || code === 33 || code === 427) { direction = "ArrowUp"; isPageJump = true; }
+    else if (key === "PageDown" || code === 34 || code === 428) { direction = "ArrowDown"; isPageJump = true; }
 
     if (!direction) return;
 
@@ -359,8 +362,17 @@ export const initDpadNavigation = () => {
 
     if (candidates.length > 0) {
       if (direction === "ArrowDown") {
-        const minTop = Math.min(...candidates.map((el) => el.getBoundingClientRect().top));
-        const rowCandidates = candidates.filter((el) => el.getBoundingClientRect().top <= minTop + 60);
+        let targetTop = 0;
+        if (isPageJump) {
+          const targetY = r1.top + window.innerHeight * 0.8;
+          const candidateDistances = candidates.map(el => Math.abs(el.getBoundingClientRect().top - targetY));
+          const minTargetDiff = Math.min(...candidateDistances);
+          const bestCandidate = candidates.find(el => Math.abs(el.getBoundingClientRect().top - targetY) === minTargetDiff);
+          targetTop = bestCandidate ? bestCandidate.getBoundingClientRect().top : Math.min(...candidates.map((el) => el.getBoundingClientRect().top));
+        } else {
+          targetTop = Math.min(...candidates.map((el) => el.getBoundingClientRect().top));
+        }
+        const rowCandidates = candidates.filter((el) => Math.abs(el.getBoundingClientRect().top - targetTop) <= 60);
 
         rowCandidates.sort((a, b) => {
           const rA = a.getBoundingClientRect();
@@ -373,8 +385,17 @@ export const initDpadNavigation = () => {
         focusAndScroll(rowCandidates[0]);
         return;
       } else if (direction === "ArrowUp") {
-        const maxBottom = Math.max(...candidates.map((el) => el.getBoundingClientRect().bottom));
-        const rowCandidates = candidates.filter((el) => el.getBoundingClientRect().bottom >= maxBottom - 60);
+        let targetBottom = 0;
+        if (isPageJump) {
+          const targetY = r1.bottom - window.innerHeight * 0.8;
+          const candidateDistances = candidates.map(el => Math.abs(el.getBoundingClientRect().bottom - targetY));
+          const minTargetDiff = Math.min(...candidateDistances);
+          const bestCandidate = candidates.find(el => Math.abs(el.getBoundingClientRect().bottom - targetY) === minTargetDiff);
+          targetBottom = bestCandidate ? bestCandidate.getBoundingClientRect().bottom : Math.max(...candidates.map((el) => el.getBoundingClientRect().bottom));
+        } else {
+          targetBottom = Math.max(...candidates.map((el) => el.getBoundingClientRect().bottom));
+        }
+        const rowCandidates = candidates.filter((el) => Math.abs(el.getBoundingClientRect().bottom - targetBottom) <= 60);
 
         rowCandidates.sort((a, b) => {
           const rA = a.getBoundingClientRect();
