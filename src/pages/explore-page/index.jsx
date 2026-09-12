@@ -254,9 +254,9 @@ const filterEnglishCollections = (items) => {
 							: "Explore Movies"}
 					</div>
 
-					<div className="exploreTabSwitcher">
+					<div className="exploreTabSwitcher" style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center", marginBottom: "15px" }}>
 						{mediaType === "movie" && (
-							<div className="typeTabs" style={{ display: "flex", gap: "10px", marginBottom: "15px" }}>
+							<div className="typeTabs" style={{ display: "flex", gap: "10px" }}>
 								<button
 									className={`tabBtn ${movieTab === "movies" ? "active" : ""}`}
 									onClick={() => {
@@ -281,8 +281,8 @@ const filterEnglishCollections = (items) => {
 						)}
 						
 						{!(mediaType === "movie" && movieTab === "collections") && (
-							<div className="sortTabs" style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginTop: "5px" }}>
-								<div className="tabBtn selectContainer" style={{ padding: 0, position: "relative", overflow: "hidden" }}>
+							<div className="sortTabs" style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+								<div className="tabBtn selectContainer" style={{ padding: 0, position: "relative", overflow: "hidden", border: "none", cursor: "pointer" }}>
 									<div style={{ position: "absolute", left: "20px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none", display: "flex", alignItems: "center" }}>
 										<FiSliders style={{ marginRight: "6px" }}/> Sort:
 									</div>

@@ -6,7 +6,7 @@ import { isTvDevice } from "../../../utils/zoom";
 import ContentWrapper from "../../../components/content-wrapper";
 import Spinner from "../../../components/spinner";
 import VideoPlayerModal from "../../../components/video-player-modal";
-import { FiPlay, FiChevronDown, FiChevronUp, FiAlertCircle, FiExternalLink } from "react-icons/fi";
+import { FiPlay, FiChevronDown, FiChevronUp, FiAlertCircle, FiExternalLink, FiCloud } from "react-icons/fi";
 import "./index.scss";
 
 const isHevcOrX265Stream = (item) => {
@@ -280,7 +280,7 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
                             } else if (stat.transferStatus && stat.transferStatus.status === "finished") {
                                 badges.push(<span key="fin" className="metaBadge success" style={{ background: '#28a745', color: '#fff', fontWeight: 'bold' }}>Finished / Cached</span>);
                             } else if (stat.isCached) {
-                                badges.push(<span key="cached" className="metaBadge success" style={{ background: '#28a745', color: '#fff', fontWeight: 'bold' }}>Cached</span>);
+                                badges.push(<span key="cached" className="metaBadge success" style={{ background: '#28a745', color: '#fff', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}><FiCloud /> Cached</span>);
                             } else if (stat.transferStatus && stat.transferStatus.status === "error") {
                                 badges.push(<span key="err" className="metaBadge error" style={{ background: '#dc3545', color: '#fff', fontWeight: 'bold' }}>Transfer Error</span>);
                             } else if (stat.transferStatus && stat.transferStatus.status === "waiting") {

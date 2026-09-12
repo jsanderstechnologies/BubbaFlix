@@ -3,80 +3,28 @@ import re
 with open(r'f:\Cyberflix\src\pages\explore-page\index.jsx', 'r', encoding='utf-8') as f:
     code = f.read()
 
-import_statement = 'import SortModal from "../../components/sort-modal";\nimport { FiSliders, FiLayers, FiFilm } from "react-icons/fi";'
-code = code.replace('import { FiSliders, FiLayers, FiFilm } from "react-icons/fi";', import_statement)
+old_tab_switcher = '''					<div className="exploreTabSwitcher">
+						{mediaType === "movie" && (
+							<div className="typeTabs" style={{ display: "flex", gap: "10px", marginBottom: "15px" }}>
+								<button'''
 
-# We need to add state for showSortModal
-state_injection = '''	const [sortby, setSortby] = useState("popularity.desc");
-	const [showSortModal, setShowSortModal] = useState(false);'''
-code = code.replace('const [sortby, setSortby] = useState("popularity.desc");', state_injection)
+new_tab_switcher = '''					<div className="exploreTabSwitcher" style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center", marginBottom: "15px" }}>
+						{mediaType === "movie" && (
+							<div className="typeTabs" style={{ display: "flex", gap: "10px" }}>
+								<button'''
 
-# Replace the select with a button
-old_select = '''							<div className="selectWrapper">
-								<FiSliders className="selectIcon" />
-								<select
-									className="tvSortSelect"
-									value={sortby}
-									onChange={handleSortChange}
-									tabIndex="0"
-								>
-									{SORT_OPTIONS.map((opt) => (
-										<option key={opt.value} value={opt.value} style={{ background: '#222', color: 'white' }}>
-											{opt.label}
-										</option>
-									))}
-								</select>
-							</div>'''
+code = code.replace(old_tab_switcher, new_tab_switcher)
 
-new_select = '''							<div className="selectWrapper">
-								<button 
-									className="tvSortBtn" 
-									tabIndex="0" 
-									onClick={() => setShowSortModal(true)}
-									onKeyDown={(e) => {
-										const code = e.keyCode;
-										if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
-											e.preventDefault();
-											setShowSortModal(true);
-										}
-									}}
-								>
-									<FiSliders className="selectIcon" style={{ marginRight: '8px' }} />
-									Sort Options
-								</button>
-							</div>'''
+old_sort_tabs = '''						{!(mediaType === "movie" && movieTab === "collections") && (
+							<div className="sortTabs" style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginTop: "5px" }}>
+								<div className="tabBtn selectContainer" style={{ padding: 0, position: "relative", overflow: "hidden" }}>'''
 
-code = code.replace(old_select, new_select)
+new_sort_tabs = '''						{!(mediaType === "movie" && movieTab === "collections") && (
+							<div className="sortTabs" style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+								<div className="tabBtn selectContainer" style={{ padding: 0, position: "relative", overflow: "hidden", border: "none", cursor: "pointer" }}>'''
 
-# Insert SortModal before closing div of ExplorePage
-old_return_end = '''			</ContentWrapper>
-		</div>
-	);
-};
-
-export default ExplorePage;'''
-
-new_return_end = '''			</ContentWrapper>
-			<SortModal 
-				show={showSortModal} 
-				setShow={setShowSortModal} 
-				options={SORT_OPTIONS}
-				selectedValue={sortby}
-				onSelect={(val) => {
-					setSortby(val);
-					setPageNum(1);
-					// Re-fetch handled automatically by useEffect that watches `sortby`
-				}}
-			/>
-		</div>
-	);
-};
-
-export default ExplorePage;'''
-
-code = code.replace(old_return_end, new_return_end)
+code = code.replace(old_sort_tabs, new_sort_tabs)
 
 with open(r'f:\Cyberflix\src\pages\explore-page\index.jsx', 'w', encoding='utf-8') as f:
     f.write(code)
-
-print("Patched ExplorePage.jsx")
+print("Explore Page updated")

@@ -6,7 +6,7 @@ import ContentWrapper from "../../components/content-wrapper";
 import MovieCard from "../../components/movie-card";
 import CollectionCard from "../../components/collection-card";
 import TopNav from "../../components/top-nav";
-import { FiSliders } from "react-icons/fi";
+import { FiSliders, FiChevronDown } from "react-icons/fi";
 import { getFavorites, getFavoriteCollections } from "../../utils/favorites";
 import { restoreLastFocusedPoster } from "../../utils/focusManager";
 import "./index.scss";
