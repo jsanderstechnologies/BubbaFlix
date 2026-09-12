@@ -42,6 +42,7 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
   const [bufferedAmount, setBufferedAmount] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [seekOffset, setSeekOffset] = useState(0);
+  const seekOffsetRef = useRef(0);
   const [showControls, setShowControls] = useState(true);
   const [actualStreamUrl, setActualStreamUrl] = useState("");
   const controlsTimeoutRef = useRef(null);
@@ -69,20 +70,30 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
     }
   }, [streamUrl, tmdbId, mediaType, seasonNum, episodeNum]);
 
+  const executeSeek = (targetTime, audioIndex = selectedAudioIndex, vCodec = mediaInfo.videoCodec) => {
+    setSeekOffset(targetTime);
+    seekOffsetRef.current = targetTime;
+    setCurrentTime(targetTime);
+    
+    let targetUrl = streamUrl;
+    if (targetTime > 0) targetUrl += (targetUrl.includes("?") ? "&" : "?") + `ss=${targetTime}`;
+    if (audioIndex !== null) targetUrl += (targetUrl.includes("?") ? "&" : "?") + `audio_index=${audioIndex}`;
+    if (vCodec && vCodec !== "Unknown") targetUrl += (targetUrl.includes("?") ? "&" : "?") + `video_codec=${vCodec}`;
+    
+    setActualStreamUrl(targetUrl);
+    if (videoRef.current) {
+      videoRef.current.src = targetUrl;
+      videoRef.current.play();
+    }
+  };
+
   const handleResumeChoice = (resume) => {
     setShowResumePrompt(false);
     let startOffset = 0;
     if (resume && pendingSavedProgress) {
       startOffset = pendingSavedProgress.currentTime;
     }
-    setSeekOffset(startOffset);
-    setCurrentTime(startOffset);
-    
-    let targetUrl = streamUrl;
-    if (startOffset > 0) {
-      targetUrl = targetUrl.includes("?") ? `${targetUrl}&ss=${startOffset}` : `${targetUrl}?ss=${startOffset}`;
-    }
-    setActualStreamUrl(targetUrl);
+    executeSeek(startOffset);
   };
 
 
@@ -107,7 +118,7 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
           }
           
           let finalUrl = streamUrl;
-          const currentRealTime = seekOffset + (videoRef.current ? videoRef.current.currentTime : 0);
+          const currentRealTime = seekOffsetRef.current + (videoRef.current ? videoRef.current.currentTime : 0);
           let shouldUpdatePlayer = false;
 
           if (res.data.audioTracks && res.data.audioTracks.length > 0) {
@@ -245,19 +256,7 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
     }
   };
 
-  const executeSeek = (targetTime, audioIndex = selectedAudioIndex) => {
-    setSeekOffset(targetTime);
-    setCurrentTime(targetTime);
-    
-    let targetUrl = streamUrl;
-    if (targetTime > 0) targetUrl += (targetUrl.includes("?") ? "&" : "?") + `ss=${targetTime}`;
-    if (audioIndex !== null) targetUrl += (targetUrl.includes("?") ? "&" : "?") + `audio_index=${audioIndex}`;
-    
-    if (videoRef.current) {
-      videoRef.current.src = targetUrl;
-      videoRef.current.play();
-    }
-  };
+
 
   const handleSeek = (e) => {
     if (duration <= 0) return;
