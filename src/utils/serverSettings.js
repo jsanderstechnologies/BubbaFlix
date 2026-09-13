@@ -41,13 +41,23 @@ export const isAndroidTvClient = () => {
 
 export const getTranscodedStreamUrl = (url) => {
   if (!url) return "";
-  // Unwrap any old /api/transcode wrapper
-  if (url.includes("/api/transcode")) return url.split("?url=")[1] || url;
-
+  
+  let innerUrl = url;
+  // Unwrap any old /api/transcode wrapper so we can re-wrap it with the proper current serverBase
+  if (url.includes("/api/transcode")) {
+    const split = url.split("?url=");
+    if (split.length > 1) {
+      try {
+        innerUrl = decodeURIComponent(split[1]);
+      } catch (e) {
+        innerUrl = split[1];
+      }
+    }
+  }
 
   // Web clients: route through backend FFmpeg to remux/transcode unsupported containers (like MKV) to MP4
   const serverBase = getServerUrl();
-  const transcodeUrl = `${serverBase}/api/transcode?url=${encodeURIComponent(url)}`;
+  const transcodeUrl = `${serverBase}/api/transcode?url=${encodeURIComponent(innerUrl)}`;
   console.log("[Direct Stream Router] Web: routing stream through backend FFmpeg transcoder:", transcodeUrl.substring(0, 100) + "...");
   return transcodeUrl;
 };
