@@ -865,7 +865,8 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     const { exec } = require("child_process");
     const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
     // Run ffprobe with standard user-agent headers to prevent CDN 403 blocks
-    const probeCmd = `ffprobe -headers "User-Agent: ${userAgent}\r\n" -v error -show_entries format=duration:stream=index,codec_type,codec_name,width,height:stream_tags -show_chapters -of json "${cleanedTargetUrl.replace(/"/g, '\\"')}"`;
+    const probeCmd = `ffprobe -headers "User-Agent: ${userAgent}\r\n" -v error -show_entries format=duration:stream=index,codec_type,codec_name,width,height,disposition:stream_tags -show_chapters -of json "${cleanedTargetUrl.replace(/"/g, '\\"')}"`;
+
     
     exec(probeCmd, { timeout: 12000 }, (error, stdout, stderr) => {
       if (error) {
@@ -900,13 +901,15 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
             const tags = stream.tags || {};
             const language = tags.language || tags.LANGUAGE || tags.Language || "und";
             const title = tags.title || tags.TITLE || tags.Title || tags.handler_name || `${type.charAt(0).toUpperCase() + type.slice(1)} Track ${index}`;
+            const isForced = stream.disposition?.forced === 1;
+            const isDefault = stream.disposition?.default === 1;
 
             if (type === "video" && !videoCodec) {
               videoCodec = codec;
             } else if (type === "audio") {
               audioTracks.push({ index, codec, language, title });
             } else if (type === "subtitle") {
-              subtitleTracks.push({ index, codec, language, title });
+              subtitleTracks.push({ index, codec, language, title, forced: isForced, default: isDefault });
             }
           });
         }

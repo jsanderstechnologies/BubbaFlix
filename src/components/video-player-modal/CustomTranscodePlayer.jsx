@@ -109,8 +109,22 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
         if (res.data) {
           if (res.data.duration) setDuration(res.data.duration);
           if (res.data.subtitleTracks) {
-            const engSubs = res.data.subtitleTracks.filter(t => t.language === 'eng' || t.language === 'en' || (t.title && t.title.toLowerCase().includes('english')));
+            let engSubs = res.data.subtitleTracks.filter(t => t.language === 'eng' || t.language === 'en' || (t.title && t.title.toLowerCase().includes('english')) || t.forced);
+            
+            engSubs = engSubs.map(t => {
+              let displayTitle = t.title;
+              if (t.forced && !displayTitle.toLowerCase().includes('forced')) {
+                displayTitle = `${displayTitle} [Forced]`;
+              }
+              return { ...t, title: displayTitle };
+            });
+            
             setSubtitleTracks(engSubs);
+
+            const defaultForcedSub = engSubs.find(t => t.forced || (t.title && t.title.toLowerCase().includes('forced')));
+            if (defaultForcedSub) {
+              setSelectedSubtitleIndex(defaultForcedSub.index);
+            }
           }
           if (res.data.chapters) setChapters(res.data.chapters);
           if (res.data.resolution || res.data.videoCodec) {
