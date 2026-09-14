@@ -481,16 +481,7 @@ const SettingsPage = () => {
                 </div>
               </div>
               
-              <div style={{ marginTop: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <input 
-                  type="checkbox" 
-                  id="disableBg" 
-                  checked={disableBackgrounds} 
-                  onChange={handleToggleBackgrounds} 
-                  style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-                />
-                <label htmlFor="disableBg" style={{ cursor: 'pointer', fontSize: '1.1rem' }}>Disable Background Art</label>
-              </div>
+
             </div>
           )}
 
@@ -612,7 +603,18 @@ const SettingsPage = () => {
             <p className="description">
               Select your preferred color theme for BubbaFlix, including Dark Red (Netflix Style). Synced across all client devices.
             </p>
-            <div className="themeGrid">
+                          
+              <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <input 
+                  type="checkbox" 
+                  id="disableBg" 
+                  checked={disableBackgrounds} 
+                  onChange={handleToggleBackgrounds} 
+                  style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                />
+                <label htmlFor="disableBg" style={{ cursor: 'pointer', fontSize: '1.1rem' }}>Disable Background Art</label>
+              </div>
+              <div className="themeGrid">
               {THEMES.map((theme) => (
                 <div
                   key={theme.id}
