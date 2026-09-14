@@ -71,6 +71,19 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
     }
   }, [streamUrl, tmdbId, mediaType, seasonNum, episodeNum]);
 
+  useEffect(() => {
+    if (videoRef.current && selectedSubtitleIndex !== null) {
+      const timer = setTimeout(() => {
+        if (videoRef.current && videoRef.current.textTracks) {
+          for (let i = 0; i < videoRef.current.textTracks.length; i++) {
+            videoRef.current.textTracks[i].mode = 'showing';
+          }
+        }
+      }, 250);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedSubtitleIndex, actualStreamUrl]);
+
   const executeSeek = (targetTime, audioIndex = selectedAudioIndex, vCodec = mediaInfo.videoCodec) => {
     setSeekOffset(targetTime);
     seekOffsetRef.current = targetTime;
@@ -118,7 +131,7 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
         if (res.data) {
           if (res.data.duration) setDuration(res.data.duration);
           if (res.data.subtitleTracks) {
-            let engSubs = res.data.subtitleTracks.filter(t => t.language === 'eng' || t.language === 'en' || (t.title && t.title.toLowerCase().includes('english')) || t.forced);
+            let engSubs = res.data.subtitleTracks.filter(t => t.language === 'eng' || t.language === 'en' || (t.title && t.title.toLowerCase().includes('english')) || t.forced || (t.title && t.title.toLowerCase().includes('forced')));
             
             engSubs = engSubs.map(t => {
               let displayTitle = t.title;
