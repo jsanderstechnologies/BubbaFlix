@@ -99,7 +99,7 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
 
 
   useEffect(() => {
-    if (!rawUrl) return;
+    if (!rawUrl || !streamUrl) return;
     // Reset selections on new video load
     let isCancelled = false;
     setSelectedAudioIndex(null);
@@ -189,7 +189,7 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
     return () => {
       isCancelled = true;
     };
-  }, [rawUrl]);
+  }, [rawUrl, streamUrl]);
 
   useEffect(() => {
     const handleMouseMove = () => {
