@@ -1,9 +1,4 @@
 /* eslint-disable react/prop-types */
-import { useRef } from "react";
-import {
-	BsFillArrowLeftCircleFill,
-	BsFillArrowRightCircleFill,
-} from "react-icons/bs";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import dayjs from "dayjs";
@@ -12,30 +7,12 @@ import ContentWrapper from "../content-wrapper";
 import Img from "../lazy-load";
 import PosterFallback from "../../assets/no-poster.png";
 import CircleRating from "../circle-rating";
-import { isTvDevice } from "../../utils/zoom";
 
 import "./index.scss";
 
 const Carousel = ({ data, loading, endpoint, title }) => {
-	const carouselContainer = useRef();
 	const { url } = useSelector((state) => state.home);
 	const navigate = useNavigate();
-	const isTv = isTvDevice();
-
-	const navigation = (direction) => {
-		const container = carouselContainer.current;
-		if (!container) return;
-
-		const scrollAmount =
-			direction === "left"
-				? container.scrollLeft - (container.offsetWidth + 20)
-				: container.scrollLeft + (container.offsetWidth + 20);
-
-		container.scrollTo({
-			left: scrollAmount,
-			behavior: "smooth",
-		});
-	};
 
 	const skItem = () => {
 		return (
@@ -53,20 +30,8 @@ const Carousel = ({ data, loading, endpoint, title }) => {
 		<div className="carousel">
 			<ContentWrapper>
 				{title && <div className="carouselTitle">{title}</div>}
-				{!isTv && (
-					<>
-						<BsFillArrowLeftCircleFill
-							className="carouselLeftNav arrow"
-							onClick={() => navigation("left")}
-						/>
-						<BsFillArrowRightCircleFill
-							className="carouselRightNav arrow"
-							onClick={() => navigation("right")}
-						/>
-					</>
-				)}
 				{!loading ? (
-					<div className="carouselItems" ref={carouselContainer}>
+					<div className="carouselItems">
 						{data?.map((item) => {
 							const posterBase = url?.poster || "https://image.tmdb.org/t/p/original";
 							const posterUrl = item.poster_path
