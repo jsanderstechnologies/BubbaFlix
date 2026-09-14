@@ -619,7 +619,7 @@ const SettingsPage = () => {
                   onChange={handleToggleBackgrounds} 
                   style={{ width: '20px', height: '20px', cursor: 'pointer' }}
                 />
-                <label htmlFor="disableBg" style={{ cursor: 'pointer', fontSize: '1.1rem' }}>Disable Background Art</label>
+                <label htmlFor="disableBg" style={{ cursor: 'pointer', fontSize: '1.1rem', color: 'white' }}>Disable Background Art</label>
               </div>
               <div className="themeGrid">
               {THEMES.map((theme) => (
