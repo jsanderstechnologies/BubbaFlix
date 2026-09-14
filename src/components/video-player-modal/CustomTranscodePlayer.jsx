@@ -61,6 +61,7 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
   const [pendingSavedProgress, setPendingSavedProgress] = useState(null);
 
   useEffect(() => {
+    if (!streamUrl) return;
     const saved = getWatchProgress(tmdbId, mediaType, seasonNum, episodeNum);
     if (saved && saved.currentTime > 15 && (saved.duration - saved.currentTime) > 60) {
       setPendingSavedProgress(saved);
@@ -98,6 +99,7 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
 
 
   useEffect(() => {
+    if (!rawUrl) return;
     // Reset selections on new video load
     let isCancelled = false;
     setSelectedAudioIndex(null);
