@@ -1048,7 +1048,15 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
 
       const headersStr = `User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\r\nAccept: */*\r\n`;
 
-      const videoCodec = parsedUrl.query.video_codec;
+      let videoCodec = parsedUrl.query.video_codec;
+      if (!videoCodec && targetUrl) {
+        const lowerUrl = targetUrl.toLowerCase();
+        if (lowerUrl.includes('.avi') || lowerUrl.includes('xvid') || lowerUrl.includes('divx')) {
+          videoCodec = 'mpeg4';
+        } else if (lowerUrl.includes('.mpg') || lowerUrl.includes('.mpeg') || lowerUrl.includes('mpeg2')) {
+          videoCodec = 'mpeg2video';
+        }
+      }
       const gpuInfo = detectGpuCapabilities(videoCodec);
       const isLiveStream = finalMediaUrl.includes("/proxy/ts/stream") || finalMediaUrl.includes("/stream/");
 
