@@ -106,6 +106,9 @@ export const filterEnglishMedia = (items) => {
     // Filter out Anime
     if (isAnime(item)) return false;
 
+    // Filter out unreleased/junk media with 0.0 rating
+    if (item.vote_average === 0 || item.vote_average === 0.0) return false;
+
     // Retain Person entries in search
     if (item.media_type === "person") return true;
 

@@ -44,7 +44,7 @@ Respond ONLY with a JSON array of matching line numbers, like: [1, 3, 5]`;
     const response = await axios.post(
       `${baseUrl}/api/groq/chat/completions`,
       {
-        model: "llama-3.3-70b-versatile",
+        model: "llama3-8b-8192",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.1,
       },
@@ -53,7 +53,7 @@ Respond ONLY with a JSON array of matching line numbers, like: [1, 3, 5]`;
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
         },
-        timeout: 6000,
+        timeout: 15000,
       }
     );
 
@@ -108,7 +108,7 @@ Respond ONLY with a JSON array of allowed line numbers, like: [1, 2, 4, 7]`;
     const response = await axios.post(
       `${baseUrl}/api/groq/chat/completions`,
       {
-        model: "llama-3.3-70b-versatile",
+        model: "llama3-8b-8192",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.1,
       },
@@ -117,7 +117,7 @@ Respond ONLY with a JSON array of allowed line numbers, like: [1, 2, 4, 7]`;
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
         },
-        timeout: 8000,
+        timeout: 15000,
       }
     );
 
@@ -173,7 +173,7 @@ Respond ONLY with a JSON array of allowed line numbers, like: [1, 2, 4, 7]`;
     const response = await axios.post(
       `${baseUrl}/api/groq/chat/completions`,
       {
-        model: "llama-3.3-70b-versatile",
+        model: "llama3-8b-8192",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.1,
       },
@@ -182,7 +182,7 @@ Respond ONLY with a JSON array of allowed line numbers, like: [1, 2, 4, 7]`;
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
         },
-        timeout: 8000,
+        timeout: 15000,
       }
     );
 
