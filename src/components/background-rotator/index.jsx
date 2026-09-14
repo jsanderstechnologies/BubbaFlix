@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { useLocation } from "react-router-dom";
+import { AuthContext } from "../../context/AuthContext";
 import "./index.scss";
 
 const WALLPAPERS = [
@@ -10,8 +11,15 @@ const WALLPAPERS = [
 ];
 
 const BackgroundRotator = () => {
+  const { user } = useContext(AuthContext);
   const location = useLocation();
   const [activeIdx, setActiveIdx] = useState(0);
+
+  const disableBg = (localStorage.getItem("disable_backgrounds") !== null ? JSON.parse(localStorage.getItem("disable_backgrounds")) : null) ?? user?.preferences?.disableBackgrounds ?? false;
+
+  if (disableBg) {
+    return <div className="backgroundRotatorStage" style={{ background: 'var(--black)' }} />;
+  }
 
   // Set dedicated background on route change (e.g. TV Shows page) or rotate to next
   useEffect(() => {

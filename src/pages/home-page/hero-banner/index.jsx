@@ -8,6 +8,8 @@ import Img from "../../../components/lazy-load/index";
 import ContentWrapper from "../../../components/content-wrapper";
 
 const HeroBanner = () => {
+	const { user } = useContext(AuthContext);
+	const disableBg = (localStorage.getItem("disable_backgrounds") !== null ? JSON.parse(localStorage.getItem("disable_backgrounds")) : null) ?? user?.preferences?.disableBackgrounds ?? false;
 	const [backgroundImg, setBackgroundImg] = useState("");
 	const [query, setQuery] = useState("");
 	const [isReadOnly, setIsReadOnly] = useState(true);
@@ -71,7 +73,7 @@ const HeroBanner = () => {
 
 	return (
 		<div className={`hero-banner ${!isVisible ? "collapsed" : ""}`}>
-			{!loading && (
+			{!loading && !disableBg && (
 				<div className="backdrop-img">
 					<Img src={backgroundImg} />
 				</div>

@@ -65,6 +65,7 @@ const SettingsPage = () => {
   // Stream Resolution & Quality Filter State
   const [selectedResolutions, setSelectedResolutions] = useState(["2160p", "1080p", "720p", "480p"]);
   const [excludeLowQuality, setExcludeLowQuality] = useState(true);
+  const [disableBackgrounds, setDisableBackgrounds] = useState(false);
   const [filterStatus, setFilterStatus] = useState(null);
 
   // CPU & GPU Topology State
@@ -143,6 +144,9 @@ const SettingsPage = () => {
 
     const excludeLowConfig = (localStorage.getItem("stream_exclude_low_quality") !== null ? JSON.parse(localStorage.getItem("stream_exclude_low_quality")) : null) ?? serverSettings?.stream_exclude_low_quality ?? true;
     setExcludeLowQuality(excludeLowConfig);
+    
+    const disableBgConfig = (localStorage.getItem("disable_backgrounds") !== null ? JSON.parse(localStorage.getItem("disable_backgrounds")) : null) ?? user?.preferences?.disableBackgrounds ?? false;
+    setDisableBackgrounds(disableBgConfig);
 
     if (serverSettings?.cpuTopology) {
       setCpuInfo(serverSettings.cpuTopology);
@@ -475,6 +479,17 @@ const SettingsPage = () => {
                   <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>CPU Processor Model</div>
                   <div style={{ fontSize: 13, fontWeight: "bold", color: "#ffc107", marginTop: 4 }}>{cpuInfo?.model || "Generic CPU"}</div>
                 </div>
+              </div>
+              
+              <div style={{ marginTop: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <input 
+                  type="checkbox" 
+                  id="disableBg" 
+                  checked={disableBackgrounds} 
+                  onChange={handleToggleBackgrounds} 
+                  style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                />
+                <label htmlFor="disableBg" style={{ cursor: 'pointer', fontSize: '1.1rem' }}>Disable Background Art</label>
               </div>
             </div>
           )}

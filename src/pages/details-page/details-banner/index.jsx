@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
-import { useState } from "react";
+import { useState, useContext, useEffect } from "react";
+import { AuthContext } from "../../../context/AuthContext";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { FiLayers } from "react-icons/fi";
@@ -41,7 +42,7 @@ const DetailsBanner = ({ video, crew }) => {
 		<div className="detailsBanner">
 			{!loading ? (
 				<div>
-					{!!data && (
+					{!!data && !disableBg && (
 						<div className="backdrop-img">
 							<Img src={(url?.backdrop || "https://image.tmdb.org/t/p/original") + data?.backdrop_path} />
 						</div>
