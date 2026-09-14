@@ -951,11 +951,7 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
 
     const { spawn } = require("child_process");
     
-    const seekTime = parsedUrl.query.ss;
     const ffmpegArgs = [];
-    if (seekTime && parseFloat(seekTime) > 0) {
-      ffmpegArgs.push("-ss", seekTime);
-    }
     ffmpegArgs.push(
       "-i", cleanedTargetUrl,
       "-map", `0:${streamIndex}`,
@@ -992,7 +988,9 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     });
 
     subProcess.stdout.pipe(vttFixer).pipe(res);
-    subProcess.stderr.on("data", () => {});
+    subProcess.stderr.on("data", (data) => {
+      console.error(`[FFmpeg Subtitle Error] ${data.toString()}`);
+    });
     subProcess.on("error", () => {});
     return;
   }
