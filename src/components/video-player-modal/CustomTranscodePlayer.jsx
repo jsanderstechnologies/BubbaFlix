@@ -99,13 +99,20 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
 
   useEffect(() => {
     // Reset selections on new video load
+    let isCancelled = false;
     setSelectedAudioIndex(null);
     setSelectedSubtitleIndex(null);
+    setAudioTracks([]);
+    setSubtitleTracks([]);
+    setChapters([]);
+    setMediaInfo({ resolution: "Unknown", videoCodec: "Unknown" });
 
     const fetchMetadata = async () => {
       try {
         const serverBase = getServerUrl();
         const res = await axios.get(`${serverBase}/api/transcode/metadata?url=${encodeURIComponent(rawUrl)}`, { timeout: 10000 });
+        if (isCancelled) return;
+        
         if (res.data) {
           if (res.data.duration) setDuration(res.data.duration);
           if (res.data.subtitleTracks) {
@@ -172,10 +179,14 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
           }
         }
       } catch (err) {
-        console.warn("[CustomTranscodePlayer] Failed to probe metadata:", err.message);
+        if (!isCancelled) console.warn("[CustomTranscodePlayer] Failed to probe metadata:", err.message);
       }
     };
     fetchMetadata();
+    
+    return () => {
+      isCancelled = true;
+    };
   }, [rawUrl]);
 
   useEffect(() => {
