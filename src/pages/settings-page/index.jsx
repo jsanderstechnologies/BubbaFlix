@@ -197,6 +197,13 @@ const SettingsPage = () => {
     updatePreferences({ theme: themeId });
   };
 
+  const handleToggleBackgrounds = (e) => {
+    const val = e.target.checked;
+    setDisableBackgrounds(val);
+    localStorage.setItem("disable_backgrounds", JSON.stringify(val));
+    updatePreferences({ disableBackgrounds: val });
+  };
+
   const handleSaveServerUrl = async (e) => {
     e.preventDefault();
     const cleanUrl = serverUrlState.trim();
