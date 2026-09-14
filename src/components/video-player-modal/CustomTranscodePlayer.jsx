@@ -162,14 +162,6 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
             setSelectedAudioIndex(null);
           }
 
-          if (res.data.videoCodec) {
-             if (!finalUrl.includes("video_codec=")) {
-                if (!shouldUpdatePlayer && currentRealTime > 0) finalUrl += (finalUrl.includes("?") ? "&" : "?") + `ss=${currentRealTime}`;
-                finalUrl += (finalUrl.includes("?") ? "&" : "?") + `video_codec=${res.data.videoCodec}`;
-                shouldUpdatePlayer = true;
-             }
-          }
-
           if (shouldUpdatePlayer) {
              setActualStreamUrl(finalUrl);
              if (videoRef.current) {
