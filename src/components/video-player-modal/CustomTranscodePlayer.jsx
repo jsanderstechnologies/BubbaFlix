@@ -88,7 +88,7 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
       const loadSubs = async () => {
          try {
             const serverBase = getServerUrl();
-            const url = ${serverBase}/api/transcode/subtitle?url=&index=&ss=;
+            const url = `${serverBase}/api/transcode/subtitle?url=${encodeURIComponent(rawUrl)}&index=${selectedSubtitleIndex}&ss=${seekOffset}`;
             const response = await fetch(url, { signal: abortController.signal });
             const reader = response.body.getReader();
             const decoder = new TextDecoder("utf-8");
