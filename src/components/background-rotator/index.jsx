@@ -17,10 +17,6 @@ const BackgroundRotator = () => {
 
   const disableBg = (localStorage.getItem("disable_backgrounds") !== null ? JSON.parse(localStorage.getItem("disable_backgrounds")) : null) ?? user?.preferences?.disableBackgrounds ?? false;
 
-  if (disableBg) {
-    return <div className="backgroundRotatorStage" style={{ background: 'var(--black)' }} />;
-  }
-
   // Set dedicated background on route change (e.g. TV Shows page) or rotate to next
   useEffect(() => {
     if (location.pathname === "/explore/tv") {
@@ -40,6 +36,10 @@ const BackgroundRotator = () => {
     }, 45000);
     return () => clearInterval(timer);
   }, []);
+
+  if (disableBg) {
+    return null;
+  }
 
   return (
     <div className="backgroundRotatorStage">

@@ -18,6 +18,8 @@ import { PlayIcon } from "../../../components/play-btn";
 import "./index.scss";
 
 const DetailsBanner = ({ video, crew }) => {
+	const { user } = useContext(AuthContext);
+	const disableBg = (localStorage.getItem("disable_backgrounds") !== null ? JSON.parse(localStorage.getItem("disable_backgrounds")) : null) ?? user?.preferences?.disableBackgrounds ?? false;
 	const [show, setShow] = useState(false);
 	const [videoId, setVideoId] = useState(null);
 
