@@ -954,6 +954,7 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     const ffmpegArgs = [];
     ffmpegArgs.push(
       "-loglevel", "error",
+      "-headers", "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\r\nAccept: */*\r\n",
       "-i", cleanedTargetUrl,
       "-map", `0:${streamIndex}`,
       "-f", "webvtt",

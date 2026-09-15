@@ -76,29 +76,48 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
     let track = null;
     
     if (selectedSubtitleIndex !== null && videoRef.current) {
-      if (videoRef.current.textTracks) {
-        for (let i = 0; i < videoRef.current.textTracks.length; i++) {
-          videoRef.current.textTracks[i].mode = 'hidden';
+      // Find existing track or add one
+      let existingTrack = Array.from(videoRef.current.textTracks || []).find(t => t.label === "CustomSub");
+      if (!existingTrack) {
+        track = videoRef.current.addTextTrack("subtitles", "CustomSub", "en");
+      } else {
+        track = existingTrack;
+        if (track.cues) {
+          Array.from(track.cues).forEach(c => track.removeCue(c));
         }
       }
       
-      track = videoRef.current.addTextTrack("subtitles", "Subtitle", "en");
+      // Hide all other tracks
+      if (videoRef.current.textTracks) {
+        for (let i = 0; i < videoRef.current.textTracks.length; i++) {
+          if (videoRef.current.textTracks[i] !== track) {
+            videoRef.current.textTracks[i].mode = 'disabled';
+          }
+        }
+      }
+      
       track.mode = "showing";
       
       const loadSubs = async () => {
          try {
             const serverBase = getServerUrl();
-            const url = `${serverBase}/api/transcode/subtitle?url=${encodeURIComponent(rawUrl)}&index=${selectedSubtitleIndex}&ss=${seekOffset}`;
+            const url = `${serverBase}/api/transcode/subtitle?url=${encodeURIComponent(rawUrl)}&index=${selectedSubtitleIndex}`;
             const response = await fetch(url, { signal: abortController.signal });
             const reader = response.body.getReader();
             const decoder = new TextDecoder("utf-8");
             let buffer = "";
             
             const parseTime = (timeStr) => {
-              const p = timeStr.trim().split(':');
+              if (!timeStr) return 0;
+              // Clean settings after timestamp like position:50% or align:middle and replace commas
+              const cleanStr = timeStr.trim().split(/\s+/)[0].replace(',', '.');
+              const p = cleanStr.split(':');
               let s = parseFloat(p.pop() || 0);
               let m = parseInt(p.pop() || 0);
               let h = parseInt(p.pop() || 0);
+              if (isNaN(s)) s = 0;
+              if (isNaN(m)) m = 0;
+              if (isNaN(h)) h = 0;
               return h * 3600 + m * 60 + s;
             };
 
@@ -120,29 +139,36 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
                      let start = parseTime(startStr);
                      let end = parseTime(endStr);
                      
-                     start = Math.max(0, start - seekOffset);
-                     end = Math.max(0, end - seekOffset);
+                     start = Math.max(0, start - seekOffsetRef.current);
+                     end = Math.max(0, end - seekOffsetRef.current);
                      
-                     if (end > 0 && window.VTTCue) {
-                       track.addCue(new VTTCue(start, end, text));
+                     if (!isNaN(start) && !isNaN(end) && end > start && window.VTTCue) {
+                       try {
+                         track.addCue(new VTTCue(start, end, text));
+                       } catch (e) {
+                         // ignore invalid cue errors
+                       }
                      }
                  }
               }
             }
          } catch (e) {
-            console.error("Subtitle load error:", e);
+            if (e.name !== 'AbortError') {
+              console.error("Subtitle load error:", e);
+            }
          }
       };
       loadSubs();
+    } else if (selectedSubtitleIndex === null && videoRef.current && videoRef.current.textTracks) {
+      for (let i = 0; i < videoRef.current.textTracks.length; i++) {
+        videoRef.current.textTracks[i].mode = 'disabled';
+      }
     }
     
     return () => {
        abortController.abort();
-       if (track && track.cues) {
-          Array.from(track.cues).forEach(c => track.removeCue(c));
-       }
     };
-  }, [selectedSubtitleIndex, actualStreamUrl, seekOffset]);
+  }, [selectedSubtitleIndex, actualStreamUrl]);
 
   const executeSeek = (targetTime, audioIndex = selectedAudioIndex, vCodec = mediaInfo.videoCodec) => {
     setSeekOffset(targetTime);
@@ -191,21 +217,23 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
         if (res.data) {
           if (res.data.duration) setDuration(res.data.duration);
           if (res.data.subtitleTracks) {
-            let engSubs = res.data.subtitleTracks.filter(t => t.language === 'eng' || t.language === 'en' || (t.title && t.title.toLowerCase().includes('english')) || t.forced || (t.title && t.title.toLowerCase().includes('forced')));
-            
-            engSubs = engSubs.map(t => {
-              let displayTitle = t.title;
+            let allSubs = res.data.subtitleTracks.map(t => {
+              let displayTitle = t.title || `Subtitle Track ${t.index}`;
               if (t.forced && !displayTitle.toLowerCase().includes('forced')) {
                 displayTitle = `${displayTitle} [Forced]`;
               }
               return { ...t, title: displayTitle };
             });
             
-            setSubtitleTracks(engSubs);
+            setSubtitleTracks(allSubs);
 
-            const defaultForcedSub = engSubs.find(t => t.forced || (t.title && t.title.toLowerCase().includes('forced')));
+            const defaultForcedSub = allSubs.find(t => t.forced || (t.title && t.title.toLowerCase().includes('forced')));
+            const defaultEngSub = allSubs.find(t => t.language === 'eng' || t.language === 'en' || (t.title && t.title.toLowerCase().includes('english')));
+            
             if (defaultForcedSub) {
               setSelectedSubtitleIndex(defaultForcedSub.index);
+            } else if (defaultEngSub) {
+              setSelectedSubtitleIndex(defaultEngSub.index);
             }
           }
           if (res.data.chapters) setChapters(res.data.chapters);
