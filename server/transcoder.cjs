@@ -953,6 +953,7 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     
     const ffmpegArgs = [];
     ffmpegArgs.push(
+      "-loglevel", "error",
       "-i", cleanedTargetUrl,
       "-map", `0:${streamIndex}`,
       "-f", "webvtt",
@@ -989,7 +990,10 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
 
     subProcess.stdout.pipe(vttFixer).pipe(res);
     subProcess.stderr.on("data", (data) => {
-      console.error(`[FFmpeg Subtitle Error] ${data.toString()}`);
+      const msg = data.toString().trim();
+      if (msg && !msg.startsWith("size=") && !msg.startsWith("frame=") && !msg.includes("video:0kB")) {
+        console.error(`[FFmpeg Subtitle Log] ${msg}`);
+      }
     });
     subProcess.on("error", () => {});
     return;
