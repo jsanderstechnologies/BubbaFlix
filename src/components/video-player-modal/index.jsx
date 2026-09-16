@@ -84,7 +84,18 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
     if (show) {
       let targetUrl = getTranscodedStreamUrl(rawUrl || videoUrl || streamUrl || "");
 
-      // Android TV native playback bridge removed to use universal web player UI
+      if (window.AndroidPlayer && typeof window.AndroidPlayer.playStream === "function") {
+        window.AndroidPlayer.playStream(
+          targetUrl,
+          displayTitle || "",
+          fetchedLogo || channelLogo || "",
+          String(tmdbId || ""),
+          mediaType || "movie"
+        );
+        if (typeof setShow === "function") setShow(false);
+        if (typeof onClose === "function") onClose();
+        return;
+      }
 
       document.body.classList.add("videoPlayerActive");
       document.documentElement.classList.add("videoPlayerActive");

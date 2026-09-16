@@ -461,7 +461,7 @@ class PlayerActivity : AppCompatActivity() {
 
         btnAudio.setOnClickListener { showAudioTrackSelectionDialog() }
 
-        btnSubtitles.setOnClickListener { toggleSubtitles() }
+        btnSubtitles.setOnClickListener { showSubtitleTrackSelectionDialog() }
 
         btnPlayPause.setOnClickListener {
             resetControlsTimeout()
@@ -538,26 +538,62 @@ class PlayerActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun toggleSubtitles() {
+    @SuppressLint("UnsafeOptInUsageError")
+    private fun showSubtitleTrackSelectionDialog() {
         resetControlsTimeout()
         val player = exoPlayer ?: return
-        val isDisabled = player.trackSelectionParameters.disabledTrackTypes.contains(C.TRACK_TYPE_TEXT)
+        val tracks = player.currentTracks
 
-        if (isDisabled) {
-            player.trackSelectionParameters = player.trackSelectionParameters
-                .buildUpon()
-                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
-                .build()
-            Toast.makeText(this, "Subtitles: ON", Toast.LENGTH_SHORT).show()
-            btnSubtitles.setTextColor(android.graphics.Color.parseColor("#DA2F68"))
-        } else {
-            player.trackSelectionParameters = player.trackSelectionParameters
-                .buildUpon()
-                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
-                .build()
-            Toast.makeText(this, "Subtitles: OFF", Toast.LENGTH_SHORT).show()
-            btnSubtitles.setTextColor(android.graphics.Color.parseColor("#FFFFFF"))
+        val subTrackOptions = ArrayList<Pair<Tracks.Group, Int>?>()
+        val optionLabels = ArrayList<String>()
+
+        val isTextDisabled = player.trackSelectionParameters.disabledTrackTypes.contains(C.TRACK_TYPE_TEXT)
+        subTrackOptions.add(null)
+        optionLabels.add((if (isTextDisabled) "✓ " else "   ") + "Off")
+
+        for (group in tracks.groups) {
+            if (group.type == C.TRACK_TYPE_TEXT) {
+                val mediaTrackGroup = group.mediaTrackGroup
+                for (i in 0 until mediaTrackGroup.length) {
+                    val format = mediaTrackGroup.getFormat(i)
+                    val lang = if (!format.language.isNullOrEmpty()) Locale(format.language!!).displayLanguage else "Track ${subTrackOptions.size}"
+                    val label = format.label ?: lang
+                    val isSelected = !isTextDisabled && group.isTrackSelected(i)
+                    val prefix = if (isSelected) "✓ " else "   "
+
+                    subTrackOptions.add(Pair(group, i))
+                    optionLabels.add("$prefix$label (${format.sampleMimeType ?: "subtitle"})")
+                }
+            }
         }
+
+        if (optionLabels.size <= 1) {
+            Toast.makeText(this, "No subtitle tracks found.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("💬 Select Subtitles (CC)")
+            .setItems(optionLabels.toTypedArray()) { _, which ->
+                val selectedOption = subTrackOptions[which]
+                val builder = player.trackSelectionParameters.buildUpon()
+                if (selectedOption == null) {
+                    builder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+                    btnSubtitles.setTextColor(android.graphics.Color.parseColor("#FFFFFF"))
+                    Toast.makeText(this, "Subtitles: OFF", Toast.LENGTH_SHORT).show()
+                } else {
+                    val (group, trackIndex) = selectedOption
+                    builder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                    builder.setOverrideForType(
+                        TrackSelectionOverride(group.mediaTrackGroup, trackIndex)
+                    )
+                    btnSubtitles.setTextColor(android.graphics.Color.parseColor("#E50914"))
+                    Toast.makeText(this, "Subtitles Selected: ${optionLabels[which].replace("✓ ", "")}", Toast.LENGTH_SHORT).show()
+                }
+                player.trackSelectionParameters = builder.build()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun setupSeekBarListener() {
