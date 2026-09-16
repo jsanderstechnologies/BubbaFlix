@@ -2,7 +2,7 @@
   <img src="public/tv_banner.png" alt="BubbaFlix Logo" width="280" />
 </p>
 
-# BubbaFlix 🎬 - Movie & TV Show Streaming, Live TV & Discovery App (v1.0.5)
+# BubbaFlix 🎬 - Movie & TV Show Streaming, Live TV & Discovery App (v1.0.6)
 
 BubbaFlix is a modern, high-performance movie and TV show streaming discovery platform built with **React 18**, **Redux Toolkit**, **React Router v6**, **Vite**, **Pure Node.js**, **Native Android TV (Kotlin / ExoPlayer)**, and integrated with **Dispatcharr Live TV & EPG**, **AIOStreams (ElfHosted + Premiumize)**, **TMDB**, **Groq AI**, and **SIMKL**.
 
