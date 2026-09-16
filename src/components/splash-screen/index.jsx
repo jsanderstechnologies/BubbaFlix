@@ -14,6 +14,8 @@ const SplashScreen = ({ onComplete }) => {
   const glowRef = useRef(null);
   const captionRef = useRef(null);
 
+  const audioPlayedRef = useRef(false);
+
   // Synthesize cinematic reverb impulse
   const createReverbImpulse = (ctx, duration, decay) => {
     const rate = ctx.sampleRate;
@@ -61,7 +63,7 @@ const SplashScreen = ({ onComplete }) => {
       noiseFilter.Q.value = 0.7;
 
       const noiseGain = ctx.createGain();
-      noiseGain.gain.setValueAtTime(volume * 0.6, startTime);
+      noiseGain.gain.setValueAtTime(volume * 0.5, startTime);
       noiseGain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.09);
 
       noise.connect(noiseFilter);
@@ -76,6 +78,9 @@ const SplashScreen = ({ onComplete }) => {
 
   const playIntroSound = () => {
     try {
+      if (audioPlayedRef.current) return;
+      audioPlayedRef.current = true;
+
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (!AudioCtx) return;
       if (!audioCtxRef.current) {
@@ -87,23 +92,23 @@ const SplashScreen = ({ onComplete }) => {
       }
 
       const master = ctx.createGain();
-      master.gain.value = 0.6;
+      master.gain.value = 0.32;
       master.connect(ctx.destination);
 
       const reverbGain = ctx.createGain();
-      reverbGain.gain.value = 0.75;
+      reverbGain.gain.value = 0.40;
       const convolver = ctx.createConvolver();
-      convolver.buffer = createReverbImpulse(ctx, 3.2, 2.0);
+      convolver.buffer = createReverbImpulse(ctx, 2.5, 2.2);
       reverbGain.connect(convolver);
       convolver.connect(master);
 
       const now = ctx.currentTime;
 
       // 1. "TA" - Initial punchy percussive knock (t = 0.67s)
-      playThump(ctx, master, reverbGain, now + 0.67, 145, 0.35, 1.8);
+      playThump(ctx, master, reverbGain, now + 0.67, 145, 0.35, 0.7);
 
       // 2. "DUM" - Main heavy sub-bass impact (t = 0.90s)
-      playThump(ctx, master, reverbGain, now + 0.90, 54, 2.4, 2.8);
+      playThump(ctx, master, reverbGain, now + 0.90, 54, 2.4, 1.0);
 
       // 3. Harmonic Cinematic Shimmer (t = 0.90s) - Warm overtone bloom tail
       const freqs = [146.83, 220.0, 293.66, 440.0, 587.33];
@@ -113,7 +118,7 @@ const SplashScreen = ({ onComplete }) => {
         osc.frequency.setValueAtTime(f, now + 0.90);
 
         const oscGain = ctx.createGain();
-        const vol = 0.18 / (idx + 1);
+        const vol = 0.07 / (idx + 1);
         oscGain.gain.setValueAtTime(0.0001, now + 0.90);
         oscGain.gain.linearRampToValueAtTime(vol, now + 0.95);
         oscGain.gain.exponentialRampToValueAtTime(0.0001, now + 3.12);
