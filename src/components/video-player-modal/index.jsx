@@ -82,11 +82,23 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
 
   useEffect(() => {
     if (show) {
-      let targetUrl = getTranscodedStreamUrl(rawUrl || videoUrl || streamUrl || "");
+      const rawTargetUrl = rawUrl || videoUrl || streamUrl || "";
+      let directUrl = rawTargetUrl;
+      if (directUrl.includes("/api/transcode?url=")) {
+        const split = directUrl.split("?url=");
+        if (split.length > 1) {
+          try {
+            directUrl = decodeURIComponent(split[1]);
+          } catch (e) {
+            directUrl = split[1];
+          }
+        }
+      }
 
       if (window.AndroidPlayer && typeof window.AndroidPlayer.playStream === "function") {
+        console.log("[VideoPlayerModal] Android TV client detected. Direct playing stream with ExoPlayer:", directUrl);
         window.AndroidPlayer.playStream(
-          targetUrl,
+          directUrl,
           displayTitle || "",
           fetchedLogo || channelLogo || "",
           String(tmdbId || ""),
@@ -99,6 +111,7 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
 
       document.body.classList.add("videoPlayerActive");
       document.documentElement.classList.add("videoPlayerActive");
+      const targetUrl = getTranscodedStreamUrl(directUrl);
       setCurrentUrl(targetUrl);
 
 

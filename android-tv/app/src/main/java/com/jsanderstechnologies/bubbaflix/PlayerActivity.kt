@@ -290,7 +290,6 @@ class PlayerActivity : AppCompatActivity() {
         val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
 
         val isLiveStream = videoUrl.contains("/proxy/ts/") ||
-                videoUrl.contains("/transcode") ||
                 videoUrl.contains("/live/") ||
                 videoUrl.endsWith(".ts")
 
@@ -600,19 +599,10 @@ class PlayerActivity : AppCompatActivity() {
         seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
                 if (fromUser && exoPlayer != null) {
-                    val rawDur = exoPlayer!!.duration
-                    val isTranscoded = intent.getStringExtra(EXTRA_VIDEO_URL)?.contains("/api/transcode") == true
-                    val duration = if (isTranscoded) {
-                        if (probedDurationMs > 0) probedDurationMs else 0L
-                    } else {
-                        if (rawDur > 0 && rawDur != androidx.media3.common.C.TIME_UNSET) rawDur else (if (probedDurationMs > 0) probedDurationMs else 0L)
-                    }
-                    val isLive = duration <= 0L && (rawDur == androidx.media3.common.C.TIME_UNSET || rawDur <= 0L)
-                    if (!isLive) {
-                        if (duration > 0) {
-                            val newPos = (duration * progress) / 1000
-                            txtCurrentTime.text = formatTime(newPos)
-                        }
+                    val dur = exoPlayer!!.duration
+                    if (dur > 0L && dur != C.TIME_UNSET) {
+                        val newPos = (dur * progress) / 1000
+                        txtCurrentTime.text = formatTime(newPos)
                     }
                 }
             }
@@ -623,19 +613,10 @@ class PlayerActivity : AppCompatActivity() {
 
             override fun onStopTrackingTouch(sb: SeekBar?) {
                 if (exoPlayer != null && sb != null) {
-                    val rawDur = exoPlayer!!.duration
-                    val isTranscoded = intent.getStringExtra(EXTRA_VIDEO_URL)?.contains("/api/transcode") == true
-                    val duration = if (isTranscoded) {
-                        if (probedDurationMs > 0) probedDurationMs else 0L
-                    } else {
-                        if (rawDur > 0 && rawDur != androidx.media3.common.C.TIME_UNSET) rawDur else (if (probedDurationMs > 0) probedDurationMs else 0L)
-                    }
-                    val isLive = duration <= 0L && (rawDur == androidx.media3.common.C.TIME_UNSET || rawDur <= 0L)
-                    if (!isLive) {
-                        if (duration > 0) {
-                            val newPos = (duration * sb.progress) / 1000
-                            exoPlayer!!.seekTo(newPos)
-                        }
+                    val dur = exoPlayer!!.duration
+                    if (dur > 0L && dur != C.TIME_UNSET) {
+                        val newPos = (dur * sb.progress) / 1000
+                        exoPlayer!!.seekTo(newPos)
                     }
                 }
                 resetControlsTimeout()
@@ -647,25 +628,19 @@ class PlayerActivity : AppCompatActivity() {
         val player = exoPlayer ?: return
         val current = player.currentPosition
         val buffered = player.bufferedPosition
-
-        val rawDur = player.duration
-        val isTranscoded = intent.getStringExtra(EXTRA_VIDEO_URL)?.contains("/api/transcode") == true
-        val dur = if (isTranscoded) {
-            if (probedDurationMs > 0) probedDurationMs else 0L
-        } else {
-            if (rawDur > 0 && rawDur != androidx.media3.common.C.TIME_UNSET) rawDur else (if (probedDurationMs > 0) probedDurationMs else 0L)
-        }
-        val isLive = dur <= 0L && (rawDur == androidx.media3.common.C.TIME_UNSET || rawDur <= 0L)
+        val dur = player.duration
+        val videoUrl = intent.getStringExtra(EXTRA_VIDEO_URL) ?: ""
+        val isLive = player.isCurrentMediaItemLive || (dur <= 0L && (videoUrl.contains("/proxy/ts/") || videoUrl.contains("/live/") || videoUrl.endsWith(".ts")))
 
         if (isLive) {
-            val liveEdge = player.duration.coerceAtLeast(player.bufferedPosition.coerceAtLeast(current))
+            val liveEdge = player.duration.coerceAtLeast(buffered.coerceAtLeast(current))
             val behindMs = (liveEdge - current).coerceAtLeast(0L)
 
             if (liveEdge > 0) {
                 val progress = ((current * 1000) / liveEdge).toInt()
                 val secondaryProgress = ((buffered * 1000) / liveEdge).toInt()
-                seekBar.progress = progress
-                seekBar.secondaryProgress = secondaryProgress
+                seekBar.progress = progress.coerceIn(0, 1000)
+                seekBar.secondaryProgress = secondaryProgress.coerceIn(0, 1000)
             } else {
                 seekBar.progress = 1000
             }
@@ -684,18 +659,18 @@ class PlayerActivity : AppCompatActivity() {
                 txtDuration.setTextColor(android.graphics.Color.parseColor("#4CAF50"))
             }
         } else {
-            if (dur > 0) {
+            if (dur > 0L && dur != C.TIME_UNSET) {
                 val progress = ((current * 1000) / dur).toInt()
                 val secondaryProgress = ((buffered * 1000) / dur).toInt()
-                seekBar.progress = progress
-                seekBar.secondaryProgress = secondaryProgress
+                seekBar.progress = progress.coerceIn(0, 1000)
+                seekBar.secondaryProgress = secondaryProgress.coerceIn(0, 1000)
                 txtCurrentTime.text = formatTime(current)
                 txtDuration.text = formatTime(dur)
             } else {
                 seekBar.progress = 0
                 seekBar.secondaryProgress = 0
-                txtCurrentTime.text = "00:00"
-                txtDuration.text = "00:00"
+                txtCurrentTime.text = formatTime(current)
+                txtDuration.text = "--:--"
             }
         }
     }
@@ -703,17 +678,17 @@ class PlayerActivity : AppCompatActivity() {
     private fun seekRelative(offsetMs: Long) {
         resetControlsTimeout()
         exoPlayer?.let { player ->
-            val rawDur = player.duration
-            val isTranscoded = intent.getStringExtra(EXTRA_VIDEO_URL)?.contains("/api/transcode") == true
-            val dur = if (isTranscoded) {
-                if (probedDurationMs > 0) probedDurationMs else 0L
+            val dur = player.duration
+            val hasValidDur = dur > 0L && dur != C.TIME_UNSET
+            val current = player.currentPosition
+
+            val targetPos = if (hasValidDur) {
+                (current + offsetMs).coerceIn(0L, dur)
             } else {
-                if (rawDur > 0 && rawDur != androidx.media3.common.C.TIME_UNSET) rawDur else (if (probedDurationMs > 0) probedDurationMs else 0L)
+                (current + offsetMs).coerceAtLeast(0L)
             }
-            val isLive = dur <= 0L && (rawDur == androidx.media3.common.C.TIME_UNSET || rawDur <= 0L)
-            val maxPos = if (isLive) player.bufferedPosition.coerceAtLeast(player.currentPosition) else dur.coerceAtLeast(0L)
-            val newPos = (player.currentPosition + offsetMs).coerceIn(0L, if (maxPos > 0) maxPos else Long.MAX_VALUE)
-            player.seekTo(newPos)
+
+            player.seekTo(targetPos)
             updateProgress()
         }
     }
