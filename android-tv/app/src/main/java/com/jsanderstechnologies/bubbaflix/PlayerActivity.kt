@@ -287,6 +287,8 @@ class PlayerActivity : AppCompatActivity() {
         val dataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
             .setUserAgent("BubbaFlixTV/1.0 (Android TV Smart Client)")
 
+        val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
+
         val mediaType = intent.getStringExtra(EXTRA_MEDIA_TYPE) ?: ""
         val isLiveStream = mediaType == "livetv" ||
                 mediaType == "channel" ||
