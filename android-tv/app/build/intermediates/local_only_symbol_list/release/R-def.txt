@@ -17,7 +17,6 @@ id btn_play_pause
 id btn_rewind_10
 id btn_rewind_30
 id btn_subtitles
-id center_transport
 id controls_overlay
 id error_layout
 id footer_bar
@@ -26,6 +25,7 @@ id img_media_logo
 id player_root_layout
 id player_view
 id seek_bar
+id transport_bar
 id txt_current_time
 id txt_duration
 id txt_error_msg

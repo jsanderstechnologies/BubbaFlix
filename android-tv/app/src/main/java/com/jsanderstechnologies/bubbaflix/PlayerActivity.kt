@@ -561,7 +561,6 @@ class PlayerActivity : AppCompatActivity() {
                     val label = format.label?.lowercase() ?: ""
                     val id = format.id?.lowercase() ?: ""
                     val isForced = (format.selectionFlags and C.SELECTION_FLAG_FORCED) != 0 ||
-                            (format.roleFlags and C.ROLE_FLAG_FORCED_SUBTITLE) != 0 ||
                             label.contains("forced") ||
                             id.contains("forced")
 
@@ -613,7 +612,6 @@ class PlayerActivity : AppCompatActivity() {
                     val id = format.id?.lowercase() ?: ""
 
                     val isForced = (format.selectionFlags and C.SELECTION_FLAG_FORCED) != 0 ||
-                            (format.roleFlags and C.ROLE_FLAG_FORCED_SUBTITLE) != 0 ||
                             label.contains("forced") ||
                             id.contains("forced")
 

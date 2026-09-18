@@ -4,7 +4,7 @@
             "outputFile": "com.jsanderstechnologies.bubbaflix.app-mergeReleaseResources-35:/values-ldltr-v21/values-ldltr-v21.xml",
             "map": [
                 {
-                    "source": "F:\\.gradle\\caches\\transforms-3\\8670e6b4b111ddc2b129815394f7924d\\transformed\\appcompat-1.6.1\\res\\values-ldltr-v21\\values-ldltr-v21.xml",
+                    "source": "C:\\Users\\Jessie\\.gradle\\caches\\transforms-3\\8670e6b4b111ddc2b129815394f7924d\\transformed\\appcompat-1.6.1\\res\\values-ldltr-v21\\values-ldltr-v21.xml",
                     "from": {
                         "startLines": "2",
                         "startColumns": "4",
