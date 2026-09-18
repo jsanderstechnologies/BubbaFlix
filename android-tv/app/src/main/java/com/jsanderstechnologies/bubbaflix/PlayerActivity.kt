@@ -72,6 +72,7 @@ class PlayerActivity : AppCompatActivity() {
 
     private val handler = Handler(Looper.getMainLooper())
     private var controlsVisible = true
+    private var isUserSeeking = false
     private var probedDurationMs: Long = 0
 
     private val hideControlsRunnable = Runnable {
@@ -599,9 +600,16 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private fun setupSeekBarListener() {
+        seekBar.setOnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus && isUserSeeking) {
+                commitPendingSeek()
+            }
+        }
+
         seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
                 if (fromUser && exoPlayer != null) {
+                    isUserSeeking = true
                     val dur = exoPlayer!!.duration
                     if (dur > 0L && dur != C.TIME_UNSET) {
                         val newPos = (dur * progress) / 1000
@@ -611,20 +619,26 @@ class PlayerActivity : AppCompatActivity() {
             }
 
             override fun onStartTrackingTouch(sb: SeekBar?) {
+                isUserSeeking = true
                 resetControlsTimeout()
             }
 
             override fun onStopTrackingTouch(sb: SeekBar?) {
-                if (exoPlayer != null && sb != null) {
-                    val dur = exoPlayer!!.duration
-                    if (dur > 0L && dur != C.TIME_UNSET) {
-                        val newPos = (dur * sb.progress) / 1000
-                        exoPlayer!!.seekTo(newPos)
-                    }
-                }
+                commitPendingSeek()
                 resetControlsTimeout()
             }
         })
+    }
+
+    private fun commitPendingSeek() {
+        if (exoPlayer != null && isUserSeeking) {
+            val dur = exoPlayer!!.duration
+            if (dur > 0L && dur != C.TIME_UNSET) {
+                val newPos = (dur * seekBar.progress) / 1000
+                exoPlayer!!.seekTo(newPos)
+            }
+            isUserSeeking = false
+        }
     }
 
     private fun updateProgress() {
@@ -648,13 +662,19 @@ class PlayerActivity : AppCompatActivity() {
             if (liveEdge > 0) {
                 val progress = ((current * 1000) / liveEdge).toInt()
                 val secondaryProgress = ((buffered * 1000) / liveEdge).toInt()
-                seekBar.progress = progress.coerceIn(0, 1000)
+                if (!isUserSeeking && !seekBar.isPressed) {
+                    seekBar.progress = progress.coerceIn(0, 1000)
+                }
                 seekBar.secondaryProgress = secondaryProgress.coerceIn(0, 1000)
             } else {
-                seekBar.progress = 1000
+                if (!isUserSeeking && !seekBar.isPressed) {
+                    seekBar.progress = 1000
+                }
             }
 
-            txtCurrentTime.text = formatTime(current)
+            if (!isUserSeeking) {
+                txtCurrentTime.text = formatTime(current)
+            }
             if (behindMs > 4000L) {
                 txtDuration.text = "GO TO LIVE (-${formatTime(behindMs)})"
                 txtDuration.setTextColor(android.graphics.Color.parseColor("#DA2F68"))
@@ -673,14 +693,18 @@ class PlayerActivity : AppCompatActivity() {
             if (dur > 0L && dur != C.TIME_UNSET) {
                 val progress = ((current * 1000) / dur).toInt()
                 val secondaryProgress = ((buffered * 1000) / dur).toInt()
-                seekBar.progress = progress.coerceIn(0, 1000)
+                if (!isUserSeeking && !seekBar.isPressed) {
+                    seekBar.progress = progress.coerceIn(0, 1000)
+                    txtCurrentTime.text = formatTime(current)
+                }
                 seekBar.secondaryProgress = secondaryProgress.coerceIn(0, 1000)
-                txtCurrentTime.text = formatTime(current)
                 txtDuration.text = formatTime(dur)
             } else {
-                seekBar.progress = 0
+                if (!isUserSeeking && !seekBar.isPressed) {
+                    seekBar.progress = 0
+                    txtCurrentTime.text = formatTime(current)
+                }
                 seekBar.secondaryProgress = 0
-                txtCurrentTime.text = formatTime(current)
                 txtDuration.text = "--:--"
             }
         }
@@ -770,8 +794,30 @@ class PlayerActivity : AppCompatActivity() {
             }
         }
 
+        if (seekBar.isFocused) {
+            if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                resetControlsTimeout()
+                isUserSeeking = true
+                val step = if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) -10 else 10
+                val newProgress = (seekBar.progress + step).coerceIn(0, 1000)
+                seekBar.progress = newProgress
+                exoPlayer?.let { player ->
+                    val dur = player.duration
+                    if (dur > 0L && dur != C.TIME_UNSET) {
+                        val targetMs = (dur * newProgress) / 1000
+                        txtCurrentTime.text = formatTime(targetMs)
+                    }
+                }
+                return true
+            }
+        }
+
         when (keyCode) {
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> {
+                if (seekBar.isFocused || isUserSeeking) {
+                    commitPendingSeek()
+                    return true
+                }
                 val focused = currentFocus
                 if (focused != null && focused != playerView && focused != controlsOverlay) {
                     focused.performClick()
