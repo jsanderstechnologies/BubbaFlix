@@ -372,14 +372,16 @@ export const initDpadNavigation = () => {
         } else {
           targetTop = Math.min(...candidates.map((el) => el.getBoundingClientRect().top));
         }
-        const rowCandidates = candidates.filter((el) => Math.abs(el.getBoundingClientRect().top - targetTop) <= 60);
+        const rowCandidates = candidates.filter((el) => Math.abs(el.getBoundingClientRect().top - targetTop) <= 25);
 
         rowCandidates.sort((a, b) => {
           const rA = a.getBoundingClientRect();
           const rB = b.getBoundingClientRect();
           const cAX = rA.left + rA.width / 2;
           const cBX = rB.left + rB.width / 2;
-          return Math.abs(cAX - c1.x) - Math.abs(cBX - c1.x);
+          const xDiff = Math.abs(cAX - c1.x) - Math.abs(cBX - c1.x);
+          if (Math.abs(xDiff) > 5) return xDiff;
+          return rA.top - rB.top;
         });
 
         focusAndScroll(rowCandidates[0]);
@@ -395,14 +397,16 @@ export const initDpadNavigation = () => {
         } else {
           targetBottom = Math.max(...candidates.map((el) => el.getBoundingClientRect().bottom));
         }
-        const rowCandidates = candidates.filter((el) => Math.abs(el.getBoundingClientRect().bottom - targetBottom) <= 60);
+        const rowCandidates = candidates.filter((el) => Math.abs(el.getBoundingClientRect().bottom - targetBottom) <= 25);
 
         rowCandidates.sort((a, b) => {
           const rA = a.getBoundingClientRect();
           const rB = b.getBoundingClientRect();
           const cAX = rA.left + rA.width / 2;
           const cBX = rB.left + rB.width / 2;
-          return Math.abs(cAX - c1.x) - Math.abs(cBX - c1.x);
+          const xDiff = Math.abs(cAX - c1.x) - Math.abs(cBX - c1.x);
+          if (Math.abs(xDiff) > 5) return xDiff;
+          return rB.bottom - rA.bottom;
         });
 
         focusAndScroll(rowCandidates[0]);

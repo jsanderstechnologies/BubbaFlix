@@ -525,8 +525,23 @@ const SettingsPage = () => {
                 >
                   <button
                     type="button"
+                    className="sectionToggleBtn"
+                    tabIndex="0"
                     onClick={() => handleToggleHomeSection(sec.id)}
-                    style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", fontSize: 15, fontWeight: 500, color: "#ffffff", background: "transparent", border: "none", padding: 0 }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      cursor: "pointer",
+                      fontSize: 15,
+                      fontWeight: 500,
+                      color: "#ffffff",
+                      background: "rgba(255, 255, 255, 0.03)",
+                      border: "1px solid rgba(255, 255, 255, 0.08)",
+                      padding: "6px 12px",
+                      borderRadius: 8,
+                      outline: "none"
+                    }}
                   >
                     <div style={{ width: 18, height: 18, border: "2px solid var(--pink)", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", background: sec.enabled ? "var(--pink)" : "transparent" }}>
                       {sec.enabled && <FiCheck size={14} color="#fff" />}
