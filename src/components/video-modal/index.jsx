@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import { createPortal } from "react-dom";
 import "./index.scss";
 
 const VideoModal = ({ show, setShow, videoId, setVideoId }) => {
@@ -9,7 +10,7 @@ const VideoModal = ({ show, setShow, videoId, setVideoId }) => {
 
 	if (!show) return null;
 
-	return (
+	return createPortal(
 		<div className={`videoPopup ${show ? "visible" : ""}`}>
 			<div className="opacityLayer" onClick={hidePopup}></div>
 			<div className="videoPlayer">
@@ -40,7 +41,8 @@ const VideoModal = ({ show, setShow, videoId, setVideoId }) => {
 					/>
 				)}
 			</div>
-		</div>
+		</div>,
+		document.body
 	);
 };
 
