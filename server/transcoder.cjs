@@ -23,6 +23,22 @@ const getCpuTopologyInfo = () => ({
   platform: os.platform(),
 });
 
+const getLocalVersionData = () => {
+  try {
+    const candidatePaths = [
+      path.resolve(process.cwd(), "version.json"),
+      path.resolve(__dirname, "..", "version.json"),
+      path.resolve(__dirname, "version.json"),
+      "/app/version.json"
+    ];
+    const vFile = candidatePaths.find((p) => fs.existsSync(p));
+    if (vFile) {
+      return JSON.parse(fs.readFileSync(vFile, "utf8"));
+    }
+  } catch (e) {}
+  return { versionCode: 9, versionName: "1.0.8" };
+};
+
 
 // Internal Node settings server port (always 5000 for Nginx proxy inside container)
 const PORT = process.env.PORT || 5000;
@@ -1390,22 +1406,6 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     req.pipe(proxyReq);
     return;
   }
-
-  const getLocalVersionData = () => {
-    try {
-      const candidatePaths = [
-        path.resolve(process.cwd(), "version.json"),
-        path.resolve(__dirname, "..", "version.json"),
-        path.resolve(__dirname, "version.json"),
-        "/app/version.json"
-      ];
-      const vFile = candidatePaths.find((p) => fs.existsSync(p));
-      if (vFile) {
-        return JSON.parse(fs.readFileSync(vFile, "utf8"));
-      }
-    } catch (e) {}
-    return { versionCode: 9, versionName: "1.0.8" };
-  };
 
   // Version Check Proxy Endpoint
   if ((cleanPath === "/api/version" || cleanPath === "/version") && req.method === "GET") {
