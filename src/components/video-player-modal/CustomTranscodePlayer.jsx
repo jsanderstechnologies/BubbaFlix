@@ -225,15 +225,22 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
               return { ...t, title: displayTitle };
             });
             
-            setSubtitleTracks(allSubs);
-
-            const defaultForcedSub = allSubs.find(t => t.forced || (t.title && t.title.toLowerCase().includes('forced')));
-            const defaultEngSub = allSubs.find(t => t.language === 'eng' || t.language === 'en' || (t.title && t.title.toLowerCase().includes('english')));
+            // Filter out non-English subtitles unless they are forced
+            let filteredSubs = allSubs.filter(t => {
+              const lang = (t.language || "").toLowerCase();
+              const title = (t.title || "").toLowerCase();
+              const isForced = t.forced || title.includes("forced");
+              const isEng = lang === "en" || lang === "eng" || lang === "english" || title.includes("english") || (!lang && !title);
+              return isForced || isEng;
+            });
             
+            setSubtitleTracks(filteredSubs);
+
+            const defaultForcedSub = filteredSubs.find(t => t.forced || (t.title && t.title.toLowerCase().includes('forced')));
             if (defaultForcedSub) {
               setSelectedSubtitleIndex(defaultForcedSub.index);
-            } else if (defaultEngSub) {
-              setSelectedSubtitleIndex(defaultEngSub.index);
+            } else {
+              setSelectedSubtitleIndex(-1);
             }
           }
           if (res.data.chapters) setChapters(res.data.chapters);

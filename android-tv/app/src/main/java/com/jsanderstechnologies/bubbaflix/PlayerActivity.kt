@@ -339,6 +339,12 @@ class PlayerActivity : AppCompatActivity() {
                 playWhenReady = true
 
                 addListener(object : Player.Listener {
+                    @SuppressLint("UnsafeOptInUsageError")
+                    override fun onTracksChanged(tracks: Tracks) {
+                        super.onTracksChanged(tracks)
+                        autoSelectForcedSubtitles(tracks)
+                    }
+
                     override fun onAudioSessionIdChanged(audioSessionId: Int) {
                         setupAudioNormalization(audioSessionId)
                     }
@@ -542,6 +548,49 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     @SuppressLint("UnsafeOptInUsageError")
+    private fun autoSelectForcedSubtitles(tracks: Tracks) {
+        val player = exoPlayer ?: return
+        var forcedGroup: Tracks.Group? = null
+        var forcedTrackIndex = -1
+
+        for (group in tracks.groups) {
+            if (group.type == C.TRACK_TYPE_TEXT) {
+                val mediaTrackGroup = group.mediaTrackGroup
+                for (i in 0 until mediaTrackGroup.length) {
+                    val format = mediaTrackGroup.getFormat(i)
+                    val label = format.label?.lowercase() ?: ""
+                    val id = format.id?.lowercase() ?: ""
+                    val isForced = (format.selectionFlags and C.SELECTION_FLAG_FORCED) != 0 ||
+                            (format.roleFlags and C.ROLE_FLAG_FORCED_SUBTITLE) != 0 ||
+                            label.contains("forced") ||
+                            id.contains("forced")
+
+                    if (isForced) {
+                        forcedGroup = group
+                        forcedTrackIndex = i
+                        break
+                    }
+                }
+            }
+            if (forcedGroup != null) break
+        }
+
+        val builder = player.trackSelectionParameters.buildUpon()
+        if (forcedGroup != null) {
+            builder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+            builder.setOverrideForType(
+                TrackSelectionOverride(forcedGroup.mediaTrackGroup, forcedTrackIndex)
+            )
+            btnSubtitles.setTextColor(android.graphics.Color.parseColor("#E50914"))
+            Log.d("PlayerActivity", "Auto-enabled forced subtitle track")
+        } else {
+            builder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+            btnSubtitles.setTextColor(android.graphics.Color.parseColor("#FFFFFF"))
+        }
+        player.trackSelectionParameters = builder.build()
+    }
+
+    @SuppressLint("UnsafeOptInUsageError")
     private fun showSubtitleTrackSelectionDialog() {
         resetControlsTimeout()
         val player = exoPlayer ?: return
@@ -559,19 +608,38 @@ class PlayerActivity : AppCompatActivity() {
                 val mediaTrackGroup = group.mediaTrackGroup
                 for (i in 0 until mediaTrackGroup.length) {
                     val format = mediaTrackGroup.getFormat(i)
-                    val lang = if (!format.language.isNullOrEmpty()) Locale(format.language!!).displayLanguage else "Track ${subTrackOptions.size}"
-                    val label = format.label ?: lang
+                    val lang = format.language?.lowercase() ?: ""
+                    val label = format.label?.lowercase() ?: ""
+                    val id = format.id?.lowercase() ?: ""
+
+                    val isForced = (format.selectionFlags and C.SELECTION_FLAG_FORCED) != 0 ||
+                            (format.roleFlags and C.ROLE_FLAG_FORCED_SUBTITLE) != 0 ||
+                            label.contains("forced") ||
+                            id.contains("forced")
+
+                    val isEnglish = lang == "en" || lang == "eng" || lang == "english" ||
+                            label.contains("english") || label.contains("en ") ||
+                            lang.isEmpty()
+
+                    // Filter out non-English subtitles unless forced
+                    if (!isForced && !isEnglish) {
+                        continue
+                    }
+
+                    val displayLang = if (!format.language.isNullOrEmpty()) Locale(format.language!!).displayLanguage else "Track ${subTrackOptions.size}"
+                    val forcedTag = if (isForced) " [Forced]" else ""
+                    val displayLabel = (format.label ?: displayLang) + forcedTag
                     val isSelected = !isTextDisabled && group.isTrackSelected(i)
                     val prefix = if (isSelected) "✓ " else "   "
 
                     subTrackOptions.add(Pair(group, i))
-                    optionLabels.add("$prefix$label (${format.sampleMimeType ?: "subtitle"})")
+                    optionLabels.add("$prefix$displayLabel (${format.sampleMimeType ?: "subtitle"})")
                 }
             }
         }
 
         if (optionLabels.size <= 1) {
-            Toast.makeText(this, "No subtitle tracks found.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "No English or forced subtitle tracks found.", Toast.LENGTH_SHORT).show()
             return
         }
 
