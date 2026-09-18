@@ -1,7 +1,6 @@
 {
-  "versionCode": 7,
-  "versionName": "1.0.6",
+  "versionCode": 8,
+  "versionName": "1.0.7",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.6 with restored native ExoPlayer player interface styled after web player, direct subtitle track selection dialog, and subtitle rendering improvements."
+  "releaseNotes": "BubbaFlix TV v1.0.7 with redesigned compact ExoPlayer controls, responsive seekbar scrubbing & D-Pad seeking, buffer track visualization, auto-activation of forced subtitles, and non-English subtitle filtering."
 }
-
