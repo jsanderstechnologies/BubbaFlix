@@ -287,11 +287,12 @@ class PlayerActivity : AppCompatActivity() {
         val dataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
             .setUserAgent("BubbaFlixTV/1.0 (Android TV Smart Client)")
 
-        val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
-
-        val isLiveStream = videoUrl.contains("/proxy/ts/") ||
-                videoUrl.contains("/live/") ||
-                videoUrl.endsWith(".ts")
+        val mediaType = intent.getStringExtra(EXTRA_MEDIA_TYPE) ?: ""
+        val isLiveStream = mediaType == "livetv" ||
+                mediaType == "channel" ||
+                videoUrl.contains("/proxy/ts/") ||
+                videoUrl.contains("/api/dispatcharr/") ||
+                videoUrl.contains("/live/")
 
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
@@ -325,7 +326,7 @@ class PlayerActivity : AppCompatActivity() {
                     .build()
 
                 val mediaItemBuilder = MediaItem.Builder().setUri(Uri.parse(videoUrl))
-                if (isLiveStream || videoUrl.contains("/proxy/ts/") || videoUrl.endsWith(".ts")) {
+                if (videoUrl.contains("/proxy/ts/") || videoUrl.endsWith(".ts")) {
                     mediaItemBuilder.setMimeType(MimeTypes.VIDEO_MP2T)
                 } else if (videoUrl.contains(".m3u8")) {
                     mediaItemBuilder.setMimeType(MimeTypes.APPLICATION_M3U8)
@@ -630,7 +631,13 @@ class PlayerActivity : AppCompatActivity() {
         val buffered = player.bufferedPosition
         val dur = player.duration
         val videoUrl = intent.getStringExtra(EXTRA_VIDEO_URL) ?: ""
-        val isLive = player.isCurrentMediaItemLive || (dur <= 0L && (videoUrl.contains("/proxy/ts/") || videoUrl.contains("/live/") || videoUrl.endsWith(".ts")))
+        val mediaType = intent.getStringExtra(EXTRA_MEDIA_TYPE) ?: ""
+        val isDispatcharrLive = mediaType == "livetv" ||
+                mediaType == "channel" ||
+                videoUrl.contains("/proxy/ts/") ||
+                videoUrl.contains("/api/dispatcharr/") ||
+                videoUrl.contains("/live/")
+        val isLive = player.isCurrentMediaItemLive || (isDispatcharrLive && (dur <= 0L || dur == C.TIME_UNSET))
 
         if (isLive) {
             val liveEdge = player.duration.coerceAtLeast(buffered.coerceAtLeast(current))
@@ -659,6 +666,8 @@ class PlayerActivity : AppCompatActivity() {
                 txtDuration.setTextColor(android.graphics.Color.parseColor("#4CAF50"))
             }
         } else {
+            txtDuration.setTextColor(android.graphics.Color.parseColor("#FFFFFF"))
+            txtDuration.setOnClickListener(null)
             if (dur > 0L && dur != C.TIME_UNSET) {
                 val progress = ((current * 1000) / dur).toInt()
                 val secondaryProgress = ((buffered * 1000) / dur).toInt()
