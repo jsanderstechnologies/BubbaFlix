@@ -864,7 +864,12 @@ class PlayerActivity : AppCompatActivity() {
             if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
                 resetControlsTimeout()
                 isUserSeeking = true
-                val step = if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) -10 else 10
+                val isRepeat = (event?.repeatCount ?: 0) > 0
+                val step = if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                    if (isRepeat) -20 else -10
+                } else {
+                    if (isRepeat) 20 else 10
+                }
                 val newProgress = (seekBar.progress + step).coerceIn(0, 1000)
                 seekBar.progress = newProgress
                 exoPlayer?.let { player ->
@@ -912,6 +917,15 @@ class PlayerActivity : AppCompatActivity() {
             }
         }
         return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        if (seekBar.isFocused && (keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT)) {
+            commitPendingSeek()
+            resetControlsTimeout()
+            return true
+        }
+        return super.onKeyUp(keyCode, event)
     }
 
     private var hasPromptedResume = false
