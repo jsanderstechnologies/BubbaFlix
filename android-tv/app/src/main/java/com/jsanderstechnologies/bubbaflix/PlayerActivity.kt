@@ -145,12 +145,7 @@ class PlayerActivity : AppCompatActivity() {
         val tmdbId = intent.getStringExtra(EXTRA_TMDB_ID)
         val mediaType = intent.getStringExtra(EXTRA_MEDIA_TYPE) ?: "movie"
 
-        if (!title.isNullOrEmpty()) {
-            txtPlayerTitle.text = cleanMediaTitle(title)
-            txtPlayerTitle.visibility = View.VISIBLE
-        } else {
-            txtPlayerTitle.visibility = View.GONE
-        }
+        txtPlayerTitle.visibility = View.GONE
 
         if (!logoUrl.isNullOrEmpty()) {
             loadLogoImage(logoUrl)
@@ -891,12 +886,12 @@ class PlayerActivity : AppCompatActivity() {
                 }
                 val focused = currentFocus
                 if (focused != null && focused != playerView && focused != controlsOverlay) {
-                    focused.performClick()
+                    return super.onKeyDown(keyCode, event)
                 } else {
                     btnPlayPause.requestFocus()
                     btnPlayPause.performClick()
+                    return true
                 }
-                return true
             }
             KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE -> {
                 btnPlayPause.performClick()

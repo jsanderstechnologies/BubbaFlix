@@ -1391,6 +1391,22 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     return;
   }
 
+  const getLocalVersionData = () => {
+    try {
+      const candidatePaths = [
+        path.resolve(process.cwd(), "version.json"),
+        path.resolve(__dirname, "..", "version.json"),
+        path.resolve(__dirname, "version.json"),
+        "/app/version.json"
+      ];
+      const vFile = candidatePaths.find((p) => fs.existsSync(p));
+      if (vFile) {
+        return JSON.parse(fs.readFileSync(vFile, "utf8"));
+      }
+    } catch (e) {}
+    return { versionCode: 9, versionName: "1.0.8" };
+  };
+
   // Version Check Proxy Endpoint
   if ((cleanPath === "/api/version" || cleanPath === "/version") && req.method === "GET") {
     const https = require("https");
@@ -1404,12 +1420,12 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
           sendJson(res, 200, parsed);
         } catch (e) {
           logMessage(`[Version Check Error] Failed to parse GitHub version.json: ${e.message}`, true);
-          sendJson(res, 200, { versionCode: 2, versionName: "1.0.1" });
+          sendJson(res, 200, getLocalVersionData());
         }
       });
     }).on("error", (vErr) => {
       logMessage(`[Version Check Network Error] Unable to fetch version.json from GitHub: ${vErr.message}`, true);
-      sendJson(res, 200, { versionCode: 2, versionName: "1.0.1" });
+      sendJson(res, 200, getLocalVersionData());
     });
     return;
   }
@@ -1498,12 +1514,10 @@ server.listen(PORT, "0.0.0.0", () => {
   const gpuInfo = detectGpuCapabilities();
   logMessage(`================================================================================`);
   logMessage(`[BubbaFlix Server] HTTP API & Transcoder listening on port ${PORT}`);
-  let serverVersion = "v1.0.3";
-  try {
-    const versionData = JSON.parse(fs.readFileSync(path.join(__dirname, "../version.json"), "utf8"));
-    serverVersion = versionData.versionName || serverVersion;
-  } catch (e) {}
-  logMessage(`[BubbaFlix Server] Version: v${serverVersion}`);
+  const localVersion = getLocalVersionData();
+  const serverVersionStr = localVersion.versionName || "1.0.8";
+  const formattedVersion = serverVersionStr.startsWith("v") ? serverVersionStr : `v${serverVersionStr}`;
+  logMessage(`[BubbaFlix Server] Version: ${formattedVersion}`);
   logMessage(`[CPU Hardware Topology] Model: ${cpuModel}`);
   logMessage(`[CPU Hardware Topology] Logical Cores / Hyperthreads: ${cpuCount}`);
   logMessage(`[CPU Hardware Topology] Libuv Threadpool Size (UV_THREADPOOL_SIZE): ${uvThreadPoolSize}`);
