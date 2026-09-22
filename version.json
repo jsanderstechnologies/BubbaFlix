@@ -1,6 +1,6 @@
 {
-  "versionCode": 9,
-  "versionName": "1.0.8",
+  "versionCode": 10,
+  "versionName": "1.0.9",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.8 with logo-only player header display, 1-click Audio & Subtitle track selection, locked progress bar D-Pad focus, and robust backend version logging."
+  "releaseNotes": "BubbaFlix TV v1.0.9 with English-only forced subtitle auto-selection, seamless ExoPlayer launch without web player flashing, and black adaptive launcher background."
 }

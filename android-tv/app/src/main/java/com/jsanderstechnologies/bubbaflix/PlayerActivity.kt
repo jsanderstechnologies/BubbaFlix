@@ -553,13 +553,18 @@ class PlayerActivity : AppCompatActivity() {
                 val mediaTrackGroup = group.mediaTrackGroup
                 for (i in 0 until mediaTrackGroup.length) {
                     val format = mediaTrackGroup.getFormat(i)
+                    val lang = format.language?.lowercase() ?: ""
                     val label = format.label?.lowercase() ?: ""
                     val id = format.id?.lowercase() ?: ""
                     val isForced = (format.selectionFlags and C.SELECTION_FLAG_FORCED) != 0 ||
                             label.contains("forced") ||
                             id.contains("forced")
 
-                    if (isForced) {
+                    val isEnglish = lang == "en" || lang == "eng" || lang == "english" ||
+                            label.contains("english") || label.contains("en ") ||
+                            lang.isEmpty()
+
+                    if (isForced && isEnglish) {
                         forcedGroup = group
                         forcedTrackIndex = i
                         break
@@ -614,8 +619,8 @@ class PlayerActivity : AppCompatActivity() {
                             label.contains("english") || label.contains("en ") ||
                             lang.isEmpty()
 
-                    // Filter out non-English subtitles unless forced
-                    if (!isForced && !isEnglish) {
+                    // Filter out non-English subtitles (forced subtitles must also be English only)
+                    if (!isEnglish) {
                         continue
                     }
 
@@ -632,7 +637,7 @@ class PlayerActivity : AppCompatActivity() {
         }
 
         if (optionLabels.size <= 1) {
-            Toast.makeText(this, "No English or forced subtitle tracks found.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "No English subtitle tracks found.", Toast.LENGTH_SHORT).show()
             return
         }
 

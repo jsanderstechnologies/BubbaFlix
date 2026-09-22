@@ -225,18 +225,20 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
               return { ...t, title: displayTitle };
             });
             
-            // Filter out non-English subtitles unless they are forced
+            // Filter out non-English subtitles (forced subtitles must also be English only)
             let filteredSubs = allSubs.filter(t => {
               const lang = (t.language || "").toLowerCase();
               const title = (t.title || "").toLowerCase();
-              const isForced = t.forced || title.includes("forced");
               const isEng = lang === "en" || lang === "eng" || lang === "english" || title.includes("english") || (!lang && !title);
-              return isForced || isEng;
+              return isEng;
             });
             
             setSubtitleTracks(filteredSubs);
 
-            const defaultForcedSub = filteredSubs.find(t => t.forced || (t.title && t.title.toLowerCase().includes('forced')));
+            const defaultForcedSub = filteredSubs.find(t => {
+              const title = (t.title || "").toLowerCase();
+              return t.forced || title.includes('forced');
+            });
             if (defaultForcedSub) {
               setSelectedSubtitleIndex(defaultForcedSub.index);
             } else {

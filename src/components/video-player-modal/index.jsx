@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import "movi-player";
 
@@ -80,8 +80,37 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
     }
   };
 
+  useLayoutEffect(() => {
+    if (show && typeof window !== "undefined" && window.AndroidPlayer && typeof window.AndroidPlayer.playStream === "function") {
+      const rawTargetUrl = rawUrl || videoUrl || streamUrl || "";
+      let directUrl = rawTargetUrl;
+      if (directUrl.includes("/api/transcode?url=")) {
+        const split = directUrl.split("?url=");
+        if (split.length > 1) {
+          try {
+            directUrl = decodeURIComponent(split[1]);
+          } catch (e) {
+            directUrl = split[1];
+          }
+        }
+      }
+      console.log("[VideoPlayerModal] Android TV client detected. Direct playing stream with ExoPlayer:", directUrl);
+      window.AndroidPlayer.playStream(
+        directUrl,
+        displayTitle || "",
+        fetchedLogo || channelLogo || "",
+        String(tmdbId || ""),
+        mediaType || "movie"
+      );
+      if (typeof setShow === "function") setShow(false);
+      if (typeof onClose === "function") onClose();
+    }
+  }, [show, videoUrl, rawUrl, streamUrl, displayTitle, fetchedLogo, channelLogo, tmdbId, mediaType]);
+
   useEffect(() => {
     if (show) {
+      if (typeof window !== "undefined" && window.AndroidPlayer) return;
+
       const rawTargetUrl = rawUrl || videoUrl || streamUrl || "";
       let directUrl = rawTargetUrl;
       if (directUrl.includes("/api/transcode?url=")) {
@@ -95,26 +124,10 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
         }
       }
 
-      if (window.AndroidPlayer && typeof window.AndroidPlayer.playStream === "function") {
-        console.log("[VideoPlayerModal] Android TV client detected. Direct playing stream with ExoPlayer:", directUrl);
-        window.AndroidPlayer.playStream(
-          directUrl,
-          displayTitle || "",
-          fetchedLogo || channelLogo || "",
-          String(tmdbId || ""),
-          mediaType || "movie"
-        );
-        if (typeof setShow === "function") setShow(false);
-        if (typeof onClose === "function") onClose();
-        return;
-      }
-
       document.body.classList.add("videoPlayerActive");
       document.documentElement.classList.add("videoPlayerActive");
       const targetUrl = getTranscodedStreamUrl(directUrl);
       setCurrentUrl(targetUrl);
-
-
 
       const handleMouseMove = () => {
         setShowControls(true);
@@ -193,7 +206,7 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
      }
   };
 
-  if (!show) return null;
+  if (!show || (typeof window !== "undefined" && window.AndroidPlayer)) return null;
 
 
   return createPortal(
