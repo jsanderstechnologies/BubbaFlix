@@ -371,22 +371,34 @@ class PlayerActivity : AppCompatActivity() {
                         val errDetails = error.message ?: error.cause?.message ?: "Unknown playback decoding error"
                         sendErrorToServerLog(errDetails, error.errorCodeName, videoUrl)
 
-                        val isDecoderOrFormatError = (error.message?.contains("MediaCodecAudioRenderer", ignoreCase = true) == true) ||
-                                (error.message?.contains("mp4a-latm", ignoreCase = true) == true) ||
-                                (error.message?.contains("AudioTrack", ignoreCase = true) == true) ||
-                                (error.message?.contains("Codec", ignoreCase = true) == true) ||
-                                (error.message?.contains("format_supported=YES", ignoreCase = true) == true) ||
-                                error.errorCodeName.contains("CONTAINER", ignoreCase = true) ||
-                                error.errorCodeName.contains("PARSING", ignoreCase = true) ||
-                                error.errorCodeName.contains("UNSUPPORTED", ignoreCase = true)
+                        val errMsg = (error.message ?: "") + " " + (error.cause?.message ?: "")
+                        val errName = error.errorCodeName.uppercase(Locale.ROOT)
+
+                        val isDecoderOrFormatError = errMsg.contains("MediaCodecAudioRenderer", ignoreCase = true) ||
+                                errMsg.contains("MediaCodecVideoRenderer", ignoreCase = true) ||
+                                errMsg.contains("mp4a-latm", ignoreCase = true) ||
+                                errMsg.contains("AudioTrack", ignoreCase = true) ||
+                                errMsg.contains("Codec", ignoreCase = true) ||
+                                errMsg.contains("format_supported=YES", ignoreCase = true) ||
+                                errMsg.contains("eac3", ignoreCase = true) ||
+                                errMsg.contains("ac3", ignoreCase = true) ||
+                                errMsg.contains("dts", ignoreCase = true) ||
+                                errMsg.contains("truehd", ignoreCase = true) ||
+                                errName.contains("DECODING") ||
+                                errName.contains("DECODER") ||
+                                errName.contains("CONTAINER") ||
+                                errName.contains("PARSING") ||
+                                errName.contains("UNSUPPORTED")
 
                         if (!hasRetriedWithFallback && (isLiveStream || isDecoderOrFormatError)) {
                             hasRetriedWithFallback = true
                             if (isDecoderOrFormatError && !videoUrl.contains("/api/transcode")) {
-                                val baseUrl = videoUrl.substringBefore("/api/dispatcharr").substringBefore("/api/channels")
-                                val transcodeUrl = "$baseUrl/api/transcode?url=${Uri.encode(videoUrl)}"
+                                val serverBase = getServerBaseUrl()
+                                val transcodeUrl = "$serverBase/api/transcode?url=${Uri.encode(videoUrl)}"
+                                Log.d("PlayerActivity", "Decoder error ($errName). Auto-falling back to server transcode: $transcodeUrl")
                                 val fallbackItem = MediaItem.Builder()
                                     .setUri(Uri.parse(transcodeUrl))
+                                    .setMimeType(MimeTypes.APPLICATION_M3U8)
                                     .build()
                                 setMediaItem(fallbackItem)
                                 prepare()
@@ -412,11 +424,16 @@ class PlayerActivity : AppCompatActivity() {
         handler.post(updateProgressRunnable)
     }
 
+    private fun getServerBaseUrl(): String {
+        val prefs = getSharedPreferences("BubbaFlixTVPrefs", Context.MODE_PRIVATE)
+        val url = prefs.getString("server_url", "https://bubbaflix.sanders-technologies.net") ?: "https://bubbaflix.sanders-technologies.net"
+        return url.replace(Regex("""/+$"""), "")
+    }
+
     private fun sendErrorToServerLog(errorMsg: String, errorCode: String, urlStr: String) {
         try {
-            val prefs = getSharedPreferences("BubbaFlixTVPrefs", Context.MODE_PRIVATE)
-            val serverBase = prefs.getString("server_url", "https://bubbaflix.sanders-technologies.net") ?: "https://bubbaflix.sanders-technologies.net"
-            val logEndpoint = "${serverBase.replace(Regex("""/+$"""), "")}/api/log"
+            val serverBase = getServerBaseUrl()
+            val logEndpoint = "$serverBase/api/log"
 
             val title = intent.getStringExtra(EXTRA_TITLE) ?: ""
 
