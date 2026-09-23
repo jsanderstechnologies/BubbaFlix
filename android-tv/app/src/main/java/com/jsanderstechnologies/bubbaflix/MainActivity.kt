@@ -134,10 +134,10 @@ class MainActivity : AppCompatActivity() {
         if (savedUrl.isNullOrEmpty()) {
             promptForServerUrl()
         } else {
-            loadBubbaFlix(savedUrl)
+            UpdateManager.checkForUpdates(this, onContinueLoading = {
+                loadBubbaFlix(savedUrl)
+            })
         }
-
-        UpdateManager.checkForUpdates(this)
     }
 
     @SuppressLint("SetJavaScriptEnabled")

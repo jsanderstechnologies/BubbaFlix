@@ -12,14 +12,19 @@ import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 object UpdateManager {
 
     private const val TAG = "BubbaFlixUpdateManager"
     private const val VERSION_CHECK_URL = "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/version.json"
 
-    fun checkForUpdates(activity: Activity) {
-        val client = OkHttpClient.Builder().build()
+    fun checkForUpdates(activity: Activity, onContinueLoading: (() -> Unit)? = null) {
+        val client = OkHttpClient.Builder()
+            .connectTimeout(3, TimeUnit.SECONDS)
+            .readTimeout(3, TimeUnit.SECONDS)
+            .build()
+
         val cacheBusterUrl = "$VERSION_CHECK_URL?t=${System.currentTimeMillis()}"
         val request = Request.Builder()
             .url(cacheBusterUrl)
@@ -30,11 +35,17 @@ object UpdateManager {
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 Log.w(TAG, "Failed to check for updates from GitHub: ${e.message}")
+                activity.runOnUiThread {
+                    onContinueLoading?.invoke()
+                }
             }
 
             override fun onResponse(call: Call, response: Response) {
                 if (!response.isSuccessful) {
                     Log.w(TAG, "GitHub version check returned non-200 code: ${response.code}")
+                    activity.runOnUiThread {
+                        onContinueLoading?.invoke()
+                    }
                     return
                 }
 
@@ -56,19 +67,47 @@ object UpdateManager {
 
                         if (remoteVersionCode > localVersionCode && apkUrl.isNotEmpty()) {
                             activity.runOnUiThread {
-                                showUpdatePromptDialog(activity, remoteVersionName, releaseNotes, apkUrl)
+                                showUpdatePromptDialog(activity, remoteVersionName, releaseNotes, apkUrl, onContinueLoading)
+                            }
+                        } else {
+                            activity.runOnUiThread {
+                                onContinueLoading?.invoke()
                             }
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "Error parsing version.json from GitHub", e)
+                        activity.runOnUiThread {
+                            onContinueLoading?.invoke()
+                        }
+                    }
+                } else {
+                    activity.runOnUiThread {
+                        onContinueLoading?.invoke()
                     }
                 }
             }
         })
     }
 
-    private fun showUpdatePromptDialog(activity: Activity, versionName: String, releaseNotes: String, apkUrl: String) {
-        if (activity.isFinishing || activity.isDestroyed) return
+    private fun showUpdatePromptDialog(
+        activity: Activity,
+        versionName: String,
+        releaseNotes: String,
+        apkUrl: String,
+        onContinueLoading: (() -> Unit)?
+    ) {
+        if (activity.isFinishing || activity.isDestroyed) {
+            onContinueLoading?.invoke()
+            return
+        }
+
+        var continueCalled = false
+        fun triggerContinue() {
+            if (!continueCalled) {
+                continueCalled = true
+                onContinueLoading?.invoke()
+            }
+        }
 
         val builder = AlertDialog.Builder(activity)
         builder.setTitle("🚀 BubbaFlix TV Update Available (v$versionName)")
@@ -76,11 +115,18 @@ object UpdateManager {
 
         builder.setPositiveButton("Yes") { dialog, _ ->
             dialog.dismiss()
-            downloadAndInstallApk(activity, apkUrl)
+            downloadAndInstallApk(activity, apkUrl, onContinueLoading = {
+                triggerContinue()
+            })
         }
 
         builder.setNegativeButton("No") { dialog, _ ->
             dialog.dismiss()
+            triggerContinue()
+        }
+
+        builder.setOnDismissListener {
+            triggerContinue()
         }
 
         builder.setCancelable(true)
@@ -91,7 +137,11 @@ object UpdateManager {
     }
 
     @Suppress("DEPRECATION")
-    private fun downloadAndInstallApk(activity: Activity, apkUrl: String) {
+    private fun downloadAndInstallApk(
+        activity: Activity,
+        apkUrl: String,
+        onContinueLoading: (() -> Unit)?
+    ) {
         val progressDialog = ProgressDialog(activity).apply {
             setTitle("Downloading BubbaFlix Update")
             setMessage("Downloading latest APK from GitHub... Please wait.")
@@ -115,6 +165,7 @@ object UpdateManager {
                 activity.runOnUiThread {
                     progressDialog.dismiss()
                     Toast.makeText(activity, "Failed to download update: ${e.message}", Toast.LENGTH_LONG).show()
+                    onContinueLoading?.invoke()
                 }
             }
 
@@ -123,11 +174,18 @@ object UpdateManager {
                     activity.runOnUiThread {
                         progressDialog.dismiss()
                         Toast.makeText(activity, "Download failed (Server code ${response.code})", Toast.LENGTH_LONG).show()
+                        onContinueLoading?.invoke()
                     }
                     return
                 }
 
-                val body = response.body ?: return
+                val body = response.body ?: run {
+                    activity.runOnUiThread {
+                        progressDialog.dismiss()
+                        onContinueLoading?.invoke()
+                    }
+                    return
+                }
                 val contentLength = body.contentLength()
                 val apkFile = File(activity.cacheDir, "BubbaFlix_Update.apk")
 
@@ -156,11 +214,13 @@ object UpdateManager {
                     activity.runOnUiThread {
                         progressDialog.dismiss()
                         installApk(activity, apkFile)
+                        onContinueLoading?.invoke()
                     }
                 } catch (e: Exception) {
                     activity.runOnUiThread {
                         progressDialog.dismiss()
                         Toast.makeText(activity, "Error saving update file: ${e.message}", Toast.LENGTH_LONG).show()
+                        onContinueLoading?.invoke()
                     }
                 }
             }
