@@ -92,11 +92,11 @@ const SplashScreen = ({ onComplete }) => {
       }
 
       const master = ctx.createGain();
-      master.gain.value = 0.32;
+      master.gain.value = 0.48;
       master.connect(ctx.destination);
 
       const reverbGain = ctx.createGain();
-      reverbGain.gain.value = 0.40;
+      reverbGain.gain.value = 0.50;
       const convolver = ctx.createConvolver();
       convolver.buffer = createReverbImpulse(ctx, 2.5, 2.2);
       reverbGain.connect(convolver);
