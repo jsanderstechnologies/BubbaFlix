@@ -1,6 +1,6 @@
 {
-  "versionCode": 10,
-  "versionName": "1.0.9",
+  "versionCode": 11,
+  "versionName": "1.0.10",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.9 with English-only forced subtitle auto-selection, seamless ExoPlayer launch without web player flashing, and black adaptive launcher background."
+  "releaseNotes": "BubbaFlix TV v1.0.10 with robust ExoPlayer MediaCodec audio decoding failure handling (E-AC3/DDP5.1, AC3, DTS, TrueHD) and automatic server transcode fallback for direct CDN streams."
 }
