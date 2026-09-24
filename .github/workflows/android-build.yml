@@ -42,3 +42,4 @@ jobs:
         with:
           commit_message: "Auto-compile updated BubbaFlixTV.apk"
           file_pattern: "BubbaFlixTV.apk"
+          push_options: '--force'
