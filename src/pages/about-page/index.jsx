@@ -250,11 +250,7 @@ const AboutPage = () => {
                 </div>
                 <div className="specItem">
                   <span className="specLabel">Universal Native Player</span>
-                  <span className="specValue">Android ExoPlayer + LoudnessEnhancer (v1.0.2+)</span>
-                </div>
-                <div className="specItem">
-                  <span className="specLabel">Audio Normalization</span>
-                  <span className="specValue">Active (+1.5 dB Loudness DSP)</span>
+                  <span className="specValue">Android ExoPlayer (Native)</span>
                 </div>
 
                 <div className="specItem">

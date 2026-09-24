@@ -5,8 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
-import android.media.audiofx.DynamicsProcessing
-import android.media.audiofx.LoudnessEnhancer
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -340,10 +338,6 @@ class PlayerActivity : AppCompatActivity() {
                         autoSelectForcedSubtitles(tracks)
                     }
 
-                    override fun onAudioSessionIdChanged(audioSessionId: Int) {
-                        setupAudioNormalization(audioSessionId)
-                    }
-
                     override fun onPlaybackStateChanged(state: Int) {
                         if (state == Player.STATE_ENDED) {
                             finish()
@@ -355,9 +349,6 @@ class PlayerActivity : AppCompatActivity() {
                                 if (playWhenReady) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
                             )
                             checkAndPromptResume()
-                            if (exoPlayer != null) {
-                                setupAudioNormalization(exoPlayer!!.audioSessionId)
-                            }
                         }
                     }
 
@@ -991,54 +982,6 @@ class PlayerActivity : AppCompatActivity() {
         }
     }
 
-    private var loudnessEnhancer: android.media.audiofx.LoudnessEnhancer? = null
-    private var dynamicsProcessing: android.media.audiofx.DynamicsProcessing? = null
-
-    private fun setupAudioNormalization(audioSessionId: Int) {
-        if (audioSessionId == androidx.media3.common.C.AUDIO_SESSION_ID_UNSET || audioSessionId == 0) return
-
-        try {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-                if (dynamicsProcessing == null) {
-                    val builder = android.media.audiofx.DynamicsProcessing.Config.Builder(
-                        android.media.audiofx.DynamicsProcessing.VARIANT_FAVOR_FREQUENCY_RESOLUTION,
-                        2,
-                        false, 0,
-                        false, 0,
-                        false, 0,
-                        true
-                    )
-
-                    // Dynamic Range Compression (Night Mode): Softens loud parts (explosions) and allows turning up volume for dialog
-                    val limiter = android.media.audiofx.DynamicsProcessing.Limiter(
-                        true, true, 0, 
-                        1.0f, 60.0f, 
-                        10.0f, 
-                        -15.0f, 
-                        5.0f
-                    )
-
-                    builder.setLimiterByChannelIndex(0, limiter)
-                    builder.setLimiterByChannelIndex(1, limiter)
-
-                    dynamicsProcessing = android.media.audiofx.DynamicsProcessing(0, audioSessionId, builder.build())
-                    dynamicsProcessing?.enabled = true
-                }
-            } else {
-                if (loudnessEnhancer == null) {
-                    loudnessEnhancer = android.media.audiofx.LoudnessEnhancer(audioSessionId).apply {
-                        setTargetGain(1500)
-                        enabled = true
-                    }
-                }
-            }
-        } catch (e: Throwable) {
-            Log.w("PlayerActivity", "Audio normalization setup failed: ${e.message}")
-            dynamicsProcessing = null
-            loudnessEnhancer = null
-        }
-    }
-
     override fun onPause() {
         super.onPause()
         saveCurrentWatchProgress()
@@ -1049,16 +992,6 @@ class PlayerActivity : AppCompatActivity() {
         saveCurrentWatchProgress()
         handler.removeCallbacks(updateProgressRunnable)
         handler.removeCallbacks(hideControlsRunnable)
-
-        try {
-            loudnessEnhancer?.release()
-        } catch (e: Throwable) {}
-        loudnessEnhancer = null
-
-        try {
-            dynamicsProcessing?.release()
-        } catch (e: Throwable) {}
-        dynamicsProcessing = null
 
         exoPlayer?.release()
         exoPlayer = null
