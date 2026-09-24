@@ -1,6 +1,7 @@
 import axios from "axios";
 import { getServerUrl } from "./serverSettings";
 import versionData from "../../version.json";
+import { clearAllShowProgress } from "./watchProgress";
 
 const simklAxios = axios.create();
 
@@ -249,9 +250,36 @@ export const toggleSimklWatched = async ({ tmdbId, title, mediaType, seasonNum, 
       cache.episodes[`${idStr}_s${seasonNum}_e${ep}`] = newStatus;
     }
   } else if (mediaType === "movie") {
-    cache.movies[idStr] = newStatus;
+    if (newStatus) {
+      cache.movies[idStr] = true;
+    } else {
+      delete cache.movies[idStr];
+    }
   } else if (mediaType === "tv") {
-    cache.shows[idStr] = newStatus;
+    if (newStatus) {
+      cache.shows[idStr] = true;
+      for (let s = 1; s <= 25; s++) {
+        cache.seasons[`${idStr}_s${s}`] = true;
+        for (let e = 1; e <= 30; e++) {
+          cache.episodes[`${idStr}_s${s}_e${e}`] = true;
+        }
+      }
+    } else {
+      delete cache.shows[idStr];
+      Object.keys(cache.seasons || {}).forEach((k) => {
+        if (k.startsWith(`${idStr}_s`)) {
+          delete cache.seasons[k];
+        }
+      });
+      Object.keys(cache.episodes || {}).forEach((k) => {
+        if (k.startsWith(`${idStr}_s`)) {
+          delete cache.episodes[k];
+        }
+      });
+      try {
+        clearAllShowProgress(tmdbId);
+      } catch (e) {}
+    }
   }
 
   saveSimklWatchCache(cache);
