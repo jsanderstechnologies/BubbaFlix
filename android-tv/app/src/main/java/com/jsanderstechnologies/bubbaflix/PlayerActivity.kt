@@ -907,9 +907,15 @@ class PlayerActivity : AppCompatActivity() {
                 return true
             }
             KeyEvent.KEYCODE_BACK, 4, 27, 10009, 461 -> {
-                saveCurrentWatchProgress()
-                finish()
-                return true
+                if (controlsVisible) {
+                    hideControls()
+                    handler.removeCallbacks(hideControlsRunnable)
+                    return true
+                } else {
+                    saveCurrentWatchProgress()
+                    finish()
+                    return true
+                }
             }
         }
         return super.onKeyDown(keyCode, event)

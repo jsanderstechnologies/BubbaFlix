@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import "./index.scss";
 
@@ -7,6 +7,29 @@ const VideoModal = ({ show, setShow, videoId, setVideoId }) => {
 		setShow(false);
 		setVideoId(null);
 	};
+
+	useEffect(() => {
+		if (!show) return;
+
+		document.body.classList.add("videoPlayerActive");
+
+		const handleKeyDown = (e) => {
+			const key = e.key;
+			const code = e.keyCode;
+			if (key === "Escape" || key === "Back" || code === 27 || code === 8 || code === 4 || code === 10009 || code === 461) {
+				e.preventDefault();
+				e.stopPropagation();
+				hidePopup();
+			}
+		};
+
+		window.addEventListener("keydown", handleKeyDown, true);
+
+		return () => {
+			document.body.classList.remove("videoPlayerActive");
+			window.removeEventListener("keydown", handleKeyDown, true);
+		};
+	}, [show]);
 
 	if (!show) return null;
 

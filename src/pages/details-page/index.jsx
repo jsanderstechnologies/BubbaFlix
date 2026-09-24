@@ -21,12 +21,6 @@ const DetailsPage = () => {
 	const title = detailsData?.title || detailsData?.name;
 
 	useEffect(() => {
-		if (!loading && !creditsLoading) {
-			setTimeout(restoreLastFocusedPoster, 200);
-		}
-	}, [loading, creditsLoading]);
-
-	useEffect(() => {
 		document.body.classList.add("detailsPageActive");
 		const handleDetailsKeyDown = (e) => {
 			const key = e.key;
