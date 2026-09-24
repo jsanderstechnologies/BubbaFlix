@@ -374,28 +374,12 @@ class PlayerActivity : AppCompatActivity() {
                         val errMsg = (error.message ?: "") + " " + (error.cause?.message ?: "")
                         val errName = error.errorCodeName.uppercase(Locale.ROOT)
 
-                        val isDecoderOrFormatError = errMsg.contains("MediaCodecAudioRenderer", ignoreCase = true) ||
-                                errMsg.contains("MediaCodecVideoRenderer", ignoreCase = true) ||
-                                errMsg.contains("mp4a-latm", ignoreCase = true) ||
-                                errMsg.contains("AudioTrack", ignoreCase = true) ||
-                                errMsg.contains("Codec", ignoreCase = true) ||
-                                errMsg.contains("format_supported=YES", ignoreCase = true) ||
-                                errMsg.contains("eac3", ignoreCase = true) ||
-                                errMsg.contains("ac3", ignoreCase = true) ||
-                                errMsg.contains("dts", ignoreCase = true) ||
-                                errMsg.contains("truehd", ignoreCase = true) ||
-                                errName.contains("DECODING") ||
-                                errName.contains("DECODER") ||
-                                errName.contains("CONTAINER") ||
-                                errName.contains("PARSING") ||
-                                errName.contains("UNSUPPORTED")
-
-                        if (!hasRetriedWithFallback && (isLiveStream || isDecoderOrFormatError)) {
+                        if (!hasRetriedWithFallback) {
                             hasRetriedWithFallback = true
-                            if (isDecoderOrFormatError && !videoUrl.contains("/api/transcode")) {
+                            if (!videoUrl.contains("/api/transcode")) {
                                 val serverBase = getServerBaseUrl()
                                 val transcodeUrl = "$serverBase/api/transcode?url=${Uri.encode(videoUrl)}"
-                                Log.d("PlayerActivity", "Decoder error ($errName). Auto-falling back to server transcode: $transcodeUrl")
+                                Log.d("PlayerActivity", "Playback error ($errName: $errMsg). Falling back to server transcode: $transcodeUrl")
                                 val fallbackItem = MediaItem.Builder()
                                     .setUri(Uri.parse(transcodeUrl))
                                     .setMimeType(MimeTypes.APPLICATION_M3U8)
@@ -404,17 +388,17 @@ class PlayerActivity : AppCompatActivity() {
                                 prepare()
                                 playWhenReady = true
                                 return
+                            } else if (isLiveStream) {
+                                val fallbackMime = if (videoUrl.contains(".m3u8")) MimeTypes.APPLICATION_M3U8 else MimeTypes.VIDEO_MP2T
+                                val fallbackItem = MediaItem.Builder()
+                                    .setUri(Uri.parse(videoUrl))
+                                    .setMimeType(fallbackMime)
+                                    .build()
+                                setMediaItem(fallbackItem)
+                                prepare()
+                                playWhenReady = true
+                                return
                             }
-
-                            val fallbackMime = if (videoUrl.contains(".m3u8")) MimeTypes.APPLICATION_M3U8 else MimeTypes.VIDEO_MP2T
-                            val fallbackItem = MediaItem.Builder()
-                                .setUri(Uri.parse(videoUrl))
-                                .setMimeType(fallbackMime)
-                                .build()
-                            setMediaItem(fallbackItem)
-                            prepare()
-                            playWhenReady = true
-                            return
                         }
                         showError("Stream error: ${error.message ?: "Failed to decode stream format"}")
                     }
@@ -561,49 +545,53 @@ class PlayerActivity : AppCompatActivity() {
 
     @SuppressLint("UnsafeOptInUsageError")
     private fun autoSelectForcedSubtitles(tracks: Tracks) {
-        val player = exoPlayer ?: return
-        var forcedGroup: Tracks.Group? = null
-        var forcedTrackIndex = -1
+        try {
+            val player = exoPlayer ?: return
+            var forcedGroup: Tracks.Group? = null
+            var forcedTrackIndex = -1
 
-        for (group in tracks.groups) {
-            if (group.type == C.TRACK_TYPE_TEXT) {
-                val mediaTrackGroup = group.mediaTrackGroup
-                for (i in 0 until mediaTrackGroup.length) {
-                    val format = mediaTrackGroup.getFormat(i)
-                    val lang = format.language?.lowercase() ?: ""
-                    val label = format.label?.lowercase() ?: ""
-                    val id = format.id?.lowercase() ?: ""
-                    val isForced = (format.selectionFlags and C.SELECTION_FLAG_FORCED) != 0 ||
-                            label.contains("forced") ||
-                            id.contains("forced")
+            for (group in tracks.groups) {
+                if (group.type == C.TRACK_TYPE_TEXT) {
+                    val mediaTrackGroup = group.mediaTrackGroup
+                    for (i in 0 until mediaTrackGroup.length) {
+                        val format = mediaTrackGroup.getFormat(i)
+                        val lang = format.language?.lowercase() ?: ""
+                        val label = format.label?.lowercase() ?: ""
+                        val id = format.id?.lowercase() ?: ""
+                        val isForced = (format.selectionFlags and C.SELECTION_FLAG_FORCED) != 0 ||
+                                label.contains("forced") ||
+                                id.contains("forced")
 
-                    val isEnglish = lang == "en" || lang == "eng" || lang == "english" ||
-                            label.contains("english") || label.contains("en ") ||
-                            lang.isEmpty()
+                        val isEnglish = lang == "en" || lang == "eng" || lang == "english" ||
+                                label.contains("english") || label.contains("en ") ||
+                                lang.isEmpty()
 
-                    if (isForced && isEnglish) {
-                        forcedGroup = group
-                        forcedTrackIndex = i
-                        break
+                        if (isForced && isEnglish) {
+                            forcedGroup = group
+                            forcedTrackIndex = i
+                            break
+                        }
                     }
                 }
+                if (forcedGroup != null) break
             }
-            if (forcedGroup != null) break
-        }
 
-        val builder = player.trackSelectionParameters.buildUpon()
-        if (forcedGroup != null) {
-            builder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
-            builder.setOverrideForType(
-                TrackSelectionOverride(forcedGroup.mediaTrackGroup, forcedTrackIndex)
-            )
-            btnSubtitles.setTextColor(android.graphics.Color.parseColor("#E50914"))
-            Log.d("PlayerActivity", "Auto-enabled forced subtitle track")
-        } else {
-            builder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
-            btnSubtitles.setTextColor(android.graphics.Color.parseColor("#FFFFFF"))
+            val builder = player.trackSelectionParameters.buildUpon()
+            if (forcedGroup != null) {
+                builder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                builder.setOverrideForType(
+                    TrackSelectionOverride(forcedGroup.mediaTrackGroup, forcedTrackIndex)
+                )
+                btnSubtitles.setTextColor(android.graphics.Color.parseColor("#E50914"))
+                Log.d("PlayerActivity", "Auto-enabled forced subtitle track")
+            } else {
+                builder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+                btnSubtitles.setTextColor(android.graphics.Color.parseColor("#FFFFFF"))
+            }
+            player.trackSelectionParameters = builder.build()
+        } catch (e: Throwable) {
+            Log.w("PlayerActivity", "autoSelectForcedSubtitles failed gracefully: ${e.message}")
         }
-        player.trackSelectionParameters = builder.build()
     }
 
     @SuppressLint("UnsafeOptInUsageError")
@@ -1044,8 +1032,10 @@ class PlayerActivity : AppCompatActivity() {
                     }
                 }
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
+        } catch (e: Throwable) {
+            Log.w("PlayerActivity", "Audio normalization setup failed: ${e.message}")
+            dynamicsProcessing = null
+            loudnessEnhancer = null
         }
     }
 
@@ -1062,10 +1052,13 @@ class PlayerActivity : AppCompatActivity() {
 
         try {
             loudnessEnhancer?.release()
-            loudnessEnhancer = null
+        } catch (e: Throwable) {}
+        loudnessEnhancer = null
+
+        try {
             dynamicsProcessing?.release()
-            dynamicsProcessing = null
-        } catch (e: Exception) {}
+        } catch (e: Throwable) {}
+        dynamicsProcessing = null
 
         exoPlayer?.release()
         exoPlayer = null
