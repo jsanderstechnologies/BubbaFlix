@@ -177,3 +177,69 @@ export const filterEnglishCollections = (items) => {
     return true;
   });
 };
+
+const EXPLICIT_NON_ENGLISH_AUDIO_REGEX = /\b(truefrench|vostfr|french|vf|castellano|latino|spanish|spa|german|deutsch|ger|ita|italian|italiano|russian|rus|pol|polish|hindi|hin|telugu|tamil|punjabi|japanese|jpn|chinese|chi|korean|kor|dubbed|dublado)\b/i;
+const ENGLISH_AUDIO_KEYWORDS = /\b(eng|english|multi|dual|subs?|subbed)\b/i;
+
+export const isEnglishStreamTitle = (stream) => {
+  if (!stream) return false;
+  const titleText = `${stream.title || ""} ${stream.name || ""} ${stream.metaText || ""}`;
+
+  // 1. Reject non-Latin foreign character scripts
+  if (FOREIGN_SCRIPT_REGEX.test(titleText)) {
+    return false;
+  }
+
+  // 2. Reject explicit non-English audio/dub tags unless English audio is explicitly listed
+  if (EXPLICIT_NON_ENGLISH_AUDIO_REGEX.test(titleText)) {
+    if (!ENGLISH_AUDIO_KEYWORDS.test(titleText)) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
+export const isMatchingStreamTitle = (stream, expectedTitle, mediaType, seasonNum, episodeNum) => {
+  if (!stream || !expectedTitle) return true;
+  const titleText = `${stream.title || ""} ${stream.name || ""}`.toLowerCase().replace(/[._\-\:\,\(\)\[\]]+/g, " ");
+
+  const cleanExpected = expectedTitle.toLowerCase().replace(/[^a-z0-9\s]+/g, " ");
+  const stopWords = new Set(["the", "a", "an", "and", "or", "of", "in", "on", "for", "to", "with", "at", "by", "from"]);
+  
+  const expectedKeywords = cleanExpected
+    .split(/\s+/)
+    .filter((w) => w.length > 1 && !stopWords.has(w));
+
+  if (expectedKeywords.length === 0) return true;
+
+  // 1. Check title keyword matching
+  const matchCount = expectedKeywords.filter((kw) => titleText.includes(kw)).length;
+  
+  if (expectedKeywords.length <= 2) {
+    if (matchCount < expectedKeywords.length) {
+      return false;
+    }
+  } else {
+    if (matchCount / expectedKeywords.length < 0.6) {
+      return false;
+    }
+  }
+
+  // 2. TV Season & Episode check
+  if (mediaType === "tv" || seasonNum !== undefined || episodeNum !== undefined) {
+    const s = seasonNum || 1;
+    const e = episodeNum || 1;
+
+    const otherSeasonMatch = titleText.match(/\bs(\d{1,2})e(\d{1,2})\b/i) || titleText.match(/\b(\d{1,2})x(\d{1,2})\b/i);
+    if (otherSeasonMatch) {
+      const foundS = parseInt(otherSeasonMatch[1], 10);
+      const foundE = parseInt(otherSeasonMatch[2], 10);
+      if (foundS !== s || foundE !== e) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+};

@@ -25,9 +25,11 @@ export const filterWithGroqAI = async (results, expectedTitle) => {
 
   const titlesList = results.map((r, i) => `${i + 1}. ${r.title}`).join("\n");
 
-  const prompt = `You are a stream safety & quality classifier for media title: "${expectedTitle}".
-Review the following list of torrent/stream file titles and return ONLY the numbers of titles that are legitimate video releases (movies or TV episodes) specifically for "${expectedTitle}".
+  const prompt = `You are a stream safety, language & quality classifier for media title: "${expectedTitle}".
+Review the following list of torrent/stream file titles and return ONLY the numbers of titles that are legitimate, English-language video releases (movies or TV episodes) specifically for "${expectedTitle}".
 STRICTLY EXCLUDE:
+- Any file where the movie or TV show title does NOT match "${expectedTitle}".
+- Any file where the filename or title is in a non-English foreign language (e.g. Russian, French, German, Spanish, Italian, Hindi, Japanese, Chinese, etc.) or dubbed in a foreign language without English audio.
 - Any low quality or theater recordings such as CAM, CAMRIP, HDCAM, TS, TELESYNC, TELECINE, TC, WORKPRINT, HD-TS, SCREENER, DVDSCR, or line audio.
 - Any unrelated movies, documentaries, sports specials, or spin-offs that happen to contain matching words in their title (e.g. exclude "The Bus: A French Football Mutiny" when searching for "Mutiny").
 - Any porn, adult content, XXX, or erotica.

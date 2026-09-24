@@ -7,7 +7,7 @@ import ContentWrapper from "../../../components/content-wrapper";
 import Spinner from "../../../components/spinner";
 import VideoPlayerModal from "../../../components/video-player-modal";
 import { FiPlay, FiChevronDown, FiChevronUp, FiAlertCircle, FiExternalLink, FiCloud } from "react-icons/fi";
-import "./index.scss";
+import { isEnglishStreamTitle, isMatchingStreamTitle } from "../../../utils/filterUtils";
 
 const isHevcOrX265Stream = (item) => {
   if (!item) return false;
@@ -155,9 +155,15 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
     // Note: HEVC / x265 codec streams are allowed so the user can test transcoding.
     // The player's automatic fallback triggers backend transcode if direct playback fails.
 
-    // Apply Resolution & Quality Filtering
+    // Apply Resolution, English Language & Title Matching Filtering
     finalStreams = finalStreams.filter((item) => {
       if (excludeLowQuality && isLowQualityCamRelease(item)) {
+        return false;
+      }
+      if (!isEnglishStreamTitle(item)) {
+        return false;
+      }
+      if (!isMatchingStreamTitle(item, title, mediaType || (seasonNum !== undefined ? "tv" : "movie"), seasonNum, episodeNum)) {
         return false;
       }
       const itemRes = parseStreamResolution(item);
