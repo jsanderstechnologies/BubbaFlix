@@ -149,7 +149,7 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
 
     const isLowQualityCamRelease = (item) => {
       const fullStr = `${item.title || ""} ${item.name || ""} ${item.metaText || ""}`;
-      return /\b(hdcam|camrip|cam|telesync|tele-sync|hd-ts|hdts|workprint|screener|dvdscr)\b/i.test(fullStr);
+      return /\b(hdcam|camrip|cam|telesync|tele-sync|hd-ts|hdts|telecine|tc|workprint|screener|dvdscr|dvd-scr|r6|line)\b/i.test(fullStr);
     };
 
     // Note: HEVC / x265 codec streams are allowed so the user can test transcoding.
@@ -163,6 +163,16 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
       const itemRes = parseStreamResolution(item);
       return allowedResolutions.includes(itemRes);
     });
+
+    // Apply Groq AI Stream Classifier Filter
+    if (excludeLowQuality && finalStreams.length > 0 && title) {
+      try {
+        const { filterWithGroqAI } = await import("../../../utils/groqFilter");
+        finalStreams = await filterWithGroqAI(finalStreams, title);
+      } catch (e) {
+        console.warn("[MagnetSection] Groq AI stream filter error:", e);
+      }
+    }
 
     setStreams(finalStreams);
   };

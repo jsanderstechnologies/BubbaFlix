@@ -730,8 +730,8 @@ const SettingsPage = () => {
                   <span className="toggleSwitch" />
                   <span className="toggleLabel">
                     {excludeLowQuality
-                      ? "Strictly Exclude CAM, HDCAM, Telesync, and HDTS Releases (Recommended)"
-                      : "Allow CAM and Low-Quality Releases"}
+                      ? "Strictly Exclude CAM, HDCAM, Telesync, Telecine, and Low-Quality Releases (Groq AI Enabled)"
+                      : "Allow CAM, Telecine, and Low-Quality Releases"}
                   </span>
                 </div>
               </div>
