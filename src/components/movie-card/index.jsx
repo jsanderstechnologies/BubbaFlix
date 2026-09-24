@@ -20,6 +20,8 @@ const MovieCard = ({ data, fromSearch, mediaType }) => {
 	const navigate = useNavigate();
 	const [showActionModal, setShowActionModal] = React.useState(false);
 	const timerRef = React.useRef(null);
+	const keyTimerRef = React.useRef(null);
+	const pressStartTimeRef = React.useRef(0);
 	const isLongPressRef = React.useRef(false);
 	
 	const posterBase = url?.poster || DEFAULT_IMAGE_BASE;
@@ -40,11 +42,12 @@ const MovieCard = ({ data, fromSearch, mediaType }) => {
 
 	const startPress = () => {
 		isLongPressRef.current = false;
+		pressStartTimeRef.current = Date.now();
 		if (timerRef.current) clearTimeout(timerRef.current);
 		timerRef.current = setTimeout(() => {
 			isLongPressRef.current = true;
 			setShowActionModal(true);
-		}, 500);
+		}, 450);
 	};
 
 	const cancelPress = () => {
@@ -55,18 +58,22 @@ const MovieCard = ({ data, fromSearch, mediaType }) => {
 	};
 
 	const handleClick = (e) => {
-		if (isLongPressRef.current) {
+		const pressDuration = pressStartTimeRef.current > 0 ? Date.now() - pressStartTimeRef.current : 0;
+		if (isLongPressRef.current || pressDuration >= 400) {
 			e.preventDefault();
 			e.stopPropagation();
 			isLongPressRef.current = false;
+			pressStartTimeRef.current = 0;
 			return;
 		}
+		pressStartTimeRef.current = 0;
 		handleSelect();
 	};
 
 	const handleContextMenu = (e) => {
 		e.preventDefault();
 		e.stopPropagation();
+		isLongPressRef.current = true;
 		setShowActionModal(true);
 	};
 
@@ -74,17 +81,45 @@ const MovieCard = ({ data, fromSearch, mediaType }) => {
 		const code = e.keyCode;
 		if (e.key === "ContextMenu" || code === 93 || code === 461 || code === 10009) {
 			e.preventDefault();
+			e.stopPropagation();
+			isLongPressRef.current = true;
 			setShowActionModal(true);
 			return;
 		}
 		if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+			e.preventDefault();
+			e.stopPropagation();
 			if (e.repeat) {
-				e.preventDefault();
+				isLongPressRef.current = true;
+				if (keyTimerRef.current) clearTimeout(keyTimerRef.current);
 				setShowActionModal(true);
 				return;
 			}
+			isLongPressRef.current = false;
+			pressStartTimeRef.current = Date.now();
+			if (keyTimerRef.current) clearTimeout(keyTimerRef.current);
+			keyTimerRef.current = setTimeout(() => {
+				isLongPressRef.current = true;
+				setShowActionModal(true);
+			}, 450);
+		}
+	};
+
+	const handleKeyUp = (e) => {
+		const code = e.keyCode;
+		if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
 			e.preventDefault();
-			handleSelect();
+			e.stopPropagation();
+			if (keyTimerRef.current) {
+				clearTimeout(keyTimerRef.current);
+				keyTimerRef.current = null;
+			}
+			const pressDuration = pressStartTimeRef.current > 0 ? Date.now() - pressStartTimeRef.current : 0;
+			if (!isLongPressRef.current && pressDuration < 400) {
+				handleSelect();
+			}
+			isLongPressRef.current = false;
+			pressStartTimeRef.current = 0;
 		}
 	};
 
@@ -105,6 +140,7 @@ const MovieCard = ({ data, fromSearch, mediaType }) => {
 				onTouchEnd={cancelPress}
 				onTouchCancel={cancelPress}
 				onKeyDown={handleKeyDown}
+				onKeyUp={handleKeyUp}
 			>
 				<div className="posterBlock">
 					<Img className="posterImg" src={posterUrl} />

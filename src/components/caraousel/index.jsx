@@ -8,6 +8,7 @@ import Img from "../lazy-load";
 import PosterFallback from "../../assets/no-poster.png";
 import CircleRating from "../circle-rating";
 import PosterActionModal from "../poster-action-modal";
+import { saveLastClickedPoster } from "../../utils/focusManager";
 
 import "./index.scss";
 
@@ -15,23 +16,28 @@ const CarouselItem = ({ item, endpoint, url }) => {
 	const navigate = useNavigate();
 	const [showActionModal, setShowActionModal] = useState(false);
 	const timerRef = useRef(null);
+	const keyTimerRef = useRef(null);
+	const pressStartTimeRef = useRef(0);
 	const isLongPressRef = useRef(false);
 
 	const posterBase = url?.poster || "https://image.tmdb.org/t/p/original";
 	const posterUrl = item.poster_path ? posterBase + item.poster_path : PosterFallback;
 	const targetType = item.media_type || endpoint || (item.name ? "tv" : "movie");
+	const posterKey = `poster-${targetType}-${item.id}`;
 
 	const handleSelect = () => {
+		saveLastClickedPoster(item.id, targetType);
 		navigate(`/${targetType}/${item.id}`);
 	};
 
 	const startPress = () => {
 		isLongPressRef.current = false;
+		pressStartTimeRef.current = Date.now();
 		if (timerRef.current) clearTimeout(timerRef.current);
 		timerRef.current = setTimeout(() => {
 			isLongPressRef.current = true;
 			setShowActionModal(true);
-		}, 500);
+		}, 450);
 	};
 
 	const cancelPress = () => {
@@ -42,18 +48,22 @@ const CarouselItem = ({ item, endpoint, url }) => {
 	};
 
 	const handleClick = (e) => {
-		if (isLongPressRef.current) {
+		const pressDuration = pressStartTimeRef.current > 0 ? Date.now() - pressStartTimeRef.current : 0;
+		if (isLongPressRef.current || pressDuration >= 400) {
 			e.preventDefault();
 			e.stopPropagation();
 			isLongPressRef.current = false;
+			pressStartTimeRef.current = 0;
 			return;
 		}
+		pressStartTimeRef.current = 0;
 		handleSelect();
 	};
 
 	const handleContextMenu = (e) => {
 		e.preventDefault();
 		e.stopPropagation();
+		isLongPressRef.current = true;
 		setShowActionModal(true);
 	};
 
@@ -61,23 +71,53 @@ const CarouselItem = ({ item, endpoint, url }) => {
 		const code = e.keyCode;
 		if (e.key === "ContextMenu" || code === 93 || code === 461 || code === 10009) {
 			e.preventDefault();
+			e.stopPropagation();
+			isLongPressRef.current = true;
 			setShowActionModal(true);
 			return;
 		}
 		if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+			e.preventDefault();
+			e.stopPropagation();
 			if (e.repeat) {
-				e.preventDefault();
+				isLongPressRef.current = true;
+				if (keyTimerRef.current) clearTimeout(keyTimerRef.current);
 				setShowActionModal(true);
 				return;
 			}
+			isLongPressRef.current = false;
+			pressStartTimeRef.current = Date.now();
+			if (keyTimerRef.current) clearTimeout(keyTimerRef.current);
+			keyTimerRef.current = setTimeout(() => {
+				isLongPressRef.current = true;
+				setShowActionModal(true);
+			}, 450);
+		}
+	};
+
+	const handleKeyUp = (e) => {
+		const code = e.keyCode;
+		if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
 			e.preventDefault();
-			handleSelect();
+			e.stopPropagation();
+			if (keyTimerRef.current) {
+				clearTimeout(keyTimerRef.current);
+				keyTimerRef.current = null;
+			}
+			const pressDuration = pressStartTimeRef.current > 0 ? Date.now() - pressStartTimeRef.current : 0;
+			if (!isLongPressRef.current && pressDuration < 400) {
+				handleSelect();
+			}
+			isLongPressRef.current = false;
+			pressStartTimeRef.current = 0;
 		}
 	};
 
 	return (
 		<>
 			<div
+				id={posterKey}
+				data-poster-id={posterKey}
 				className="carouselItem"
 				tabIndex="0"
 				role="button"
@@ -90,6 +130,7 @@ const CarouselItem = ({ item, endpoint, url }) => {
 				onTouchEnd={cancelPress}
 				onTouchCancel={cancelPress}
 				onKeyDown={handleKeyDown}
+				onKeyUp={handleKeyUp}
 			>
 				<div className="posterBlock">
 					<Img src={posterUrl} />
