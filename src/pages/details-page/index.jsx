@@ -7,7 +7,7 @@ import TopNav from "../../components/top-nav";
 import { FiArrowLeft } from "react-icons/fi";
 import "./index.scss";
 import { useParams, useNavigate } from "react-router-dom";
-import { restoreLastFocusedPoster } from "../../utils/focusManager";
+import { restoreLastFocusedPoster, goBackToSource } from "../../utils/focusManager";
 
 const DetailsPage = () => {
 	const { mediaType, id } = useParams();
@@ -29,7 +29,7 @@ const DetailsPage = () => {
 				if (document.body.classList.contains("videoPlayerActive")) return;
 				e.preventDefault();
 				e.stopPropagation();
-				navigate(-1);
+				goBackToSource(navigate);
 			}
 		};
 		window.addEventListener("keydown", handleDetailsKeyDown, true);
@@ -45,7 +45,7 @@ const DetailsPage = () => {
 		<div className="details-page">
 			<button
 				className="detailsPageBackBtn"
-				onClick={() => navigate(-1)}
+				onClick={() => goBackToSource(navigate)}
 				tabIndex="0"
 				aria-label="Go Back"
 				title="Go Back"

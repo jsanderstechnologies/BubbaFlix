@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { isFavorite, toggleFavorite } from "../../utils/favorites";
 import { isSimklWatched, toggleSimklWatched } from "../../utils/simkl";
+import { saveLastClickedPoster } from "../../utils/focusManager";
 import { FiStar, FiCheckCircle, FiCircle, FiPlay, FiX } from "react-icons/fi";
 import Img from "../lazy-load";
 import PosterFallback from "../../assets/no-poster.png";
@@ -48,6 +49,7 @@ const PosterActionModal = ({ isOpen, onClose, item, mediaType = "movie" }) => {
   const handleViewDetails = (e) => {
     e.stopPropagation();
     onClose();
+    saveLastClickedPoster(item.id, targetType);
     navigate(`/${targetType}/${item.id}`);
   };
 

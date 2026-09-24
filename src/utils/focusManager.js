@@ -6,6 +6,21 @@ export const saveLastClickedPoster = (id, type = "movie") => {
   sessionStorage.setItem("last_clicked_poster_id", key);
   if (typeof window !== "undefined") {
     sessionStorage.setItem("last_clicked_scroll_y", String(window.scrollY || 0));
+    const currentPath = window.location.pathname + window.location.search;
+    // Don't overwrite source path if clicking a item inside a detail page (e.g. cast or collection part inside details)
+    if (!currentPath.startsWith("/movie/") && !currentPath.startsWith("/tv/")) {
+      sessionStorage.setItem("last_clicked_source_path", currentPath);
+    }
+  }
+};
+
+export const goBackToSource = (navigate) => {
+  const sourcePath = typeof window !== "undefined" ? sessionStorage.getItem("last_clicked_source_path") : null;
+  if (sourcePath && typeof window !== "undefined" && sourcePath !== (window.location.pathname + window.location.search)) {
+    sessionStorage.removeItem("last_clicked_source_path");
+    navigate(sourcePath);
+  } else if (navigate) {
+    navigate(-1);
   }
 };
 

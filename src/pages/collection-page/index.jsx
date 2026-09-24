@@ -6,7 +6,7 @@ import { AiFillStar, AiOutlineStar } from "react-icons/ai";
 
 import { fetchDataFromAPI } from "../../utils/api";
 import { isFavoriteCollection, toggleFavoriteCollection } from "../../utils/favorites";
-import { restoreLastFocusedPoster } from "../../utils/focusManager";
+import { restoreLastFocusedPoster, goBackToSource } from "../../utils/focusManager";
 import ContentWrapper from "../../components/content-wrapper";
 import TopNav from "../../components/top-nav";
 import MovieCard from "../../components/movie-card";
@@ -74,7 +74,7 @@ const CollectionPage = () => {
       if (key === "Escape" || key === "Back" || code === 27 || code === 4 || code === 10009 || code === 461) {
         e.preventDefault();
         e.stopPropagation();
-        navigate(-1);
+        goBackToSource(navigate);
       }
     };
     window.addEventListener("keydown", handleCollectionKeyDown, true);
@@ -89,7 +89,7 @@ const CollectionPage = () => {
       {/* Touch & D-pad Upper Left Back Arrow Button rendered first for DOM focus hierarchy */}
       <button
         className="detailsPageBackBtn"
-        onClick={() => navigate(-1)}
+        onClick={() => goBackToSource(navigate)}
         tabIndex={0}
         aria-label="Go Back"
         title="Go Back"
