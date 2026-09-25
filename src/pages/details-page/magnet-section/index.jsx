@@ -65,7 +65,7 @@ const parseStreamDetails = (item) => {
 const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, compact = false, posterPath = "" }) => {
   const [streams, setStreams] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [isOpen, setIsOpen] = useState(false); // Closed by default
+  const [isOpen, setIsOpen] = useState(true); // Open by default so streams drop list is visible
   const [unconfigured, setUnconfigured] = useState(false);
   const [streamStatuses, setStreamStatuses] = useState({});
 
@@ -319,7 +319,20 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
                   const stat = h ? streamStatuses[h] : null;
 
                   return (
-                    <div key={index} className="magnetItem" tabIndex="0">
+                    <div
+                      key={index}
+                      className="magnetItem"
+                      tabIndex="0"
+                      role="button"
+                      onClick={() => handlePlayStream(item, false)}
+                      onKeyDown={(e) => {
+                        const code = e.keyCode;
+                        if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+                          e.preventDefault();
+                          handlePlayStream(item, false);
+                        }
+                      }}
+                    >
                       <div className="itemInfo">
                         <span className="itemTitle" title={details.cleanTitle}>
                           {details.cleanTitle}
@@ -364,7 +377,10 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
                       <div className="itemActions">
                         <button
                           className="actionBtn play"
-                          onClick={() => handlePlayStream(item, false)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePlayStream(item, false);
+                          }}
                           tabIndex="-1"
                         >
                           <FiPlay /> Play
