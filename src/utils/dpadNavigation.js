@@ -39,6 +39,11 @@ const getFocusableElements = () => {
     if (playerContainer) {
       root = playerContainer;
     }
+  } else if (document.body.classList.contains("posterActionModalActive")) {
+    const actionModalContainer = document.querySelector(".posterActionModalOverlay");
+    if (actionModalContainer) {
+      root = actionModalContainer;
+    }
   }
 
   return Array.from(root.querySelectorAll(FOCUSABLE_SELECTOR)).filter((el) => {
@@ -273,7 +278,15 @@ export const initDpadNavigation = () => {
           return;
         }
 
-        if (activeEl.tagName !== "BUTTON" && activeEl.tagName !== "A" && activeEl.tagName !== "SELECT") {
+        if (
+          activeEl.tagName !== "BUTTON" &&
+          activeEl.tagName !== "A" &&
+          activeEl.tagName !== "SELECT" &&
+          !activeEl.classList.contains("movieCard") &&
+          !activeEl.classList.contains("carouselItem") &&
+          !activeEl.classList.contains("continueItem") &&
+          !activeEl.classList.contains("collectionCard")
+        ) {
           e.preventDefault();
           activeEl.click();
           return;

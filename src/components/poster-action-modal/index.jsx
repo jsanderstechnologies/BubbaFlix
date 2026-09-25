@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { isFavorite, toggleFavorite } from "../../utils/favorites";
 import { isSimklWatched, toggleSimklWatched } from "../../utils/simkl";
@@ -11,6 +11,8 @@ import "./index.scss";
 
 const PosterActionModal = ({ isOpen, onClose, item, mediaType = "movie" }) => {
   const navigate = useNavigate();
+  const firstBtnRef = useRef(null);
+  const previousFocusRef = useRef(null);
   const [favStatus, setFavStatus] = useState(false);
   const [watchedStatus, setWatchedStatus] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -20,10 +22,29 @@ const PosterActionModal = ({ isOpen, onClose, item, mediaType = "movie" }) => {
   const title = item?.title || item?.name || "Media Item";
 
   useEffect(() => {
-    if (isOpen && item?.id) {
+    if (!isOpen) return;
+
+    previousFocusRef.current = document.activeElement;
+    document.body.classList.add("posterActionModalActive");
+
+    if (item?.id) {
       setFavStatus(isFavorite(item.id, targetType));
       setWatchedStatus(isSimklWatched({ tmdbId: item.id, mediaType: targetType }));
     }
+
+    const timer = setTimeout(() => {
+      if (firstBtnRef.current) {
+        firstBtnRef.current.focus();
+      }
+    }, 60);
+
+    return () => {
+      clearTimeout(timer);
+      document.body.classList.remove("posterActionModalActive");
+      if (previousFocusRef.current && typeof previousFocusRef.current.focus === "function") {
+        previousFocusRef.current.focus();
+      }
+    };
   }, [isOpen, item, targetType]);
 
   if (!isOpen || !item) return null;
@@ -78,10 +99,11 @@ const PosterActionModal = ({ isOpen, onClose, item, mediaType = "movie" }) => {
 
         <div className="modalActions">
           <button
+            ref={firstBtnRef}
             type="button"
             className={`actionBtn favBtn ${favStatus ? "active" : ""}`}
             onClick={handleToggleFavorite}
-            autoFocus
+            tabIndex="0"
           >
             <FiStar className="btnIcon" />
             <span>{favStatus ? "Remove from Favorites" : "Add to Favorites"}</span>
@@ -92,12 +114,13 @@ const PosterActionModal = ({ isOpen, onClose, item, mediaType = "movie" }) => {
             className={`actionBtn watchBtn ${watchedStatus ? "active" : ""} ${loading ? "loading" : ""}`}
             onClick={handleToggleWatched}
             disabled={loading}
+            tabIndex="0"
           >
             {watchedStatus ? <FiCheckCircle className="btnIcon" /> : <FiCircle className="btnIcon" />}
             <span>{watchedStatus ? "Mark as Unwatched" : "Mark as Watched"}</span>
           </button>
 
-          <button type="button" className="actionBtn viewBtn" onClick={handleViewDetails}>
+          <button type="button" className="actionBtn viewBtn" onClick={handleViewDetails} tabIndex="0">
             <FiPlay className="btnIcon" />
             <span>View Details</span>
           </button>
