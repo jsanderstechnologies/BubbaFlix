@@ -9,7 +9,7 @@ import "./index.scss";
 
 const DEFAULT_IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
 
-const CollectionCard = ({ data }) => {
+const CollectionCard = ({ data, sectionId = "" }) => {
   const { url } = useSelector((state) => state.home);
   const navigate = useNavigate();
 
@@ -20,10 +20,10 @@ const CollectionCard = ({ data }) => {
     ? posterBase + data.poster_path
     : PosterFallback;
 
-  const posterKey = `poster-collection-${data.id}`;
+  const posterKey = sectionId ? `poster-${sectionId}-collection-${data.id}` : `poster-collection-${data.id}`;
 
   const handleSelect = () => {
-    saveLastClickedPoster(data.id, "collection");
+    saveLastClickedPoster(data.id, "collection", sectionId);
     navigate(`/collection/${data.id}`);
   };
 

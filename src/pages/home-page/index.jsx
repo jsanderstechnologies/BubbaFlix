@@ -38,7 +38,7 @@ const DynamicSection = ({ section, onPlayResume }) => {
         <ContentWrapper>
           <span className="carouselTitle">Trending Content</span>
         </ContentWrapper>
-        <Caraousel data={data?.results} loading={loading} />
+        <Caraousel data={data?.results} loading={loading} sectionId={section.id} />
       </div>
     );
   }
@@ -50,7 +50,7 @@ const DynamicSection = ({ section, onPlayResume }) => {
         <ContentWrapper>
           <span className="carouselTitle">New Release Movies</span>
         </ContentWrapper>
-        <Caraousel data={data?.results} loading={loading} endpoint="movie" />
+        <Caraousel data={data?.results} loading={loading} endpoint="movie" sectionId={section.id} />
       </div>
     );
   }
@@ -62,7 +62,7 @@ const DynamicSection = ({ section, onPlayResume }) => {
         <ContentWrapper>
           <span className="carouselTitle">Current TV Episodes</span>
         </ContentWrapper>
-        <Caraousel data={data?.results} loading={loading} endpoint="tv" />
+        <Caraousel data={data?.results} loading={loading} endpoint="tv" sectionId={section.id} />
       </div>
     );
   }
@@ -74,7 +74,7 @@ const DynamicSection = ({ section, onPlayResume }) => {
         <ContentWrapper>
           <span className="carouselTitle">Popular Movies</span>
         </ContentWrapper>
-        <Caraousel data={data?.results} loading={loading} endpoint="movie" />
+        <Caraousel data={data?.results} loading={loading} endpoint="movie" sectionId={section.id} />
       </div>
     );
   }
@@ -86,7 +86,7 @@ const DynamicSection = ({ section, onPlayResume }) => {
         <ContentWrapper>
           <span className="carouselTitle">Popular TV Shows</span>
         </ContentWrapper>
-        <Caraousel data={data?.results} loading={loading} endpoint="tv" />
+        <Caraousel data={data?.results} loading={loading} endpoint="tv" sectionId={section.id} />
       </div>
     );
   }
@@ -102,6 +102,7 @@ const DynamicSection = ({ section, onPlayResume }) => {
         items={items}
         title="Continue Watching: Movies"
         onPlayResume={onPlayResume}
+        sectionId={section.id}
       />
     );
   }
@@ -117,6 +118,7 @@ const DynamicSection = ({ section, onPlayResume }) => {
         items={items}
         title="Continue Watching: TV Episodes"
         onPlayResume={onPlayResume}
+        sectionId={section.id}
       />
     );
   }

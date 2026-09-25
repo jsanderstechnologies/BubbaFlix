@@ -12,7 +12,7 @@ import { saveLastClickedPoster } from "../../utils/focusManager";
 
 import "./index.scss";
 
-const CarouselItem = ({ item, endpoint, url }) => {
+const CarouselItem = ({ item, endpoint, url, sectionId }) => {
 	const navigate = useNavigate();
 	const [showActionModal, setShowActionModal] = useState(false);
 	const timerRef = useRef(null);
@@ -23,10 +23,10 @@ const CarouselItem = ({ item, endpoint, url }) => {
 	const posterBase = url?.poster || "https://image.tmdb.org/t/p/original";
 	const posterUrl = item.poster_path ? posterBase + item.poster_path : PosterFallback;
 	const targetType = item.media_type || endpoint || (item.name ? "tv" : "movie");
-	const posterKey = `poster-${targetType}-${item.id}`;
+	const posterKey = sectionId ? `poster-${sectionId}-${targetType}-${item.id}` : `poster-${targetType}-${item.id}`;
 
 	const handleSelect = () => {
-		saveLastClickedPoster(item.id, targetType);
+		saveLastClickedPoster(item.id, targetType, sectionId);
 		navigate(`/${targetType}/${item.id}`);
 	};
 
@@ -149,12 +149,13 @@ const CarouselItem = ({ item, endpoint, url }) => {
 				onClose={() => setShowActionModal(false)}
 				item={item}
 				mediaType={targetType}
+				sectionId={sectionId}
 			/>
 		</>
 	);
 };
 
-const Carousel = ({ data, loading, endpoint, title }) => {
+const Carousel = ({ data, loading, endpoint, title, sectionId }) => {
 	const { url } = useSelector((state) => state.home);
 
 	const skItem = () => {
@@ -176,7 +177,7 @@ const Carousel = ({ data, loading, endpoint, title }) => {
 				{!loading ? (
 					<div className="carouselItems">
 						{data?.map((item) => (
-							<CarouselItem key={item.id} item={item} endpoint={endpoint} url={url} />
+							<CarouselItem key={item.id} item={item} endpoint={endpoint} url={url} sectionId={sectionId} />
 						))}
 					</div>
 				) : (

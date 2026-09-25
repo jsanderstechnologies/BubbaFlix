@@ -12,7 +12,7 @@ import "./index.scss";
 
 const DEFAULT_IMAGE_BASE = "https://image.tmdb.org/t/p/original";
 
-const ContinueWatchingCarousel = ({ items: initialItems, title, onPlayResume }) => {
+const ContinueWatchingCarousel = ({ items: initialItems, title, onPlayResume, sectionId = "" }) => {
   const navigate = useNavigate();
   const { url } = useSelector((state) => state.home);
   const posterBase = url?.poster || DEFAULT_IMAGE_BASE;
@@ -29,7 +29,7 @@ const ContinueWatchingCarousel = ({ items: initialItems, title, onPlayResume }) 
       return;
     }
     const type = item.mediaType === "tv" ? "tv" : "movie";
-    saveLastClickedPoster(item.tmdbId, type);
+    saveLastClickedPoster(item.tmdbId, type, sectionId);
     navigate(`/${type}/${item.tmdbId}`);
   };
 
@@ -54,7 +54,7 @@ const ContinueWatchingCarousel = ({ items: initialItems, title, onPlayResume }) 
                 ? `S${item.seasonNum} E${item.episodeNum}`
                 : null;
 
-            const posterKey = `poster-${item.mediaType}-${item.tmdbId}`;
+            const posterKey = sectionId ? `poster-${sectionId}-${item.mediaType}-${item.tmdbId}` : `poster-${item.mediaType}-${item.tmdbId}`;
 
             return (
               <div

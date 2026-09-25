@@ -9,7 +9,7 @@ import Img from "../lazy-load";
 import PosterFallback from "../../assets/no-poster.png";
 import "./index.scss";
 
-const PosterActionModal = ({ isOpen, onClose, item, mediaType = "movie" }) => {
+const PosterActionModal = ({ isOpen, onClose, item, mediaType = "movie", sectionId = "" }) => {
   const navigate = useNavigate();
   const firstBtnRef = useRef(null);
   const previousFocusRef = useRef(null);
@@ -70,7 +70,7 @@ const PosterActionModal = ({ isOpen, onClose, item, mediaType = "movie" }) => {
   const handleViewDetails = (e) => {
     e.stopPropagation();
     onClose();
-    saveLastClickedPoster(item.id, targetType);
+    saveLastClickedPoster(item.id, targetType, sectionId);
     navigate(`/${targetType}/${item.id}`);
   };
 

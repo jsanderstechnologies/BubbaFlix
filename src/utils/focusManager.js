@@ -1,13 +1,14 @@
 // Utility to preserve and restore poster D-pad focus & scroll position when returning from detail screens
 
-export const saveLastClickedPoster = (id, type = "movie") => {
+export const saveLastClickedPoster = (id, type = "movie", sectionId = "") => {
   if (!id) return;
-  const key = `poster-${type}-${id}`;
+  const sectionPrefix = sectionId ? `${sectionId}-` : "";
+  const key = `poster-${sectionPrefix}${type}-${id}`;
   sessionStorage.setItem("last_clicked_poster_id", key);
   if (typeof window !== "undefined") {
     sessionStorage.setItem("last_clicked_scroll_y", String(window.scrollY || 0));
     const currentPath = window.location.pathname + window.location.search;
-    // Don't overwrite source path if clicking a item inside a detail page (e.g. cast or collection part inside details)
+    // Don't overwrite source path if clicking an item inside a detail page (e.g. cast or collection part inside details)
     if (!currentPath.startsWith("/movie/") && !currentPath.startsWith("/tv/")) {
       sessionStorage.setItem("last_clicked_source_path", currentPath);
     }
@@ -34,9 +35,29 @@ export const restoreLastFocusedPoster = () => {
     const el = document.getElementById(lastId) || document.querySelector(`[data-poster-id="${lastId}"]`);
     if (el) {
       el.focus({ preventScroll: false });
-      if (typeof el.scrollIntoView === "function") {
-        el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+
+      // Horizontal carousel scroll
+      const parentCarousel = el.closest(".carouselItems") || el.closest(".continueCarouselItems");
+      if (parentCarousel) {
+        const itemLeft = el.offsetLeft;
+        const itemWidth = el.offsetWidth;
+        const containerWidth = parentCarousel.offsetWidth;
+        parentCarousel.scrollTo({
+          left: Math.max(0, itemLeft - containerWidth / 2 + itemWidth / 2),
+          behavior: "smooth",
+        });
       }
+
+      // Vertical window scroll
+      if (typeof el.scrollIntoView === "function") {
+        el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+      } else if (savedScrollY) {
+        const y = parseInt(savedScrollY, 10);
+        if (!isNaN(y) && y > 0) {
+          window.scrollTo({ top: y, behavior: "smooth" });
+        }
+      }
+
       sessionStorage.removeItem("last_clicked_poster_id");
       sessionStorage.removeItem("last_clicked_scroll_y");
     } else if (savedScrollY && retries === 0) {

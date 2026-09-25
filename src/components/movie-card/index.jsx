@@ -15,7 +15,7 @@ import PosterActionModal from "../poster-action-modal";
 
 const DEFAULT_IMAGE_BASE = "https://image.tmdb.org/t/p/original";
 
-const MovieCard = ({ data, fromSearch, mediaType }) => {
+const MovieCard = ({ data, fromSearch, mediaType, sectionId = "" }) => {
 	const { url } = useSelector((state) => state.home);
 	const navigate = useNavigate();
 	const [showActionModal, setShowActionModal] = React.useState(false);
@@ -33,10 +33,10 @@ const MovieCard = ({ data, fromSearch, mediaType }) => {
 	const progressPercent = prog?.progressPercent || 0;
 
 	const targetType = data.media_type || mediaType || (data.name ? "tv" : "movie");
-	const posterKey = `poster-${targetType}-${data.id}`;
+	const posterKey = sectionId ? `poster-${sectionId}-${targetType}-${data.id}` : `poster-${targetType}-${data.id}`;
 
 	const handleSelect = () => {
-		saveLastClickedPoster(data.id, targetType);
+		saveLastClickedPoster(data.id, targetType, sectionId);
 		navigate(`/${targetType}/${data.id}`);
 	};
 
@@ -171,6 +171,7 @@ const MovieCard = ({ data, fromSearch, mediaType }) => {
 				onClose={() => setShowActionModal(false)}
 				item={data}
 				mediaType={targetType}
+				sectionId={sectionId}
 			/>
 		</>
 	);
