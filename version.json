@@ -1,6 +1,6 @@
 {
-  "versionCode": 14,
-  "versionName": "1.0.13",
+  "versionCode": 15,
+  "versionName": "1.0.14",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.13 with section-aware Home screen carousel focus restoration and scroll positioning."
+  "releaseNotes": "BubbaFlix TV v1.0.14 with backend TMDB metadata proxy & persistent disk/memory caching engine, server-side content pre-filtering, and D-pad center long-press poster action menu navigation fix."
 }

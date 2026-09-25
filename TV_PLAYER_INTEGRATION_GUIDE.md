@@ -10,23 +10,25 @@ All devices (Android TV, Google TV, Firestick, Apple TV, LG webOS, Samsung Tizen
 
 1. [Backend Server Architecture](#-backend-server-architecture)
 2. [Centralized Server Settings API (`/api/settings`)](#-centralized-server-settings-api-apisettings)
-3. [AIOStreams Integration (ElfHosted + Premiumize)](#-aiostreams-integration-elfhosted--premiumize)
-4. [Groq AI Stream Filtering API (`/api/groq/`)](#-groq-ai-stream-filtering-api-apigroq)
-5. [SIMKL Watch Status Synchronization API (`/api/simkl/`)](#-simkl-watch-status-synchronization-api-apisimkl)
-6. [Smart TV D-Pad Remote Control KeyCode Reference](#-smart-tv-d-pad-remote-control-keycode-reference)
-7. [Docker, Portainer, and CasaOS Environment Variables](#-docker-portainer-and-casaos-environment-variables)
-8. [Comprehensive Logging Pipeline](#-comprehensive-logging-pipeline)
+3. [TMDB Metadata Proxy & Persistent Caching Engine (`/api/tmdb/*`)](#-tmdb-metadata-proxy--persistent-caching-engine-apitmdb)
+4. [AIOStreams Integration (ElfHosted + Premiumize)](#-aiostreams-integration-elfhosted--premiumize)
+5. [Groq AI Stream Filtering API (`/api/groq/`)](#-groq-ai-stream-filtering-api-apigroq)
+6. [SIMKL Watch Status Synchronization API (`/api/simkl/`)](#-simkl-watch-status-synchronization-api-apisimkl)
+7. [Smart TV D-Pad Remote Control KeyCode Reference](#-smart-tv-d-pad-remote-control-keycode-reference)
+8. [Docker, Portainer, and CasaOS Environment Variables](#-docker-portainer-and-casaos-environment-variables)
+9. [Comprehensive Logging Pipeline](#-comprehensive-logging-pipeline)
 
 ---
 
 ## 🏗️ Backend Server Architecture
 
-The BubbaFlix backend server runs on Node.js (internal port: `5000`, external mapped port: `5150`). It serves four primary functions:
+The BubbaFlix backend server runs on Node.js (internal port: `5000`, external mapped port: `5150`). It serves five primary functions:
 
 1. **Centralized Settings Storage**: Persists shared API keys, AIOStreams URL, theme, zoom level, and stream filters in `/app/server/settings.json`.
-2. **Nginx Reverse Proxy**: Proxies SIMKL, Groq AI, and backend API calls, resolving CORS and logging network traffic.
-3. **Environment Overrides**: Automatically guarantees container environment variables (`GROQ_API_KEY`, `SIMKL_CLIENT_ID`, `AIOSTREAMS_URL`, `TMDB_READ_ACCESS_TOKEN`) override empty disk settings.
-4. **Persistent Logging**: Writes ISO 8601 formatted logs to stdout and persistent volume file `/app/server/bubbaflix.log`.
+2. **TMDB Metadata Proxy & Disk Caching**: Serves pre-filtered movie/show catalog discovery payloads directly from local disk and RAM caches (`/app/server/data/cache/tmdb/`).
+3. **Nginx Reverse Proxy**: Proxies SIMKL, Groq AI, TMDB, and backend API calls, resolving CORS and logging network traffic.
+4. **Environment Overrides**: Automatically guarantees container environment variables (`GROQ_API_KEY`, `SIMKL_CLIENT_ID`, `AIOSTREAMS_URL`, `TMDB_READ_ACCESS_TOKEN`) override empty disk settings.
+5. **Persistent Logging**: Writes ISO 8601 formatted logs to stdout and persistent volume file `/app/server/bubbaflix.log`.
 
 ---
 
@@ -61,6 +63,25 @@ Native devices and clients can read and write shared configuration settings dire
 ### 3. Server Health Check
 - **HTTP Method**: `GET`
 - **URL**: `http://<SERVER_IP>:5150/api/transcode/health`
+
+---
+
+## ⚡ TMDB Metadata Proxy & Persistent Caching Engine (`/api/tmdb/*`)
+
+The BubbaFlix server proxies TMDB discovery, trending, and catalog requests, returning pre-filtered responses and caching them in server RAM and persistent volume disk storage (`/app/server/data/cache/tmdb/`).
+
+### Endpoints
+
+#### 1. Discover / Query Media Metadata
+- **HTTP Method**: `GET`
+- **URL**: `http://<SERVER_IP>:5150/api/tmdb/<TMDB_PATH>` (e.g. `/api/tmdb/discover/movie?sort_by=popularity.desc`)
+- **Headers**: `Authorization: Bearer <TMDB_READ_TOKEN>` (Optional)
+- **Response**: Pre-filtered TMDB JSON response object (non-English, foreign script, explicit adult, and unrated items automatically filtered out).
+
+#### 2. Flush Metadata Cache (Admin Only)
+- **HTTP Method**: `POST`
+- **URL**: `http://<SERVER_IP>:5150/api/admin/cache/clear`
+- **Response**: `{ "status": "success", "message": "Server metadata cache cleared." }`
 
 ---
 
