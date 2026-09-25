@@ -179,3 +179,24 @@ select:focus-visible {
       }
   }
 }
+
+/* Global Poster & Image Size Containment */
+.posterBlock {
+  position: relative;
+  overflow: hidden;
+
+  img,
+  .lazy-load-image-background,
+  span.lazy-load-image-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: cover !important;
+    object-position: center !important;
+    border-radius: 10px;
+  }
+}

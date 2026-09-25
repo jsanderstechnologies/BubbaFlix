@@ -17,9 +17,11 @@ const Img = ({ src, classname, className }) => {
   return (
     <LazyLoadImage
       className={className || classname || ""}
+      wrapperClassName="lazy-load-image-background"
       alt=""
       src={currentSrc || src}
       onError={handleError}
+      effect="blur"
     />
   );
 };
