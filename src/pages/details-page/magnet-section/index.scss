@@ -7,20 +7,23 @@
   margin-bottom: 30px;
 
   .sectionCard {
-    background-color: var(--black3);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
+    background: linear-gradient(145deg, rgba(20, 20, 20, 0.95), rgba(10, 10, 10, 0.95));
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
     overflow: hidden;
-    transition: border-color 0.3s ease;
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6);
+    transition: all 0.3s ease;
 
     &.compact {
       margin-top: 15px;
       margin-bottom: 20px;
-      background-color: rgba(255, 255, 255, 0.03);
-      padding: 4px;
+      background: linear-gradient(145deg, rgba(15, 23, 42, 0.85), rgba(10, 15, 30, 0.85));
+      padding: 6px;
 
       .magnetList {
-        max-height: 350px;
+        max-height: 360px;
         overflow-y: auto;
         padding-right: 8px; /* Room for scrollbar */
         
@@ -29,7 +32,7 @@
           width: 6px;
         }
         &::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.2);
+          background: rgba(255, 255, 255, 0.25);
           border-radius: 4px;
         }
         &::-webkit-scrollbar-track {
@@ -39,20 +42,21 @@
     }
 
     &:hover {
-      border-color: rgba(255, 255, 255, 0.2);
+      border-color: rgba(255, 255, 255, 0.25);
     }
 
     .sectionHeader {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 18px 24px;
+      padding: 16px 22px;
       cursor: pointer;
       user-select: none;
-      background-color: rgba(255, 255, 255, 0.02);
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 
       &:hover {
-        background-color: rgba(255, 255, 255, 0.05);
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%);
       }
 
       .headerLeft {
@@ -60,42 +64,68 @@
         align-items: center;
         gap: 12px;
 
+        .headerIcon {
+          font-size: 20px;
+          color: var(--pink);
+          flex-shrink: 0;
+        }
+
         .sectionTitle {
-          font-size: 18px;
-          font-weight: 600;
+          font-size: 17px;
+          font-weight: 700;
           color: white;
+          letter-spacing: 0.3px;
         }
 
         .countBadge {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
           background: var(--gradient);
           color: white;
           font-size: 12px;
-          font-weight: 600;
-          padding: 3px 10px;
+          font-weight: 700;
+          padding: 4px 12px;
           border-radius: 12px;
+          box-shadow: 0 3px 10px rgba(229, 9, 20, 0.3);
+
+          .badgeIcon {
+            font-size: 13px;
+          }
 
           &.warning {
             background: rgba(255, 152, 0, 0.2);
             color: #ffb74d;
             border: 1px solid rgba(255, 152, 0, 0.4);
+            box-shadow: none;
           }
         }
       }
 
       .toggleBtn {
-        background: none;
-        border: none;
-        color: rgba(255, 255, 255, 0.7);
-        font-size: 22px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 18px;
         cursor: pointer;
         display: flex;
         align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+
+        &:hover {
+          background: var(--pink);
+          color: white;
+          border-color: var(--pink);
+        }
       }
     }
 
     .sectionBody {
-      padding: 20px 24px;
-      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 16px 20px;
 
       .loadingContainer {
         display: flex;
@@ -166,16 +196,16 @@
       .magnetList {
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 10px;
 
         .magnetItem {
           display: flex;
           flex-direction: column;
           gap: 12px;
-          padding: 16px 20px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 10px;
+          padding: 14px 18px;
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
+          border: 1px solid rgba(255, 255, 255, 0.09);
+          border-radius: 12px;
           transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
           outline: none;
           cursor: pointer;
@@ -189,10 +219,48 @@
           &:hover,
           &:focus,
           &:focus-within {
-            background: rgba(255, 255, 255, 0.06);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%);
             border-color: var(--pink);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 12px var(--pink);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 15px var(--pink);
             transform: translateY(-2px);
+          }
+
+          .qualityEmblem {
+            width: 48px;
+            height: 48px;
+            flex-shrink: 0;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            transition: all 0.25s ease;
+
+            .emblemIcon {
+              font-size: 16px;
+            }
+
+            .emblemText {
+              font-size: 11px;
+              font-weight: 800;
+              letter-spacing: 0.5px;
+              line-height: 1;
+            }
+
+            &.q4k {
+              background: var(--gradient);
+              color: #ffffff;
+              border: 1px solid rgba(255, 255, 255, 0.25);
+              box-shadow: 0 4px 14px rgba(229, 9, 20, 0.4);
+            }
+
+            &.qhd {
+              background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+              color: #ffffff;
+              border: 1px solid rgba(56, 189, 248, 0.35);
+              box-shadow: 0 4px 14px rgba(2, 132, 199, 0.3);
+            }
           }
 
           .itemInfo {
@@ -200,6 +268,7 @@
             flex-direction: column;
             gap: 8px;
             overflow: hidden;
+            flex-grow: 1;
 
             .itemTitle {
               font-size: 15px;
@@ -226,6 +295,10 @@
                 align-items: center;
                 gap: 5px;
                 line-height: 1;
+
+                .badgeIcon {
+                  font-size: 12px;
+                }
 
                 &.qualityBadge {
                   &.q4k {
@@ -323,6 +396,10 @@
               text-decoration: none;
               transition: all 0.2s ease;
 
+              .playIcon {
+                font-size: 16px;
+              }
+
               &.play {
                 background: var(--gradient);
                 color: white;
@@ -341,3 +418,4 @@
     }
   }
 }
+

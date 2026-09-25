@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { useState, useEffect } from "react";
 import { fetchTorrentStreams } from "../../../utils/torrentScraper";
 import { getPremiumizeKey, resolveMagnetWithPremiumize } from "../../../utils/premiumize";
@@ -6,13 +5,28 @@ import { isTvDevice } from "../../../utils/zoom";
 import ContentWrapper from "../../../components/content-wrapper";
 import Spinner from "../../../components/spinner";
 import VideoPlayerModal from "../../../components/video-player-modal";
-import { FiPlay, FiChevronDown, FiChevronUp, FiAlertCircle, FiExternalLink, FiCloud } from "react-icons/fi";
+import { 
+  FiPlay, 
+  FiChevronDown, 
+  FiChevronUp, 
+  FiAlertCircle, 
+  FiExternalLink, 
+  FiCloud, 
+  FiFilm, 
+  FiVolume2, 
+  FiCpu, 
+  FiSun, 
+  FiZap, 
+  FiHardDrive, 
+  FiUsers, 
+  FiLayers 
+} from "react-icons/fi";
 import { isEnglishStreamTitle, isMatchingStreamTitle } from "../../../utils/filterUtils";
 
 const isHevcOrX265Stream = (item) => {
   if (!item) return false;
   const fullStr = `${item.title || ""} ${item.name || ""} ${item.metaText || ""} ${item.url || ""}`;
-  return /(hevc|x265|h265|h\.265)/i.test(fullStr);
+  return / (hevc|x265|h265|h\.265) /i.test(fullStr);
 };
 
 const getHash = (url) => {
@@ -277,12 +291,17 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
           }}
         >
           <div className="headerLeft">
+            <FiFilm className="headerIcon" />
             <span className="sectionTitle">Available Streams</span>
             {streams.length > 0 && (
-              <span className="countBadge">{streams.length} Available</span>
+              <span className="countBadge">
+                <FiLayers className="badgeIcon" /> {streams.length} Available
+              </span>
             )}
             {unconfigured && (
-              <span className="countBadge warning">Setup Required</span>
+              <span className="countBadge warning">
+                <FiAlertCircle className="badgeIcon" /> Setup Required
+              </span>
             )}
           </div>
           <button className="toggleBtn" tabIndex="-1">
@@ -333,27 +352,55 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
                         }
                       }}
                     >
+                      {/* Quality Emblem Graphic Tile */}
+                      <div className={`qualityEmblem ${details.quality.includes("4K") ? "q4k" : "qhd"}`}>
+                        <FiFilm className="emblemIcon" />
+                        <span className="emblemText">{details.quality.includes("4K") ? "4K" : "HD"}</span>
+                      </div>
+
                       <div className="itemInfo">
                         <span className="itemTitle" title={details.cleanTitle}>
                           {details.cleanTitle}
                         </span>
                         <div className="itemMeta">
                           <span className={`metaBadge qualityBadge ${details.quality.includes('4K') ? 'q4k' : 'qhd'}`}>
-                            {details.quality}
+                            <FiFilm className="badgeIcon" /> {details.quality}
                           </span>
 
-                          {details.isHdr && <span className="metaBadge hdrBadge">HDR</span>}
-                          {details.isHevc && <span className="metaBadge codecBadge">HEVC x265</span>}
-                          {details.isAtmos && <span className="metaBadge audioBadge">Dolby Atmos</span>}
+                          {details.isHdr && (
+                            <span className="metaBadge hdrBadge">
+                              <FiSun className="badgeIcon" /> HDR
+                            </span>
+                          )}
+                          {details.isHevc && (
+                            <span className="metaBadge codecBadge">
+                              <FiCpu className="badgeIcon" /> HEVC x265
+                            </span>
+                          )}
+                          {details.isAtmos && (
+                            <span className="metaBadge audioBadge">
+                              <FiVolume2 className="badgeIcon" /> Dolby Atmos
+                            </span>
+                          )}
 
-                          <span className="metaBadge providerBadge">⚡ {details.provider}</span>
+                          <span className="metaBadge providerBadge">
+                            <FiZap className="badgeIcon" /> {details.provider}
+                          </span>
 
-                          {details.size && <span className="metaBadge sizeBadge">💾 {details.size}</span>}
-                          {details.seeds && <span className="metaBadge seedsBadge">👥 {details.seeds} Seeds</span>}
+                          {details.size && (
+                            <span className="metaBadge sizeBadge">
+                              <FiHardDrive className="badgeIcon" /> {details.size}
+                            </span>
+                          )}
+                          {details.seeds && (
+                            <span className="metaBadge seedsBadge">
+                              <FiUsers className="badgeIcon" /> {details.seeds} Seeds
+                            </span>
+                          )}
 
                           {stat && stat.isCached && (
                             <span className="metaBadge cachedBadge">
-                              <FiCloud /> Cached
+                              <FiCloud className="badgeIcon" /> Cached (Instant)
                             </span>
                           )}
                           {stat && stat.transferStatus?.status === "downloading" && (
@@ -363,7 +410,7 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
                           )}
                           {stat && stat.transferStatus?.status === "finished" && (
                             <span className="metaBadge cachedBadge">
-                              <FiCloud /> Finished / Cached
+                              <FiCloud className="badgeIcon" /> Finished / Cached
                             </span>
                           )}
                           {stat && stat.transferStatus?.status === "error" && (
@@ -383,7 +430,7 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
                           }}
                           tabIndex="-1"
                         >
-                          <FiPlay /> Play
+                          <FiPlay className="playIcon" /> Play Stream
                         </button>
                       </div>
                     </div>
