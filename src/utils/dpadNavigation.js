@@ -249,6 +249,8 @@ export const initDpadNavigation = () => {
     // Handle Smart TV Back Button
     if (key === "Escape" || key === "Back" || code === 27 || code === 10009 || code === 461 || code === 4) {
       if (document.body.classList.contains("videoPlayerActive")) {
+        e.preventDefault();
+        e.stopPropagation();
         return;
       }
       if (window.location.pathname !== "/") {

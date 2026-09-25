@@ -12,7 +12,50 @@ export const getActiveTmdbToken = () => {
   return import.meta.env.VITE_APP_TMDB_KEY || DEFAULT_TMDB_TOKEN;
 };
 
-export const fetchDataFromAPI = async (url, params) => {
+const apiCache = new Map();
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes cache TTL
+
+const getCacheKey = (url, params) => {
+  return `${url}_${JSON.stringify(params || {})}`;
+};
+
+export const getCachedDataFromAPI = (url, params) => {
+  const cacheKey = getCacheKey(url, params);
+  const cached = apiCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached.data;
+  }
+  return null;
+};
+
+export const clearApiCache = () => {
+  apiCache.clear();
+};
+
+const preloadImagesFromResults = (data) => {
+  if (typeof window === "undefined") return;
+  try {
+    const items = Array.isArray(data?.results) ? data.results : (data?.poster_path ? [data] : []);
+    items.slice(0, 12).forEach((item) => {
+      if (item.poster_path) {
+        const img = new Image();
+        img.src = `https://image.tmdb.org/t/p/w500${item.poster_path}`;
+      }
+    });
+  } catch (e) {
+    // Ignore image pre-warm errors
+  }
+};
+
+export const fetchDataFromAPI = async (url, params, forceRefresh = false) => {
+  const cacheKey = getCacheKey(url, params);
+  if (!forceRefresh) {
+    const cachedData = getCachedDataFromAPI(url, params);
+    if (cachedData) {
+      return cachedData;
+    }
+  }
+
   try {
     const activeToken = getActiveTmdbToken();
     const headers = {
@@ -39,6 +82,14 @@ export const fetchDataFromAPI = async (url, params) => {
 
     if (data && Array.isArray(data.results)) {
       data.results = filterEnglishMedia(data.results);
+    }
+
+    if (data) {
+      apiCache.set(cacheKey, {
+        timestamp: Date.now(),
+        data,
+      });
+      preloadImagesFromResults(data);
     }
 
     return data;

@@ -1,12 +1,22 @@
 import { useState, useEffect } from "react";
-import { fetchDataFromAPI } from "../utils/api";
+import { fetchDataFromAPI, getCachedDataFromAPI } from "../utils/api";
 
 const useFetch = (url) => {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(null);
+  const initialCached = url ? getCachedDataFromAPI(url) : null;
+  const [data, setData] = useState(initialCached);
+  const [loading, setLoading] = useState(initialCached ? false : "Loading...");
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (!url) return;
+    const cached = getCachedDataFromAPI(url);
+    if (cached) {
+      setData(cached);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     setLoading("Loading...");
     setData(null);
     setError(null);

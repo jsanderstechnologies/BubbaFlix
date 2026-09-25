@@ -6,11 +6,12 @@ import { fetchDataFromAPI, getActiveTmdbToken } from "../../utils/api";
 import { getSimklConfig, testSimklConnection } from "../../utils/simkl";
 import { getGroqApiKey } from "../../utils/groqFilter";
 import { getPremiumizeKey, savePremiumizeKey } from "../../utils/premiumize";
-import { updateServerSettings, fetchServerSettings, getServerUrl, saveServerUrl, testBackendServerHealth } from "../../utils/serverSettings";
+import dayjs from "dayjs";
+import { updateServerSettings, fetchServerSettings, getServerUrl, saveServerUrl, testBackendServerHealth, exportAdminBackup, importAdminBackup } from "../../utils/serverSettings";
 import { getApiConfiguration } from "../../store/homeSlice";
 import { THEMES, getSavedTheme, applyTheme } from "../../utils/theme";
 import { getHomeSections, saveHomeSections, DEFAULT_HOME_SECTIONS, validateHomeSections } from "../../utils/homeConfig";
-import { FiKey, FiCheck, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning, FiCheckSquare, FiTv, FiPlus, FiMinus, FiServer, FiInfo, FiExternalLink, FiCloud, FiChevronUp, FiChevronDown, FiRotateCcw } from "react-icons/fi";
+import { FiKey, FiCheck, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning, FiCheckSquare, FiTv, FiPlus, FiMinus, FiServer, FiInfo, FiExternalLink, FiCloud, FiChevronUp, FiChevronDown, FiRotateCcw, FiDownload, FiUpload } from "react-icons/fi";
 import "./index.scss";
 import { AuthContext } from "../../context/AuthContext";
 import { useContext } from "react";
@@ -82,6 +83,60 @@ const SettingsPage = () => {
   const [newPassword, setNewPassword] = useState("");
   const [newUserRole, setNewUserRole] = useState("normal");
 
+  // Admin Backup & Restore State
+  const [backupStatus, setBackupStatus] = useState(null);
+  const [isExportingBackup, setIsExportingBackup] = useState(false);
+  const [isImportingBackup, setIsImportingBackup] = useState(false);
+
+  const handleExportBackup = async () => {
+    setIsExportingBackup(true);
+    setBackupStatus(null);
+    try {
+      const data = await exportAdminBackup();
+      const jsonStr = JSON.stringify(data, null, 2);
+      const blob = new Blob([jsonStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `bubbaflix-backup-${dayjs().format("YYYY-MM-DD-HHmm")}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setBackupStatus({ type: "success", text: "Full backup package downloaded successfully!" });
+    } catch (e) {
+      setBackupStatus({ type: "error", text: "Failed to export backup package: " + e.message });
+    } finally {
+      setIsExportingBackup(false);
+    }
+  };
+
+  const handleImportBackupFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsImportingBackup(true);
+    setBackupStatus(null);
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const payload = JSON.parse(event.target.result);
+        const res = await importAdminBackup(payload);
+        if (res.success) {
+          setBackupStatus({ type: "success", text: "Backup restored successfully! Reloading..." });
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        } else {
+          setBackupStatus({ type: "error", text: "Failed to restore backup: " + (res.error || "Unknown error") });
+        }
+      } catch (err) {
+        setBackupStatus({ type: "error", text: "Invalid JSON backup file: " + err.message });
+      } finally {
+        setIsImportingBackup(false);
+      }
+    };
+    reader.readAsText(file);
+  };
 
   const dispatch = useDispatch();
   const { user, updatePreferences } = useContext(AuthContext);
@@ -824,6 +879,48 @@ const SettingsPage = () => {
           {/* Centralized Server & API Configuration Cards (Only Visible to Admin Users) */}
           {isAdmin && (
             <>
+          {/* Admin Server Backup & Migration Card */}
+          <div className="settingsCard">
+            <div className="cardHeader">
+              <h2><FiDownload style={{ marginRight: 8 }} /> Admin Backup & Server Migration</h2>
+              <span className="badge custom">Admin Only</span>
+            </div>
+            <p className="description">
+              Backup or restore all server configurations, user accounts, favorites, watch history, custom home layouts, and streaming preferences for server migration.
+            </p>
+
+            {backupStatus && (
+              <div className={`statusBanner ${backupStatus.type}`} style={{ marginBottom: 15 }}>
+                {backupStatus.type === "success" && <FiCheckCircle />}
+                {backupStatus.type === "error" && <FiXCircle />}
+                <span>{backupStatus.text}</span>
+              </div>
+            )}
+
+            <div className="buttonGroup" style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 10 }}>
+              <button
+                type="button"
+                className="saveBtn"
+                onClick={handleExportBackup}
+                disabled={isExportingBackup}
+              >
+                <FiDownload style={{ marginRight: 6 }} />
+                {isExportingBackup ? "Exporting Backup..." : "Export Full Backup"}
+              </button>
+
+              <label className="saveBtn" style={{ cursor: "pointer", background: "var(--black-light)", border: "1px solid var(--pink)", display: "inline-flex", alignItems: "center" }}>
+                <FiUpload style={{ marginRight: 6 }} />
+                {isImportingBackup ? "Restoring..." : "Restore Backup File"}
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleImportBackupFile}
+                  style={{ display: "none" }}
+                  disabled={isImportingBackup}
+                />
+              </label>
+            </div>
+          </div>
           {/* Backend Server Host & Address Card */}
           <div className="settingsCard">
             <div className="cardHeader">

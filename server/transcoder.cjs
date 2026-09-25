@@ -1305,6 +1305,57 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     return;
   }
 
+  // GET /api/admin/backup - Admin Backup Export Endpoint
+  if ((cleanPath === "/api/admin/backup" || cleanPath === "/admin/backup") && req.method === "GET") {
+    const session = authenticate(req);
+    if (!session || session.role !== "admin") return sendJson(res, 403, { error: "Admin access required" });
+
+    const serverSettings = loadServerSettings();
+    const users = getUsers();
+    
+    const backupData = {
+      version: "1.0.13",
+      timestamp: new Date().toISOString(),
+      serverSettings,
+      users,
+    };
+    logMessage(`[Admin Backup] Backup archive exported by admin [${session.username}] (${initiator.ip})`);
+    return sendJson(res, 200, { status: "success", backup: backupData });
+  }
+
+  // POST /api/admin/restore - Admin Backup Restore Endpoint
+  if ((cleanPath === "/api/admin/restore" || cleanPath === "/admin/restore") && req.method === "POST") {
+    const session = authenticate(req);
+    if (!session || session.role !== "admin") return sendJson(res, 403, { error: "Admin access required" });
+
+    let body = "";
+    req.on("data", (chunk) => { body += chunk.toString(); });
+    req.on("end", () => {
+      try {
+        const payload = body ? JSON.parse(body) : {};
+        const backup = payload.backup || payload;
+        
+        if (!backup || typeof backup !== "object") {
+          return sendJson(res, 400, { error: "Invalid backup format" });
+        }
+
+        if (backup.serverSettings && typeof backup.serverSettings === "object") {
+          saveServerSettings(backup.serverSettings);
+        }
+        if (Array.isArray(backup.users) && backup.users.length > 0) {
+          saveUsers(backup.users);
+        }
+
+        logMessage(`[Admin Restore] Server configuration and users restored by admin [${session.username}] (${initiator.ip})`);
+        return sendJson(res, 200, { status: "success", message: "Backend settings and user accounts restored successfully." });
+      } catch (e) {
+        logMessage(`[Admin Restore Error] Failed to restore backup: ${e.message}`, true);
+        return sendJson(res, 400, { error: "Failed to parse backup payload" });
+      }
+    });
+    return;
+  }
+
   // Client Error Logging Endpoint
   if ((cleanPath === "/api/log" || cleanPath === "/log") && req.method === "POST") {
     let body = "";

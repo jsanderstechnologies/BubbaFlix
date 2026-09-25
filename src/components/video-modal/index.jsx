@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { FiX } from "react-icons/fi";
 import "./index.scss";
 
 const VideoModal = ({ show, setShow, videoId, setVideoId }) => {
@@ -28,7 +29,7 @@ const VideoModal = ({ show, setShow, videoId, setVideoId }) => {
 			const key = e.key;
 			const code = e.keyCode;
 
-			// Handle Back / Escape keys
+			// Handle Back / Escape keys across all TV remotes
 			if (
 				key === "Escape" ||
 				key === "Back" ||
@@ -61,12 +62,31 @@ const VideoModal = ({ show, setShow, videoId, setVideoId }) => {
 			}
 		};
 
+		const handleKeyUp = (e) => {
+			const key = e.key;
+			const code = e.keyCode;
+			if (
+				key === "Escape" ||
+				key === "Back" ||
+				code === 27 ||
+				code === 8 ||
+				code === 4 ||
+				code === 10009 ||
+				code === 461
+			) {
+				e.preventDefault();
+				e.stopPropagation();
+			}
+		};
+
 		window.addEventListener("keydown", handleKeyDown, true);
+		window.addEventListener("keyup", handleKeyUp, true);
 
 		return () => {
 			clearTimeout(timer);
 			document.body.classList.remove("videoPlayerActive");
 			window.removeEventListener("keydown", handleKeyDown, true);
+			window.removeEventListener("keyup", handleKeyUp, true);
 			if (previousFocusRef.current && typeof previousFocusRef.current.focus === "function") {
 				previousFocusRef.current.focus();
 			}
@@ -79,11 +99,11 @@ const VideoModal = ({ show, setShow, videoId, setVideoId }) => {
 		<div className={`videoPopup ${show ? "visible" : ""}`} tabIndex="-1">
 			<div className="opacityLayer" onClick={hidePopup}></div>
 			<div className="videoPlayer">
-				<span
+				<button
 					ref={closeBtnRef}
+					type="button"
 					className="closeBtn"
 					tabIndex="0"
-					role="button"
 					onClick={hidePopup}
 					onKeyDown={(e) => {
 						const code = e.keyCode;
@@ -94,8 +114,9 @@ const VideoModal = ({ show, setShow, videoId, setVideoId }) => {
 						}
 					}}
 				>
-					Close
-				</span>
+					<FiX size={18} />
+					<span>Close Trailer</span>
+				</button>
 				{videoId && (
 					<iframe
 						src={`https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1&controls=1&rel=0`}

@@ -179,3 +179,98 @@ export const testBackendServerHealth = async (customServerUrl) => {
     return { success: false, message: err.response?.data?.message || err.message || "Failed to connect to backend server." };
   }
 };
+
+export const exportAdminBackup = async () => {
+  try {
+    const baseUrl = getServerUrl();
+    const token = typeof window !== "undefined" ? localStorage.getItem("bubbaflix_token") : null;
+    let backendBackup = null;
+    if (token) {
+      try {
+        const res = await axios.get(`${baseUrl}/api/admin/backup`, {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 8000,
+        });
+        if (res.data?.status === "success") {
+          backendBackup = res.data.backup;
+        }
+      } catch (err) {
+        console.warn("[Admin Backup]: Failed to fetch server backend backup.", err.message);
+      }
+    }
+
+    const clientLocalStorage = {};
+    if (typeof window !== "undefined") {
+      const keysToBackup = [
+        "bubbaflix_favorites",
+        "bubbaflix_watch_progress",
+        "bubbaflix_home_sections",
+        "groq_filter_cam_telecine",
+        "bubbaflix_theme",
+        "simkl_client_id",
+        "groq_api_key",
+        "tmdb_token",
+        "premiumize_api_key",
+        "bubbaflix_stream_resolutions",
+        "bubbaflix_exclude_low_quality",
+      ];
+      keysToBackup.forEach((k) => {
+        const val = localStorage.getItem(k);
+        if (val !== null) {
+          clientLocalStorage[k] = val;
+        }
+      });
+    }
+
+    return {
+      appName: "BubbaFlix",
+      backupVersion: "1.0.13",
+      timestamp: new Date().toISOString(),
+      backendBackup,
+      clientLocalStorage,
+    };
+  } catch (err) {
+    console.error("[Export Admin Backup Error]:", err);
+    throw err;
+  }
+};
+
+export const importAdminBackup = async (backupPayload) => {
+  try {
+    if (!backupPayload || typeof backupPayload !== "object") {
+      throw new Error("Invalid backup structure");
+    }
+
+    // 1. Restore local storage items
+    if (backupPayload.clientLocalStorage && typeof backupPayload.clientLocalStorage === "object") {
+      Object.entries(backupPayload.clientLocalStorage).forEach(([k, v]) => {
+        if (v !== undefined && v !== null) {
+          localStorage.setItem(k, typeof v === "string" ? v : JSON.stringify(v));
+        }
+      });
+    }
+
+    // 2. Restore backend settings and users via server API if token exists
+    const baseUrl = getServerUrl();
+    const token = typeof window !== "undefined" ? localStorage.getItem("bubbaflix_token") : null;
+    if (token && backupPayload.backendBackup) {
+      try {
+        await axios.post(
+          `${baseUrl}/api/admin/restore`,
+          { backup: backupPayload.backendBackup },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 8000,
+          }
+        );
+      } catch (e) {
+        console.warn("[Admin Restore Warning]: Failed to push server backend backup.", e.message);
+      }
+    }
+
+    return { success: true };
+  } catch (err) {
+    console.error("[Import Admin Backup Error]:", err);
+    return { success: false, error: err.message };
+  }
+};
