@@ -171,12 +171,13 @@
         .magnetItem {
           display: flex;
           flex-direction: column;
-          gap: 10px;
-          padding: 14px 18px;
-          background-color: var(--black2);
-          border: 1px solid rgba(255, 255, 255, 0.05);
-          border-radius: 8px;
-          transition: background-color 0.2s ease, border-color 0.2s ease;
+          gap: 12px;
+          padding: 16px 20px;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 10px;
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+          outline: none;
 
           @include md {
             flex-direction: row;
@@ -184,43 +185,119 @@
             justify-content: space-between;
           }
 
-          &:hover {
-            background-color: rgba(255, 255, 255, 0.04);
-            border-color: rgba(255, 255, 255, 0.15);
+          &:hover,
+          &:focus,
+          &:focus-within {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: var(--pink);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 12px var(--pink);
+            transform: translateY(-2px);
           }
 
           .itemInfo {
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 8px;
             overflow: hidden;
 
             .itemTitle {
-              font-size: 14px;
-              font-weight: 500;
+              font-size: 15px;
+              font-weight: 600;
               color: white;
               white-space: nowrap;
               overflow: hidden;
               text-overflow: ellipsis;
+              line-height: 1.3;
             }
 
             .itemMeta {
               display: flex;
               align-items: center;
               flex-wrap: wrap;
-              gap: 10px;
+              gap: 8px;
 
               .metaBadge {
-                font-size: 12px;
-                color: rgba(255, 255, 255, 0.6);
+                font-size: 11px;
+                font-weight: 600;
+                padding: 4px 10px;
+                border-radius: 6px;
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+                line-height: 1;
 
-                &.provider {
-                  color: #81c784;
-                  font-weight: 600;
+                &.qualityBadge {
+                  &.q4k {
+                    background: var(--gradient);
+                    color: white;
+                    font-weight: 700;
+                    letter-spacing: 0.5px;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+                  }
+
+                  &.qhd {
+                    background: rgba(56, 189, 248, 0.15);
+                    color: #38bdf8;
+                    border: 1px solid rgba(56, 189, 248, 0.3);
+                  }
                 }
 
-                &.info {
-                  color: rgba(255, 255, 255, 0.7);
+                &.hdrBadge {
+                  background: rgba(255, 193, 7, 0.15);
+                  color: #ffc107;
+                  border: 1px solid rgba(255, 193, 7, 0.3);
+                  font-weight: 700;
+                }
+
+                &.codecBadge {
+                  background: rgba(0, 230, 118, 0.15);
+                  color: #00e676;
+                  border: 1px solid rgba(0, 230, 118, 0.3);
+                }
+
+                &.audioBadge {
+                  background: rgba(0, 229, 255, 0.15);
+                  color: #00e5ff;
+                  border: 1px solid rgba(0, 229, 255, 0.3);
+                }
+
+                &.providerBadge {
+                  background: rgba(255, 255, 255, 0.08);
+                  color: rgba(255, 255, 255, 0.9);
+                  border: 1px solid rgba(255, 255, 255, 0.12);
+                }
+
+                &.sizeBadge {
+                  background: rgba(148, 163, 184, 0.12);
+                  color: #cbd5e1;
+                  border: 1px solid rgba(148, 163, 184, 0.25);
+                }
+
+                &.seedsBadge {
+                  background: rgba(34, 197, 94, 0.12);
+                  color: #4ade80;
+                  border: 1px solid rgba(34, 197, 94, 0.25);
+                }
+
+                &.cachedBadge {
+                  background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+                  color: white;
+                  font-weight: 700;
+                  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+                }
+
+                &.dlBadge {
+                  background: rgba(255, 193, 7, 0.2);
+                  color: #ffc107;
+                  border: 1px solid rgba(255, 193, 7, 0.4);
+                  font-weight: 700;
+                }
+
+                &.errorBadge {
+                  background: rgba(239, 68, 68, 0.2);
+                  color: #ef4444;
+                  border: 1px solid rgba(239, 68, 68, 0.4);
+                  font-weight: 700;
                 }
               }
             }
@@ -235,11 +312,11 @@
             .actionBtn {
               display: flex;
               align-items: center;
-              gap: 6px;
-              padding: 8px 18px;
+              gap: 8px;
+              padding: 10px 22px;
               border-radius: 8px;
-              font-size: 13px;
-              font-weight: 600;
+              font-size: 14px;
+              font-weight: 700;
               cursor: pointer;
               border: none;
               text-decoration: none;
@@ -248,12 +325,12 @@
               &.play {
                 background: var(--gradient);
                 color: white;
-                box-shadow: 0 4px 12px rgba(218, 47, 104, 0.3);
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 
                 &:hover {
                   opacity: 0.95;
-                  transform: translateY(-1px);
-                  box-shadow: 0 6px 16px rgba(218, 47, 104, 0.4);
+                  transform: scale(1.03);
+                  box-shadow: 0 6px 20px var(--pink);
                 }
               }
             }

@@ -22,6 +22,46 @@ const getHash = (url) => {
 };
 
 
+const parseStreamDetails = (item) => {
+  const titleText = item.title || "";
+  const nameText = item.name || "";
+  const metaText = item.metaText || "";
+  const fullStr = `${titleText} ${nameText} ${metaText}`;
+
+  let quality = item.quality || "HD";
+  if (/\b(2160p|4k|uhd|remux)\b/i.test(fullStr)) quality = "4K 2160p";
+  else if (/\b(1080p|fhd|fullhd)\b/i.test(fullStr)) quality = "1080p";
+  else if (/\b(720p|hd)\b/i.test(fullStr)) quality = "720p";
+  else if (/\b(480p|sd|360p)\b/i.test(fullStr)) quality = "480p";
+
+  const isHevc = /\b(hevc|x265|h265|h\.265)\b/i.test(fullStr);
+  const isHdr = /\b(hdr|hdr10|hdr10\+|dv|dolby\s*vision)\b/i.test(fullStr);
+  const isAtmos = /\b(atmos|truehd)\b/i.test(fullStr);
+
+  let seeds = null;
+  const seedMatch = fullStr.match(/(?:👤|👥|seeds?:?)\s*(\d+)/i) || fullStr.match(/(\d+)\s*(?:seeds?|seeders?)/i);
+  if (seedMatch) seeds = seedMatch[1];
+
+  let size = null;
+  const sizeMatch = fullStr.match(/(?:💾|size:?)\s*([\d\.]+\s*(?:GB|MB))/i) || fullStr.match(/([\d\.]+\s*(?:GB|MB))/i);
+  if (sizeMatch) size = sizeMatch[1];
+
+  const cleanTitle = titleText.split("\n")[0] || titleText || "Torrent Stream";
+  let provider = nameText.split("\n")[0] || "Torrent";
+  provider = provider.replace(/\[.*?\]/g, "").trim() || "Torrent Stream";
+
+  return {
+    cleanTitle,
+    quality,
+    isHevc,
+    isHdr,
+    isAtmos,
+    seeds,
+    size,
+    provider,
+  };
+};
+
 const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, compact = false, posterPath = "" }) => {
   const [streams, setStreams] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -273,51 +313,66 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
               </div>
             ) : (
               <div className="magnetList">
-                {streams.map((item, index) => (
-                  <div key={index} className="magnetItem">
-                    <div className="itemInfo">
-                      <span className="itemTitle" title={item.title}>
-                        {item.title}
-                      </span>
-                      <div className="itemMeta">
-                        <span className="metaBadge provider">⚡ {item.name}</span>
-                        {item.metaText && (
-                          <span className="metaBadge info">{item.metaText}</span>
-                        )}
-                      
-                          {(() => {
-                            const h = getHash(item.url);
-                            const stat = h ? streamStatuses[h] : null;
-                            if (!stat) return null;
-                            
-                            const badges = [];
-                            if (stat.transferStatus && stat.transferStatus.status === "downloading") {
-                                badges.push(<span key="dl" className="metaBadge info" style={{ background: '#ffc107', color: '#000', fontWeight: 'bold' }}>Downloading: {Math.round((stat.transferStatus.progress || 0) * 100)}%</span>);
-                            } else if (stat.transferStatus && stat.transferStatus.status === "finished") {
-                                badges.push(<span key="fin" className="metaBadge success" style={{ background: '#28a745', color: '#fff', fontWeight: 'bold' }}>Finished / Cached</span>);
-                            } else if (stat.isCached) {
-                                badges.push(<span key="cached" className="metaBadge success" style={{ background: '#28a745', color: '#fff', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}><FiCloud /> Cached</span>);
-                            } else if (stat.transferStatus && stat.transferStatus.status === "error") {
-                                badges.push(<span key="err" className="metaBadge error" style={{ background: '#dc3545', color: '#fff', fontWeight: 'bold' }}>Transfer Error</span>);
-                            } else if (stat.transferStatus && stat.transferStatus.status === "waiting") {
-                                badges.push(<span key="wait" className="metaBadge info" style={{ background: '#17a2b8', color: '#fff', fontWeight: 'bold' }}>Waiting to start...</span>);
-                            }
-                            
-                            return badges;
-                          })()}
-                        </div>
-                    </div>
+                {streams.map((item, index) => {
+                  const details = parseStreamDetails(item);
+                  const h = getHash(item.url);
+                  const stat = h ? streamStatuses[h] : null;
 
-                    <div className="itemActions">
-                      <button
-                        className="actionBtn play"
-                        onClick={() => handlePlayStream(item, false)}
-                      >
-                        <FiPlay /> Play
-                      </button>
+                  return (
+                    <div key={index} className="magnetItem" tabIndex="0">
+                      <div className="itemInfo">
+                        <span className="itemTitle" title={details.cleanTitle}>
+                          {details.cleanTitle}
+                        </span>
+                        <div className="itemMeta">
+                          <span className={`metaBadge qualityBadge ${details.quality.includes('4K') ? 'q4k' : 'qhd'}`}>
+                            {details.quality}
+                          </span>
+
+                          {details.isHdr && <span className="metaBadge hdrBadge">HDR</span>}
+                          {details.isHevc && <span className="metaBadge codecBadge">HEVC x265</span>}
+                          {details.isAtmos && <span className="metaBadge audioBadge">Dolby Atmos</span>}
+
+                          <span className="metaBadge providerBadge">⚡ {details.provider}</span>
+
+                          {details.size && <span className="metaBadge sizeBadge">💾 {details.size}</span>}
+                          {details.seeds && <span className="metaBadge seedsBadge">👥 {details.seeds} Seeds</span>}
+
+                          {stat && stat.isCached && (
+                            <span className="metaBadge cachedBadge">
+                              <FiCloud /> Cached
+                            </span>
+                          )}
+                          {stat && stat.transferStatus?.status === "downloading" && (
+                            <span className="metaBadge dlBadge">
+                              Downloading {Math.round((stat.transferStatus.progress || 0) * 100)}%
+                            </span>
+                          )}
+                          {stat && stat.transferStatus?.status === "finished" && (
+                            <span className="metaBadge cachedBadge">
+                              <FiCloud /> Finished / Cached
+                            </span>
+                          )}
+                          {stat && stat.transferStatus?.status === "error" && (
+                            <span className="metaBadge errorBadge">
+                              Transfer Error
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="itemActions">
+                        <button
+                          className="actionBtn play"
+                          onClick={() => handlePlayStream(item, false)}
+                          tabIndex="-1"
+                        >
+                          <FiPlay /> Play
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
