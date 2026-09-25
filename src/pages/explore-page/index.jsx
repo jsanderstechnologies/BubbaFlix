@@ -60,35 +60,55 @@ const Explore = () => {
 
 	const fetchInitialData = () => {
 		setLoading(true);
-		fetchDataFromAPI(`/discover/${mediaType}`, filters).then(async (res) => {
-			let filtered = filterEnglishMedia(res?.results || []);
+		Promise.all([
+			fetchDataFromAPI(`/discover/${mediaType}?page=1`, filters).catch(() => null),
+			fetchDataFromAPI(`/discover/${mediaType}?page=2`, filters).catch(() => null),
+			fetchDataFromAPI(`/discover/${mediaType}?page=3`, filters).catch(() => null),
+		]).then(async ([res1, res2, res3]) => {
+			const list1 = Array.isArray(res1?.results) ? res1.results : [];
+			const list2 = Array.isArray(res2?.results) ? res2.results : [];
+			const list3 = Array.isArray(res3?.results) ? res3.results : [];
+			const combined = [...list1, ...list2, ...list3];
+			let filtered = filterEnglishMedia(combined);
 			filtered = await filterExploreMediaWithGroq(filtered, mediaType);
-			setData({ ...res, results: filtered });
-			setPageNum((prev) => prev + 1);
+
+			const existingIds = new Set();
+			const uniqueFiltered = filtered.filter((item) => {
+				if (!item || !item.id) return false;
+				if (existingIds.has(item.id)) return false;
+				existingIds.add(item.id);
+				return true;
+			});
+
+			setData({ ...(res1 || {}), results: uniqueFiltered });
+			setPageNum(4);
 			setLoading(false);
 		});
 	};
 
 	const fetchNextPageData = () => {
-		fetchDataFromAPI(
-			`/discover/${mediaType}?page=${pageNum}`,
-			filters
-		).then(async (res) => {
-			let filteredNext = filterEnglishMedia(res?.results || []);
+		const p1 = pageNum;
+		const p2 = pageNum + 1;
+		Promise.all([
+			fetchDataFromAPI(`/discover/${mediaType}?page=${p1}`, filters).catch(() => null),
+			fetchDataFromAPI(`/discover/${mediaType}?page=${p2}`, filters).catch(() => null),
+		]).then(async ([res1, res2]) => {
+			const list1 = Array.isArray(res1?.results) ? res1.results : [];
+			const list2 = Array.isArray(res2?.results) ? res2.results : [];
+			const combined = [...list1, ...list2];
+			let filteredNext = filterEnglishMedia(combined);
 			filteredNext = await filterExploreMediaWithGroq(filteredNext, mediaType);
 			
-			// We have to use a functional state update to ensure we don't capture stale `data`
 			setData((prevData) => {
-				if (prevData?.results) {
-					return {
-						...prevData,
-						results: [...prevData.results, ...filteredNext],
-					};
-				} else {
-					return { ...res, results: filteredNext };
-				}
+				const prevResults = Array.isArray(prevData?.results) ? prevData.results : [];
+				const existingIds = new Set(prevResults.map((item) => item.id));
+				const uniqueNext = filteredNext.filter((item) => item && item.id && !existingIds.has(item.id));
+				return {
+					...(prevData || res1 || {}),
+					results: [...prevResults, ...uniqueNext],
+				};
 			});
-			setPageNum((prev) => prev + 1);
+			setPageNum((prev) => prev + 2);
 		});
 	};
 

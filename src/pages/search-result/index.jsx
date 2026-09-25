@@ -148,44 +148,70 @@ const SearchResult = () => {
     if (filterType === "all") {
       Promise.all([
         fetchDataFromAPI(`/search/multi?query=${encodeURIComponent(queryStr)}&page=${page}`),
+        fetchDataFromAPI(`/search/multi?query=${encodeURIComponent(queryStr)}&page=${page + 1}`),
         fetchDataFromAPI(`/search/collection?query=${encodeURIComponent(queryStr)}&page=${page}`),
       ])
-        .then(([multiRes, colRes]) => {
-          const multiList = filterEnglishResults(multiRes?.results || []);
+        .then(([multiRes1, multiRes2, colRes]) => {
+          const list1 = filterEnglishResults(multiRes1?.results || []);
+          const list2 = filterEnglishResults(multiRes2?.results || []);
           const colList = filterEnglishCollections(colRes?.results || []).map((item) => ({ ...item, media_type: "collection" }));
-          setData({
-            ...multiRes,
-            results: [...colList, ...multiList],
+          
+          const existingIds = new Set();
+          const combinedMulti = [...list1, ...list2].filter((item) => {
+            if (!item || !item.id) return false;
+            if (existingIds.has(item.id)) return false;
+            existingIds.add(item.id);
+            return true;
           });
-          setPageNum(2);
+
+          setData({
+            ...(multiRes1 || {}),
+            results: [...colList, ...combinedMulti],
+          });
+          setPageNum(3);
           setLoading(false);
         })
         .catch(() => setLoading(false));
       return;
     }
 
-    let endpoint = `/search/multi?query=${encodeURIComponent(queryStr)}&page=${page}`;
+    let endpointP1 = `/search/multi?query=${encodeURIComponent(queryStr)}&page=${page}`;
+    let endpointP2 = `/search/multi?query=${encodeURIComponent(queryStr)}&page=${page + 1}`;
     if (filterType === "movie") {
-      endpoint = `/search/movie?query=${encodeURIComponent(queryStr)}&page=${page}`;
+      endpointP1 = `/search/movie?query=${encodeURIComponent(queryStr)}&page=${page}`;
+      endpointP2 = `/search/movie?query=${encodeURIComponent(queryStr)}&page=${page + 1}`;
     } else if (filterType === "tv") {
-      endpoint = `/search/tv?query=${encodeURIComponent(queryStr)}&page=${page}`;
+      endpointP1 = `/search/tv?query=${encodeURIComponent(queryStr)}&page=${page}`;
+      endpointP2 = `/search/tv?query=${encodeURIComponent(queryStr)}&page=${page + 1}`;
     } else if (filterType === "person") {
-      endpoint = `/search/person?query=${encodeURIComponent(queryStr)}&page=${page}`;
+      endpointP1 = `/search/person?query=${encodeURIComponent(queryStr)}&page=${page}`;
+      endpointP2 = `/search/person?query=${encodeURIComponent(queryStr)}&page=${page + 1}`;
     }
 
-    fetchDataFromAPI(endpoint)
-      .then((res) => {
-        const filtered = {
-          ...res,
-          results: filterEnglishResults(res?.results || []),
-        };
-        setData(filtered);
-        setPageNum(2);
+    Promise.all([
+      fetchDataFromAPI(endpointP1).catch(() => null),
+      fetchDataFromAPI(endpointP2).catch(() => null),
+    ])
+      .then(([res1, res2]) => {
+        let list1 = filterType === "person" ? (res1?.results || []) : filterEnglishResults(res1?.results || []);
+        let list2 = filterType === "person" ? (res2?.results || []) : filterEnglishResults(res2?.results || []);
+        
+        const existingIds = new Set();
+        const combined = [...list1, ...list2].filter((item) => {
+          if (!item || !item.id) return false;
+          if (existingIds.has(item.id)) return false;
+          existingIds.add(item.id);
+          return true;
+        });
+
+        setData({
+          ...(res1 || res2 || {}),
+          results: combined,
+        });
+        setPageNum(3);
         setLoading(false);
       })
-      .catch(() => {
-        setLoading(false);
-      });
+      .catch(() => setLoading(false));
   };
 
   const fetchSearchResults = (queryStr, page, filterType) => {

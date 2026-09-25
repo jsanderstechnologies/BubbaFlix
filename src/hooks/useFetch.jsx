@@ -21,9 +21,32 @@ const useFetch = (url) => {
     setData(null);
     setError(null);
 
-    fetchDataFromAPI(url)
-      .then((res) => {
-        setData(res);
+    const separator = url.includes("?") ? "&" : "?";
+    const page2Url = `${url}${separator}page=2`;
+
+    Promise.all([
+      fetchDataFromAPI(url).catch(() => null),
+      fetchDataFromAPI(page2Url).catch(() => null),
+    ])
+      .then(([res1, res2]) => {
+        const list1 = Array.isArray(res1?.results) ? res1.results : [];
+        const list2 = Array.isArray(res2?.results) ? res2.results : [];
+        const combined = [...list1, ...list2];
+        const existingIds = new Set();
+        const uniqueCombined = combined.filter((item) => {
+          if (!item || !item.id) return false;
+          if (existingIds.has(item.id)) return false;
+          existingIds.add(item.id);
+          return true;
+        });
+
+        if (res1) {
+          setData({ ...res1, results: uniqueCombined });
+        } else if (res2) {
+          setData({ ...res2, results: uniqueCombined });
+        } else {
+          setData(null);
+        }
         setLoading(false);
       })
       .catch((err) => {
