@@ -52,6 +52,83 @@ const IMAGE_CACHE_DIR = path.join(DATA_DIR, "cache", "images");
 if (!fs.existsSync(IMAGE_CACHE_DIR)) {
   fs.mkdirSync(IMAGE_CACHE_DIR, { recursive: true });
 }
+
+const TMDB_CACHE_DIR = path.join(DATA_DIR, "cache", "tmdb");
+if (!fs.existsSync(TMDB_CACHE_DIR)) {
+  fs.mkdirSync(TMDB_CACHE_DIR, { recursive: true });
+}
+
+// In-memory cache + disk persistence for TMDB metadata requests
+const tmdbMemoryCache = new Map();
+const TMDB_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour server TTL
+
+const getTmdbCacheKey = (tmdbPath, queryParams) => {
+  const sortedKeys = Object.keys(queryParams || {}).sort();
+  const serialized = sortedKeys.map((k) => `${k}=${queryParams[k]}`).join("&");
+  return crypto.createHash("md5").update(`${tmdbPath}?${serialized}`).digest("hex");
+};
+
+const FOREIGN_SCRIPT_REGEX_SERVER = /[\u0400-\u04FF\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uac00-\ud7af\u0600-\u06FF\u0900-\u097F\u0E00-\u0E7F\u0370-\u03FF\u0590-\u05FF\u1EA0-\u1EF9]/;
+
+const ADULT_KEYWORDS_SERVER = [
+  "xxx", "adult", "erotic", "porn", "hentai", "nude", "sex", "uncensored", 
+  "striptease", "playboy", "penthouse", "softcore", "hardcore", "erotica", "sensual",
+  "taboo", "fetish", "babe", "vixen", "desire", "passion", "lust", "naughty", "explicit"
+];
+
+const isAdultServer = (item) => {
+  if (!item || typeof item !== "object") return false;
+  if (item.adult === true) return true;
+  const title = (item.title || item.name || item.original_title || item.original_name || "").toLowerCase();
+  const overview = (item.overview || "").toLowerCase();
+  const words = title.split(/[\s,._\-:;]+/);
+  if (words.some((w) => ADULT_KEYWORDS_SERVER.includes(w))) return true;
+  if (ADULT_KEYWORDS_SERVER.some((kw) => title.includes(kw) || overview.includes(kw))) return true;
+  return false;
+};
+
+const isAnimeServer = (item) => {
+  if (!item || typeof item !== "object") return false;
+  if (item.original_language) {
+    const lang = item.original_language.toLowerCase();
+    if (lang === "ja" || lang === "jpn" || lang === "japanese") return true;
+  }
+  if (Array.isArray(item.origin_country) && item.origin_country.includes("JP")) {
+    return true;
+  }
+  const title = (item.title || item.name || item.original_title || item.original_name || "").toLowerCase();
+  const overview = (item.overview || "").toLowerCase();
+  const animeKeywords = [
+    "anime", "manga", "hentai", "otaku", "studio ghibli", "ghibli", "dragon ball", "dragonball",
+    "naruto", "one piece", "bleach", "attack on titan", "shingeki", "demon slayer", "kimetsu",
+    "my hero academia", "boku no hero", "jujutsu kaisen", "death note", "pokemon", "pokémon"
+  ];
+  if (animeKeywords.some((kw) => title.includes(kw) || overview.includes(kw))) return true;
+  return false;
+};
+
+const filterServerTmdbResults = (data) => {
+  if (!data || typeof data !== "object") return data;
+  if (Array.isArray(data.results)) {
+    data.results = data.results.filter((item) => {
+      if (!item || typeof item !== "object") return false;
+      if (isAdultServer(item)) return false;
+      if (isAnimeServer(item)) return false;
+      if (item.vote_average === 0 || item.vote_average === 0.0) return false;
+      if (item.media_type === "person") return true;
+      if (item.original_language) {
+        const lang = item.original_language.toLowerCase();
+        if (lang !== "en" && lang !== "eng" && (!item.vote_count || item.vote_count < 1500)) {
+          return false;
+        }
+      }
+      const title = item.title || item.name || item.original_title || item.original_name || "";
+      if (!title || FOREIGN_SCRIPT_REGEX_SERVER.test(title)) return false;
+      return true;
+    });
+  }
+  return data;
+};
 const SETTINGS_FILE = path.join(DATA_DIR, "settings.json");
 const LOG_FILE = path.join(DATA_DIR, "bubbaflix.log");
 const https = require("https");
@@ -526,6 +603,103 @@ const server = http.createServer((req, res) => {
       ip: localIp,
       url: `http://${localIp}:5150`
     });
+  }
+
+  // TMDB Metadata Proxy & Disk/Memory Cache Endpoint
+  if (cleanPath.startsWith("/api/tmdb/") && req.method === "GET") {
+    const tmdbSubPath = cleanPath.replace(/^\/api\/tmdb/, "");
+    const queryParams = parsedUrl.query || {};
+    const cacheKey = getTmdbCacheKey(tmdbSubPath, queryParams);
+    const diskCacheFile = path.join(TMDB_CACHE_DIR, `${cacheKey}.json`);
+
+    // 1. Check Memory Cache
+    const memCached = tmdbMemoryCache.get(cacheKey);
+    if (memCached && Date.now() - memCached.timestamp < TMDB_CACHE_TTL_MS) {
+      logMessage(`[TMDB Cache Hit (RAM)] GET ${tmdbSubPath}`);
+      return sendJson(res, 200, memCached.data);
+    }
+
+    // 2. Check Disk Cache
+    if (fs.existsSync(diskCacheFile)) {
+      try {
+        const fileStat = fs.statSync(diskCacheFile);
+        if (Date.now() - fileStat.mtimeMs < TMDB_CACHE_TTL_MS) {
+          const raw = fs.readFileSync(diskCacheFile, "utf-8");
+          const parsedData = JSON.parse(raw);
+          tmdbMemoryCache.set(cacheKey, { timestamp: fileStat.mtimeMs, data: parsedData });
+          logMessage(`[TMDB Cache Hit (Disk)] GET ${tmdbSubPath}`);
+          return sendJson(res, 200, parsedData);
+        }
+      } catch (e) {}
+    }
+
+    // 3. Cache Miss: Query TMDB Upstream
+    const authHeader = req.headers.authorization || "";
+    const activeToken = authHeader.replace(/^bearer\s+/i, "").trim() ||
+      (process.env.VITE_APP_TMDB_KEY || "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmYjM3ODM3YzJiMDlkNzEyMDIwMDIxZjc0NGI5ZTQwNyIsInN1YiI6IjY0NjNlNzE5ZTNmYTJmMDEyNDQ3ODk1NCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.3Y0VloCdPlprLy-OMZQmqtZd4_Ti9GDfHo4SZXh3erU");
+
+    const queryStr = parsedUrl.search || "";
+    const targetTmdbUrl = `https://api.themoviedb.org/3${tmdbSubPath}${queryStr}`;
+
+    const https = require("https");
+    const tmdbReq = https.request(
+      targetTmdbUrl,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${activeToken}`,
+          "Content-Type": "application/json",
+        },
+      },
+      (tmdbRes) => {
+        let body = "";
+        tmdbRes.on("data", (chunk) => { body += chunk; });
+        tmdbRes.on("end", () => {
+          if (tmdbRes.statusCode >= 200 && tmdbRes.statusCode < 300) {
+            try {
+              let parsed = JSON.parse(body);
+              parsed = filterServerTmdbResults(parsed);
+              tmdbMemoryCache.set(cacheKey, { timestamp: Date.now(), data: parsed });
+              fs.writeFile(diskCacheFile, JSON.stringify(parsed), "utf-8", () => {});
+              logMessage(`[TMDB Cache Miss -> Saved] GET ${tmdbSubPath}`);
+              return sendJson(res, 200, parsed);
+            } catch (err) {
+              return sendJson(res, 500, { error: "Failed to parse TMDB response" });
+            }
+          } else {
+            logMessage(`[TMDB Proxy Error] Upstream returned status ${tmdbRes.statusCode}`, true);
+            return sendJson(res, tmdbRes.statusCode, { error: "TMDB upstream error" });
+          }
+        });
+      }
+    );
+
+    tmdbReq.on("error", (err) => {
+      logMessage(`[TMDB Proxy Network Error]: ${err.message}`, true);
+      return sendJson(res, 502, { error: "TMDB upstream service unavailable" });
+    });
+
+    tmdbReq.end();
+    return;
+  }
+
+  // Admin Endpoint: Clear TMDB Metadata Cache
+  if ((cleanPath === "/api/admin/cache/clear" || cleanPath === "/admin/cache/clear") && req.method === "POST") {
+    try {
+      tmdbMemoryCache.clear();
+      if (fs.existsSync(TMDB_CACHE_DIR)) {
+        const files = fs.readdirSync(TMDB_CACHE_DIR);
+        for (const file of files) {
+          if (file.endsWith(".json")) {
+            fs.unlinkSync(path.join(TMDB_CACHE_DIR, file));
+          }
+        }
+      }
+      logMessage(`[Admin Cache Flush] Cleared all server-side TMDB metadata cache files.`);
+      return sendJson(res, 200, { status: "success", message: "Server metadata cache cleared." });
+    } catch (e) {
+      return sendJson(res, 500, { error: e.message });
+    }
   }
 
   // ========== AUTHENTICATION & USER ENDPOINTS ==========

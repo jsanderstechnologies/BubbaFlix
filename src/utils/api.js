@@ -1,5 +1,6 @@
 import axios from "axios";
 import { filterEnglishMedia } from "./filterUtils";
+import { getServerUrl } from "./serverSettings";
 
 const BASE_URL = "https://api.themoviedb.org/3";
 const DEFAULT_TMDB_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmYjM3ODM3YzJiMDlkNzEyMDIwMDIxZjc0NGI5ZTQwNyIsInN1YiI6IjY0NjNlNzE5ZTNmYTJmMDEyNDQ3ODk1NCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.3Y0VloCdPlprLy-OMZQmqtZd4_Ti9GDfHo4SZXh3erU";
@@ -56,24 +57,50 @@ export const fetchDataFromAPI = async (url, params, forceRefresh = false) => {
     }
   }
 
+  const customParams = {
+    language: "en-US",
+    with_original_language: "en",
+    include_adult: false,
+    ...params,
+  };
+
+  // Pre-filter on TMDB discover endpoints
+  if (url.startsWith("/discover")) {
+    customParams.without_genres = "16";
+    customParams.with_original_language = "en";
+  }
+
+  const activeToken = getActiveTmdbToken();
+  const serverBase = getServerUrl();
+
+  // 1. Try local backend server TMDB metadata cache first
+  if (serverBase) {
+    try {
+      const serverEndpoint = `${serverBase}/api/tmdb${url}`;
+      const { data } = await axios.get(serverEndpoint, {
+        headers: { Authorization: "bearer " + activeToken },
+        params: customParams,
+        timeout: 3500, // Short timeout to fallback quickly if local server is unreachable
+      });
+
+      if (data) {
+        if (Array.isArray(data.results)) {
+          data.results = filterEnglishMedia(data.results);
+        }
+        apiCache.set(cacheKey, { timestamp: Date.now(), data });
+        preloadImagesFromResults(data);
+        return data;
+      }
+    } catch (backendErr) {
+      // Fall through to direct TMDB API if local backend server is unreachable or fails
+    }
+  }
+
+  // 2. Direct TMDB API Fallback
   try {
-    const activeToken = getActiveTmdbToken();
     const headers = {
       Authorization: "bearer " + activeToken,
     };
-
-    const customParams = {
-      language: "en-US",
-      with_original_language: "en",
-      include_adult: false,
-      ...params,
-    };
-
-    // Pre-filter on TMDB discover endpoints
-    if (url.startsWith("/discover")) {
-      customParams.without_genres = "16";
-      customParams.with_original_language = "en";
-    }
 
     const { data } = await axios.get(BASE_URL + url, {
       headers,
