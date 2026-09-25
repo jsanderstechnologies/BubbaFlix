@@ -557,7 +557,38 @@ class MainActivity : AppCompatActivity() {
             return true
         }
 
+        if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER || keyCode == KeyEvent.KEYCODE_BUTTON_A) {
+            if (event != null && (event.isLongPress || event.repeatCount >= 1)) {
+                webView.evaluateJavascript(
+                    "(function() {" +
+                    "  var el = document.activeElement;" +
+                    "  if (el && el !== document.body) {" +
+                    "    el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, view: window }));" +
+                    "  }" +
+                    "})();",
+                    null
+                )
+                return true
+            }
+        }
+
         return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyLongPress(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER || keyCode == KeyEvent.KEYCODE_BUTTON_A) {
+            webView.evaluateJavascript(
+                "(function() {" +
+                "  var el = document.activeElement;" +
+                "  if (el && el !== document.body) {" +
+                "    el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, view: window }));" +
+                "  }" +
+                "})();",
+                null
+            )
+            return true
+        }
+        return super.onKeyLongPress(keyCode, event)
     }
 
     override fun onResume() {

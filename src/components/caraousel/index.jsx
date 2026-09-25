@@ -37,7 +37,20 @@ const CarouselItem = ({ item, endpoint, url, sectionId }) => {
 		timerRef.current = setTimeout(() => {
 			isLongPressRef.current = true;
 			setShowActionModal(true);
-		}, 450);
+		}, 380);
+	};
+
+	const endPress = () => {
+		if (timerRef.current) {
+			clearTimeout(timerRef.current);
+			timerRef.current = null;
+		}
+		const pressDuration = pressStartTimeRef.current > 0 ? Date.now() - pressStartTimeRef.current : 0;
+		if (!isLongPressRef.current && pressDuration > 0 && pressDuration < 380) {
+			handleSelect();
+		}
+		isLongPressRef.current = false;
+		pressStartTimeRef.current = 0;
 	};
 
 	const cancelPress = () => {
@@ -45,24 +58,19 @@ const CarouselItem = ({ item, endpoint, url, sectionId }) => {
 			clearTimeout(timerRef.current);
 			timerRef.current = null;
 		}
+		isLongPressRef.current = false;
+		pressStartTimeRef.current = 0;
 	};
 
 	const handleClick = (e) => {
-		const pressDuration = pressStartTimeRef.current > 0 ? Date.now() - pressStartTimeRef.current : 0;
-		if (isLongPressRef.current || pressDuration >= 400) {
-			e.preventDefault();
-			e.stopPropagation();
-			isLongPressRef.current = false;
-			pressStartTimeRef.current = 0;
-			return;
-		}
-		pressStartTimeRef.current = 0;
-		handleSelect();
+		e.preventDefault();
+		e.stopPropagation();
 	};
 
 	const handleContextMenu = (e) => {
 		e.preventDefault();
 		e.stopPropagation();
+		if (timerRef.current) clearTimeout(timerRef.current);
 		isLongPressRef.current = true;
 		setShowActionModal(true);
 	};
@@ -72,26 +80,21 @@ const CarouselItem = ({ item, endpoint, url, sectionId }) => {
 		if (e.key === "ContextMenu" || code === 93 || code === 461 || code === 10009) {
 			e.preventDefault();
 			e.stopPropagation();
-			isLongPressRef.current = true;
-			setShowActionModal(true);
+			handleContextMenu(e);
 			return;
 		}
 		if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
 			e.preventDefault();
 			e.stopPropagation();
 			if (e.repeat) {
-				isLongPressRef.current = true;
-				if (keyTimerRef.current) clearTimeout(keyTimerRef.current);
-				setShowActionModal(true);
+				if (!isLongPressRef.current) {
+					isLongPressRef.current = true;
+					if (timerRef.current) clearTimeout(timerRef.current);
+					setShowActionModal(true);
+				}
 				return;
 			}
-			isLongPressRef.current = false;
-			pressStartTimeRef.current = Date.now();
-			if (keyTimerRef.current) clearTimeout(keyTimerRef.current);
-			keyTimerRef.current = setTimeout(() => {
-				isLongPressRef.current = true;
-				setShowActionModal(true);
-			}, 450);
+			startPress();
 		}
 	};
 
@@ -100,16 +103,7 @@ const CarouselItem = ({ item, endpoint, url, sectionId }) => {
 		if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
 			e.preventDefault();
 			e.stopPropagation();
-			if (keyTimerRef.current) {
-				clearTimeout(keyTimerRef.current);
-				keyTimerRef.current = null;
-			}
-			const pressDuration = pressStartTimeRef.current > 0 ? Date.now() - pressStartTimeRef.current : 0;
-			if (!isLongPressRef.current && pressDuration < 400) {
-				handleSelect();
-			}
-			isLongPressRef.current = false;
-			pressStartTimeRef.current = 0;
+			endPress();
 		}
 	};
 
@@ -124,10 +118,10 @@ const CarouselItem = ({ item, endpoint, url, sectionId }) => {
 				onClick={handleClick}
 				onContextMenu={handleContextMenu}
 				onMouseDown={startPress}
-				onMouseUp={cancelPress}
+				onMouseUp={endPress}
 				onMouseLeave={cancelPress}
 				onTouchStart={startPress}
-				onTouchEnd={cancelPress}
+				onTouchEnd={endPress}
 				onTouchCancel={cancelPress}
 				onKeyDown={handleKeyDown}
 				onKeyUp={handleKeyUp}
