@@ -260,15 +260,26 @@ export const initDpadNavigation = () => {
         activeEl.blur();
         return;
       }
-      // Do not block normal typing keys
-      if (key !== "ArrowUp" && key !== "ArrowDown" && code !== 38 && code !== 40 && code !== 19 && code !== 20 && key !== "Enter" && key !== "Select" && code !== 23 && code !== 66) {
+      // Do not block normal typing keys (e.g. letters, numbers, including 'b' / 'B')
+      const isNavOrEnterKey =
+        key === "ArrowUp" ||
+        key === "ArrowDown" ||
+        code === 38 ||
+        code === 40 ||
+        code === 19 ||
+        code === 20 ||
+        key === "Enter" ||
+        key === "Select" ||
+        key === "Accept" ||
+        code === 23 ||
+        (code === 66 && key !== "b" && key !== "B");
+
+      if (!isNavOrEnterKey) {
         activeEl.removeAttribute("readonly");
         activeEl.setAttribute("data-editing-active", "true");
         return;
       }
     }
-
-
 
     // Handle Smart TV Back Button
     if (key === "Escape" || key === "Back" || code === 27 || code === 10009 || code === 461 || code === 4) {
@@ -290,7 +301,14 @@ export const initDpadNavigation = () => {
     }
 
     // D-Pad Action (Select / OK / Enter) Button Press
-    if (key === "Select" || code === 23 || code === 66 || (key === "Enter" && activeEl && activeEl.tagName === "INPUT")) {
+    const isDpadEnter =
+      key === "Select" ||
+      key === "Accept" ||
+      key === "Ok" ||
+      code === 23 ||
+      (code === 66 && key !== "b" && key !== "B");
+
+    if (isDpadEnter || (key === "Enter" && activeEl && activeEl.tagName === "INPUT")) {
       if (activeEl && activeEl !== document.body) {
         if (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA") {
           e.preventDefault();

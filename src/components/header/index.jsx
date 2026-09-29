@@ -36,7 +36,7 @@ const Header = () => {
 
 	const searchQuery = (e) => {
 		const code = e.keyCode;
-		if ((e.key === "Enter" || code === 13 || code === 23 || code === 66) && query.trim().length > 0) {
+		if ((e.key === "Enter" || code === 13 || code === 23 || (code === 66 && e.key !== "b" && e.key !== "B")) && query.trim().length > 0) {
 			navigate(`search/${query.trim()}`);
 			setShowSearch(false);
 		}
@@ -76,7 +76,7 @@ const Header = () => {
 
 	const handleKeyActivate = (e, callback) => {
 		const code = e.keyCode;
-		if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+		if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || (code === 66 && e.key !== "b" && e.key !== "B")) {
 			e.preventDefault();
 			callback();
 		}
@@ -212,7 +212,7 @@ const Header = () => {
 								onBlur={() => setIsReadOnly(true)}
 								onKeyDown={(e) => {
 									const code = e.keyCode;
-									if (e.key === "Enter" || code === 13 || code === 23 || code === 66) {
+									if (e.key === "Enter" || code === 13 || code === 23 || (code === 66 && e.key !== "b" && e.key !== "B")) {
 										if (isReadOnly) {
 											e.preventDefault();
 											setIsReadOnly(false);

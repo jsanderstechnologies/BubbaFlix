@@ -17,7 +17,7 @@ const TopNav = () => {
 
 	const handleSearch = (e) => {
 		const code = e.keyCode;
-		if ((e.key === "Enter" || code === 13 || code === 23 || code === 66) && query.trim().length > 0) {
+		if ((e.key === "Enter" || code === 13 || code === 23 || (code === 66 && e.key !== "b" && e.key !== "B")) && query.trim().length > 0) {
 			e.preventDefault();
 			navigate(`/search/${encodeURIComponent(query.trim())}`);
 		}
@@ -81,7 +81,7 @@ const TopNav = () => {
 								onClick={() => navigate("/")}
 								onKeyDown={(e) => {
 									const code = e.keyCode;
-									if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+									if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || (code === 66 && e.key !== "b" && e.key !== "B")) {
 										e.preventDefault();
 										navigate("/");
 									}
@@ -97,7 +97,7 @@ const TopNav = () => {
 								onClick={() => navigate("/search")}
 								onKeyDown={(e) => {
 									const code = e.keyCode;
-									if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+									if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || (code === 66 && e.key !== "b" && e.key !== "B")) {
 										e.preventDefault();
 										navigate("/search");
 									}
@@ -113,7 +113,7 @@ const TopNav = () => {
 								onClick={() => navigate("/favorites")}
 								onKeyDown={(e) => {
 									const code = e.keyCode;
-									if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+									if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || (code === 66 && e.key !== "b" && e.key !== "B")) {
 										e.preventDefault();
 										navigate("/favorites");
 									}
@@ -129,7 +129,7 @@ const TopNav = () => {
 								onClick={() => navigate("/explore/movie")}
 								onKeyDown={(e) => {
 									const code = e.keyCode;
-									if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+									if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || (code === 66 && e.key !== "b" && e.key !== "B")) {
 										e.preventDefault();
 										navigate("/explore/movie");
 									}
@@ -145,7 +145,7 @@ const TopNav = () => {
 								onClick={() => navigate("/explore/tv")}
 								onKeyDown={(e) => {
 									const code = e.keyCode;
-									if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+									if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || (code === 66 && e.key !== "b" && e.key !== "B")) {
 										e.preventDefault();
 										navigate("/explore/tv");
 									}
@@ -161,7 +161,8 @@ const TopNav = () => {
 									tabIndex="0"
 									onClick={() => navigate("/usage")}
 									onKeyDown={(e) => {
-										if (e.key === "Enter" || e.keyCode === 13 || e.keyCode === 23 || e.keyCode === 66) {
+										const code = e.keyCode;
+										if (e.key === "Enter" || code === 13 || code === 23 || (code === 66 && e.key !== "b" && e.key !== "B")) {
 											e.preventDefault();
 											navigate("/usage");
 										}
@@ -177,7 +178,7 @@ const TopNav = () => {
 								onClick={() => navigate("/settings")}
 								onKeyDown={(e) => {
 									const code = e.keyCode;
-									if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+									if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || (code === 66 && e.key !== "b" && e.key !== "B")) {
 										e.preventDefault();
 										navigate("/settings");
 									}
@@ -193,7 +194,7 @@ const TopNav = () => {
 								onClick={() => navigate("/about")}
 								onKeyDown={(e) => {
 									const code = e.keyCode;
-									if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+									if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || (code === 66 && e.key !== "b" && e.key !== "B")) {
 										e.preventDefault();
 										navigate("/about");
 									}
@@ -209,7 +210,7 @@ const TopNav = () => {
 								onClick={() => setShowSignOutModal(true)}
 								onKeyDown={(e) => {
 									const code = e.keyCode;
-									if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+									if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || (code === 66 && e.key !== "b" && e.key !== "B")) {
 										e.preventDefault();
 										setShowSignOutModal(true);
 									}
