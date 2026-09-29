@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import dayjs from "dayjs";
@@ -8,7 +8,7 @@ import Img from "../lazy-load";
 import PosterFallback from "../../assets/no-poster.png";
 import CircleRating from "../circle-rating";
 import PosterActionModal from "../poster-action-modal";
-import { saveLastClickedPoster } from "../../utils/focusManager";
+import { saveLastClickedPoster, restoreLastFocusedPoster } from "../../utils/focusManager";
 
 import "./index.scss";
 
@@ -151,6 +151,12 @@ const CarouselItem = ({ item, endpoint, url, sectionId }) => {
 
 const Carousel = ({ data, loading, endpoint, title, sectionId }) => {
 	const { url } = useSelector((state) => state.home);
+
+	useEffect(() => {
+		if (!loading && Array.isArray(data) && data.length > 0) {
+			restoreLastFocusedPoster();
+		}
+	}, [data, loading]);
 
 	const skItem = () => {
 		return (

@@ -1,12 +1,12 @@
 /* eslint-disable react/prop-types */
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { FiPlay, FiX } from "react-icons/fi";
 import ContentWrapper from "../content-wrapper";
 import Img from "../lazy-load";
 import PosterFallback from "../../assets/no-poster.png";
-import { saveLastClickedPoster } from "../../utils/focusManager";
+import { saveLastClickedPoster, restoreLastFocusedPoster } from "../../utils/focusManager";
 import { getStreamUrl, clearWatchProgress } from "../../utils/watchProgress";
 import "./index.scss";
 
@@ -19,6 +19,12 @@ const ContinueWatchingCarousel = ({ items: initialItems, title, onPlayResume, se
 
   // Local state so removing items is instant without a page refresh
   const [items, setItems] = useState(initialItems || []);
+
+  useEffect(() => {
+    if (Array.isArray(items) && items.length > 0) {
+      restoreLastFocusedPoster();
+    }
+  }, [items]);
 
   if (!items || items.length === 0) return null;
 

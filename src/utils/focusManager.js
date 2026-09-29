@@ -26,17 +26,33 @@ export const goBackToSource = (navigate) => {
 };
 
 export const restoreLastFocusedPoster = () => {
+  if (typeof window === "undefined") return;
+
   const lastId = sessionStorage.getItem("last_clicked_poster_id");
   const savedScrollY = sessionStorage.getItem("last_clicked_scroll_y");
 
   if (!lastId && !savedScrollY) return;
 
-  const attemptFocus = (retries = 35) => {
-    const el = document.getElementById(lastId) || document.querySelector(`[data-poster-id="${lastId}"]`);
+  const idParts = lastId ? lastId.split("-") : [];
+  const idOnly = idParts.length > 0 ? idParts[idParts.length - 1] : "";
+
+  const attemptFocus = (retries = 50) => {
+    const currentId = sessionStorage.getItem("last_clicked_poster_id");
+    if (!currentId) return;
+
+    // 1. Direct ID or data-poster-id match
+    let el = document.getElementById(currentId) || document.querySelector(`[data-poster-id="${currentId}"]`);
+
+    // 2. Flexible fallback by TMDB numeric ID suffix (e.g. data-poster-id$="-12345")
+    if (!el && idOnly) {
+      el = document.querySelector(`[data-poster-id$="-${idOnly}"]`) ||
+           document.querySelector(`[id$="-${idOnly}"]`);
+    }
+
     if (el) {
       el.focus({ preventScroll: false });
 
-      // Horizontal carousel scroll
+      // Horizontal carousel scroll positioning
       const parentCarousel = el.closest(".carouselItems") || el.closest(".continueCarouselItems");
       if (parentCarousel) {
         const itemLeft = el.offsetLeft;
@@ -48,7 +64,7 @@ export const restoreLastFocusedPoster = () => {
         });
       }
 
-      // Vertical window scroll
+      // Vertical page scroll positioning
       if (typeof el.scrollIntoView === "function") {
         el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
       } else if (savedScrollY) {
@@ -58,20 +74,11 @@ export const restoreLastFocusedPoster = () => {
         }
       }
 
-      sessionStorage.removeItem("last_clicked_poster_id");
-      sessionStorage.removeItem("last_clicked_scroll_y");
-    } else if (savedScrollY && retries === 0) {
-      const y = parseInt(savedScrollY, 10);
-      if (!isNaN(y) && y > 0) {
-        window.scrollTo({ top: y, behavior: "smooth" });
-      }
+      // Clear stored keys ONLY after successfully locating & focusing the element
       sessionStorage.removeItem("last_clicked_poster_id");
       sessionStorage.removeItem("last_clicked_scroll_y");
     } else if (retries > 0) {
-      setTimeout(() => attemptFocus(retries - 1), 150);
-    } else {
-      sessionStorage.removeItem("last_clicked_poster_id");
-      sessionStorage.removeItem("last_clicked_scroll_y");
+      setTimeout(() => attemptFocus(retries - 1), 100);
     }
   };
 
