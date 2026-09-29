@@ -2,11 +2,11 @@
   <img src="public/tv_banner.png" alt="BubbaFlix Logo" width="280" />
 </p>
 
-# BubbaFlix 🎬 - Movie & TV Show Streaming, Live TV & Discovery App (v1.0.14)
+# BubbaFlix 🎬 - Movie & TV Show Streaming & Discovery App (v1.0.15)
 
-BubbaFlix is a modern, high-performance movie and TV show streaming discovery platform built with **React 18**, **Redux Toolkit**, **React Router v6**, **Vite**, **Pure Node.js**, **Native Android TV (Kotlin / ExoPlayer)**, and integrated with **Dispatcharr Live TV & EPG**, **AIOStreams (ElfHosted + Premiumize)**, **TMDB**, **Groq AI**, and **SIMKL**.
+BubbaFlix is a modern, high-performance movie and TV show streaming discovery platform built with **React 18**, **Redux Toolkit**, **React Router v6**, **Vite**, **Pure Node.js**, **Native Android TV (Kotlin / ExoPlayer)**, **Torrent Stream Scraper & Premiumize Debrid**, **TMDB**, **Groq AI**, and **SIMKL**.
 
-BubbaFlix features **⚡ Server-Side TMDB Metadata Proxy & Persistent Disk/RAM Caching Engine (`/api/tmdb/*`)**, **📡 Dispatcharr Live TV & EPG Integration**, **🔍 Dedicated Interactive Search Page (`/search`)**, **⭐ Favorites Section & Star Toggle Persistence**, **Native Android TV App (`android-tv/`) with ExoPlayer 5-Minute Ahead-Buffering & Automatic Dispatcharr Settings Inheritance**, **Automatic Web Audio Transcoder (AC3/EAC3/DTS → AAC) with FFprobe Multi-Language Audio Extraction**, **Customizable & Syncable Home Screen Layouts**, **Unlocked Smart TV D-Pad Spatial Navigation with Focus Retention**, **Canonical OTA Version Updates (`version.json`)**, **Groq AI Llama 3 Stream Title Filtering**, **Official SIMKL Watch History Sync**, and **Centralized Backend Transcoder Proxy**.
+BubbaFlix features **📦 Stream Droplist Category & Layout Manager Container Cards (v1.0.15)**, **⚡ Server-Side TMDB & Explore Metadata Caching Engine (`/api/tmdb/*`, `/api/explore/*`)**, **🔍 Dedicated Interactive Search Page (`/search`)**, **⭐ Favorites Section & Star Toggle Persistence**, **Native Android TV App (`android-tv/`) with ExoPlayer 5-Minute Ahead-Buffering & Automatic Server Settings Inheritance**, **Automatic Web Audio Transcoder (AC3/EAC3/DTS → AAC) with FFprobe Multi-Language Audio Extraction**, **Customizable & Syncable Home Screen Layouts**, **Unlocked Smart TV D-Pad Spatial Navigation with Focus Retention**, **Canonical OTA Version Updates (`version.json`)**, **Groq AI Llama 3 Stream Title Filtering**, **Official SIMKL Watch History Sync**, and **Centralized Backend Transcoder Proxy**.
 
 ---
 
@@ -22,12 +22,14 @@ Install **BubbaFlix TV** directly on any Firestick, Fire TV, or Android TV devic
 
 ## 🌟 Key Features
 
-### 📡 Dispatcharr Live TV & EPG Integration (`/livetv`)
-- **Live Guide & EPG**: Browse Live TV channels, current show programming, and electronic program guides directly from your local Dispatcharr instance.
-- **1-Click Live Streaming**: Instant high-speed HLS playback of Live TV streams in `VideoPlayerModal` or ExoPlayer.
-- **DVR Scheduling & Recordings**: Schedule upcoming show recordings and play back recorded DVR video files directly inside the app.
-- **Single Centralized Configuration**: Dispatcharr Server URL and API Key are configured cleanly in the **Settings** page (`/settings`).
-- **Automatic TV App Inheritance**: Android TV devices automatically pull and sync Dispatcharr settings from your backend server on startup without entering IP/keys on TV remotes!
+### 📦 Stream Dropdown & Layout Manager Container Cards (`v1.0.15`)
+- **Initial Closed State**: Streams dropdown on details pages starts out closed with real-time count badges (*{count} Streams Found*, *Searching...*, *0 Streams Found*, *Setup Required*).
+- **Category & Layout Manager Styling**: Stream results are rendered in dedicated card containers matching the Settings Category & Layout Manager card style.
+- **Theme Variable Controls**: Dynamic app theme colors (`var(--pink)`, `var(--gradient)`, `var(--black3)`) with D-pad TV focus and hover glow states.
+
+### 🌐 Server-Side Explore & TMDB Metadata Proxy (`/api/explore/*`, `/api/tmdb/*`)
+- **High-Volume Explore Pages**: Movies and TV Shows explore pages load extended items served and cached directly by the backend server.
+- **Persistent Disk & RAM Cache**: Fast responses with background caching for popular titles, genres, and trending categories.
 
 ### 🔍 Dedicated Interactive Search Page (`/search`)
 - **Interactive Search Page**: Standalone menu item and dedicated route (`/search`) with a large, auto-focused D-Pad input bar.
@@ -54,13 +56,11 @@ Install **BubbaFlix TV** directly on any Firestick, Fire TV, or Android TV devic
 
 ## ⚙️ Docker / Portainer / CasaOS Environment Variables
 
-Pre-configure your API credentials and Dispatcharr settings directly in `docker-compose.yml`, Portainer Stacks, or CasaOS container settings:
+Pre-configure your API credentials directly in `docker-compose.yml`, Portainer Stacks, or CasaOS container settings:
 
 | Environment Variable | Description | Default Value |
 | :--- | :--- | :--- |
-| `DISPATCHARR_URL` | Dispatcharr Server URL | `http://192.168.1.100:9191` |
-| `DISPATCHARR_API_KEY` | Dispatcharr API Key (Optional) | `""` |
-| `AIOSTREAMS_URL` | AIOStreams Addon Manifest URL | `https://aiostreams.elfhosted.com/` |
+| `PREMIUMIZE_API_KEY` | Premiumize Debrid API Key | `""` |
 | `SIMKL_CLIENT_ID` | SIMKL API Client ID | `""` |
 | `GROQ_API_KEY` | Groq AI Stream Filter API Key | `""` |
 | `TMDB_READ_ACCESS_TOKEN` | TMDB v4 Read Access Token | Built-in fallback |

@@ -1,4 +1,4 @@
-# BubbaFlix TV 📺 - Native Android TV, Google TV & Fire TV App (v1.0.14)
+# BubbaFlix TV 📺 - Native Android TV, Google TV & Fire TV App (v1.0.15)
 
 **BubbaFlix TV** is the official native Android application for Android TV, Google TV, Chromecast with Google TV, Nvidia Shield, and Amazon Fire TV devices.
 
@@ -21,7 +21,7 @@ You can install **BubbaFlix TV** directly on any Firestick, Android TV, or Googl
 
 ## 🌟 Key Features
 
-- 📡 **Dispatcharr Live TV & EPG Auto-Inheritance**: Automatically inherits your Dispatcharr Server URL and API Key from the backend server (`/api/settings`) on startup without typing on TV remotes!
+- ⚙️ **Automatic Server Settings Inheritance**: Automatically inherits server configurations (Premiumize API key, SIMKL settings, resolution preferences, Groq AI filters) from the backend server (`/api/settings`) on startup without typing on TV remotes!
 - 🔍 **Dedicated Search Page & Focus Retention**: Interactive `/search` page with category filters and input focus retention during typing.
 - 📦 **Single APK Build File Name**: Built directly to `BubbaFlixTV.apk` for clean Downloader deployment.
 - 📺 **ExoPlayer 5-Minute Ahead-Buffering Engine**: Tuned in `PlayerActivity.kt` with `DefaultLoadControl` to buffer up to 300 seconds (5 minutes) ahead during stream playback, eliminating freezing, stutters, and buffering loops on 4K / 1080p high-bitrate media.
