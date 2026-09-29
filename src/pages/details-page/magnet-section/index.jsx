@@ -79,7 +79,7 @@ const parseStreamDetails = (item) => {
 const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, compact = false, posterPath = "" }) => {
   const [streams, setStreams] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [isOpen, setIsOpen] = useState(true); // Open by default so streams drop list is visible
+  const [isOpen, setIsOpen] = useState(false); // Start out closed by default
   const [unconfigured, setUnconfigured] = useState(false);
   const [streamStatuses, setStreamStatuses] = useState({});
 
@@ -270,17 +270,14 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
     setShowPlayer(true);
   };
 
-  if (!loading && streams.length === 0 && !unconfigured) {
-    return null;
-  }
-
   const content = (
     <div className="magnetSection">
       <div className={`sectionCard ${compact ? "compact" : ""}`}>
         <div
-          className="sectionHeader"
+          className={`sectionHeader ${isOpen ? "open" : ""}`}
           tabIndex="0"
           role="button"
+          aria-expanded={isOpen}
           onClick={() => setIsOpen(!isOpen)}
           onKeyDown={(e) => {
             const code = e.keyCode;
@@ -293,18 +290,25 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
           <div className="headerLeft">
             <FiFilm className="headerIcon" />
             <span className="sectionTitle">Available Streams</span>
-            {streams.length > 0 && (
-              <span className="countBadge">
-                <FiLayers className="badgeIcon" /> {streams.length} Available
+            {loading ? (
+              <span className="countBadge loading">
+                Searching...
               </span>
-            )}
-            {unconfigured && (
+            ) : streams.length > 0 ? (
+              <span className="countBadge">
+                <FiLayers className="badgeIcon" /> {streams.length} Streams Found
+              </span>
+            ) : unconfigured ? (
               <span className="countBadge warning">
                 <FiAlertCircle className="badgeIcon" /> Setup Required
               </span>
+            ) : (
+              <span className="countBadge none">
+                0 Streams Found
+              </span>
             )}
           </div>
-          <button className="toggleBtn" tabIndex="-1">
+          <button className="toggleBtn" tabIndex="-1" aria-label="Toggle streams dropdown">
             {isOpen ? <FiChevronUp /> : <FiChevronDown />}
           </button>
         </div>

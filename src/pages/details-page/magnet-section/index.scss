@@ -3,30 +3,28 @@
 .magnetSection {
   position: relative;
   z-index: 10;
-  margin-top: 30px;
-  margin-bottom: 30px;
+  margin-top: 20px;
+  margin-bottom: 20px;
 
   .sectionCard {
-    background: rgba(20, 20, 20, 0.95);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: var(--black3);
     border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 24px;
     overflow: hidden;
-    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6);
-    transition: all 0.3s ease;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
     &.compact {
-      margin-top: 15px;
-      margin-bottom: 20px;
-      background: rgba(15, 23, 42, 0.85);
+      margin-top: 10px;
+      margin-bottom: 15px;
+      background: var(--black3);
       border-radius: 24px;
-      padding: 6px;
+      padding: 0;
 
       .magnetList {
-        max-height: 360px;
+        max-height: 380px;
         overflow-y: auto;
-        padding-right: 8px; /* Room for scrollbar */
+        padding-right: 6px;
         
         /* Custom scrollbar for webKit */
         &::-webkit-scrollbar {
@@ -50,15 +48,35 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 16px 24px;
+      padding: 14px 22px;
       cursor: pointer;
       user-select: none;
-      background: rgba(255, 255, 255, 0.04);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 24px 24px 0 0;
+      background: var(--black2);
+      border: 1px solid transparent;
+      border-radius: 24px;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      outline: none;
 
-      &:hover {
-        background: rgba(255, 255, 255, 0.08);
+      &.open {
+        border-radius: 24px 24px 0 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      &:hover,
+      &:focus,
+      &:focus-visible {
+        background: rgba(255, 255, 255, 0.12);
+        border-color: var(--pink) !important;
+        box-shadow: 0 0 20px var(--pink), 0 4px 20px rgba(0, 0, 0, 0.4);
+        transform: scale(1.01);
+
+        .toggleBtn {
+          background: var(--pink);
+          color: white;
+          border-color: var(--pink);
+          box-shadow: 0 0 12px var(--pink);
+        }
       }
 
       .headerLeft {
@@ -73,7 +91,7 @@
         }
 
         .sectionTitle {
-          font-size: 17px;
+          font-size: 16.5px;
           font-weight: 700;
           color: white;
           letter-spacing: 0.3px;
@@ -89,10 +107,24 @@
           font-weight: 700;
           padding: 5px 14px;
           border-radius: 20px;
-          box-shadow: 0 3px 10px rgba(229, 9, 20, 0.35);
+          box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
 
           .badgeIcon {
             font-size: 13px;
+          }
+
+          &.loading {
+            background: rgba(255, 255, 255, 0.12);
+            color: rgba(255, 255, 255, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: none;
+          }
+
+          &.none {
+            background: rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: none;
           }
 
           &.warning {
@@ -107,9 +139,9 @@
       .toggleBtn {
         background: rgba(255, 255, 255, 0.08);
         border: 1px solid rgba(255, 255, 255, 0.15);
-        border-radius: 20px;
-        width: 34px;
-        height: 34px;
+        border-radius: 50%;
+        width: 36px;
+        height: 36px;
         color: rgba(255, 255, 255, 0.9);
         font-size: 18px;
         cursor: pointer;
@@ -117,18 +149,12 @@
         align-items: center;
         justify-content: center;
         transition: all 0.25s ease;
-
-        &:hover {
-          background: var(--pink);
-          color: white;
-          border-color: var(--pink);
-          box-shadow: 0 0 12px var(--pink);
-        }
       }
     }
 
     .sectionBody {
       padding: 16px 20px;
+      background: var(--black2);
 
       .loadingContainer {
         display: flex;
