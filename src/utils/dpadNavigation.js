@@ -147,7 +147,7 @@ if (typeof document !== "undefined") {
   }, { passive: true, capture: true });
 }
 
-// Focus the top-leftmost poster element when changing pages
+// Focus default element on page load (posters if present, search input, or active page nav button)
 export const focusTopLeftPoster = () => {
   setTimeout(() => {
     const activeEl = document.activeElement;
@@ -161,6 +161,20 @@ export const focusTopLeftPoster = () => {
       return; // DO NOT STEAL FOCUS WHILE USER IS TYPING IN SEARCH OR INPUT FIELDS
     }
 
+    // Don't steal focus if poster restoration from detail page is pending
+    const lastPosterId = typeof window !== "undefined" ? sessionStorage.getItem("last_clicked_poster_id") : null;
+    if (lastPosterId) {
+      return;
+    }
+
+    // 1. If on Search page, prioritize focusing main search input
+    const searchInput = document.querySelector(".mainSearchInput");
+    if (window.location.pathname.startsWith("/search") && searchInput) {
+      focusAndScroll(searchInput);
+      return;
+    }
+
+    // 2. Look for visible content posters on current page
     const posters = Array.from(
       document.querySelectorAll(".movieCard, .carouselItem, .seasonCard, .episodeItem")
     ).filter((el) => {
@@ -183,11 +197,19 @@ export const focusTopLeftPoster = () => {
       return;
     }
 
+    // 3. Focus active page navigation button (.navBtn.active) for the current page
+    const activeNavBtn = document.querySelector(".topNav .navBtn.active, .header .navBtn.active");
+    if (activeNavBtn) {
+      focusAndScroll(activeNavBtn);
+      return;
+    }
+
+    // 4. Fallback: First focusable element
     const focusables = getFocusableElements();
     if (focusables.length > 0) {
       focusAndScroll(focusables[0]);
     }
-  }, 300);
+  }, 250);
 };
 
 export const initDpadNavigation = () => {
