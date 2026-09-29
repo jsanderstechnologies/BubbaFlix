@@ -44,22 +44,6 @@ const VideoModal = ({ show, setShow, videoId, setVideoId }) => {
 				hidePopup();
 				return;
 			}
-
-			// Trap focus on navigation keys (Arrow keys & Tab) inside modal
-			if (
-				key === "Tab" ||
-				key === "ArrowUp" ||
-				key === "ArrowDown" ||
-				key === "ArrowLeft" ||
-				key === "ArrowRight" ||
-				(code >= 37 && code <= 40)
-			) {
-				const active = document.activeElement;
-				if (!active || !closeBtnRef.current || !closeBtnRef.current.contains(active)) {
-					e.preventDefault();
-					closeBtnRef.current?.focus();
-				}
-			}
 		};
 
 		const handleKeyUp = (e) => {
@@ -119,11 +103,11 @@ const VideoModal = ({ show, setShow, videoId, setVideoId }) => {
 				</button>
 				{videoId && (
 					<iframe
-						src={`https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1&controls=1&rel=0`}
+						src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&playsinline=1&controls=1&rel=0&enablejsapi=1`}
 						title="Trailer"
 						width="100%"
 						height="100%"
-						tabIndex="-1"
+						tabIndex="0"
 						style={{ border: "none" }}
 						allow="autoplay; encrypted-media; fullscreen"
 						allowFullScreen

@@ -842,6 +842,17 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == 4 || keyCode == 27 || keyCode == 10009 || keyCode == 461) {
+            if (!controlsVisible) {
+                resetControlsTimeout()
+                return true
+            } else {
+                saveCurrentWatchProgress()
+                finish()
+                return true
+            }
+        }
+
         resetControlsTimeout()
 
         if (!controlsVisible) {
@@ -905,17 +916,6 @@ class PlayerActivity : AppCompatActivity() {
             KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
                 btnFF10.performClick()
                 return true
-            }
-            KeyEvent.KEYCODE_BACK, 4, 27, 10009, 461 -> {
-                if (controlsVisible) {
-                    hideControls()
-                    handler.removeCallbacks(hideControlsRunnable)
-                    return true
-                } else {
-                    saveCurrentWatchProgress()
-                    finish()
-                    return true
-                }
             }
         }
         return super.onKeyDown(keyCode, event)
