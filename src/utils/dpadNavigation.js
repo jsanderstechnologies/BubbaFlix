@@ -197,8 +197,10 @@ export const focusTopLeftPoster = () => {
       return;
     }
 
-    // 3. Focus active page navigation button (.navBtn.active) for the current page
-    const activeNavBtn = document.querySelector(".topNav .navBtn.active, .header .navBtn.active");
+    // 3. Focus active page navigation button (.menuItem.active, .navBtn.active) for the current page
+    const activeNavBtn = document.querySelector(
+      ".topNav .navBtn.active, .header .navBtn.active, .menuItem.active, .navBtn.active"
+    );
     if (activeNavBtn) {
       focusAndScroll(activeNavBtn);
       return;
