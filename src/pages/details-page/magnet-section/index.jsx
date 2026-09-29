@@ -344,7 +344,7 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
                   return (
                     <div
                       key={index}
-                      className="magnetItem"
+                      className="magnetItemContainer"
                       tabIndex="0"
                       role="button"
                       onClick={() => handlePlayStream(item, false)}
@@ -356,76 +356,18 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
                         }
                       }}
                     >
-                      {/* Quality Emblem Graphic Tile */}
-                      <div className={`qualityEmblem ${details.quality.includes("4K") ? "q4k" : "qhd"}`}>
-                        <FiFilm className="emblemIcon" />
-                        <span className="emblemText">{details.quality.includes("4K") ? "4K" : "HD"}</span>
-                      </div>
+                      <div className="itemCardHeader">
+                        <div className="itemTitleGroup">
+                          <div className={`qualityEmblem ${details.quality.includes("4K") ? "q4k" : "qhd"}`}>
+                            <FiFilm className="emblemIcon" />
+                            <span className="emblemText">{details.quality.includes("4K") ? "4K" : "HD"}</span>
+                          </div>
 
-                      <div className="itemInfo">
-                        <span className="itemTitle" title={details.cleanTitle}>
-                          {details.cleanTitle}
-                        </span>
-                        <div className="itemMeta">
-                          <span className={`metaBadge qualityBadge ${details.quality.includes('4K') ? 'q4k' : 'qhd'}`}>
-                            <FiFilm className="badgeIcon" /> {details.quality}
+                          <span className="itemTitle" title={details.cleanTitle}>
+                            {details.cleanTitle}
                           </span>
-
-                          {details.isHdr && (
-                            <span className="metaBadge hdrBadge">
-                              <FiSun className="badgeIcon" /> HDR
-                            </span>
-                          )}
-                          {details.isHevc && (
-                            <span className="metaBadge codecBadge">
-                              <FiCpu className="badgeIcon" /> HEVC x265
-                            </span>
-                          )}
-                          {details.isAtmos && (
-                            <span className="metaBadge audioBadge">
-                              <FiVolume2 className="badgeIcon" /> Dolby Atmos
-                            </span>
-                          )}
-
-                          <span className="metaBadge providerBadge">
-                            <FiZap className="badgeIcon" /> {details.provider}
-                          </span>
-
-                          {details.size && (
-                            <span className="metaBadge sizeBadge">
-                              <FiHardDrive className="badgeIcon" /> {details.size}
-                            </span>
-                          )}
-                          {details.seeds && (
-                            <span className="metaBadge seedsBadge">
-                              <FiUsers className="badgeIcon" /> {details.seeds} Seeds
-                            </span>
-                          )}
-
-                          {stat && stat.isCached && (
-                            <span className="metaBadge cachedBadge">
-                              <FiCloud className="badgeIcon" /> Cached (Instant)
-                            </span>
-                          )}
-                          {stat && stat.transferStatus?.status === "downloading" && (
-                            <span className="metaBadge dlBadge">
-                              Downloading {Math.round((stat.transferStatus.progress || 0) * 100)}%
-                            </span>
-                          )}
-                          {stat && stat.transferStatus?.status === "finished" && (
-                            <span className="metaBadge cachedBadge">
-                              <FiCloud className="badgeIcon" /> Finished / Cached
-                            </span>
-                          )}
-                          {stat && stat.transferStatus?.status === "error" && (
-                            <span className="metaBadge errorBadge">
-                              Transfer Error
-                            </span>
-                          )}
                         </div>
-                      </div>
 
-                      <div className="itemActions">
                         <button
                           className="actionBtn play"
                           onClick={(e) => {
@@ -436,6 +378,64 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
                         >
                           <FiPlay className="playIcon" /> Play Stream
                         </button>
+                      </div>
+
+                      <div className="itemMetaGrid">
+                        <span className={`metaBadge qualityBadge ${details.quality.includes('4K') ? 'q4k' : 'qhd'}`}>
+                          <FiFilm className="badgeIcon" /> {details.quality}
+                        </span>
+
+                        {details.isHdr && (
+                          <span className="metaBadge hdrBadge">
+                            <FiSun className="badgeIcon" /> HDR
+                          </span>
+                        )}
+                        {details.isHevc && (
+                          <span className="metaBadge codecBadge">
+                            <FiCpu className="badgeIcon" /> HEVC x265
+                          </span>
+                        )}
+                        {details.isAtmos && (
+                          <span className="metaBadge audioBadge">
+                            <FiVolume2 className="badgeIcon" /> Dolby Atmos
+                          </span>
+                        )}
+
+                        <span className="metaBadge providerBadge">
+                          <FiZap className="badgeIcon" /> {details.provider}
+                        </span>
+
+                        {details.size && (
+                          <span className="metaBadge sizeBadge">
+                            <FiHardDrive className="badgeIcon" /> {details.size}
+                          </span>
+                        )}
+                        {details.seeds && (
+                          <span className="metaBadge seedsBadge">
+                            <FiUsers className="badgeIcon" /> {details.seeds} Seeds
+                          </span>
+                        )}
+
+                        {stat && stat.isCached && (
+                          <span className="metaBadge cachedBadge">
+                            <FiCloud className="badgeIcon" /> Cached (Instant)
+                          </span>
+                        )}
+                        {stat && stat.transferStatus?.status === "downloading" && (
+                          <span className="metaBadge dlBadge">
+                            Downloading {Math.round((stat.transferStatus.progress || 0) * 100)}%
+                          </span>
+                        )}
+                        {stat && stat.transferStatus?.status === "finished" && (
+                          <span className="metaBadge cachedBadge">
+                            <FiCloud className="badgeIcon" /> Finished / Cached
+                          </span>
+                        )}
+                        {stat && stat.transferStatus?.status === "error" && (
+                          <span className="metaBadge errorBadge">
+                            Transfer Error
+                          </span>
+                        )}
                       </div>
                     </div>
                   );
