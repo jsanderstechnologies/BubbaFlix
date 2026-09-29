@@ -2,13 +2,13 @@
 import { initializeApp } from "firebase/app";
 
 const firebaseConfig = {
-	apiKey: "AIzaSyDzlMOGpHKjtMkDYqu7yOtnPRMwXvPZZl8",
-	authDomain: "cyber-flix.firebaseapp.com",
-	projectId: "cyber-flix",
-	storageBucket: "cyber-flix.appspot.com",
-	messagingSenderId: "704459617593",
-	appId: "1:704459617593:web:a77bf2834e8ace651aa4e8",
-	measurementId: "G-KKVWM62EZX",
+	apiKey: import.meta.env?.VITE_FIREBASE_API_KEY || "",
+	authDomain: import.meta.env?.VITE_FIREBASE_AUTH_DOMAIN || "",
+	projectId: import.meta.env?.VITE_FIREBASE_PROJECT_ID || "",
+	storageBucket: import.meta.env?.VITE_FIREBASE_STORAGE_BUCKET || "",
+	messagingSenderId: import.meta.env?.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
+	appId: import.meta.env?.VITE_FIREBASE_APP_ID || "",
+	measurementId: import.meta.env?.VITE_FIREBASE_MEASUREMENT_ID || "",
 };
 
 // Initialize Firebase
