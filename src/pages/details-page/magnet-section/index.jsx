@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import "./index.scss";
 import { fetchTorrentStreams } from "../../../utils/torrentScraper";
 import { getPremiumizeKey, resolveMagnetWithPremiumize } from "../../../utils/premiumize";
 import { isTvDevice } from "../../../utils/zoom";
