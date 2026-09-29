@@ -1,6 +1,6 @@
 {
-  "versionCode": 15,
-  "versionName": "1.0.14",
+  "versionCode": 16,
+  "versionName": "1.0.15",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.14 with backend TMDB metadata proxy & persistent disk/memory caching engine, server-side content pre-filtering, and D-pad center long-press poster action menu navigation fix."
+  "releaseNotes": "BubbaFlix TV v1.0.15 with Android TV local WebView HTTP poster & metadata caching (WebSettings.LOAD_DEFAULT), refined actor filmography search, and strict multi-token person query filtering."
 }

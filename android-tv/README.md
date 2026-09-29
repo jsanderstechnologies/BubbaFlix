@@ -21,6 +21,8 @@ You can install **BubbaFlix TV** directly on any Firestick, Android TV, or Googl
 
 ## 🌟 Key Features
 
+- ⚡ **Local Device HTTP Disk Caching (`WebSettings.LOAD_DEFAULT`)**: Caches TMDB posters (1-year TTL) and API metadata JSON (1-hour TTL) directly on TV storage for instantaneous page transitions and reduced server traffic.
+- 🎭 **Refined Actor Search & Filmography Engine**: Automatically resolves actor names (e.g. *"John Wayne"*), loads their full deduplicated filmography, and strictly filters out unrelated partial-name matches.
 - ⚙️ **Automatic Server Settings Inheritance**: Automatically inherits server configurations (Premiumize API key, SIMKL settings, resolution preferences, Groq AI filters) from the backend server (`/api/settings`) on startup without typing on TV remotes!
 - 🔍 **Dedicated Search Page & Focus Retention**: Interactive `/search` page with category filters and input focus retention during typing.
 - 📦 **Single APK Build File Name**: Built directly to `BubbaFlixTV.apk` for clean Downloader deployment.
