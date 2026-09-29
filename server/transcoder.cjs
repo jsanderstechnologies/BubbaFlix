@@ -383,11 +383,12 @@ const getRequestInitiator = (req) => {
   return { ip: clientIp, userAgent, referer, initiatorComponent };
 };
 
-const sendJson = (res, statusCode, data) => {
+const sendJson = (res, statusCode, data, headers = {}) => {
   if (res.headersSent) return;
   res.writeHead(statusCode, {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": "*",
+    ...headers,
   });
   res.end(JSON.stringify(data));
 };
@@ -616,7 +617,7 @@ const server = http.createServer((req, res) => {
     const memCached = tmdbMemoryCache.get(cacheKey);
     if (memCached && Date.now() - memCached.timestamp < TMDB_CACHE_TTL_MS) {
       logMessage(`[TMDB Cache Hit (RAM)] GET ${tmdbSubPath}`);
-      return sendJson(res, 200, memCached.data);
+      return sendJson(res, 200, memCached.data, { "Cache-Control": "public, max-age=3600" });
     }
 
     // 2. Check Disk Cache
@@ -628,7 +629,7 @@ const server = http.createServer((req, res) => {
           const parsedData = JSON.parse(raw);
           tmdbMemoryCache.set(cacheKey, { timestamp: fileStat.mtimeMs, data: parsedData });
           logMessage(`[TMDB Cache Hit (Disk)] GET ${tmdbSubPath}`);
-          return sendJson(res, 200, parsedData);
+          return sendJson(res, 200, parsedData, { "Cache-Control": "public, max-age=3600" });
         }
       } catch (e) {}
     }
@@ -662,7 +663,7 @@ const server = http.createServer((req, res) => {
               tmdbMemoryCache.set(cacheKey, { timestamp: Date.now(), data: parsed });
               fs.writeFile(diskCacheFile, JSON.stringify(parsed), "utf-8", () => {});
               logMessage(`[TMDB Cache Miss -> Saved] GET ${tmdbSubPath}`);
-              return sendJson(res, 200, parsed);
+              return sendJson(res, 200, parsed, { "Cache-Control": "public, max-age=3600" });
             } catch (err) {
               return sendJson(res, 500, { error: "Failed to parse TMDB response" });
             }

@@ -224,25 +224,40 @@ const SearchResult = () => {
         fetchDataFromAPI(`/search/movie?query=${encodeURIComponent(queryStr)}&page=1`)
       ])
         .then(([personRes, movieRes]) => {
-          const topPerson = personRes?.results?.[0];
-          const topMovie = movieRes?.results?.[0];
+          const queryClean = queryStr.trim().toLowerCase();
+          const queryTokens = queryClean.split(/\s+/).filter(Boolean);
 
+          const personResults = personRes?.results || [];
+          const movieResults = movieRes?.results || [];
+
+          // Find best matching person (exact name match first, then all query tokens match)
+          let topPerson = personResults.find((p) => p && p.name && p.name.toLowerCase() === queryClean);
+          if (!topPerson && queryTokens.length >= 2) {
+            topPerson = personResults.find((p) => p && p.name && queryTokens.every((t) => p.name.toLowerCase().includes(t)));
+          }
+          if (!topPerson) {
+            topPerson = personResults[0];
+          }
+
+          const topMovie = movieResults[0];
           const personPop = topPerson ? (topPerson.popularity || 0) : 0;
           const moviePop = topMovie ? (topMovie.popularity || 0) : 0;
 
-          const queryLower = queryStr.toLowerCase();
-          const personNameLower = topPerson ? topPerson.name.toLowerCase() : "";
+          let isActorSearch = false;
+          if (topPerson && topPerson.name) {
+            const personNameLower = topPerson.name.toLowerCase();
+            const personTokens = personNameLower.split(/\s+/).filter(Boolean);
 
-          // Robust Actor Search Classification Heuristic:
-          // Checks if the top matched person is highly popular relative to top movie results,
-          // or is an exact match for the query, and meets minimum popularity criteria (> 6.0)
-          const isActorSearch = topPerson && (
-            personPop > 6.0 && (
-              personPop > moviePop || 
-              personNameLower === queryLower || 
-              personNameLower.includes(queryLower) && moviePop < 15.0
-            )
-          );
+            const isExactNameMatch = personNameLower === queryClean;
+            const allQueryTokensInPerson = queryTokens.length > 0 && queryTokens.every((t) => personNameLower.includes(t));
+            const allPersonTokensInQuery = personTokens.length > 0 && personTokens.every((t) => queryClean.includes(t));
+
+            if (isExactNameMatch || allQueryTokensInPerson || allPersonTokensInQuery) {
+              if (isExactNameMatch || (queryTokens.length >= 2 && allQueryTokensInPerson) || personPop > 3.0 || personPop > moviePop) {
+                isActorSearch = true;
+              }
+            }
+          }
 
           if (isActorSearch) {
             // Fetch combined credits for the actor
@@ -251,10 +266,15 @@ const SearchResult = () => {
                 const castList = creditsRes?.cast || [];
                 const englishCast = filterEnglishResults(castList);
 
+                const existingIds = new Set();
                 const features = [];
                 const biosAndDocs = [];
 
                 englishCast.forEach((item) => {
+                  if (!item || !item.id) return;
+                  if (existingIds.has(item.id)) return;
+                  existingIds.add(item.id);
+
                   const character = (item.character || "").toLowerCase();
                   const title = (item.title || item.name || "").toLowerCase();
                   const isDocGenre = Array.isArray(item.genre_ids) && item.genre_ids.includes(99);
@@ -365,9 +385,20 @@ const SearchResult = () => {
   const tvList = isActorSearch 
     ? (data?.actorFeatures?.filter((item) => item.media_type === "tv") || []) 
     : (data?.results?.filter((item) => item.media_type === "tv" || activeFilter === "tv") || []);
+  const queryClean = searchQuery.trim().toLowerCase();
+  const queryTokens = queryClean.split(/\s+/).filter(Boolean);
+
   const peopleList = isActorSearch 
     ? [data.searchedActor] 
-    : (data?.results?.filter((item) => item.media_type === "person" || activeFilter === "person") || []);
+    : (data?.results?.filter((item) => {
+        if (item.media_type !== "person" && activeFilter !== "person") return false;
+        if (!item || !item.name) return false;
+        const nameLower = item.name.toLowerCase();
+        if (queryTokens.length >= 2) {
+          return queryTokens.every((t) => nameLower.includes(t));
+        }
+        return nameLower.includes(queryClean);
+      }) || []);
 
   const actorBiosDocsFiltered = isActorSearch 
     ? (data?.actorBiosDocs?.filter((item) => {
