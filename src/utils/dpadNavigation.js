@@ -170,9 +170,16 @@ export const focusTopLeftPoster = () => {
       return; // DO NOT STEAL FOCUS WHILE USER IS TYPING IN SEARCH OR INPUT FIELDS
     }
 
-    // Don't steal focus if poster restoration from detail page is pending
+    const path = typeof window !== "undefined" ? window.location.pathname : "";
+    const isDetailsPage =
+      path.startsWith("/movie/") ||
+      path.startsWith("/tv/") ||
+      path.startsWith("/person/") ||
+      path.startsWith("/collection/");
+
+    // Don't steal focus if poster restoration from detail page is pending on catalog pages (Home, Search, Explore, Favorites)
     const lastPosterId = typeof window !== "undefined" ? sessionStorage.getItem("last_clicked_poster_id") : null;
-    if (lastPosterId) {
+    if (lastPosterId && !isDetailsPage) {
       return;
     }
 
@@ -188,8 +195,6 @@ export const focusTopLeftPoster = () => {
       return;
     }
 
-    const path = typeof window !== "undefined" ? window.location.pathname : "";
-
     // 1. If on Search page, prioritize main search input
     const searchInput = document.querySelector(".mainSearchInput");
     if (path.startsWith("/search") && searchInput) {
@@ -197,8 +202,8 @@ export const focusTopLeftPoster = () => {
       return;
     }
 
-    // 2. If on Details page (/movie/* or /tv/*), focus details page primary action button (.playbtn, .sectionHeader, .watchCheckmark, .favoriteStarBtn)
-    if (path.startsWith("/movie/") || path.startsWith("/tv/")) {
+    // 2. If on Details page (/movie/*, /tv/*, /person/*, /collection/*), focus details page primary action button (.playbtn, .sectionHeader, .watchCheckmark, .favoriteStarBtn)
+    if (isDetailsPage) {
       window.scrollTo(0, 0);
       if (document.documentElement) document.documentElement.scrollTop = 0;
       if (document.body) document.body.scrollTop = 0;
