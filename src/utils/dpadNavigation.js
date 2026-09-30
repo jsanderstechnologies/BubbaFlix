@@ -182,7 +182,8 @@ export const focusTopLeftPoster = () => {
       activeEl !== document.body &&
       activeEl !== document.documentElement &&
       !activeEl.closest(".topNav") &&
-      !activeEl.closest(".header")
+      !activeEl.closest(".header") &&
+      !activeEl.classList.contains("detailsPageBackBtn")
     ) {
       return;
     }
@@ -198,6 +199,10 @@ export const focusTopLeftPoster = () => {
 
     // 2. If on Details page (/movie/* or /tv/*), focus details page primary action button (.playbtn, .sectionHeader, .watchCheckmark, .favoriteStarBtn)
     if (path.startsWith("/movie/") || path.startsWith("/tv/")) {
+      window.scrollTo(0, 0);
+      if (document.documentElement) document.documentElement.scrollTop = 0;
+      if (document.body) document.body.scrollTop = 0;
+
       const detailsTargets = Array.from(
         document.querySelectorAll(
           ".detailsBanner .playbtn, .detailsBanner .sectionHeader, .detailsBanner .watchCheckmark, .detailsBanner .favoriteStarBtn, .detailsBanner .viewCollectionBtn, .details-page .detailsPageBackBtn, .details-page [tabindex='0']"

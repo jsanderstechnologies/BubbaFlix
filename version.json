@@ -1,6 +1,6 @@
 {
-  "versionCode": 17,
-  "versionName": "1.0.16",
+  "versionCode": 18,
+  "versionName": "1.0.17",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.16 with fixed navigation focus retention for non-poster pages (Settings, About, Favorites, Search, Explore), YouTube trailer embed bot bypass, and ExoPlayer back button controls."
+  "releaseNotes": "BubbaFlix TV v1.0.17 with fixed Movie Details page scroll position reset (0, 0) and smooth D-Pad spatial navigation."
 }

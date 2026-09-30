@@ -21,6 +21,12 @@ const DetailsPage = () => {
 	const title = detailsData?.title || detailsData?.name;
 
 	useEffect(() => {
+		window.scrollTo(0, 0);
+		if (document.documentElement) document.documentElement.scrollTop = 0;
+		if (document.body) document.body.scrollTop = 0;
+	}, [id, mediaType]);
+
+	useEffect(() => {
 		document.body.classList.add("detailsPageActive");
 		const handleDetailsKeyDown = (e) => {
 			const key = e.key;
