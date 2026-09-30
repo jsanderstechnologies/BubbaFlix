@@ -346,16 +346,7 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
                     <div
                       key={index}
                       className="magnetItemContainer"
-                      tabIndex="0"
-                      role="button"
                       onClick={() => handlePlayStream(item, false)}
-                      onKeyDown={(e) => {
-                        const code = e.keyCode;
-                        if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
-                          e.preventDefault();
-                          handlePlayStream(item, false);
-                        }
-                      }}
                     >
                       <div className="itemCardHeader">
                         <div className="itemTitleGroup">
@@ -429,11 +420,20 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
 
                         <button
                           className="actionBtn play"
+                          tabIndex="0"
+                          role="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             handlePlayStream(item, false);
                           }}
-                          tabIndex="-1"
+                          onKeyDown={(e) => {
+                            const code = e.keyCode;
+                            if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handlePlayStream(item, false);
+                            }
+                          }}
                         >
                           <FiPlay className="playIcon" /> Play Stream
                         </button>

@@ -34,7 +34,6 @@ const FOCUSABLE_SELECTOR = [
   ".watchCheckmark",
   ".favoriteStarBtn",
   ".sectionHeader",
-  ".magnetItemContainer",
   ".listItem",
   ".detailsPageBackBtn",
   ".viewCollectionBtn",
