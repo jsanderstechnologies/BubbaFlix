@@ -371,17 +371,6 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
                       </div>
 
                       <div className="itemMetaGrid">
-                        <button
-                          className="actionBtn play"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePlayStream(item, false);
-                          }}
-                          tabIndex="-1"
-                        >
-                          <FiPlay className="playIcon" /> Play Stream
-                        </button>
-
                         <span className={`metaBadge qualityBadge ${details.quality.includes('4K') ? 'q4k' : 'qhd'}`}>
                           <FiFilm className="badgeIcon" /> {details.quality}
                         </span>
@@ -437,6 +426,17 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
                             Transfer Error
                           </span>
                         )}
+
+                        <button
+                          className="actionBtn play"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePlayStream(item, false);
+                          }}
+                          tabIndex="-1"
+                        >
+                          <FiPlay className="playIcon" /> Play Stream
+                        </button>
                       </div>
                     </div>
                   );
