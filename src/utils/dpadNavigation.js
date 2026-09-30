@@ -147,7 +147,7 @@ if (typeof document !== "undefined") {
   }, { passive: true, capture: true });
 }
 
-// Focus default element on page load (posters if present, search input, or active page nav button)
+// Focus default element on page load (posters if present, search input, details actions, or settings controls)
 export const focusTopLeftPoster = () => {
   setTimeout(() => {
     const activeEl = document.activeElement;
@@ -167,16 +167,51 @@ export const focusTopLeftPoster = () => {
       return;
     }
 
-    // 1. If on Search page, prioritize focusing main search input
+    // Do not steal focus if focus is ALREADY set on valid page content below header/topNav
+    if (
+      activeEl &&
+      activeEl !== document.body &&
+      activeEl !== document.documentElement &&
+      !activeEl.closest(".topNav") &&
+      !activeEl.closest(".header")
+    ) {
+      return;
+    }
+
+    const path = typeof window !== "undefined" ? window.location.pathname : "";
+
+    // 1. If on Search page, prioritize main search input
     const searchInput = document.querySelector(".mainSearchInput");
-    if (window.location.pathname.startsWith("/search") && searchInput) {
+    if (path.startsWith("/search") && searchInput) {
       focusAndScroll(searchInput);
       return;
     }
 
-    // 2. Look for visible content posters on current page
+    // 2. If on Details page (/movie/* or /tv/*), focus details page action buttons (back btn or play btn)
+    if (path.startsWith("/movie/") || path.startsWith("/tv/")) {
+      const detailsTarget = document.querySelector(
+        ".details-page .detailsPageBackBtn, .detailsBanner .playbtn, .detailsBanner .watchCheckmarkBtn, .detailsBanner .favoriteStarBtn, .details-page [tabindex='0']"
+      );
+      if (detailsTarget) {
+        focusAndScroll(detailsTarget);
+        return;
+      }
+    }
+
+    // 3. If on Settings page (/settings), focus first focusable element inside settings page content
+    if (path.startsWith("/settings")) {
+      const settingsContent = document.querySelector(
+        "#root div:not(.header):not(.topNav) button, #root div:not(.header):not(.topNav) input, #root div:not(.header):not(.topNav) select, #root div:not(.header):not(.topNav) [tabindex='0']"
+      );
+      if (settingsContent) {
+        focusAndScroll(settingsContent);
+        return;
+      }
+    }
+
+    // 4. Look for visible content posters on current page
     const posters = Array.from(
-      document.querySelectorAll(".movieCard, .carouselItem, .seasonCard, .episodeItem")
+      document.querySelectorAll(".movieCard, .carouselItem, .seasonCard, .episodeItem, .collectionCard")
     ).filter((el) => {
       const rect = el.getBoundingClientRect();
       if (rect.width <= 0 || rect.height <= 0) return false;
@@ -197,7 +232,7 @@ export const focusTopLeftPoster = () => {
       return;
     }
 
-    // 3. Focus active page navigation button (.menuItem.active, .navBtn.active) for the current page
+    // 5. Fallback for empty pages (e.g. empty Favorites or loading state): focus active nav button
     const activeNavBtn = document.querySelector(
       ".topNav .navBtn.active, .header .navBtn.active, .menuItem.active, .navBtn.active"
     );
@@ -206,7 +241,7 @@ export const focusTopLeftPoster = () => {
       return;
     }
 
-    // 4. Fallback: First focusable element
+    // 6. Final fallback: First focusable element
     const focusables = getFocusableElements();
     if (focusables.length > 0) {
       focusAndScroll(focusables[0]);
@@ -387,12 +422,12 @@ export const initDpadNavigation = () => {
 
     // 2. ROW-BOUNDARY VERTICAL & HORIZONTAL NAVIGATION ENGINE
     let candidates = [];
-    const inTopNav = activeEl.closest(".topNav") || activeEl.closest(".header") || activeEl.closest(".navLinks") || activeEl.closest(".navSearch") || activeEl.classList.contains("detailsPageBackBtn");
+    const inTopNav = activeEl.closest(".topNav") || activeEl.closest(".header") || activeEl.closest(".navLinks") || activeEl.closest(".navSearch");
 
     if (direction === "ArrowDown") {
       if (inTopNav) {
         candidates = focusables.filter((el) => {
-          return el !== activeEl && !el.closest(".topNav") && !el.closest(".header") && !el.closest(".navLinks") && !el.closest(".navSearch") && !el.classList.contains("detailsPageBackBtn");
+          return el !== activeEl && !el.closest(".topNav") && !el.closest(".header") && !el.closest(".navLinks") && !el.closest(".navSearch");
         });
       } else {
         candidates = focusables.filter((el) => {
