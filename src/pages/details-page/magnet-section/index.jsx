@@ -368,7 +368,9 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
                             {details.cleanTitle}
                           </span>
                         </div>
+                      </div>
 
+                      <div className="itemMetaGrid">
                         <button
                           className="actionBtn play"
                           onClick={(e) => {
@@ -379,9 +381,7 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
                         >
                           <FiPlay className="playIcon" /> Play Stream
                         </button>
-                      </div>
 
-                      <div className="itemMetaGrid">
                         <span className={`metaBadge qualityBadge ${details.quality.includes('4K') ? 'q4k' : 'qhd'}`}>
                           <FiFilm className="badgeIcon" /> {details.quality}
                         </span>
