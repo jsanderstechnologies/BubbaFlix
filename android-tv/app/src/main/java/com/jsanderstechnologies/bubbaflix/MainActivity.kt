@@ -490,21 +490,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun clearWebPageCache() {
-        try {
-            webView.clearCache(true)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
     fun promptExitApp() {
         runOnUiThread {
             val dialog = AlertDialog.Builder(this)
                 .setTitle("Exit BubbaFlix?")
                 .setMessage("Are you sure you want to exit BubbaFlix TV?")
                 .setPositiveButton("Exit") { _, _ ->
-                    clearWebPageCache()
                     finishAffinity()
                 }
                 .setNegativeButton("Cancel", null)
@@ -609,7 +600,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        clearWebPageCache()
         webView.destroy()
         super.onDestroy()
     }
