@@ -14,6 +14,7 @@ import VideoModal from "../../../components/video-modal";
 import WatchCheckmark from "../../../components/watch-checkmark";
 import FavoriteStar from "../../../components/favorite-star";
 import MagnetSection from "../magnet-section";
+import { focusTopLeftPoster } from "../../../utils/dpadNavigation";
 import { PlayIcon } from "../../../components/play-btn";
 import "./index.scss";
 
@@ -26,6 +27,15 @@ const DetailsBanner = ({ video, crew }) => {
 	const { mediaType, id } = useParams();
 	const navigate = useNavigate();
 	const { data, loading } = useFetch(`/${mediaType}/${id}`);
+
+	useEffect(() => {
+		if (!loading && data) {
+			const timer = setTimeout(() => {
+				focusTopLeftPoster();
+			}, 120);
+			return () => clearTimeout(timer);
+		}
+	}, [loading, data]);
 
 	const { url } = useSelector((state) => state.home);
 

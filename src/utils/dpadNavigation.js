@@ -198,11 +198,17 @@ export const focusTopLeftPoster = () => {
 
     // 2. If on Details page (/movie/* or /tv/*), focus details page primary action button (.playbtn, .sectionHeader, .watchCheckmark, .favoriteStarBtn)
     if (path.startsWith("/movie/") || path.startsWith("/tv/")) {
-      const detailsTarget = document.querySelector(
-        ".detailsBanner .playbtn, .detailsBanner .sectionHeader, .detailsBanner .watchCheckmark, .detailsBanner .favoriteStarBtn, .details-page .detailsPageBackBtn, .details-page [tabindex='0']"
-      );
-      if (detailsTarget) {
-        focusAndScroll(detailsTarget);
+      const detailsTargets = Array.from(
+        document.querySelectorAll(
+          ".detailsBanner .playbtn, .detailsBanner .sectionHeader, .detailsBanner .watchCheckmark, .detailsBanner .favoriteStarBtn, .detailsBanner .viewCollectionBtn, .details-page .detailsPageBackBtn, .details-page [tabindex='0']"
+        )
+      ).filter((el) => {
+        const rect = el.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      });
+
+      if (detailsTargets.length > 0) {
+        focusAndScroll(detailsTargets[0]);
         return;
       }
     }
