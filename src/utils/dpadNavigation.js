@@ -30,6 +30,14 @@ const FOCUSABLE_SELECTOR = [
   ".seasonCard",
   ".actionBtn",
   ".navBtn",
+  ".playbtn",
+  ".watchCheckmarkBtn",
+  ".favoriteStarBtn",
+  ".sectionHeader",
+  ".magnetItemContainer",
+  ".listItem",
+  ".detailsPageBackBtn",
+  ".viewCollectionBtn",
 ].join(", ");
 
 const getFocusableElements = () => {
@@ -398,7 +406,7 @@ export const initDpadNavigation = () => {
     const c1 = { x: r1.left + r1.width / 2, y: r1.top + r1.height / 2 };
 
     // 1. CAROUSEL & ROW DIRECT SIBLING NAVIGATION (Left & Right)
-    const inRowContainer = activeEl.closest(".carouselItems") || activeEl.closest(".menuItems") || activeEl.closest(".navLinks") || activeEl.closest(".content");
+    const inRowContainer = activeEl.closest(".carouselItems") || activeEl.closest(".menuItems") || activeEl.closest(".navLinks") || activeEl.closest(".content") || activeEl.closest(".listItems") || activeEl.closest(".searchFilterChips") || activeEl.closest(".tagsRow");
     if (inRowContainer) {
       if (direction === "ArrowRight" && activeEl.nextElementSibling) {
         if (focusables.includes(activeEl.nextElementSibling)) {
@@ -422,12 +430,12 @@ export const initDpadNavigation = () => {
 
     // 2. ROW-BOUNDARY VERTICAL & HORIZONTAL NAVIGATION ENGINE
     let candidates = [];
-    const inTopNav = activeEl.closest(".topNav") || activeEl.closest(".header") || activeEl.closest(".navLinks") || activeEl.closest(".navSearch");
+    const inTopNav = activeEl.closest(".topNav") || activeEl.closest(".header") || activeEl.closest(".navLinks") || activeEl.closest(".navSearch") || activeEl.classList.contains("detailsPageBackBtn");
 
     if (direction === "ArrowDown") {
       if (inTopNav) {
         candidates = focusables.filter((el) => {
-          return el !== activeEl && !el.closest(".topNav") && !el.closest(".header") && !el.closest(".navLinks") && !el.closest(".navSearch");
+          return el !== activeEl && !el.closest(".topNav") && !el.closest(".header") && !el.closest(".navLinks") && !el.closest(".navSearch") && !el.classList.contains("detailsPageBackBtn");
         });
       } else {
         candidates = focusables.filter((el) => {
