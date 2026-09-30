@@ -1,29 +1,34 @@
-import { useState } from "react";
-import { LazyLoadImage } from "react-lazy-load-image-component";
-import "react-lazy-load-image-component/src/effects/blur.css";
-
+import React, { useState, useEffect } from "react";
+import PosterFallback from "../../assets/no-poster.png";
 import { getProxiedImageUrl } from "../../utils/serverSettings";
 
-const Img = ({ src, classname, className }) => {
-  const proxied = src?.includes("image.tmdb.org") ? getProxiedImageUrl(src) : src;
-  const [currentSrc, setCurrentSrc] = useState(proxied);
+const Img = ({ src, classname, className, alt = "" }) => {
+  const targetSrc = src?.includes("image.tmdb.org") ? getProxiedImageUrl(src) : src;
+  const [currentSrc, setCurrentSrc] = useState(targetSrc || PosterFallback);
+
+  useEffect(() => {
+    const updated = src?.includes("image.tmdb.org") ? getProxiedImageUrl(src) : src;
+    setCurrentSrc(updated || PosterFallback);
+  }, [src]);
 
   const handleError = () => {
-    if (currentSrc !== src && src) {
-      setCurrentSrc(src);
+    if (currentSrc !== PosterFallback) {
+      setCurrentSrc(PosterFallback);
     }
   };
 
   return (
-    <LazyLoadImage
-      className={className || classname || ""}
-      wrapperClassName="lazy-load-image-background"
-      alt=""
-      src={currentSrc || src}
-      onError={handleError}
-      effect="blur"
-    />
+    <div className="lazy-load-image-background blur image-loaded">
+      <img
+        className={className || classname || ""}
+        alt={alt}
+        src={currentSrc || PosterFallback}
+        onError={handleError}
+        loading="lazy"
+        decoding="async"
+      />
+    </div>
   );
 };
 
-export default Img;
+export default React.memo(Img);

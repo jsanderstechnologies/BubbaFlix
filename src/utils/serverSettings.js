@@ -65,6 +65,8 @@ export const getTranscodedStreamUrl = (url) => {
 export const getProxiedImageUrl = (url) => {
   if (!url) return "";
   if (!url.startsWith("http")) return url; // Already relative or invalid
+  // Load TMDB images directly from high-speed HTTP/2 CDN for instant parallel loading & native browser caching
+  if (url.includes("image.tmdb.org")) return url;
   const serverBase = getServerUrl();
   return `${serverBase}/api/image?url=${encodeURIComponent(url)}`;
 };
