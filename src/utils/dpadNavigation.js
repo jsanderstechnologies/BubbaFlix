@@ -31,13 +31,14 @@ const FOCUSABLE_SELECTOR = [
   ".actionBtn",
   ".navBtn",
   ".playbtn",
-  ".watchCheckmarkBtn",
+  ".watchCheckmark",
   ".favoriteStarBtn",
   ".sectionHeader",
   ".magnetItemContainer",
   ".listItem",
   ".detailsPageBackBtn",
   ".viewCollectionBtn",
+  ".seasonSelect",
 ].join(", ");
 
 const getFocusableElements = () => {
@@ -195,10 +196,10 @@ export const focusTopLeftPoster = () => {
       return;
     }
 
-    // 2. If on Details page (/movie/* or /tv/*), focus details page action buttons (back btn or play btn)
+    // 2. If on Details page (/movie/* or /tv/*), focus details page primary action button (.playbtn, .sectionHeader, .watchCheckmark, .favoriteStarBtn)
     if (path.startsWith("/movie/") || path.startsWith("/tv/")) {
       const detailsTarget = document.querySelector(
-        ".details-page .detailsPageBackBtn, .detailsBanner .playbtn, .detailsBanner .watchCheckmarkBtn, .detailsBanner .favoriteStarBtn, .details-page [tabindex='0']"
+        ".detailsBanner .playbtn, .detailsBanner .sectionHeader, .detailsBanner .watchCheckmark, .detailsBanner .favoriteStarBtn, .details-page .detailsPageBackBtn, .details-page [tabindex='0']"
       );
       if (detailsTarget) {
         focusAndScroll(detailsTarget);
