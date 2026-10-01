@@ -16,13 +16,23 @@ export const saveLastClickedPoster = (id, type = "movie", sectionId = "") => {
 };
 
 export const goBackToSource = (navigate) => {
+  const nav = navigate || (typeof window !== "undefined" ? window.__routerNavigate : null);
   const sourcePath = typeof window !== "undefined" ? sessionStorage.getItem("last_clicked_source_path") : null;
   if (sourcePath && typeof window !== "undefined" && sourcePath !== (window.location.pathname + window.location.search)) {
     sessionStorage.removeItem("last_clicked_source_path");
-    navigate(sourcePath);
-  } else if (navigate) {
-    navigate(-1);
+    if (typeof nav === "function") {
+      nav(sourcePath);
+    } else if (typeof window !== "undefined" && window.history) {
+      window.history.back();
+    }
+  } else if (typeof nav === "function") {
+    nav(-1);
+  } else if (typeof window !== "undefined" && window.history) {
+    window.history.back();
   }
+  setTimeout(() => {
+    restoreLastFocusedPoster();
+  }, 100);
 };
 
 export const restoreLastFocusedPoster = () => {

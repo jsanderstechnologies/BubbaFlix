@@ -2,7 +2,23 @@ import { useEffect, useState } from "react";
 import { fetchDataFromAPI } from "./utils/api";
 import { useDispatch, useSelector } from "react-redux";
 import { getApiConfiguration } from "./store/homeSlice";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { restoreLastFocusedPoster } from "./utils/focusManager";
+
+const NavigationManager = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    window.__routerNavigate = navigate;
+  }, [navigate]);
+
+  useEffect(() => {
+    restoreLastFocusedPoster();
+  }, [location.pathname, location.search]);
+
+  return null;
+};
 import HomePage from "./pages/home-page";
 import DetailsPage from "./pages/details-page";
 import SearchResult from "./pages/search-result";
@@ -115,6 +131,7 @@ const AppContent = () => {
 
   return (
     <BrowserRouter>
+      <NavigationManager />
       {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
       <TvInstallPrompt />
       <BackgroundRotator />

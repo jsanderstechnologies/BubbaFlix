@@ -1,4 +1,5 @@
 // D-Pad / Smart TV Remote Spatial Navigation & Keyboard Control Engine for BubbaFlix
+import { goBackToSource, restoreLastFocusedPoster } from "./focusManager";
 
 export const isTvDevice = () => {
   if (typeof window === "undefined") return false;
@@ -279,6 +280,7 @@ export const initDpadNavigation = () => {
   focusTopLeftPoster();
 
   const handleRouteChange = () => {
+    restoreLastFocusedPoster();
     focusTopLeftPoster();
   };
 
@@ -342,16 +344,59 @@ export const initDpadNavigation = () => {
 
     // Handle Smart TV Back Button
     if (key === "Escape" || key === "Back" || code === 27 || code === 10009 || code === 461 || code === 4) {
-      if (document.body.classList.contains("videoPlayerActive")) {
+      // 1. If Video Player is active, let video player handle Escape or close it
+      if (document.body.classList.contains("videoPlayerActive") || document.querySelector(".videoPlayerModal, .videoModalOverlay")) {
+        return;
+      }
+
+      // 2. If Poster Action Modal (long press menu) is open, close it!
+      if (document.body.classList.contains("posterActionModalActive") || document.querySelector(".posterActionModalOverlay")) {
         e.preventDefault();
         e.stopPropagation();
+        const closeBtn = document.querySelector(".posterActionModalOverlay .closeBtn");
+        if (closeBtn) {
+          closeBtn.click();
+        } else {
+          const overlay = document.querySelector(".posterActionModalOverlay");
+          if (overlay) overlay.click();
+        }
         return;
       }
+
+      // 3. Other modals (confirm, sort, customize)
+      const otherModalOverlay = document.querySelector(".confirmModalOverlay, .sortModalOverlay, .customizeModalOverlay");
+      if (otherModalOverlay) {
+        e.preventDefault();
+        e.stopPropagation();
+        const closeBtn = otherModalOverlay.querySelector(".closeBtn, .cancelBtn, .opacityLayer");
+        if (closeBtn) closeBtn.click();
+        return;
+      }
+
+      // 4. Details Page, Collection Details Page, or sub-routes: use goBackToSource
+      if (
+        document.body.classList.contains("detailsPageActive") ||
+        document.body.classList.contains("collectionDetailsActive") ||
+        window.location.pathname.startsWith("/movie/") ||
+        window.location.pathname.startsWith("/tv/") ||
+        window.location.pathname.startsWith("/collection/") ||
+        window.location.pathname.startsWith("/person/")
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        goBackToSource(window.__routerNavigate || null);
+        return;
+      }
+
+      // 5. Other non-home routes (e.g. /explore, /search, /favorites, /settings)
       if (window.location.pathname !== "/") {
         e.preventDefault();
-        window.history.back();
+        e.stopPropagation();
+        goBackToSource(window.__routerNavigate || null);
         return;
       }
+
+      // 6. On Root Home (/) with no active modals: prompt exit app
       e.preventDefault();
       if (typeof window !== "undefined" && window.AndroidPlayer && typeof window.AndroidPlayer.promptExitApp === "function") {
         window.AndroidPlayer.promptExitApp();

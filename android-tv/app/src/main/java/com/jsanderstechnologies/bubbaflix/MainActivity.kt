@@ -524,14 +524,17 @@ class MainActivity : AppCompatActivity() {
         if (keyCode == KeyEvent.KEYCODE_BACK) {
             webView.evaluateJavascript(
                 "(function() {" +
-                "  if (document.body.classList.contains('videoPlayerActive')) return 'player';" +
+                "  if (document.body.classList.contains('videoPlayerActive') || document.querySelector('.videoPlayerModal, .videoModalOverlay')) return 'modal';" +
+                "  if (document.body.classList.contains('posterActionModalActive') || document.querySelector('.posterActionModalOverlay')) return 'modal';" +
+                "  if (document.querySelector('.confirmModalOverlay, .sortModalOverlay, .customizeModalOverlay')) return 'modal';" +
                 "  if (document.body.classList.contains('detailsPageActive')) return 'details';" +
                 "  if (document.body.classList.contains('collectionDetailsActive')) return 'collection';" +
+                "  if (window.location.hash !== '#/' && window.location.hash !== '' && window.location.pathname !== '/') return 'route';" +
                 "  return 'none';" +
                 "})();"
             ) { activeContext ->
                 val ctx = activeContext?.replace("\"", "")?.trim()
-                if (ctx == "player" || ctx == "details" || ctx == "collection") {
+                if (ctx != null && ctx != "none") {
                     webView.evaluateJavascript(
                         "window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, bubbles: true }));",
                         null
