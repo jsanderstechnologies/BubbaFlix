@@ -46,6 +46,7 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
   const [showControls, setShowControls] = useState(true);
   const [actualStreamUrl, setActualStreamUrl] = useState("");
   const controlsTimeoutRef = useRef(null);
+  const wasProgressBarFocusedRef = useRef(false);
 
   const [audioTracks, setAudioTracks] = useState([]);
   const [subtitleTracks, setSubtitleTracks] = useState([]);
@@ -171,6 +172,11 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
   }, [selectedSubtitleIndex, actualStreamUrl]);
 
   const executeSeek = (targetTime, audioIndex = selectedAudioIndex, vCodec = mediaInfo.videoCodec) => {
+    const activeEl = document.activeElement;
+    if (activeEl && (activeEl.classList?.contains("progress-bar") || activeEl.closest?.(".progress-bar-container"))) {
+      wasProgressBarFocusedRef.current = true;
+    }
+
     setSeekOffset(targetTime);
     seekOffsetRef.current = targetTime;
     setCurrentTime(targetTime);
@@ -186,6 +192,16 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
       videoRef.current.play();
     }
   };
+
+  useEffect(() => {
+    if (wasProgressBarFocusedRef.current || document.activeElement === document.body) {
+      const pb = document.querySelector(".custom-transcode-player .progress-bar, .videoPlayerModal .progress-bar");
+      if (pb && typeof pb.focus === "function") {
+        pb.focus();
+      }
+      wasProgressBarFocusedRef.current = false;
+    }
+  }, [actualStreamUrl]);
 
   const handleResumeChoice = (resume) => {
     setShowResumePrompt(false);

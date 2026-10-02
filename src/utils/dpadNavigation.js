@@ -287,6 +287,14 @@ export const focusTopLeftPoster = () => {
     }
 
     // 6. Final fallback: First focusable element
+    if (document.body.classList.contains("videoPlayerActive")) {
+      const progressBar = document.querySelector(".videoPlayerModal .progress-bar, .videoPlayerModal [role='slider']");
+      if (progressBar) {
+        focusAndScroll(progressBar);
+        return;
+      }
+    }
+
     const focusables = getFocusableElements();
     if (focusables.length > 0) {
       focusAndScroll(focusables[0]);
@@ -486,6 +494,13 @@ export const initDpadNavigation = () => {
     if (focusables.length === 0) return;
 
     if (!activeEl || activeEl === document.body || !focusables.includes(activeEl)) {
+      if (document.body.classList.contains("videoPlayerActive")) {
+        const progressBar = document.querySelector(".videoPlayerModal .progress-bar, .videoPlayerModal [role='slider']");
+        if (progressBar) {
+          focusAndScroll(progressBar);
+          return;
+        }
+      }
       focusTopLeftPoster();
       return;
     }
