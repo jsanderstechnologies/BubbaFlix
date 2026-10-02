@@ -39,7 +39,27 @@ const FOCUSABLE_SELECTOR = [
   ".detailsPageBackBtn",
   ".viewCollectionBtn",
   ".seasonSelect",
+  ".progress-bar",
+  '[role="slider"]',
 ].join(", ");
+
+const isProgressBarElement = (el) => {
+  if (!el) return false;
+  const cls = (el.className || "").toString().toLowerCase();
+  const role = (el.getAttribute?.("role") || "").toLowerCase();
+  const type = (el.getAttribute?.("type") || "").toLowerCase();
+  return (
+    cls.includes("progress-bar") ||
+    cls.includes("scrubber") ||
+    cls.includes("progress") ||
+    cls.includes("seeker") ||
+    cls.includes("seekbar") ||
+    cls.includes("timeline") ||
+    role === "slider" ||
+    type === "range" ||
+    !!(el.closest && el.closest(".progress-bar-container, .scrubberRow, .scrubberWrapper, .progress-bar"))
+  );
+};
 
 const getFocusableElements = () => {
   let root = document;
@@ -452,6 +472,13 @@ export const initDpadNavigation = () => {
     else if (key === "PageDown" || code === 34 || code === 428) { direction = "ArrowDown"; isPageJump = true; }
 
     if (!direction) return;
+
+    // Prevent D-Pad spatial navigation from stealing focus out of video player progress bar / scroll bar on Left/Right holding
+    if (isProgressBarElement(activeEl) && (direction === "ArrowLeft" || direction === "ArrowRight")) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
 
     e.preventDefault();
 

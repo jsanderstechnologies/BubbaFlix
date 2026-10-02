@@ -305,9 +305,29 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
       handleMouseMove();
 
       const activeEl = document.activeElement;
+      const isProgress = activeEl && (
+        activeEl.classList?.contains("progress-bar") ||
+        activeEl.closest?.(".progress-bar-container")
+      );
+
+      if (isProgress && (e.key === "ArrowRight" || e.key === "ArrowLeft")) {
+        e.preventDefault();
+        e.stopPropagation();
+        const step = duration ? Math.max(5, Math.min(30, Math.round(duration / 100))) : 10;
+        if (e.key === "ArrowRight") {
+          handleRelativeSeek(step);
+        } else {
+          handleRelativeSeek(-step);
+        }
+        return;
+      }
+
       if (activeEl && (activeEl.tagName === "BUTTON" || activeEl.closest('.custom-controls'))) {
-        if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter", " "].includes(e.key)) {
-          return; // Let native spatial navigation or default button click take over
+        if (["ArrowUp", "ArrowDown", "Enter", " "].includes(e.key)) {
+          return; // Let native spatial navigation (Up/Down) or default button click take over
+        }
+        if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && !activeEl.classList?.contains("progress-bar")) {
+          return;
         }
       }
 
@@ -523,10 +543,28 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
           <span style={{ fontSize: '14px', fontFamily: 'monospace' }}>{formatTime(currentTime)}</span>
           <div 
             className="progress-bar" 
-            onClick={handleSeek} 
+            tabIndex="0"
+            role="slider"
+            aria-label="Seek progress bar"
+            aria-valuenow={currentTime}
+            aria-valuemin={0}
+            aria-valuemax={duration || 100}
+            onClick={handleSeek}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+                e.preventDefault();
+                e.stopPropagation();
+                const step = duration ? Math.max(5, Math.min(30, Math.round(duration / 100))) : 10;
+                if (e.key === "ArrowRight") {
+                  handleRelativeSeek(step);
+                } else {
+                  handleRelativeSeek(-step);
+                }
+              }
+            }}
             style={{
-              flex: 1, height: '8px', background: 'rgba(255,255,255,0.25)', 
-              cursor: 'pointer', borderRadius: '4px', position: 'relative'
+              flex: 1, height: '10px', background: 'rgba(255,255,255,0.25)', 
+              cursor: 'pointer', borderRadius: '5px', position: 'relative', outline: 'none'
             }}
           >
             {chapters.map(chap => (
