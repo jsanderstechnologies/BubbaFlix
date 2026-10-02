@@ -36,7 +36,7 @@ const getLocalVersionData = () => {
       return JSON.parse(fs.readFileSync(vFile, "utf8"));
     }
   } catch (e) {}
-  return { versionCode: 19, versionName: "1.0.18" };
+  return { versionCode: 20, versionName: "1.0.19" };
 };
 
 
@@ -1743,7 +1743,7 @@ server.listen(PORT, "0.0.0.0", () => {
   logMessage(`================================================================================`);
   logMessage(`[BubbaFlix Server] HTTP API & Transcoder listening on port ${PORT}`);
   const localVersion = getLocalVersionData();
-  const serverVersionStr = localVersion.versionName || "1.0.18";
+  const serverVersionStr = localVersion.versionName || "1.0.19";
   const formattedVersion = serverVersionStr.startsWith("v") ? serverVersionStr : `v${serverVersionStr}`;
   logMessage(`[BubbaFlix Server] Version: ${formattedVersion}`);
   logMessage(`[CPU Hardware Topology] Model: ${cpuModel}`);

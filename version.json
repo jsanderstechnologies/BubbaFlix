@@ -1,6 +1,6 @@
 {
-  "versionCode": 19,
-  "versionName": "1.0.18",
+  "versionCode": 20,
+  "versionName": "1.0.19",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.18 with 30-day persistent poster image disk caching, Stream Droplist far-right Play Stream button alignment, and Movie Details D-Pad spatial focus fixes."
+  "releaseNotes": "BubbaFlix TV v1.0.19 with player progress bar seeking D-Pad focus lock, physical remote Back button details & modal context navigation fixes, and 30-day persistent poster caching."
 }
