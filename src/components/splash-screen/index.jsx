@@ -136,6 +136,7 @@ const SplashScreen = ({ onComplete }) => {
   };
 
   const finishSplash = () => {
+    if (fading) return;
     setFading(true);
     setTimeout(() => {
       if (onComplete) onComplete();
@@ -161,7 +162,11 @@ const SplashScreen = ({ onComplete }) => {
       const caption = captionRef.current;
 
       if (!logoWrap || !glow || !shine || !caption) {
-        finishSplash();
+        if (t < duration) {
+          animationFrameRef.current = requestAnimationFrame(frame);
+        } else {
+          finishSplash();
+        }
         return;
       }
 

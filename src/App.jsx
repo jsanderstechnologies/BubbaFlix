@@ -123,6 +123,10 @@ const AppContent = () => {
     });
   };
 
+  if (showSplash) {
+    return <SplashScreen onComplete={handleSplashComplete} />;
+  }
+
   if (loading) return null; // Or a simple spinner
   
   if (setupRequired || !user) {
@@ -132,11 +136,9 @@ const AppContent = () => {
   return (
     <BrowserRouter>
       <NavigationManager />
-      {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
       <TvInstallPrompt />
       <BackgroundRotator />
-      {!showSplash && (
-        <div style={{ position: "relative", zIndex: 1, opacity: 1 }}>
+      <div style={{ position: "relative", zIndex: 1, opacity: 1 }}>
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/about" element={<AboutPage />} />
@@ -153,7 +155,6 @@ const AppContent = () => {
           </Routes>
           <Footer />
         </div>
-      )}
     </BrowserRouter>
   );
 };
