@@ -44,21 +44,26 @@ const FOCUSABLE_SELECTOR = [
 ].join(", ");
 
 const isProgressBarElement = (el) => {
-  if (!el) return false;
-  const cls = (el.className || "").toString().toLowerCase();
-  const role = (el.getAttribute?.("role") || "").toLowerCase();
-  const type = (el.getAttribute?.("type") || "").toLowerCase();
-  return (
-    cls.includes("progress-bar") ||
-    cls.includes("scrubber") ||
-    cls.includes("progress") ||
-    cls.includes("seeker") ||
-    cls.includes("seekbar") ||
-    cls.includes("timeline") ||
-    role === "slider" ||
-    type === "range" ||
-    !!(el.closest && el.closest(".progress-bar-container, .scrubberRow, .scrubberWrapper, .progress-bar"))
-  );
+  if (!el || typeof el !== "object") return false;
+  try {
+    const classNameStr = typeof el.className === "string" ? el.className : (el.className?.baseVal || "");
+    const cls = classNameStr.toLowerCase();
+    const role = (typeof el.getAttribute === "function" ? (el.getAttribute("role") || "") : "").toLowerCase();
+    const type = (typeof el.getAttribute === "function" ? (el.getAttribute("type") || "") : "").toLowerCase();
+    return (
+      cls.includes("progress-bar") ||
+      cls.includes("scrubber") ||
+      cls.includes("progress") ||
+      cls.includes("seeker") ||
+      cls.includes("seekbar") ||
+      cls.includes("timeline") ||
+      role === "slider" ||
+      type === "range" ||
+      !!(typeof el.closest === "function" && el.closest(".progress-bar-container, .scrubberRow, .scrubberWrapper, .progress-bar"))
+    );
+  } catch (e) {
+    return false;
+  }
 };
 
 const getFocusableElements = () => {
