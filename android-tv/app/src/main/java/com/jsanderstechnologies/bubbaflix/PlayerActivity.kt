@@ -454,6 +454,16 @@ class PlayerActivity : AppCompatActivity() {
         controlsOverlay.setOnClickListener(onScreenTap)
 
         btnBack.setOnClickListener { finish() }
+        btnBack.setOnKeyListener { _, keyCode, event ->
+            if (event.action == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                if (controlsVisible) {
+                    handler.removeCallbacks(hideControlsRunnable)
+                    hideControls()
+                    return@setOnKeyListener true
+                }
+            }
+            false
+        }
 
         btnAudio.setOnClickListener { showAudioTrackSelectionDialog() }
 
@@ -822,6 +832,7 @@ class PlayerActivity : AppCompatActivity() {
     private fun hideControls() {
         controlsVisible = false
         controlsOverlay.visibility = View.GONE
+        playerView.requestFocus()
     }
 
     private fun showError(msg: String) {
@@ -849,6 +860,16 @@ class PlayerActivity : AppCompatActivity() {
             } else {
                 saveCurrentWatchProgress()
                 finish()
+                return true
+            }
+        }
+
+        // If user tries to navigate above the back button when controls are visible, immediately hide controls
+        if (controlsVisible && keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+            val focused = currentFocus
+            if (btnBack.isFocused || focused == btnBack || (focused != null && focused.id == R.id.btn_back)) {
+                handler.removeCallbacks(hideControlsRunnable)
+                hideControls()
                 return true
             }
         }

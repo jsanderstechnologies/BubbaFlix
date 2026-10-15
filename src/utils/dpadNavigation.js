@@ -537,6 +537,19 @@ export const initDpadNavigation = () => {
     }
 
     // 2. ROW-BOUNDARY VERTICAL & HORIZONTAL NAVIGATION ENGINE
+    if (document.body.classList.contains("videoPlayerActive") && direction === "ArrowUp") {
+      if (
+        activeEl &&
+        (activeEl.classList?.contains("backBtn") ||
+         activeEl.classList?.contains("minimalistBackBtn") ||
+         activeEl.closest?.(".backBtn"))
+      ) {
+        window.dispatchEvent(new CustomEvent("hide-player-controls"));
+        activeEl.blur();
+        return;
+      }
+    }
+
     let candidates = [];
     const inTopNav = activeEl.closest(".topNav") || activeEl.closest(".header") || activeEl.closest(".navLinks") || activeEl.closest(".navSearch") || activeEl.classList.contains("detailsPageBackBtn");
 

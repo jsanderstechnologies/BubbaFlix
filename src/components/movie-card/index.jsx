@@ -24,6 +24,13 @@ const MovieCard = ({ data, fromSearch, mediaType, sectionId = "" }) => {
 	const pressStartTimeRef = React.useRef(0);
 	const isLongPressRef = React.useRef(false);
 	
+	const touchStartPosRef = React.useRef(null);
+	const touchMovedRef = React.useRef(false);
+	const isTouchActiveRef = React.useRef(false);
+	const touchResetTimerRef = React.useRef(null);
+	const mouseStartPosRef = React.useRef(null);
+	const mouseMovedRef = React.useRef(false);
+	
 	const posterBase = url?.poster || DEFAULT_IMAGE_BASE;
 	const posterUrl = data.poster_path
 		? posterBase + data.poster_path
@@ -35,39 +42,177 @@ const MovieCard = ({ data, fromSearch, mediaType, sectionId = "" }) => {
 	const targetType = data.media_type || mediaType || (data.name ? "tv" : "movie");
 	const posterKey = sectionId ? `poster-${sectionId}-${targetType}-${data.id}` : `poster-${targetType}-${data.id}`;
 
+	React.useEffect(() => {
+		return () => {
+			if (timerRef.current) clearTimeout(timerRef.current);
+			if (touchResetTimerRef.current) clearTimeout(touchResetTimerRef.current);
+		};
+	}, []);
+
 	const handleSelect = () => {
 		saveLastClickedPoster(data.id, targetType, sectionId);
 		navigate(`/${targetType}/${data.id}`);
 	};
 
-	const startPress = () => {
+	// Touch handlers (Phone / Tablet touchscreens)
+	const handleTouchStart = (e) => {
+		isTouchActiveRef.current = true;
+		if (touchResetTimerRef.current) clearTimeout(touchResetTimerRef.current);
+
+		const touch = e.touches[0];
+		touchStartPosRef.current = { x: touch.clientX, y: touch.clientY };
+		touchMovedRef.current = false;
 		isLongPressRef.current = false;
 		pressStartTimeRef.current = Date.now();
+
 		if (timerRef.current) clearTimeout(timerRef.current);
 		timerRef.current = setTimeout(() => {
-			isLongPressRef.current = true;
-			setShowActionModal(true);
-		}, 380);
+			if (!touchMovedRef.current) {
+				isLongPressRef.current = true;
+				setShowActionModal(true);
+			}
+		}, 500);
 	};
 
-	const endPress = () => {
+	const handleTouchMove = (e) => {
+		if (!touchStartPosRef.current || !e.touches[0]) return;
+		const touch = e.touches[0];
+		const dx = Math.abs(touch.clientX - touchStartPosRef.current.x);
+		const dy = Math.abs(touch.clientY - touchStartPosRef.current.y);
+
+		// If user moves more than 8px, it is a scroll gesture -> cancel long press immediately!
+		if (dx > 8 || dy > 8) {
+			touchMovedRef.current = true;
+			if (timerRef.current) {
+				clearTimeout(timerRef.current);
+				timerRef.current = null;
+			}
+		}
+	};
+
+	const handleTouchEnd = () => {
 		if (timerRef.current) {
 			clearTimeout(timerRef.current);
 			timerRef.current = null;
 		}
-		const pressDuration = pressStartTimeRef.current > 0 ? Date.now() - pressStartTimeRef.current : 0;
-		if (!isLongPressRef.current && pressDuration > 0 && pressDuration < 380) {
+
+		touchResetTimerRef.current = setTimeout(() => {
+			isTouchActiveRef.current = false;
+		}, 600);
+
+		// If user was scrolling, do NOT open details screen or modal!
+		if (touchMovedRef.current) {
+			touchMovedRef.current = false;
+			touchStartPosRef.current = null;
+			isLongPressRef.current = false;
+			pressStartTimeRef.current = 0;
+			return;
+		}
+
+		// If long press triggered modal, do not navigate
+		if (isLongPressRef.current) {
+			isLongPressRef.current = false;
+			touchStartPosRef.current = null;
+			pressStartTimeRef.current = 0;
+			return;
+		}
+
+		// Clean tap without moving -> open details page
+		const duration = pressStartTimeRef.current > 0 ? Date.now() - pressStartTimeRef.current : 0;
+		if (duration < 500) {
 			handleSelect();
 		}
-		isLongPressRef.current = false;
+
+		touchStartPosRef.current = null;
 		pressStartTimeRef.current = 0;
 	};
 
-	const cancelPress = () => {
+	const handleTouchCancel = () => {
 		if (timerRef.current) {
 			clearTimeout(timerRef.current);
 			timerRef.current = null;
 		}
+		touchMovedRef.current = false;
+		touchStartPosRef.current = null;
+		isLongPressRef.current = false;
+		pressStartTimeRef.current = 0;
+		touchResetTimerRef.current = setTimeout(() => {
+			isTouchActiveRef.current = false;
+		}, 600);
+	};
+
+	// Mouse handlers (Desktop PC)
+	const handleMouseDown = (e) => {
+		if (isTouchActiveRef.current) return;
+		if (e.button !== 0) return;
+
+		mouseStartPosRef.current = { x: e.clientX, y: e.clientY };
+		mouseMovedRef.current = false;
+		isLongPressRef.current = false;
+		pressStartTimeRef.current = Date.now();
+
+		if (timerRef.current) clearTimeout(timerRef.current);
+		timerRef.current = setTimeout(() => {
+			if (!mouseMovedRef.current) {
+				isLongPressRef.current = true;
+				setShowActionModal(true);
+			}
+		}, 500);
+	};
+
+	const handleMouseMove = (e) => {
+		if (!mouseStartPosRef.current) return;
+		const dx = Math.abs(e.clientX - mouseStartPosRef.current.x);
+		const dy = Math.abs(e.clientY - mouseStartPosRef.current.y);
+		if (dx > 8 || dy > 8) {
+			mouseMovedRef.current = true;
+			if (timerRef.current) {
+				clearTimeout(timerRef.current);
+				timerRef.current = null;
+			}
+		}
+	};
+
+	const handleMouseUp = (e) => {
+		if (isTouchActiveRef.current) return;
+		if (e.button !== 0) return;
+
+		if (timerRef.current) {
+			clearTimeout(timerRef.current);
+			timerRef.current = null;
+		}
+
+		if (mouseMovedRef.current) {
+			mouseMovedRef.current = false;
+			mouseStartPosRef.current = null;
+			isLongPressRef.current = false;
+			pressStartTimeRef.current = 0;
+			return;
+		}
+
+		if (isLongPressRef.current) {
+			isLongPressRef.current = false;
+			mouseStartPosRef.current = null;
+			pressStartTimeRef.current = 0;
+			return;
+		}
+
+		const duration = pressStartTimeRef.current > 0 ? Date.now() - pressStartTimeRef.current : 0;
+		if (duration < 500) {
+			handleSelect();
+		}
+
+		mouseStartPosRef.current = null;
+		pressStartTimeRef.current = 0;
+	};
+
+	const handleMouseLeave = () => {
+		if (timerRef.current) {
+			clearTimeout(timerRef.current);
+			timerRef.current = null;
+		}
+		mouseStartPosRef.current = null;
+		mouseMovedRef.current = false;
 		isLongPressRef.current = false;
 		pressStartTimeRef.current = 0;
 	};
@@ -104,7 +249,13 @@ const MovieCard = ({ data, fromSearch, mediaType, sectionId = "" }) => {
 				}
 				return;
 			}
-			startPress();
+			isLongPressRef.current = false;
+			pressStartTimeRef.current = Date.now();
+			if (timerRef.current) clearTimeout(timerRef.current);
+			timerRef.current = setTimeout(() => {
+				isLongPressRef.current = true;
+				setShowActionModal(true);
+			}, 500);
 		}
 	};
 
@@ -113,7 +264,15 @@ const MovieCard = ({ data, fromSearch, mediaType, sectionId = "" }) => {
 		if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
 			e.preventDefault();
 			e.stopPropagation();
-			endPress();
+			if (timerRef.current) {
+				clearTimeout(timerRef.current);
+				timerRef.current = null;
+			}
+			if (!isLongPressRef.current && pressStartTimeRef.current > 0) {
+				handleSelect();
+			}
+			isLongPressRef.current = false;
+			pressStartTimeRef.current = 0;
 		}
 	};
 
@@ -127,12 +286,14 @@ const MovieCard = ({ data, fromSearch, mediaType, sectionId = "" }) => {
 				role="button"
 				onClick={handleClick}
 				onContextMenu={handleContextMenu}
-				onMouseDown={startPress}
-				onMouseUp={endPress}
-				onMouseLeave={cancelPress}
-				onTouchStart={startPress}
-				onTouchEnd={endPress}
-				onTouchCancel={cancelPress}
+				onMouseDown={handleMouseDown}
+				onMouseMove={handleMouseMove}
+				onMouseUp={handleMouseUp}
+				onMouseLeave={handleMouseLeave}
+				onTouchStart={handleTouchStart}
+				onTouchMove={handleTouchMove}
+				onTouchEnd={handleTouchEnd}
+				onTouchCancel={handleTouchCancel}
 				onKeyDown={handleKeyDown}
 				onKeyUp={handleKeyUp}
 			>

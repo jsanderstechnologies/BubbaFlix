@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { FiPlay, FiX } from "react-icons/fi";
@@ -19,6 +19,8 @@ const ContinueWatchingCarousel = ({ items: initialItems, title, onPlayResume, se
 
   // Local state so removing items is instant without a page refresh
   const [items, setItems] = useState(initialItems || []);
+  const touchStartPosRef = useRef(null);
+  const touchMovedRef = useRef(false);
 
   useEffect(() => {
     if (Array.isArray(items) && items.length > 0) {
@@ -28,7 +30,27 @@ const ContinueWatchingCarousel = ({ items: initialItems, title, onPlayResume, se
 
   if (!items || items.length === 0) return null;
 
+  const handleTouchStart = (e) => {
+    if (e.touches && e.touches[0]) {
+      touchStartPosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      touchMovedRef.current = false;
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (!touchStartPosRef.current || !e.touches || !e.touches[0]) return;
+    const dx = Math.abs(e.touches[0].clientX - touchStartPosRef.current.x);
+    const dy = Math.abs(e.touches[0].clientY - touchStartPosRef.current.y);
+    if (dx > 8 || dy > 8) {
+      touchMovedRef.current = true;
+    }
+  };
+
   const handleSelect = (item) => {
+    if (touchMovedRef.current) {
+      touchMovedRef.current = false;
+      return;
+    }
     const savedUrl = getStreamUrl(item.tmdbId, item.mediaType, item.seasonNum, item.episodeNum);
     if (onPlayResume && savedUrl) {
       onPlayResume(item);
@@ -70,6 +92,8 @@ const ContinueWatchingCarousel = ({ items: initialItems, title, onPlayResume, se
                 className="continueItem"
                 tabIndex="0"
                 role="button"
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
                 onClick={() => handleSelect(item)}
                 onKeyDown={(e) => {
                   const code = e.keyCode;

@@ -388,13 +388,21 @@ const CustomTranscodePlayer = ({ streamUrl, rawUrl, title, tmdbId, mediaType, se
       }
     };
 
+    const handleHide = () => {
+      setShowControls(false);
+      if (onControlsToggle) onControlsToggle(false);
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    };
+
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("hide-player-controls", handleHide);
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("hide-player-controls", handleHide);
     };
-  }, [currentTime, duration, selectedAudioIndex, streamUrl]);
+  }, [currentTime, duration, selectedAudioIndex, streamUrl, onControlsToggle]);
 
   useEffect(() => {
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);

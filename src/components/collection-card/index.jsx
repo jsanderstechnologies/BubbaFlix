@@ -15,6 +15,9 @@ const CollectionCard = ({ data, sectionId = "" }) => {
 
   if (!data) return null;
 
+  const touchStartPosRef = React.useRef(null);
+  const touchMovedRef = React.useRef(false);
+
   const posterBase = url?.poster || DEFAULT_IMAGE_BASE;
   const posterUrl = data.poster_path
     ? posterBase + data.poster_path
@@ -22,7 +25,27 @@ const CollectionCard = ({ data, sectionId = "" }) => {
 
   const posterKey = sectionId ? `poster-${sectionId}-collection-${data.id}` : `poster-collection-${data.id}`;
 
+  const handleTouchStart = (e) => {
+    if (e.touches && e.touches[0]) {
+      touchStartPosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      touchMovedRef.current = false;
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (!touchStartPosRef.current || !e.touches || !e.touches[0]) return;
+    const dx = Math.abs(e.touches[0].clientX - touchStartPosRef.current.x);
+    const dy = Math.abs(e.touches[0].clientY - touchStartPosRef.current.y);
+    if (dx > 8 || dy > 8) {
+      touchMovedRef.current = true;
+    }
+  };
+
   const handleSelect = () => {
+    if (touchMovedRef.current) {
+      touchMovedRef.current = false;
+      return;
+    }
     saveLastClickedPoster(data.id, "collection", sectionId);
     navigate(`/collection/${data.id}`);
   };
@@ -36,6 +59,8 @@ const CollectionCard = ({ data, sectionId = "" }) => {
       className="collectionCard"
       tabIndex={0}
       role="button"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
       onClick={handleSelect}
       onKeyDown={(e) => {
         const code = e.keyCode;

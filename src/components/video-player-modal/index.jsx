@@ -140,6 +140,12 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
 
       window.addEventListener("mousemove", handleMouseMove);
 
+      const handleHidePlayerControls = () => {
+        setShowControls(false);
+        if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+      };
+      window.addEventListener("hide-player-controls", handleHidePlayerControls);
+
       // Keyboard handler for closing
       const handlePlayerKeyDown = (e) => {
         const key = e.key;
@@ -156,6 +162,7 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
       return () => {
         window.removeEventListener("keydown", handlePlayerKeyDown, true);
         window.removeEventListener("mousemove", handleMouseMove);
+        window.removeEventListener("hide-player-controls", handleHidePlayerControls);
         if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
         document.body.classList.remove("videoPlayerActive");
         document.documentElement.classList.remove("videoPlayerActive");
@@ -222,6 +229,16 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
           <button 
              className="backBtn minimalistBackBtn" 
              onClick={handleClose}
+             onKeyDown={(e) => {
+               if (e.key === "ArrowUp") {
+                 e.preventDefault();
+                 e.stopPropagation();
+                 setShowControls(false);
+                 if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+                 window.dispatchEvent(new CustomEvent("hide-player-controls"));
+                 e.currentTarget.blur();
+               }
+             }}
              style={{ background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', padding: '10px 15px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px' }}
           >
             <FiArrowLeft size={20} /> Back
