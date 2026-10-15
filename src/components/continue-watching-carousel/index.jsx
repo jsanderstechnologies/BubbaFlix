@@ -10,7 +10,7 @@ import { saveLastClickedPoster, restoreLastFocusedPoster } from "../../utils/foc
 import { getStreamUrl, clearWatchProgress } from "../../utils/watchProgress";
 import "./index.scss";
 
-const DEFAULT_IMAGE_BASE = "https://image.tmdb.org/t/p/original";
+const DEFAULT_IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
 
 const ContinueWatchingCarousel = ({ items: initialItems, title, onPlayResume, sectionId = "" }) => {
   const navigate = useNavigate();

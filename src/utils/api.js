@@ -37,7 +37,7 @@ const preloadImagesFromResults = (data) => {
   if (typeof window === "undefined") return;
   try {
     const items = Array.isArray(data?.results) ? data.results : (data?.poster_path ? [data] : []);
-    items.slice(0, 12).forEach((item) => {
+    items.slice(0, 20).forEach((item) => {
       if (item.poster_path) {
         const img = new Image();
         img.src = `https://image.tmdb.org/t/p/w500${item.poster_path}`;

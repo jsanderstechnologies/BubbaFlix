@@ -27,7 +27,7 @@ const CarouselItem = ({ item, endpoint, url, sectionId }) => {
 	const mouseStartPosRef = useRef(null);
 	const mouseMovedRef = useRef(false);
 
-	const posterBase = url?.poster || "https://image.tmdb.org/t/p/original";
+	const posterBase = url?.poster || "https://image.tmdb.org/t/p/w500";
 	const posterUrl = item.poster_path ? posterBase + item.poster_path : PosterFallback;
 	const targetType = item.media_type || endpoint || (item.name ? "tv" : "movie");
 	const posterKey = sectionId ? `poster-${sectionId}-${targetType}-${item.id}` : `poster-${targetType}-${item.id}`;

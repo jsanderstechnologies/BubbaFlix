@@ -13,7 +13,7 @@ import PosterFallback from "../../assets/no-poster.png";
 
 import PosterActionModal from "../poster-action-modal";
 
-const DEFAULT_IMAGE_BASE = "https://image.tmdb.org/t/p/original";
+const DEFAULT_IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
 
 const MovieCard = ({ data, fromSearch, mediaType, sectionId = "" }) => {
 	const { url } = useSelector((state) => state.home);

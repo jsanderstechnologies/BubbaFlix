@@ -3,11 +3,11 @@ import PosterFallback from "../../assets/no-poster.png";
 import { getProxiedImageUrl } from "../../utils/serverSettings";
 
 const Img = ({ src, classname, className, alt = "" }) => {
-  const targetSrc = src?.includes("image.tmdb.org") ? getProxiedImageUrl(src) : src;
+  const targetSrc = src ? getProxiedImageUrl(src) : PosterFallback;
   const [currentSrc, setCurrentSrc] = useState(targetSrc || PosterFallback);
 
   useEffect(() => {
-    const updated = src?.includes("image.tmdb.org") ? getProxiedImageUrl(src) : src;
+    const updated = src ? getProxiedImageUrl(src) : PosterFallback;
     setCurrentSrc(updated || PosterFallback);
   }, [src]);
 

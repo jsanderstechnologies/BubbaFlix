@@ -140,6 +140,23 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private val imageOkHttpClient by lazy {
+        val imageCacheDir = java.io.File(cacheDir, "webview_image_cache")
+        val cacheSize = 300L * 1024 * 1024 // 300 MB persistent disk cache for posters & banners
+        okhttp3.OkHttpClient.Builder()
+            .cache(okhttp3.Cache(imageCacheDir, cacheSize))
+            .addNetworkInterceptor { chain ->
+                val originalResponse = chain.proceed(chain.request())
+                originalResponse.newBuilder()
+                    .header("Cache-Control", "public, max-age=2592000, immutable") // 30 days
+                    .removeHeader("Pragma")
+                    .build()
+            }
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(20, TimeUnit.SECONDS)
+            .build()
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
     private fun setupWebViewSettings() {
         val settings = webView.settings
@@ -209,6 +226,40 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView.webViewClient = object : WebViewClient() {
+            override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
+                val reqUrl = request?.url ?: return null
+                val host = reqUrl.host ?: return null
+
+                if (host == "image.tmdb.org" && request.method.equals("GET", ignoreCase = true)) {
+                    try {
+                        val okHttpRequest = okhttp3.Request.Builder()
+                            .url(reqUrl.toString())
+                            .build()
+                        val response = imageOkHttpClient.newCall(okHttpRequest).execute()
+                        val body = response.body
+                        if (response.isSuccessful && body != null) {
+                            val mimeType = response.header("Content-Type", "image/jpeg")?.substringBefore(";")?.trim() ?: "image/jpeg"
+                            val encoding = response.header("Content-Encoding", "utf-8")
+                            val responseHeaders = HashMap<String, String>()
+                            responseHeaders["Cache-Control"] = "public, max-age=2592000, immutable"
+                            responseHeaders["Access-Control-Allow-Origin"] = "*"
+
+                            return WebResourceResponse(
+                                mimeType,
+                                encoding,
+                                200,
+                                "OK",
+                                responseHeaders,
+                                body.byteStream()
+                            )
+                        }
+                    } catch (e: Exception) {
+                        // Fall back to default WebView networking on error
+                    }
+                }
+                return super.shouldInterceptRequest(view, request)
+            }
+
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 return false
             }

@@ -56,7 +56,7 @@ const DetailsBanner = ({ video, crew }) => {
 				<div>
 					{!!data && !disableBg && (
 						<div className="backdrop-img">
-							<Img src={(url?.backdrop || "https://image.tmdb.org/t/p/original") + data?.backdrop_path} />
+							<Img src={(url?.backdrop || "https://image.tmdb.org/t/p/w1280") + data?.backdrop_path} />
 						</div>
 					)}
 					<div className="opacity-layer"></div>
@@ -66,7 +66,7 @@ const DetailsBanner = ({ video, crew }) => {
 								{data?.poster_path ? (
 									<Img
 										className="posterImg"
-										src={(url?.poster || "https://image.tmdb.org/t/p/original") + data.poster_path}
+										src={(url?.poster || "https://image.tmdb.org/t/p/w500") + data.poster_path}
 									/>
 								) : (
 									<Img

@@ -161,7 +161,7 @@ const SeasonsSection = ({ tvId, seasons, showTitle, posterPath }) => {
         {!loading && seasonData?.episodes && seasonData.episodes.length > 0 && (
           <div className="episodesList">
             {seasonData.episodes.map((ep) => {
-              const stillBase = url?.profile || "https://image.tmdb.org/t/p/original";
+              const stillBase = "https://image.tmdb.org/t/p/w300";
               const stillUrl = ep.still_path ? stillBase + ep.still_path : PosterFallback;
               const formattedDate = ep.air_date
                 ? dayjs(ep.air_date).format("MMM D, YYYY")

@@ -29,7 +29,7 @@ const Cast = ({ data, loading }) => {
 				{!loading ? (
 					<div className="listItems">
 						{data?.map((item) => {
-							const profileBase = url?.profile || "https://image.tmdb.org/t/p/original";
+							const profileBase = url?.profile || "https://image.tmdb.org/t/p/w185";
 							const avatarUrl = item.profile_path
 								? profileBase + item.profile_path
 								: avatar;
