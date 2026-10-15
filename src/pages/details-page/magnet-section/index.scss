@@ -444,9 +444,95 @@
                 border: 1px solid rgba(239, 68, 68, 0.45);
                 font-weight: 700;
               }
+
+              &.codecBadge.badge10bit {
+                background: rgba(245, 158, 11, 0.2);
+                color: #fbbf24;
+                border: 1px solid rgba(245, 158, 11, 0.45);
+                font-weight: 700;
+              }
             }
           }
         }
+      }
+    }
+  }
+
+  .hiddenCountTag {
+    font-size: 12px;
+    color: #fbbf24;
+    font-weight: 600;
+    margin-left: 4px;
+  }
+
+  .fireTabletNotice {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 18px;
+    margin-bottom: 14px;
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    border-radius: 14px;
+    gap: 14px;
+
+    &.openWarning {
+      background: rgba(239, 68, 68, 0.12);
+      border-color: rgba(239, 68, 68, 0.35);
+
+      .noticeShieldIcon {
+        color: #f87171;
+      }
+    }
+
+    .noticeLeft {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+
+      .noticeShieldIcon {
+        font-size: 22px;
+        color: #fbbf24;
+        flex-shrink: 0;
+      }
+
+      .noticeTextGroup {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+
+        .noticeTitle {
+          font-size: 13.5px;
+          font-weight: 700;
+          color: #f3f4f6;
+        }
+
+        .noticeDesc {
+          font-size: 12px;
+          color: #d1d5db;
+          line-height: 1.4;
+        }
+      }
+    }
+
+    .noticeToggleBtn {
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #f3f4f6;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+
+      &:hover,
+      &:focus {
+        background: rgba(255, 255, 255, 0.2);
+        border-color: #fbbf24;
+        color: white;
       }
     }
   }

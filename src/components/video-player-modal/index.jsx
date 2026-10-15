@@ -6,6 +6,8 @@ import "movi-player";
 import { FiArrowLeft } from "react-icons/fi";
 import { getWatchProgress, saveWatchProgress, clearWatchProgress, saveStreamUrl, forceSyncProgressToServer } from "../../utils/watchProgress";
 import { getTranscodedStreamUrl } from "../../utils/serverSettings";
+import { isFireTabletDevice } from "../../utils/deviceDetection";
+import { is10BitOrHevcStream } from "../../utils/filterUtils";
 import "./index.scss";
 
 import CustomTranscodePlayer from "./CustomTranscodePlayer";
@@ -84,7 +86,16 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
     if (show && typeof window !== "undefined" && window.AndroidPlayer && typeof window.AndroidPlayer.playStream === "function") {
       const rawTargetUrl = rawUrl || videoUrl || streamUrl || "";
       let directUrl = rawTargetUrl;
-      if (directUrl.includes("/api/transcode?url=")) {
+      const isFireTab = isFireTabletDevice();
+      const is10Bit = is10BitOrHevcStream({ title: displayTitle, url: rawTargetUrl });
+
+      if (isFireTab && is10Bit) {
+        // Amazon Fire tablet hardware crash guard: Enforce server transcode mode
+        if (!directUrl.includes("/api/transcode")) {
+          directUrl = getTranscodedStreamUrl(directUrl);
+        }
+        console.log("[VideoPlayerModal] Fire tablet playing 10-bit HEVC. Enforcing server transcode:", directUrl);
+      } else if (directUrl.includes("/api/transcode?url=")) {
         const split = directUrl.split("?url=");
         if (split.length > 1) {
           try {
@@ -94,7 +105,7 @@ const VideoPlayerModal = ({ show = true, setShow, onClose, videoUrl, rawUrl, str
           }
         }
       }
-      console.log("[VideoPlayerModal] Android TV client detected. Direct playing stream with ExoPlayer:", directUrl);
+      console.log("[VideoPlayerModal] Android TV/Tablet client detected. Playing stream with ExoPlayer:", directUrl);
       window.AndroidPlayer.playStream(
         directUrl,
         displayTitle || "",

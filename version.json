@@ -1,6 +1,6 @@
 {
-  "versionCode": 21,
-  "versionName": "1.0.20",
+  "versionCode": 22,
+  "versionName": "1.0.21",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.20 with touch screen scrolling improvements, navigation controls auto-hide, and optimized poster loading."
+  "releaseNotes": "BubbaFlix TV v1.0.21 with Amazon Fire Tablet auto-detection, 10-bit HEVC stream filtering, and hardware decoder crash protection."
 }

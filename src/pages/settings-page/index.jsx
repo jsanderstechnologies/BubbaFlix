@@ -16,6 +16,7 @@ import "./index.scss";
 import { AuthContext } from "../../context/AuthContext";
 import { useContext } from "react";
 import axios from "axios";
+import { isFireTabletDevice, getDeviceModelName } from "../../utils/deviceDetection";
 
 const ALL_RESOLUTIONS = [
   { id: "2160p", label: "4K / 2160p (UHD)" },
@@ -66,6 +67,7 @@ const SettingsPage = () => {
   // Stream Resolution & Quality Filter State
   const [selectedResolutions, setSelectedResolutions] = useState(["2160p", "1080p", "720p", "480p"]);
   const [excludeLowQuality, setExcludeLowQuality] = useState(true);
+  const [exclude10BitHevc, setExclude10BitHevc] = useState(() => isFireTabletDevice());
   const [disableBackgrounds, setDisableBackgrounds] = useState(false);
   const [filterStatus, setFilterStatus] = useState(null);
 
@@ -199,6 +201,12 @@ const SettingsPage = () => {
 
     const excludeLowConfig = (localStorage.getItem("stream_exclude_low_quality") !== null ? JSON.parse(localStorage.getItem("stream_exclude_low_quality")) : null) ?? serverSettings?.stream_exclude_low_quality ?? true;
     setExcludeLowQuality(excludeLowConfig);
+
+    const isFireTab = isFireTabletDevice();
+    const exclude10BitConfig = (localStorage.getItem("stream_exclude_10bit_hevc") !== null
+      ? JSON.parse(localStorage.getItem("stream_exclude_10bit_hevc"))
+      : (user?.preferences?.stream_exclude_10bit_hevc ?? isFireTab));
+    setExclude10BitHevc(Boolean(exclude10BitConfig));
     
     const disableBgConfig = (localStorage.getItem("disable_backgrounds") !== null ? JSON.parse(localStorage.getItem("disable_backgrounds")) : null) ?? user?.preferences?.disableBackgrounds ?? false;
     setDisableBackgrounds(disableBgConfig);
@@ -441,13 +449,15 @@ const SettingsPage = () => {
     e.preventDefault();
     localStorage.setItem("stream_resolutions", JSON.stringify(selectedResolutions));
     localStorage.setItem("stream_exclude_low_quality", JSON.stringify(excludeLowQuality));
+    localStorage.setItem("stream_exclude_10bit_hevc", JSON.stringify(exclude10BitHevc));
     await updatePreferences({
       stream_resolutions: selectedResolutions,
       stream_exclude_low_quality: excludeLowQuality,
+      stream_exclude_10bit_hevc: exclude10BitHevc,
     });
     setFilterStatus({
       type: "success",
-      text: "Stream resolution and CAM/HDTS quality exclusion preferences saved & synced to backend server!",
+      text: "Stream resolution, 10-bit HEVC, and CAM/HDTS quality exclusion preferences saved & synced to backend server!",
     });
   };
 
@@ -789,6 +799,37 @@ const SettingsPage = () => {
                       : "Allow CAM, Telecine, and Low-Quality Releases"}
                   </span>
                 </div>
+              </div>
+              <div className="inputGroup" style={{ marginTop: 20 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                  <label style={{ margin: 0 }}>EXCLUDE_10BIT_HEVC_STREAMS</label>
+                  {isFireTabletDevice() && (
+                    <span className="badge custom" style={{ fontSize: 11, padding: "2px 8px" }}>
+                      ⚡ Auto-Detected: {getDeviceModelName()}
+                    </span>
+                  )}
+                </div>
+                <div
+                  className={`qualityToggle ${exclude10BitHevc ? "active" : ""}`}
+                  onClick={() => setExclude10BitHevc(!exclude10BitHevc)}
+                  tabIndex="0"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setExclude10BitHevc(!exclude10BitHevc);
+                    }
+                  }}
+                >
+                  <span className="toggleSwitch" />
+                  <span className="toggleLabel">
+                    {exclude10BitHevc
+                      ? "Strictly Exclude 10-bit HEVC (x265) & HDR Streams (Prevents Hardware Decoder Crashes on Fire Tablets)"
+                      : "Allow 10-bit HEVC & HDR Streams (May Crash Amazon Fire Tablets & Older Devices)"}
+                  </span>
+                </div>
+                <p style={{ fontSize: 12, color: "#9ca3af", marginTop: 6, lineHeight: 1.4 }}>
+                  Amazon Fire HD 10 tablets and older SoCs lack 10-bit HEVC hardware decoding and crash when playing 10-bit bitstreams. When enabled, incompatible 10-bit streams are filtered out from results.
+                </p>
               </div>
               {filterStatus && (
                 <div className={`statusBanner ${filterStatus.type}`}>

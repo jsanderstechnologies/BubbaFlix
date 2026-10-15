@@ -20,15 +20,11 @@ import {
   FiZap, 
   FiHardDrive, 
   FiUsers, 
-  FiLayers 
+  FiLayers,
+  FiShield
 } from "react-icons/fi";
-import { isEnglishStreamTitle, isMatchingStreamTitle } from "../../../utils/filterUtils";
-
-const isHevcOrX265Stream = (item) => {
-  if (!item) return false;
-  const fullStr = `${item.title || ""} ${item.name || ""} ${item.metaText || ""} ${item.url || ""}`;
-  return / (hevc|x265|h265|h\.265) /i.test(fullStr);
-};
+import { isEnglishStreamTitle, isMatchingStreamTitle, is10BitOrHevcStream } from "../../../utils/filterUtils";
+import { isFireTabletDevice, getDeviceModelName } from "../../../utils/deviceDetection";
 
 const getHash = (url) => {
   if (!url) return null;
@@ -51,6 +47,7 @@ const parseStreamDetails = (item) => {
 
   const isHevc = /\b(hevc|x265|h265|h\.265)\b/i.test(fullStr);
   const isHdr = /\b(hdr|hdr10|hdr10\+|dv|dolby\s*vision)\b/i.test(fullStr);
+  const is10Bit = is10BitOrHevcStream(item);
   const isAtmos = /\b(atmos|truehd)\b/i.test(fullStr);
 
   let seeds = null;
@@ -70,6 +67,7 @@ const parseStreamDetails = (item) => {
     quality,
     isHevc,
     isHdr,
+    is10Bit,
     isAtmos,
     seeds,
     size,
@@ -79,6 +77,8 @@ const parseStreamDetails = (item) => {
 
 const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, compact = false, posterPath = "" }) => {
   const [streams, setStreams] = useState([]);
+  const [hiddenStreams, setHiddenStreams] = useState([]);
+  const [showHiddenStreams, setShowHiddenStreams] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false); // Start out closed by default
   const [unconfigured, setUnconfigured] = useState(false);
@@ -235,11 +235,41 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
       }
     }
 
-    setStreams(finalStreams);
+    // 10-Bit HEVC Filter for Fire Tablets and older hardware decoders
+    const isFireTablet = isFireTabletDevice();
+    const exclude10BitHevc = (
+      localStorage.getItem("stream_exclude_10bit_hevc") !== null
+        ? JSON.parse(localStorage.getItem("stream_exclude_10bit_hevc"))
+        : (serverSettings?.stream_exclude_10bit_hevc ?? isFireTablet)
+    );
+
+    let keptStreams = [];
+    let excluded10Bit = [];
+
+    if (exclude10BitHevc) {
+      finalStreams.forEach((item) => {
+        if (is10BitOrHevcStream(item)) {
+          excluded10Bit.push(item);
+        } else {
+          keptStreams.push(item);
+        }
+      });
+    } else {
+      keptStreams = finalStreams;
+    }
+
+    setHiddenStreams(excluded10Bit);
+    setStreams(keptStreams);
   };
 
   const handlePlayStream = async (item, transcodeMode = false) => {
     if (!item || !item.url) return;
+
+    // Fire Tablet hardware crash guard: If stream is 10-bit HEVC, force transcode mode
+    if (isFireTabletDevice() && is10BitOrHevcStream(item)) {
+      console.warn("[MagnetSection] Fire tablet detected playing 10-bit HEVC. Enforcing server transcode mode to protect hardware decoder.");
+      transcodeMode = true;
+    }
 
     let targetUrl = item.url;
 
@@ -271,6 +301,10 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
     setShowPlayer(true);
   };
 
+  const displayedStreams = showHiddenStreams
+    ? [...streams, ...hiddenStreams]
+    : streams;
+
   const content = (
     <div className="magnetSection">
       <div className={`sectionCard ${compact ? "compact" : ""}`}>
@@ -295,9 +329,12 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
               <span className="countBadge loading">
                 Searching...
               </span>
-            ) : streams.length > 0 ? (
+            ) : (streams.length > 0 || hiddenStreams.length > 0) ? (
               <span className="countBadge">
-                <FiLayers className="badgeIcon" /> {streams.length} Streams Found
+                <FiLayers className="badgeIcon" /> {displayedStreams.length} Stream{displayedStreams.length !== 1 ? "s" : ""}
+                {hiddenStreams.length > 0 && !showHiddenStreams && (
+                  <span className="hiddenCountTag"> ({hiddenStreams.length} 10-bit hidden)</span>
+                )}
               </span>
             ) : unconfigured ? (
               <span className="countBadge warning">
@@ -320,7 +357,7 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
               <div className="loadingContainer">
                 <Spinner />
               </div>
-            ) : streams.length === 0 ? (
+            ) : (streams.length === 0 && hiddenStreams.length === 0) ? (
               <div className="unconfiguredNotice">
                 <FiAlertCircle className="icon" />
                 <div className="noticeText">
@@ -336,8 +373,55 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
                 </div>
               </div>
             ) : (
-              <div className="magnetList">
-                {streams.map((item, index) => {
+              <>
+                {hiddenStreams.length > 0 && (
+                  <div className={`fireTabletNotice ${showHiddenStreams ? "openWarning" : ""}`}>
+                    <div className="noticeLeft">
+                      <FiShield className="noticeShieldIcon" />
+                      <div className="noticeTextGroup">
+                        <span className="noticeTitle">
+                          {isFireTabletDevice() ? `${getDeviceModelName()} Protection Active` : "10-Bit HEVC Filter Active"}
+                        </span>
+                        <span className="noticeDesc">
+                          {showHiddenStreams
+                            ? `Showing all ${displayedStreams.length} streams. Warning: 10-bit HEVC may crash your Fire Tablet hardware decoder unless auto-transcoded.`
+                            : `Filtered out ${hiddenStreams.length} incompatible 10-bit HEVC / HDR stream(s) to protect against Fire Tablet hardware decoder crashes.`}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="noticeToggleBtn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowHiddenStreams(!showHiddenStreams);
+                      }}
+                    >
+                      {showHiddenStreams ? "Re-hide 10-bit" : `Show ${hiddenStreams.length} Hidden`}
+                    </button>
+                  </div>
+                )}
+
+                {displayedStreams.length === 0 ? (
+                  <div className="unconfiguredNotice">
+                    <FiShield className="icon" style={{ color: "var(--pink)" }} />
+                    <div className="noticeText">
+                      <h4>10-Bit HEVC Streams Filtered</h4>
+                      <p>
+                        All {hiddenStreams.length} stream(s) found for this title are 10-bit HEVC / HDR, which crash Amazon Fire tablet hardware decoders. Click below to reveal and stream them via server transcoding.
+                      </p>
+                      <button
+                        className="configBtn"
+                        onClick={() => setShowHiddenStreams(true)}
+                        style={{ cursor: "pointer" }}
+                      >
+                        Show and Transcode 10-Bit Streams
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="magnetList">
+                    {displayedStreams.map((item, index) => {
                   const details = parseStreamDetails(item);
                   const h = getHash(item.url);
                   const stat = h ? streamStatuses[h] : null;
@@ -372,8 +456,13 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
                           </span>
                         )}
                         {details.isHevc && (
-                          <span className="metaBadge codecBadge">
-                            <FiCpu className="badgeIcon" /> HEVC x265
+                          <span className={`metaBadge codecBadge ${details.is10Bit ? "badge10bit" : ""}`}>
+                            <FiCpu className="badgeIcon" /> {details.is10Bit ? "HEVC 10-bit" : "HEVC x265"}
+                          </span>
+                        )}
+                        {!details.isHevc && details.is10Bit && (
+                          <span className="metaBadge codecBadge badge10bit">
+                            10-bit
                           </span>
                         )}
                         {details.isAtmos && (
@@ -442,6 +531,8 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
                   );
                 })}
               </div>
+            )}
+              </>
             )}
           </div>
         )}

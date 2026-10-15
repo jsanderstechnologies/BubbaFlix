@@ -58,6 +58,9 @@ export const AuthProvider = ({ children }) => {
             if (prefs.stream_exclude_low_quality !== undefined) {
               localStorage.setItem("stream_exclude_low_quality", JSON.stringify(prefs.stream_exclude_low_quality));
             }
+            if (prefs.stream_exclude_10bit_hevc !== undefined) {
+              localStorage.setItem("stream_exclude_10bit_hevc", JSON.stringify(prefs.stream_exclude_10bit_hevc));
+            }
             window.dispatchEvent(new CustomEvent("user-preferences-loaded", { detail: prefs }));
           }
         }
@@ -93,6 +96,7 @@ export const AuthProvider = ({ children }) => {
       if (prefs.favoriteChannels) localStorage.setItem("bubbaflix_favorite_channels", JSON.stringify(prefs.favoriteChannels));
       if (prefs.stream_resolutions) localStorage.setItem("stream_resolutions", JSON.stringify(prefs.stream_resolutions));
       if (prefs.stream_exclude_low_quality !== undefined) localStorage.setItem("stream_exclude_low_quality", JSON.stringify(prefs.stream_exclude_low_quality));
+      if (prefs.stream_exclude_10bit_hevc !== undefined) localStorage.setItem("stream_exclude_10bit_hevc", JSON.stringify(prefs.stream_exclude_10bit_hevc));
     }
     axios.defaults.headers.common["Authorization"] = `Bearer ${res.data.token}`;
   };

@@ -107,6 +107,23 @@ class MainActivity : AppCompatActivity() {
         fun promptExitApp() {
             (activity as? MainActivity)?.promptExitApp()
         }
+
+        @JavascriptInterface
+        fun isFireTablet(): Boolean {
+            val manufacturer = android.os.Build.MANUFACTURER ?: ""
+            val model = android.os.Build.MODEL ?: ""
+            val isAmazon = manufacturer.equals("Amazon", ignoreCase = true)
+            val isKf = model.startsWith("KF", ignoreCase = true) || model.contains("Fire", ignoreCase = true)
+            val isTv = context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK)
+            return isAmazon && (isKf || !isTv)
+        }
+
+        @JavascriptInterface
+        fun getDeviceModel(): String {
+            val manufacturer = android.os.Build.MANUFACTURER ?: ""
+            val model = android.os.Build.MODEL ?: ""
+            return "$manufacturer $model".trim()
+        }
     }
 
     @SuppressLint("SetJavaScriptEnabled")

@@ -243,3 +243,43 @@ export const isMatchingStreamTitle = (stream, expectedTitle, mediaType, seasonNu
 
   return true;
 };
+
+/**
+ * Detects if a stream is 10-bit HEVC (x265) or HDR/Dolby Vision.
+ * Amazon Fire HD 10 tablets and older SoCs lack 10-bit HEVC hardware decoders
+ * and will fatal-crash the application process if fed a 10-bit HEVC bitstream.
+ */
+export const is10BitOrHevcStream = (stream) => {
+  if (!stream) return false;
+  const fullStr = `${stream.title || ""} ${stream.name || ""} ${stream.metaText || ""} ${stream.url || ""}`;
+
+  // 1. Explicit 10-bit markers
+  const has10Bit = /\b(10[\s\-_.]?bit|hi10p?|main10)\b/i.test(fullStr);
+
+  // 2. HEVC / x265 markers
+  const hasHevc = /\b(hevc|x265|h265|h\.265)\b/i.test(fullStr);
+
+  // 3. HDR / Dolby Vision markers (HDR video is strictly 10-bit+; web torrent releases are almost exclusively HEVC Main 10)
+  const hasHdr = /\b(hdr|hdr10|hdr10\+|dv|dovi|dolby[\s\-_.]?vision|hlg)\b/i.test(fullStr);
+
+  // 4. Known release groups that encode exclusively in 10-bit HEVC
+  const has10BitGroup = /\b(PSA|QxR|MeGusta|Pahe|SAMPA|UTR)\b/i.test(fullStr);
+
+  // If stream is marked 10-bit (H.264 Hi10P or HEVC Main 10)
+  if (has10Bit) return true;
+
+  // If stream is HEVC and has HDR or known 10-bit encoding group
+  if (hasHevc && (hasHdr || has10BitGroup)) return true;
+
+  // Any HDR or Dolby Vision stream is 10-bit
+  if (hasHdr) return true;
+
+  return false;
+};
+
+export const isHevcStream = (stream) => {
+  if (!stream) return false;
+  const fullStr = `${stream.title || ""} ${stream.name || ""} ${stream.metaText || ""} ${stream.url || ""}`;
+  return /\b(hevc|x265|h265|h\.265)\b/i.test(fullStr);
+};
+

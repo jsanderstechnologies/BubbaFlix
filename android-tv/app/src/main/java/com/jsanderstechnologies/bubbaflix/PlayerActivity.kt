@@ -157,11 +157,43 @@ class PlayerActivity : AppCompatActivity() {
 
         setupControlClickListeners()
         setupSeekBarListener()
-        // fetchProbedMetadata(videoUrl)
-        initializeExoPlayer(videoUrl)
+
+        var targetUrl = videoUrl
+        if (isFireTablet() && is10BitHevcStream(videoUrl, title)) {
+            if (!videoUrl.contains("/api/transcode")) {
+                val serverBase = getServerBaseUrl()
+                targetUrl = "$serverBase/api/transcode?url=${Uri.encode(videoUrl)}"
+                Log.w("PlayerActivity", "Fire Tablet hardware guard: Auto-routing 10-bit HEVC stream via server transcode: $targetUrl")
+                Toast.makeText(this, "Fire Tablet: Transcoding 10-bit HEVC to prevent hardware crash", Toast.LENGTH_LONG).show()
+            }
+        }
+
+        initializeExoPlayer(targetUrl)
 
         btnPlayPause.requestFocus()
         resetControlsTimeout()
+    }
+
+    private fun isFireTablet(): Boolean {
+        val manufacturer = Build.MANUFACTURER ?: ""
+        val model = Build.MODEL ?: ""
+        val isAmazon = manufacturer.equals("Amazon", ignoreCase = true)
+        val isKf = model.startsWith("KF", ignoreCase = true) || model.contains("Fire", ignoreCase = true)
+        val isTv = packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK)
+        return isAmazon && (isKf || !isTv)
+    }
+
+    private fun is10BitHevcStream(url: String, title: String?): Boolean {
+        val checkStr = "$url ${title ?: ""}"
+        val has10Bit = Regex("""\b(10[\s\-_.]?bit|hi10p?|main10)\b""", RegexOption.IGNORE_CASE).containsMatchIn(checkStr)
+        val hasHdr = Regex("""\b(hdr|hdr10|hdr10\+|dv|dovi|dolby[\s\-_.]?vision|hlg)\b""", RegexOption.IGNORE_CASE).containsMatchIn(checkStr)
+        val hasHevc = Regex("""\b(hevc|x265|h265|h\.265)\b""", RegexOption.IGNORE_CASE).containsMatchIn(checkStr)
+        val has10BitGroup = Regex("""\b(PSA|QxR|MeGusta|Pahe|SAMPA|UTR)\b""", RegexOption.IGNORE_CASE).containsMatchIn(checkStr)
+
+        if (has10Bit) return true
+        if (hasHdr) return true
+        if (hasHevc && has10BitGroup) return true
+        return false
     }
 
     private fun cleanMediaTitle(rawTitle: String): String {
