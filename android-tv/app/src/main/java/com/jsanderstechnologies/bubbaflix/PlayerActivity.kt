@@ -72,6 +72,7 @@ class PlayerActivity : AppCompatActivity() {
     private var controlsVisible = true
     private var isUserSeeking = false
     private var probedDurationMs: Long = 0
+    private var previousUncaughtExceptionHandler: Thread.UncaughtExceptionHandler? = null
 
     private val hideControlsRunnable = Runnable {
         hideControls()
@@ -108,6 +109,29 @@ class PlayerActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
         hideSystemUI()
+
+        // Global crash guard for background player & decoding threads to prevent app crash and restart
+        previousUncaughtExceptionHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            Log.e("PlayerActivity", "Uncaught exception on thread ${thread.name}", throwable)
+            sendErrorToServerLog(
+                "Fatal thread error (${thread.name}): ${throwable.message ?: throwable.javaClass.simpleName}",
+                "UNCAUGHT_THREAD_EXCEPTION",
+                intent.getStringExtra(EXTRA_VIDEO_URL) ?: ""
+            )
+            try {
+                if (!isFinishing && !isDestroyed) {
+                    runOnUiThread {
+                        Toast.makeText(this@PlayerActivity, "Playback encountered an unexpected error and was closed.", Toast.LENGTH_LONG).show()
+                        finish()
+                    }
+                } else {
+                    previousUncaughtExceptionHandler?.uncaughtException(thread, throwable)
+                }
+            } catch (e: Exception) {
+                previousUncaughtExceptionHandler?.uncaughtException(thread, throwable)
+            }
+        }
 
         setContentView(R.layout.activity_player)
 
@@ -324,12 +348,14 @@ class PlayerActivity : AppCompatActivity() {
 
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                if (isLiveStream) 1500 else 60000,
-                if (isLiveStream) 30000 else 300000,
-                if (isLiveStream) 1000 else 2500,
-                if (isLiveStream) 1500 else 5000
+                if (isLiveStream) 1500 else 15000,
+                if (isLiveStream) 10000 else 30000,
+                if (isLiveStream) 1000 else 1500,
+                if (isLiveStream) 1500 else 2500
             )
-            .setBackBuffer(30000, true)
+            .setTargetBufferBytes(32 * 1024 * 1024)
+            .setPrioritizeTimeOverSizeThresholds(false)
+            .setBackBuffer(if (isLiveStream) 0 else 10000, !isLiveStream)
             .build()
 
         playerView.setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
@@ -396,6 +422,12 @@ class PlayerActivity : AppCompatActivity() {
 
                         val errMsg = (error.message ?: "") + " " + (error.cause?.message ?: "")
                         val errName = error.errorCodeName.uppercase(Locale.ROOT)
+
+                        if (error.cause is OutOfMemoryError || errMsg.contains("OutOfMemory", ignoreCase = true)) {
+                            Log.e("PlayerActivity", "Playback OutOfMemoryError: $errMsg")
+                            showError("Device memory limit reached. Please restart or close background apps.")
+                            return
+                        }
 
                         if (!hasRetriedWithFallback) {
                             hasRetriedWithFallback = true
@@ -712,12 +744,14 @@ class PlayerActivity : AppCompatActivity() {
 
         seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
-                if (fromUser && exoPlayer != null) {
-                    isUserSeeking = true
-                    val dur = exoPlayer!!.duration
-                    if (dur > 0L && dur != C.TIME_UNSET) {
-                        val newPos = (dur * progress) / 1000
-                        txtCurrentTime.text = formatTime(newPos)
+                if (fromUser) {
+                    exoPlayer?.let { player ->
+                        isUserSeeking = true
+                        val dur = player.duration
+                        if (dur > 0L && dur != C.TIME_UNSET) {
+                            val newPos = (dur * progress) / 1000
+                            txtCurrentTime.text = formatTime(newPos)
+                        }
                     }
                 }
             }
@@ -735,82 +769,88 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private fun commitPendingSeek() {
-        if (exoPlayer != null && isUserSeeking) {
-            val dur = exoPlayer!!.duration
-            if (dur > 0L && dur != C.TIME_UNSET) {
-                val newPos = (dur * seekBar.progress) / 1000
-                exoPlayer!!.seekTo(newPos)
+        if (isUserSeeking) {
+            exoPlayer?.let { player ->
+                val dur = player.duration
+                if (dur > 0L && dur != C.TIME_UNSET) {
+                    val newPos = (dur * seekBar.progress) / 1000
+                    player.seekTo(newPos)
+                }
             }
             isUserSeeking = false
         }
     }
 
     private fun updateProgress() {
-        val player = exoPlayer ?: return
-        val current = player.currentPosition
-        val buffered = player.bufferedPosition
-        val dur = player.duration
-        val videoUrl = intent.getStringExtra(EXTRA_VIDEO_URL) ?: ""
-        val mediaType = intent.getStringExtra(EXTRA_MEDIA_TYPE) ?: ""
-        val isDispatcharrLive = mediaType == "livetv" ||
-                mediaType == "channel" ||
-                videoUrl.contains("/proxy/ts/") ||
-                videoUrl.contains("/api/dispatcharr/") ||
-                videoUrl.contains("/live/")
-        val isLive = player.isCurrentMediaItemLive || (isDispatcharrLive && (dur <= 0L || dur == C.TIME_UNSET))
+        try {
+            val player = exoPlayer ?: return
+            val current = player.currentPosition
+            val buffered = player.bufferedPosition
+            val dur = player.duration
+            val videoUrl = intent.getStringExtra(EXTRA_VIDEO_URL) ?: ""
+            val mediaType = intent.getStringExtra(EXTRA_MEDIA_TYPE) ?: ""
+            val isDispatcharrLive = mediaType == "livetv" ||
+                    mediaType == "channel" ||
+                    videoUrl.contains("/proxy/ts/") ||
+                    videoUrl.contains("/api/dispatcharr/") ||
+                    videoUrl.contains("/live/")
+            val isLive = player.isCurrentMediaItemLive || (isDispatcharrLive && (dur <= 0L || dur == C.TIME_UNSET))
 
-        if (isLive) {
-            val liveEdge = player.duration.coerceAtLeast(buffered.coerceAtLeast(current))
-            val behindMs = (liveEdge - current).coerceAtLeast(0L)
+            if (isLive) {
+                val liveEdge = dur.coerceAtLeast(buffered.coerceAtLeast(current))
+                val behindMs = (liveEdge - current).coerceAtLeast(0L)
 
-            if (liveEdge > 0) {
-                val progress = ((current * 1000) / liveEdge).toInt()
-                val secondaryProgress = ((buffered * 1000) / liveEdge).toInt()
-                if (!isUserSeeking && !seekBar.isPressed) {
-                    seekBar.progress = progress.coerceIn(0, 1000)
+                if (liveEdge > 0) {
+                    val progress = ((current * 1000) / liveEdge).toInt()
+                    val secondaryProgress = ((buffered * 1000) / liveEdge).toInt()
+                    if (!isUserSeeking && !seekBar.isPressed) {
+                        seekBar.progress = progress.coerceIn(0, 1000)
+                    }
+                    seekBar.secondaryProgress = secondaryProgress.coerceIn(0, 1000)
+                } else {
+                    if (!isUserSeeking && !seekBar.isPressed) {
+                        seekBar.progress = 1000
+                    }
                 }
-                seekBar.secondaryProgress = secondaryProgress.coerceIn(0, 1000)
-            } else {
-                if (!isUserSeeking && !seekBar.isPressed) {
-                    seekBar.progress = 1000
-                }
-            }
 
-            if (!isUserSeeking) {
-                txtCurrentTime.text = formatTime(current)
-            }
-            if (behindMs > 4000L) {
-                txtDuration.text = "GO TO LIVE (-${formatTime(behindMs)})"
-                txtDuration.setTextColor(android.graphics.Color.parseColor("#DA2F68"))
-                txtDuration.setOnClickListener {
-                    player.seekToDefaultPosition()
-                    player.playWhenReady = true
-                    resetControlsTimeout()
-                }
-            } else {
-                txtDuration.text = "● LIVE"
-                txtDuration.setTextColor(android.graphics.Color.parseColor("#4CAF50"))
-            }
-        } else {
-            txtDuration.setTextColor(android.graphics.Color.parseColor("#FFFFFF"))
-            txtDuration.setOnClickListener(null)
-            if (dur > 0L && dur != C.TIME_UNSET) {
-                val progress = ((current * 1000) / dur).toInt()
-                val secondaryProgress = ((buffered * 1000) / dur).toInt()
-                if (!isUserSeeking && !seekBar.isPressed) {
-                    seekBar.progress = progress.coerceIn(0, 1000)
+                if (!isUserSeeking) {
                     txtCurrentTime.text = formatTime(current)
                 }
-                seekBar.secondaryProgress = secondaryProgress.coerceIn(0, 1000)
-                txtDuration.text = formatTime(dur)
-            } else {
-                if (!isUserSeeking && !seekBar.isPressed) {
-                    seekBar.progress = 0
-                    txtCurrentTime.text = formatTime(current)
+                if (behindMs > 4000L) {
+                    txtDuration.text = "GO TO LIVE (-${formatTime(behindMs)})"
+                    txtDuration.setTextColor(android.graphics.Color.parseColor("#DA2F68"))
+                    txtDuration.setOnClickListener {
+                        player.seekToDefaultPosition()
+                        player.playWhenReady = true
+                        resetControlsTimeout()
+                    }
+                } else {
+                    txtDuration.text = "● LIVE"
+                    txtDuration.setTextColor(android.graphics.Color.parseColor("#4CAF50"))
                 }
-                seekBar.secondaryProgress = 0
-                txtDuration.text = "--:--"
+            } else {
+                txtDuration.setTextColor(android.graphics.Color.parseColor("#FFFFFF"))
+                txtDuration.setOnClickListener(null)
+                if (dur > 0L && dur != C.TIME_UNSET) {
+                    val progress = ((current * 1000) / dur).toInt()
+                    val secondaryProgress = ((buffered * 1000) / dur).toInt()
+                    if (!isUserSeeking && !seekBar.isPressed) {
+                        seekBar.progress = progress.coerceIn(0, 1000)
+                        txtCurrentTime.text = formatTime(current)
+                    }
+                    seekBar.secondaryProgress = secondaryProgress.coerceIn(0, 1000)
+                    txtDuration.text = formatTime(dur)
+                } else {
+                    if (!isUserSeeking && !seekBar.isPressed) {
+                        seekBar.progress = 0
+                        txtCurrentTime.text = formatTime(current)
+                    }
+                    seekBar.secondaryProgress = 0
+                    txtDuration.text = "--:--"
+                }
             }
+        } catch (e: Exception) {
+            Log.e("PlayerActivity", "Error updating progress", e)
         }
     }
 
@@ -1041,9 +1081,34 @@ class PlayerActivity : AppCompatActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        hideSystemUI()
+        handler.removeCallbacks(updateProgressRunnable)
+        handler.post(updateProgressRunnable)
+    }
+
     override fun onPause() {
         super.onPause()
         saveCurrentWatchProgress()
+        handler.removeCallbacks(updateProgressRunnable)
+        try {
+            exoPlayer?.pause()
+        } catch (e: Exception) {
+            Log.e("PlayerActivity", "Error pausing exoPlayer in onPause", e)
+        }
+    }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        try {
+            Glide.get(this).trimMemory(level)
+            if (level >= TRIM_MEMORY_MODERATE) {
+                Glide.get(this).clearMemory()
+            }
+        } catch (e: Exception) {
+            Log.e("PlayerActivity", "Error trimming memory", e)
+        }
     }
 
     override fun onDestroy() {
@@ -1052,8 +1117,16 @@ class PlayerActivity : AppCompatActivity() {
         handler.removeCallbacks(updateProgressRunnable)
         handler.removeCallbacks(hideControlsRunnable)
 
-        exoPlayer?.release()
+        try {
+            exoPlayer?.release()
+        } catch (e: Exception) {
+            Log.e("PlayerActivity", "Error releasing exoPlayer in onDestroy", e)
+        }
         exoPlayer = null
+
+        previousUncaughtExceptionHandler?.let {
+            Thread.setDefaultUncaughtExceptionHandler(it)
+        }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

@@ -28,6 +28,7 @@ import kotlin.concurrent.thread
 import android.content.Intent
 import android.speech.RecognizerIntent
 import androidx.activity.result.contract.ActivityResultContracts
+import com.bumptech.glide.Glide
 
 class MainActivity : AppCompatActivity() {
 
@@ -656,11 +657,39 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         hideSystemUI()
+        try {
+            webView.onResume()
+            webView.resumeTimers()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
         webView.evaluateJavascript(
             "document.body.style.zoom = '80%';" +
             "if (typeof window.refreshEpgAndRecordings === 'function') window.refreshEpgAndRecordings();",
             null
         )
+    }
+
+    override fun onPause() {
+        super.onPause()
+        try {
+            webView.onPause()
+            webView.pauseTimers()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        try {
+            Glide.get(this).trimMemory(level)
+            if (level >= TRIM_MEMORY_MODERATE) {
+                Glide.get(this).clearMemory()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

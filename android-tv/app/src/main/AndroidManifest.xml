@@ -24,6 +24,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.BubbaFlixTV"
         android:hardwareAccelerated="true"
+        android:largeHeap="true"
         android:usesCleartextTraffic="true">
 
         <activity
