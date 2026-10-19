@@ -69,6 +69,18 @@ export const restoreLastFocusedPoster = () => {
   const sectionId = sessionStorage.getItem("last_clicked_section_id") || "";
 
   const checkAndRestore = () => {
+    // 0. Do not steal focus if the user is actively focused on an input or search box
+    const activeEl = typeof document !== "undefined" ? document.activeElement : null;
+    if (
+      activeEl &&
+      (activeEl.tagName === "INPUT" ||
+        activeEl.tagName === "TEXTAREA" ||
+        activeEl.classList?.contains("mainSearchInput") ||
+        activeEl.closest?.(".searchInputWrapper"))
+    ) {
+      return;
+    }
+
     // 1. If still transitioning out of details page, wait for route to change
     const currentPath = window.location.pathname;
     const isDetailsPage =
@@ -178,12 +190,30 @@ export const restoreLastFocusedPoster = () => {
       });
     }
 
-    // C. Focus the exact poster element
-    el.focus({ preventScroll: true });
+    // C. Focus the exact poster element if user hasn't focused an input
+    const currentActive = typeof document !== "undefined" ? document.activeElement : null;
+    const isInputActive =
+      currentActive &&
+      (currentActive.tagName === "INPUT" ||
+        currentActive.tagName === "TEXTAREA" ||
+        currentActive.classList?.contains("mainSearchInput") ||
+        currentActive.closest?.(".searchInputWrapper"));
+
+    if (!isInputActive) {
+      el.focus({ preventScroll: true });
+    }
 
     // D. Re-verify focus and viewport visibility after smooth scroll completes (150ms)
     setTimeout(() => {
-      if (document.activeElement !== el) {
+      const activeNow = typeof document !== "undefined" ? document.activeElement : null;
+      const inputFocusedNow =
+        activeNow &&
+        (activeNow.tagName === "INPUT" ||
+          activeNow.tagName === "TEXTAREA" ||
+          activeNow.classList?.contains("mainSearchInput") ||
+          activeNow.closest?.(".searchInputWrapper"));
+
+      if (!inputFocusedNow && activeNow !== el) {
         el.focus({ preventScroll: true });
       }
       const r = el.getBoundingClientRect();

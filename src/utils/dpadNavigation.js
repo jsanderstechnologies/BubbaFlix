@@ -133,11 +133,38 @@ const focusAndScroll = (el) => {
   }
 };
 
+// TV Environment Detection for Soft Keyboard Handling
+export const isTvEnvironment = () => {
+  if (typeof window === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  return (
+    (window.AndroidPlayer && typeof window.AndroidPlayer.playStream === "function") ||
+    /TV|AndroidTV|GoogleTV|SmartTV|SMART-TV|NETTV|WebOS|Tizen|BraveTV/i.test(ua)
+  );
+};
+
 // Global TV Soft Keyboard Suppressor
 if (typeof document !== "undefined") {
+  // Enable touchscreen, pointer, mouse, and click input responsiveness immediately
+  const handleInputActivate = (e) => {
+    const target = e.target;
+    if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
+      target.removeAttribute("readonly");
+      target.removeAttribute("inputmode");
+      target.setAttribute("data-editing-active", "true");
+    }
+  };
+
+  document.addEventListener("touchstart", handleInputActivate, { passive: true, capture: true });
+  document.addEventListener("pointerdown", handleInputActivate, { passive: true, capture: true });
+  document.addEventListener("mousedown", handleInputActivate, { passive: true, capture: true });
+  document.addEventListener("click", handleInputActivate, { passive: true, capture: true });
+
+  // Only suppress soft keyboard when navigating via D-pad on an actual TV environment
   document.addEventListener(
     "focusin",
     (e) => {
+      if (!isTvEnvironment()) return;
       const target = e.target;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
         if (!target.getAttribute("data-editing-active")) {
@@ -152,6 +179,7 @@ if (typeof document !== "undefined") {
   document.addEventListener(
     "focusout",
     (e) => {
+      if (!isTvEnvironment()) return;
       const target = e.target;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
         target.removeAttribute("data-editing-active");
@@ -161,24 +189,6 @@ if (typeof document !== "undefined") {
     },
     true
   );
-
-  // Enable touchscreen input responsiveness
-  const handleTouchActive = (e) => {
-    const target = e.target;
-    if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
-      target.removeAttribute("readonly");
-      target.removeAttribute("inputmode");
-      target.setAttribute("data-editing-active", "true");
-      if (typeof target.focus === "function") {
-        target.focus();
-      }
-    }
-  };
-
-  document.addEventListener("touchstart", handleTouchActive, { passive: true, capture: true });
-  document.addEventListener("pointerdown", (e) => {
-    handleTouchActive(e);
-  }, { passive: true, capture: true });
 }
 
 // Focus default element on page load (posters if present, search input, details actions, or settings controls)
@@ -331,15 +341,6 @@ export const initDpadNavigation = () => {
     }
   };
 
-  const handleFocusIn = (e) => {
-    const el = e.target;
-    if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")) {
-      el.removeAttribute("readonly");
-      el.setAttribute("data-editing-active", "true");
-    }
-  };
-
-  window.addEventListener("focusin", handleFocusIn, true);
   window.addEventListener("popstate", handleRouteChange);
 
   const origPush = window.history.pushState;
@@ -368,22 +369,19 @@ export const initDpadNavigation = () => {
         activeEl.blur();
         return;
       }
-      // Do not block normal typing keys (e.g. letters, numbers, including 'b' / 'B')
-      const isNavOrEnterKey =
+
+      const isNavDownOrUp =
         key === "ArrowUp" ||
         key === "ArrowDown" ||
         code === 38 ||
         code === 40 ||
         code === 19 ||
-        code === 20 ||
-        key === "Enter" ||
-        key === "Select" ||
-        key === "Accept" ||
-        code === 23 ||
-        (code === 66 && key !== "b" && key !== "B");
+        code === 20;
 
-      if (!isNavOrEnterKey) {
+      // Unblock and enable editing for all typing, editing, and Enter keys
+      if (!isNavDownOrUp) {
         activeEl.removeAttribute("readonly");
+        activeEl.removeAttribute("inputmode");
         activeEl.setAttribute("data-editing-active", "true");
         return;
       }
@@ -480,13 +478,16 @@ export const initDpadNavigation = () => {
     if (isDpadEnter || (key === "Enter" && activeEl && activeEl.tagName === "INPUT")) {
       if (activeEl && activeEl !== document.body) {
         if (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA") {
-          e.preventDefault();
+          const wasReadonly = activeEl.hasAttribute("readonly");
           activeEl.setAttribute("data-editing-active", "true");
           activeEl.removeAttribute("readonly");
-          activeEl.setAttribute("inputmode", "text");
+          activeEl.removeAttribute("inputmode");
           activeEl.focus();
           if (typeof window !== "undefined" && window.AndroidPlayer && typeof window.AndroidPlayer.showKeyboard === "function") {
             window.AndroidPlayer.showKeyboard();
+          }
+          if (wasReadonly || isDpadEnter) {
+            e.preventDefault();
           }
           return;
         }

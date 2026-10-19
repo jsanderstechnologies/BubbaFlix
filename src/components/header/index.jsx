@@ -200,11 +200,13 @@ const Header = () => {
 								value={query}
 								readOnly={isReadOnly}
 								onChange={(e) => setQuery(e.target.value)}
-								onFocus={() => {
+								onFocus={(e) => {
 									setIsReadOnly(false);
+									e.target.setAttribute("data-editing-active", "true");
 								}}
-								onClick={() => {
+								onClick={(e) => {
 									setIsReadOnly(false);
+									e.target.setAttribute("data-editing-active", "true");
 									if (window.AndroidPlayer && typeof window.AndroidPlayer.showKeyboard === "function") {
 										window.AndroidPlayer.showKeyboard();
 									}

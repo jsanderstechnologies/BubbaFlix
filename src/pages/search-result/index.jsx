@@ -89,6 +89,28 @@ const SearchResult = () => {
     }
   };
 
+  const enableEditing = (e) => {
+    const input = e?.target || inputRef.current;
+    if (input) {
+      input.removeAttribute("readonly");
+      input.removeAttribute("inputmode");
+      input.setAttribute("data-editing-active", "true");
+      if (window.AndroidPlayer && typeof window.AndroidPlayer.showKeyboard === "function") {
+        window.AndroidPlayer.showKeyboard();
+      }
+    }
+  };
+
+  useEffect(() => {
+    enableEditing();
+  }, []);
+
+  useEffect(() => {
+    if (urlQuery !== undefined && urlQuery !== searchQuery) {
+      setSearchQuery(urlQuery || "");
+    }
+  }, [urlQuery]);
+
   useEffect(() => {
     if (searchQuery.trim().length > 0) {
       setPageNum(1);
@@ -99,6 +121,16 @@ const SearchResult = () => {
   }, [searchQuery, activeFilter]);
 
   useEffect(() => {
+    const activeEl = typeof document !== "undefined" ? document.activeElement : null;
+    if (
+      activeEl &&
+      (activeEl.tagName === "INPUT" ||
+        activeEl.tagName === "TEXTAREA" ||
+        activeEl.classList?.contains("mainSearchInput") ||
+        activeEl.closest?.(".searchInputWrapper"))
+    ) {
+      return;
+    }
     restoreLastFocusedPoster();
   }, [data, activeFilter]);
 
@@ -336,12 +368,14 @@ const SearchResult = () => {
     setSearchQuery("");
     setData(null);
     navigate(`/search`, { replace: true });
+    enableEditing();
     if (inputRef.current) inputRef.current.focus();
   };
 
   const handleTagClick = (tag) => {
     setSearchQuery(tag);
     navigate(`/search/${encodeURIComponent(tag)}`, { replace: true });
+    enableEditing();
   };
 
   // Group filtered results into Movies, TV Shows, Actors, and Collections
@@ -397,19 +431,33 @@ const SearchResult = () => {
               placeholder="Type movie, TV show, collection, or actor name..."
               value={searchQuery}
               onChange={handleInputChange}
+              onFocus={enableEditing}
+              onClick={enableEditing}
+              onPointerDown={enableEditing}
+              onTouchStart={enableEditing}
               onKeyDown={(e) => {
-                if (e.key === "Enter" || e.keyCode === 13) {
-                  e.preventDefault();
-                  if (inputRef.current) inputRef.current.blur();
-                  // Optional: tell AndroidPlayer specifically to hide if we want
+                const code = e.keyCode;
+                const isEnter =
+                  e.key === "Enter" ||
+                  code === 13 ||
+                  code === 23 ||
+                  (code === 66 && e.key !== "b" && e.key !== "B");
+
+                if (isEnter) {
+                  // If input was suppressed or readonly when navigated to via D-pad, activate editing and show keyboard
+                  if (
+                    inputRef.current &&
+                    (inputRef.current.hasAttribute("readonly") ||
+                      !inputRef.current.getAttribute("data-editing-active"))
+                  ) {
+                    e.preventDefault();
+                    enableEditing(e);
+                    return;
+                  }
+                  // If already editing, hide TV soft keyboard without blurring or disabling input
                   if (window.AndroidPlayer && typeof window.AndroidPlayer.hideKeyboard === "function") {
                     window.AndroidPlayer.hideKeyboard();
                   }
-                }
-              }}
-              onClick={() => {
-                if (window.AndroidPlayer && typeof window.AndroidPlayer.showKeyboard === "function") {
-                  window.AndroidPlayer.showKeyboard();
                 }
               }}
               tabIndex="0"
