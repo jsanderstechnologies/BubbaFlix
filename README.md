@@ -2,11 +2,11 @@
   <img src="public/tv_banner.png" alt="BubbaFlix Logo" width="280" />
 </p>
 
-# BubbaFlix 🎬 - Movie & TV Show Streaming & Discovery App (v1.0.19)
+# BubbaFlix 🎬 - Movie & TV Show Streaming & Discovery App (v1.0.25)
 
 BubbaFlix is a modern, high-performance movie and TV show streaming discovery platform built with **React 18**, **Redux Toolkit**, **React Router v6**, **Vite**, **Pure Node.js**, **Native Android TV (Kotlin / ExoPlayer)**, **Torrent Stream Scraper & Premiumize Debrid**, **TMDB**, **Groq AI**, and **SIMKL**.
 
-BubbaFlix features **🎬 Player Progress Bar D-Pad Focus Lock (v1.0.19)**, **📺 Remote Back Button Details & Modal Navigation Engine (v1.0.19)**, **⚡ Persistent 30-Day Poster & Image Cache (v1.0.19)**, **🎬 Movie Details Scroll Reset & D-Pad Spatial Navigation Engine (v1.0.19)**, **🎯 Navigation Focus Retention & Non-Poster Page Auto-Focus (v1.0.19)**, **🎬 YouTube Trailer Embed Bot Bypass & TV D-Pad Focus Release (v1.0.19)**, **📺 ExoPlayer Smart Back Control Flow (v1.0.19)**, **🎭 Refined Actor Search & Filmography Engine**, **⚡ Android TV Local Poster & Metadata Caching (`WebSettings.LOAD_DEFAULT`)**, **📦 Stream Droplist Category & Layout Manager Container Cards**, **⚡ Server-Side TMDB & Explore Metadata Caching Engine (`/api/tmdb/*`, `/api/explore/*`)**, **🔍 Dedicated Interactive Search Page (`/search`)**, **⭐ Favorites Section & Star Toggle Persistence**, **Native Android TV App (`android-tv/`) with ExoPlayer 5-Minute Ahead-Buffering & Automatic Server Settings Inheritance**, **Automatic Web Audio Transcoder (AC3/EAC3/DTS → AAC) with FFprobe Multi-Language Audio Extraction**, **Customizable & Syncable Home Screen Layouts**, **Unlocked Smart TV D-Pad Spatial Navigation with Focus Retention**, **Canonical OTA Version Updates (`version.json`)**, **Groq AI Llama 3 Stream Title Filtering**, **Official SIMKL Watch History Sync**, and **Centralized Backend Transcoder Proxy**.
+BubbaFlix features **🚀 Portal-Rendered Full-Viewport Transparent Poster Action Menu (v1.0.25)**, **📺 TMDB "On The Air" & "Airing Today" TV Carousels (v1.0.25)**, **⚡ Android TV ExoPlayer 64MB Buffer Cap & OOM Defense (v1.0.25)**, **🎯 Persistent Explore & Favorites Sort Retention (v1.0.25)**, **🔄 TV Series Episode Refresh Focus & Scroll Restoration (v1.0.25)**, **📱 Touchscreen & Tablet Scroll Guard (v1.0.25)**, **🔥 Fire Tablet 10-bit HEVC Server Transcode Fallback (v1.0.25)**, **🎬 Player Progress Bar D-Pad Focus Lock**, **📺 Remote Back Button Details & Modal Navigation Engine**, **⚡ Persistent 30-Day Poster & Image Cache**, **🎬 Movie Details Scroll Reset & D-Pad Spatial Navigation Engine**, **🎯 Navigation Focus Retention & Non-Poster Page Auto-Focus**, **🎬 YouTube Trailer Embed Bot Bypass & TV D-Pad Focus Release**, **📺 ExoPlayer Smart Back & Control Auto-Hide**, **🎭 Refined Actor Search & Filmography Engine**, **⚡ Android TV Local Poster & Metadata Caching (`WebSettings.LOAD_DEFAULT`)**, **📦 Stream Droplist Category & Layout Manager Container Cards**, **⚡ Server-Side TMDB & Explore Metadata Caching Engine (`/api/tmdb/*`, `/api/explore/*`)**, **🔍 Dedicated Interactive Search Page (`/search`)**, **⭐ Favorites Section & Star Toggle Persistence**, **Native Android TV App (`android-tv/`) with ExoPlayer 64MB Buffer & Automatic Server Settings Inheritance**, **Automatic Web Audio Transcoder (AC3/EAC3/DTS → AAC) with FFprobe Multi-Language Audio Extraction**, **Customizable & Syncable Home Screen Layouts**, **Unlocked Smart TV D-Pad Spatial Navigation with Focus Retention**, **Canonical OTA Version Updates (`version.json`)**, **Groq AI Llama 3 Stream Title Filtering**, **Official SIMKL Watch History Sync**, and **Centralized Backend Transcoder Proxy**.
 
 ---
 
@@ -22,16 +22,42 @@ Install **BubbaFlix TV** directly on any Firestick, Fire TV, or Android TV devic
 
 ## 🌟 Key Features
 
-### ⚡ Android TV Local Poster & Metadata Caching (`v1.0.15`)
+### 🚀 Portal-Rendered Transparent Poster Action Menu (`v1.0.25`)
+- **Full Viewport Portal**: The long-press poster modal is rendered via `createPortal(..., document.body)`, completely detaching it from transformed poster card containers and ensuring 100% accurate full-screen viewport coverage across all screen sizes.
+- **Transparent Backdrop**: Replaced dark smoky background blur with a completely transparent click-to-dismiss backdrop, keeping the underlying content visible while the quick action dialog stands out crisply.
+- **D-Pad Spatial Navigation**: Center-key long-press (400ms) or context-menu trigger pops up the menu with instant focus on the first action and seamless `ArrowUp` / `ArrowDown` spatial cycling between Favorites, SIMKL Watch status, and Details.
+
+### 📺 TMDB "On The Air" & "Airing Today" TV Carousels (`v1.0.25`)
+- **Dedicated TV Sections**: Added a new **On The Air** section (`/tv/on_the_air`) to the customizable home page layout alongside **Current TV Episodes** (`/tv/airing_today`), giving users separate access to shows airing within the next 7 days vs episodes airing today.
+- **Fully Customizable**: Can be enabled, disabled, or reordered via the Home Screen Layout Customizer.
+
+### ⚡ Android TV ExoPlayer 64MB Buffer Cap & OOM Defense (`v1.0.25`)
+- **64MB Ahead-Buffering**: Tuned `DefaultLoadControl` in `PlayerActivity.kt` with a 64MB buffer cap (`64 * 1024 * 1024`) and 300-second buffer-ahead window to prevent micro-stutters and buffer underruns on 4K/1080p high-bitrate media.
+- **`largeHeap="true"` & Background WebView Pausing**: Added Android large heap support and automatic WebView pause/memory trimming when launching ExoPlayer to safeguard lower-memory devices against OOM crashes.
+- **Crash Guards**: Implemented defensive thread crash guards and safe playback teardown routines.
+
+### 🎯 Persistent Sort & Tab Retention on Details Exit (`v1.0.25`)
+- **Explore & Favorites Memory**: User sort selections (Popularity, Rating, Release Date, Title) and active sub-tabs (Movies vs Collections) in Explore and Favorites are stored in `sessionStorage` and preserved when backing out of media details.
+- **Page-Reload Poster Focus**: When navigating back from a details screen, the app waits for carousel and grid sections to finish reloading before restoring D-pad focus and scroll position directly to the previously selected poster.
+
+### 🔄 TV Series Episode Refresh Focus & Scroll Restoration (`v1.0.25`)
+- **Scroll & Focus Preservation**: Refreshing streams inside a TV series episode saves the current viewport scroll position and episode button ID, returning focus directly to the refreshed dropdown upon reload instead of bouncing to the page's top back button.
+- **Spinning Refresh Icon**: Visual feedback indicator with smooth animation while streams are actively refetched.
+
+### 📱 Touchscreen & Tablet Touch Discrimination (`v1.0.25`)
+- **Swipe-Safe Scrolling**: Distance and velocity detection prevents touchscreen swipes on phones and tablets from accidentally firing long-press menus or opening details pages.
+- **🔥 Fire HD10 10-bit HEVC Fallback**: Client device detection flags devices without hardware 10-bit HEVC decoding capabilities (e.g. Fire HD10 tablets) and routes them through the server transcode pipeline to prevent player crashes.
+
+### ⚡ Android TV Local Poster & Metadata Caching (`WebSettings.LOAD_DEFAULT`)
 - **Native Device HTTP Caching**: Android TV client uses `WebSettings.LOAD_DEFAULT` to store TMDB poster images and JSON metadata directly on device disk storage.
 - **Fast Load Times & Reduced Bandwidth**: Images persist with long-term 1-year TTL and metadata responses persist with 1-hour TTL, matching backend server retention policies.
 
-### 🎭 Refined Actor Search & Filmography Engine (`v1.0.15`)
+### 🎭 Refined Actor Search & Filmography Engine
 - **Actor Query Classification**: Searching for an actor (e.g. *"John Wayne"*, *"Clint Eastwood"*, *"Tom Hanks"*) automatically resolves their exact TMDB profile and loads their complete filmography (`/person/{id}/combined_credits`).
 - **Strict Multi-Token Person Filtering**: When searching actor names, person entries are strictly required to match **all** query tokens (e.g. both *"John"* and *"Wayne"*), filtering out unrelated single-token names like *"John Smith"* or *"Wayne Brady"*.
 - **Filmography Categorization & Deduplication**: Filmography results are deduplicated by ID and sorted into **Feature Movies**, **TV Series**, and **Documentaries & Specials**.
 
-### 📦 Stream Dropdown & Layout Manager Container Cards (`v1.0.15`)
+### 📦 Stream Dropdown & Layout Manager Container Cards
 - **Initial Closed State**: Streams dropdown on details pages starts out closed with real-time count badges (*{count} Streams Found*, *Searching...*, *0 Streams Found*, *Setup Required*).
 - **Category & Layout Manager Styling**: Stream results are rendered in dedicated card containers matching the Settings Category & Layout Manager card style.
 - **Theme Variable Controls**: Dynamic app theme colors (`var(--pink)`, `var(--gradient)`, `var(--black3)`) with D-pad TV focus and hover glow states.
@@ -49,7 +75,7 @@ Install **BubbaFlix TV** directly on any Firestick, Fire TV, or Android TV devic
 ### 📺 Native Android TV, Google TV & Fire TV App (`android-tv/`)
 - **Downloader Quick Install**: Enter code **`7862216`** in the Downloader app to install `BubbaFlixTV.apk` directly on your TV.
 - **Single Clean Build Name**: Builds directly to `BubbaFlixTV.apk` without cumbersome version suffixes.
-- **5-Minute Ahead-Buffering Engine**: ExoPlayer (`PlayerActivity.kt`) buffers up to 300 seconds (5 minutes) ahead with `DefaultLoadControl` to eliminate micro-stutters and video freezing on high-bitrate 4K / 1080p streams.
+- **ExoPlayer Ahead-Buffering Engine**: ExoPlayer (`PlayerActivity.kt`) buffers up to 64MB / 300 seconds ahead with `DefaultLoadControl` to eliminate micro-stutters and video freezing on high-bitrate 4K / 1080p streams.
 - **Canonical OTA Update Checker**: Automatically checks `version.json` on app launch and prompts the user with an interactive update notification.
 - **Native Android TV Launcher Banner**: Includes full Leanback launcher integration (`LEANBACK_LAUNCHER`) for Android TV, Google TV, Chromecast, Nvidia Shield, and Amazon Fire TV devices.
 

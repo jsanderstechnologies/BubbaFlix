@@ -1,4 +1,4 @@
-# BubbaFlix TV 📺 - Native Android TV, Google TV & Fire TV App (v1.0.19)
+# BubbaFlix TV 📺 - Native Android TV, Google TV & Fire TV App (v1.0.25)
 
 **BubbaFlix TV** is the official native Android application for Android TV, Google TV, Chromecast with Google TV, Nvidia Shield, and Amazon Fire TV devices.
 
@@ -21,12 +21,18 @@ You can install **BubbaFlix TV** directly on any Firestick, Android TV, or Googl
 
 ## 🌟 Key Features
 
+- ⚡ **ExoPlayer 64MB Ahead-Buffering Engine (`PlayerActivity.kt`)**: Tuned with `DefaultLoadControl` to buffer up to 64MB / 300 seconds ahead during stream playback, eliminating freezing, stutters, and buffering loops on 4K / 1080p high-bitrate media.
+- 🛡️ **`largeHeap` & Background Memory Defense**: Added Android manifest `android:largeHeap="true"` and background WebView pausing/memory trimming during video playback to prevent out-of-memory crashes on memory-constrained devices.
+- 🕹️ **Native D-Pad Remote Long-Press (`MainActivity.kt`)**: Overrides `dispatchKeyEvent` to reliably catch remote center-key hold events (`event.isLongPress || event.repeatCount == 1`) and trigger the Quick Action Menu directly in the WebView.
+- 🚀 **Full-Viewport Transparent Poster Action Menu**: Long-pressing any poster opens an action modal (Favorites, SIMKL Watch Status, View Details) rendered via `createPortal` to `document.body` with a transparent backdrop and spatial `ArrowUp`/`ArrowDown` D-pad cycling.
+- 📺 **Player Controls Instant Auto-Hide**: Navigating upward from the player's back button immediately hides the playback controls without waiting for an on-screen timeout.
 - ⚡ **Local Device HTTP Disk Caching (`WebSettings.LOAD_DEFAULT`)**: Caches TMDB posters (1-year TTL) and API metadata JSON (1-hour TTL) directly on TV storage for instantaneous page transitions and reduced server traffic.
 - 🎭 **Refined Actor Search & Filmography Engine**: Automatically resolves actor names (e.g. *"John Wayne"*), loads their full deduplicated filmography, and strictly filters out unrelated partial-name matches.
 - ⚙️ **Automatic Server Settings Inheritance**: Automatically inherits server configurations (Premiumize API key, SIMKL settings, resolution preferences, Groq AI filters) from the backend server (`/api/settings`) on startup without typing on TV remotes!
 - 🔍 **Dedicated Search Page & Focus Retention**: Interactive `/search` page with category filters and input focus retention during typing.
+- 🔄 **TV Series Episode Refresh Focus Restoration**: Refreshing streams inside TV series episodes preserves scroll position and returns focus directly to the episode dropdown upon reload.
+- 🎯 **Persistent Sort & Tab Retention on Details Exit**: Returning from details screens preserves user sorting options and sub-tabs in Explore and Favorites, automatically refocusing the last-selected poster after page reload.
 - 📦 **Single APK Build File Name**: Built directly to `BubbaFlixTV.apk` for clean Downloader deployment.
-- 📺 **ExoPlayer 5-Minute Ahead-Buffering Engine**: Tuned in `PlayerActivity.kt` with `DefaultLoadControl` to buffer up to 300 seconds (5 minutes) ahead during stream playback, eliminating freezing, stutters, and buffering loops on 4K / 1080p high-bitrate media.
 - 🚀 **Interactive OTA Update Checker**: Queries `version.json` on GitHub on launch and prompts the user with an interactive update notification whenever a new `versionCode` is published.
 - ⭐ **Favorites Section & Star Toggle**: Seamless D-Pad navigation across the `/favorites` section and details screen star toggle buttons.
 - 🕹️ **Unlocked 2D Spatial Remote Control**: Automatic top-left poster focus on page change, non-navigable top logo, and smooth section-transition vertical navigation between carousel rows and top menu bar.

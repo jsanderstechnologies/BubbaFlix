@@ -1,6 +1,6 @@
 {
-  "versionCode": 25,
-  "versionName": "1.0.24",
+  "versionCode": 26,
+  "versionName": "1.0.25",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.24: Added TMDB 'On The Air' section to home, increased Android TV ExoPlayer buffer cap to 64MB, preserved sorting preferences when exiting detail pages, fixed TV episode stream refresh focus reset, and restored D-pad long-press poster action menu."
+  "releaseNotes": "BubbaFlix TV v1.0.25: Fixed Explore page Movies and TV Series catalog loading, updated long-press poster action menu with a full-viewport transparent backdrop, added TMDB On The Air section, boosted ExoPlayer buffer to 64MB, and restored persistent sorting and focus states."
 }
