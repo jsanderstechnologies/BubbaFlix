@@ -102,35 +102,6 @@ const SearchResult = () => {
     restoreLastFocusedPoster();
   }, [data, activeFilter]);
 
-  const filterEnglishCollections = (items) => {
-    if (!Array.isArray(items)) return [];
-
-    const adultKeywords = [
-      "xxx", "adult", "erotic", "porn", "hentai", "nude", "sex", "uncensored", 
-      "striptease", "playboy", "penthouse", "softcore", "hardcore", "erotica", "sensual"
-    ];
-
-    const foreignScriptRegex = /[\u0400-\u04FF\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uac00-\ud7af\u0600-\u06FF\u0900-\u097F\u0E00-\u0E7F\u0370-\u03FF]/;
-
-    return items.filter((col) => {
-      if (!col) return false;
-      if (col.adult === true) return false;
-
-      const name = (col.name || col.title || "").toLowerCase();
-      const words = name.split(/\s+/);
-      if (words.some((w) => adultKeywords.includes(w))) return false;
-      if (adultKeywords.some((kw) => name.includes(kw))) return false;
-
-      if (foreignScriptRegex.test(col.name || col.title || "")) return false;
-
-      if (col.original_language) {
-        const lang = col.original_language.toLowerCase();
-        if (lang !== "en" && lang !== "eng") return false;
-      }
-
-      return true;
-    });
-  };
 
   const fetchNormalSearchResults = (queryStr, page, filterType) => {
     if (filterType === "collection") {
@@ -221,39 +192,37 @@ const SearchResult = () => {
     if (page === 1) {
       Promise.all([
         fetchDataFromAPI(`/search/person?query=${encodeURIComponent(queryStr)}&page=1`),
-        fetchDataFromAPI(`/search/movie?query=${encodeURIComponent(queryStr)}&page=1`)
+        fetchDataFromAPI(`/search/movie?query=${encodeURIComponent(queryStr)}&page=1`),
+        fetchDataFromAPI(`/search/tv?query=${encodeURIComponent(queryStr)}&page=1`),
       ])
-        .then(([personRes, movieRes]) => {
+        .then(([personRes, movieRes, tvRes]) => {
           const queryClean = queryStr.trim().toLowerCase();
           const queryTokens = queryClean.split(/\s+/).filter(Boolean);
 
           const personResults = personRes?.results || [];
           const movieResults = movieRes?.results || [];
+          const tvResults = tvRes?.results || [];
 
           // Find best matching person (exact name match first, then all query tokens match)
           let topPerson = personResults.find((p) => p && p.name && p.name.toLowerCase() === queryClean);
           if (!topPerson && queryTokens.length >= 2) {
             topPerson = personResults.find((p) => p && p.name && queryTokens.every((t) => p.name.toLowerCase().includes(t)));
           }
-          if (!topPerson) {
-            topPerson = personResults[0];
-          }
 
           const topMovie = movieResults[0];
+          const topTv = tvResults[0];
           const personPop = topPerson ? (topPerson.popularity || 0) : 0;
-          const moviePop = topMovie ? (topMovie.popularity || 0) : 0;
+          const mediaPop = Math.max(topMovie?.popularity || 0, topTv?.popularity || 0);
 
           let isActorSearch = false;
           if (topPerson && topPerson.name) {
             const personNameLower = topPerson.name.toLowerCase();
-            const personTokens = personNameLower.split(/\s+/).filter(Boolean);
-
             const isExactNameMatch = personNameLower === queryClean;
-            const allQueryTokensInPerson = queryTokens.length > 0 && queryTokens.every((t) => personNameLower.includes(t));
-            const allPersonTokensInQuery = personTokens.length > 0 && personTokens.every((t) => queryClean.includes(t));
+            const allQueryTokensInPerson = queryTokens.length >= 2 && queryTokens.every((t) => personNameLower.includes(t));
 
-            if (isExactNameMatch || allQueryTokensInPerson || allPersonTokensInQuery) {
-              if (isExactNameMatch || (queryTokens.length >= 2 && allQueryTokensInPerson) || personPop > 3.0 || personPop > moviePop) {
+            // Only classify as actor search if the query specifically targets the person (not a multi-word show/movie title that happens to contain a name)
+            if (isExactNameMatch || allQueryTokensInPerson) {
+              if (isExactNameMatch || personPop > mediaPop) {
                 isActorSearch = true;
               }
             }

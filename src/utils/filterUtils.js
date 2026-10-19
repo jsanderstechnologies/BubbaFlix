@@ -71,24 +71,32 @@ export const isAnime = (item) => {
   return false;
 };
 
-const ADULT_KEYWORDS = [
-  "xxx", "adult", "erotic", "porn", "hentai", "nude", "sex", "uncensored", 
-  "striptease", "playboy", "penthouse", "softcore", "hardcore", "erotica", "sensual",
-  "taboo", "fetish", "babe", "vixen", "desire", "passion", "lust", "naughty", "explicit",
-  "18+", "snuff", "escort", "swingers", "playmate", "hustler", "suicidegirls", "brazzers",
-  "orgy", "threesome", "incest", "gangbang", "bdsm"
+const PORN_TITLE_KEYWORDS = [
+  "xxx", "porn", "hentai", "striptease", "playboy", "penthouse", 
+  "softcore", "hardcore", "erotica", "brazzers", "gangbang", "orgy", 
+  "suicidegirls", "playmate", "hustler", "bdsm"
 ];
+
+const PORN_OVERVIEW_REGEX = /\b(pornography|hardcore porn|softcore porn|adult film|xxx video|gangbang|erotic sex)\b/i;
 
 export const isAdult = (item) => {
   if (!item || isAxiosError(item)) return false;
   if (item.adult === true) return true;
 
   const title = (item.title || item.name || item.original_title || item.original_name || "").toLowerCase();
-  const overview = (item.overview || "").toLowerCase();
 
-  const words = title.split(/[\s,._\-:;]+/);
-  if (words.some((w) => ADULT_KEYWORDS.includes(w))) return true;
-  if (ADULT_KEYWORDS.some((kw) => title.includes(kw) || overview.includes(kw))) return true;
+  // Allow mainstream exceptions like the xXx franchise
+  if ((item.vote_count || 0) > 200 && (title.includes("xander cage") || title.includes("state of the union"))) {
+    return false;
+  }
+
+  // Check whole words in title for explicit porn terms
+  const titleWords = title.split(/[\s,._\-:;!?/]+/);
+  if (titleWords.some((w) => PORN_TITLE_KEYWORDS.includes(w))) return true;
+
+  // Overview explicit phrase check (whole word pattern, never substring match on "adult" or "sex")
+  const overview = (item.overview || "").toLowerCase();
+  if (overview && PORN_OVERVIEW_REGEX.test(overview)) return true;
 
   return false;
 };

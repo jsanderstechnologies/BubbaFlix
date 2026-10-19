@@ -1,15 +1,16 @@
 import { useState, useEffect } from "react";
 import { fetchDataFromAPI, getCachedDataFromAPI, setCachedDataInAPI } from "../utils/api";
 
-const useFetch = (url) => {
-  const initialCached = url ? getCachedDataFromAPI(url) : null;
+const useFetch = (url, pagesCount = 2) => {
+  const cacheKey = pagesCount > 2 ? `${url}__pages_${pagesCount}` : url;
+  const initialCached = url ? getCachedDataFromAPI(cacheKey) : null;
   const [data, setData] = useState(initialCached);
   const [loading, setLoading] = useState(initialCached ? false : "Loading...");
   const [error, setError] = useState(null);
 
   useEffect(() => {
     if (!url) return;
-    const cached = getCachedDataFromAPI(url);
+    const cached = getCachedDataFromAPI(cacheKey);
     if (cached) {
       setData(cached);
       setLoading(false);
@@ -22,16 +23,21 @@ const useFetch = (url) => {
     setError(null);
 
     const separator = url.includes("?") ? "&" : "?";
-    const page2Url = `${url}${separator}page=2`;
+    const promises = [];
+    for (let p = 1; p <= pagesCount; p++) {
+      const pageUrl = p === 1 ? url : `${url}${separator}page=${p}`;
+      promises.push(fetchDataFromAPI(pageUrl).catch(() => null));
+    }
 
-    Promise.all([
-      fetchDataFromAPI(url).catch(() => null),
-      fetchDataFromAPI(page2Url).catch(() => null),
-    ])
-      .then(([res1, res2]) => {
-        const list1 = Array.isArray(res1?.results) ? res1.results : [];
-        const list2 = Array.isArray(res2?.results) ? res2.results : [];
-        const combined = [...list1, ...list2];
+    Promise.all(promises)
+      .then((responses) => {
+        const combined = [];
+        responses.forEach((res) => {
+          if (Array.isArray(res?.results)) {
+            combined.push(...res.results);
+          }
+        });
+
         const existingIds = new Set();
         const uniqueCombined = combined.filter((item) => {
           if (!item || !item.id) return false;
@@ -40,14 +46,13 @@ const useFetch = (url) => {
           return true;
         });
 
-        const finalData = res1
-          ? { ...res1, results: uniqueCombined }
-          : res2
-          ? { ...res2, results: uniqueCombined }
+        const firstValidRes = responses.find((r) => r && typeof r === "object") || null;
+        const finalData = firstValidRes
+          ? { ...firstValidRes, results: uniqueCombined }
           : null;
 
         if (finalData) {
-          setCachedDataInAPI(url, finalData);
+          setCachedDataInAPI(cacheKey, finalData);
         }
 
         setData(finalData);
@@ -57,7 +62,7 @@ const useFetch = (url) => {
         setLoading(false);
         setError("Something went wrong", err);
       });
-  }, [url]);
+  }, [url, pagesCount]);
 
   return { data, loading, error };
 };
