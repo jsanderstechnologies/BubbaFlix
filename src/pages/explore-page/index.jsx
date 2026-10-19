@@ -41,6 +41,7 @@ const COLLECTION_KEYWORDS = [
 ];
 
 const Explore = () => {
+	const { mediaType } = useParams();
 	const [data, setData] = useState(null);
 	const [pageNum, setPageNum] = useState(1);
 	const [loading, setLoading] = useState(false);
@@ -55,8 +56,6 @@ const Explore = () => {
 	const [colSubPage, setColSubPage] = useState(1);
 	const [colLoading, setColLoading] = useState(false);
 	const [colHasMore, setColHasMore] = useState(true);
-
-	const { mediaType } = useParams();
 
 	const fetchInitialData = () => {
 		setLoading(true);

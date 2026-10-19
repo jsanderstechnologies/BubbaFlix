@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { isFavorite, toggleFavorite } from "../../utils/favorites";
 import { isSimklWatched, toggleSimklWatched } from "../../utils/simkl";
@@ -113,7 +114,7 @@ const PosterActionModal = ({ isOpen, onClose, item, mediaType = "movie", section
     }
   };
 
-  return (
+  const modalDOM = (
     <div className="posterActionModalOverlay" onClick={handleOverlayClick} onKeyDown={handleKeyDown} tabIndex="-1">
       <div className="posterActionModalContent" onClick={(e) => e.stopPropagation()}>
         <button type="button" className="closeBtn" onClick={onClose} aria-label="Close">
@@ -159,6 +160,8 @@ const PosterActionModal = ({ isOpen, onClose, item, mediaType = "movie", section
       </div>
     </div>
   );
+
+  return typeof document !== "undefined" ? createPortal(modalDOM, document.body) : modalDOM;
 };
 
 export default PosterActionModal;
