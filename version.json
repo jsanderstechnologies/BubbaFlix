@@ -1,6 +1,6 @@
 {
-  "versionCode": 26,
-  "versionName": "1.0.25",
+  "versionCode": 27,
+  "versionName": "1.0.26",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.25: Fixed Explore page Movies and TV Series catalog loading, updated long-press poster action menu with a full-viewport transparent backdrop, added TMDB On The Air section, boosted ExoPlayer buffer to 64MB, and restored persistent sorting and focus states."
+  "releaseNotes": "BubbaFlix TV v1.0.26: Fixed search bar editing lock so users can freely edit and add text without leaving the page, added smart Back-to-Top remote navigation with Home key support, expanded On The Air multi-page coverage, and improved adult keyword precision."
 }
