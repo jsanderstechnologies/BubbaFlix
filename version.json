@@ -1,6 +1,6 @@
 {
-  "versionCode": 23,
-  "versionName": "1.0.22",
+  "versionCode": 24,
+  "versionName": "1.0.23",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.22 with Android TV playback stability improvements, large heap allocation, 32MB memory-capped buffering to prevent OOM crashes, background WebView resource pausing, and thread crash guards."
+  "releaseNotes": "BubbaFlix TV v1.0.23: Fixed poster focus and carousel scroll restoration when returning from details pages by waiting for catalog sections to finish reloading before restoring focus and scroll position."
 }

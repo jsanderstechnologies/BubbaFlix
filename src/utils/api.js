@@ -29,6 +29,14 @@ export const getCachedDataFromAPI = (url, params) => {
   return null;
 };
 
+export const setCachedDataInAPI = (url, data, params) => {
+  const cacheKey = getCacheKey(url, params);
+  apiCache.set(cacheKey, {
+    timestamp: Date.now(),
+    data,
+  });
+};
+
 export const clearApiCache = () => {
   apiCache.clear();
 };

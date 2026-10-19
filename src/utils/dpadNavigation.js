@@ -204,7 +204,8 @@ export const focusTopLeftPoster = () => {
 
     // Don't steal focus if poster restoration from detail page is pending on catalog pages (Home, Search, Explore, Favorites)
     const lastPosterId = typeof window !== "undefined" ? sessionStorage.getItem("last_clicked_poster_id") : null;
-    if (lastPosterId && !isDetailsPage) {
+    const isRestorePending = typeof window !== "undefined" ? sessionStorage.getItem("poster_restore_pending") === "true" : false;
+    if ((lastPosterId || isRestorePending) && !isDetailsPage) {
       return;
     }
 
@@ -313,8 +314,16 @@ export const initDpadNavigation = () => {
   focusTopLeftPoster();
 
   const handleRouteChange = () => {
-    restoreLastFocusedPoster();
-    focusTopLeftPoster();
+    const isPending =
+      typeof window !== "undefined" &&
+      (sessionStorage.getItem("poster_restore_pending") === "true" ||
+       Boolean(sessionStorage.getItem("last_clicked_poster_id")));
+    if (isPending) {
+      restoreLastFocusedPoster();
+    } else {
+      restoreLastFocusedPoster();
+      focusTopLeftPoster();
+    }
   };
 
   const handleFocusIn = (e) => {

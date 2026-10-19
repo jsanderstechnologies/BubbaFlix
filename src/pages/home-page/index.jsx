@@ -34,7 +34,7 @@ const DynamicSection = ({ section, onPlayResume }) => {
     const [endPoint, setEndPoint] = useState("day");
     const { data, loading } = useFetch(`/trending/all/${endPoint}`);
     return (
-      <div className="carouselSection">
+      <div className="carouselSection" data-section-id={section.id}>
         <ContentWrapper>
           <span className="carouselTitle">Trending Content</span>
         </ContentWrapper>
@@ -46,7 +46,7 @@ const DynamicSection = ({ section, onPlayResume }) => {
   if (section.id === "new_movies") {
     const { data, loading } = useFetch("/movie/now_playing");
     return (
-      <div className="carouselSection">
+      <div className="carouselSection" data-section-id={section.id}>
         <ContentWrapper>
           <span className="carouselTitle">New Release Movies</span>
         </ContentWrapper>
@@ -58,7 +58,7 @@ const DynamicSection = ({ section, onPlayResume }) => {
   if (section.id === "current_tv") {
     const { data, loading } = useFetch("/tv/on_the_air");
     return (
-      <div className="carouselSection">
+      <div className="carouselSection" data-section-id={section.id}>
         <ContentWrapper>
           <span className="carouselTitle">Current TV Episodes</span>
         </ContentWrapper>
@@ -70,7 +70,7 @@ const DynamicSection = ({ section, onPlayResume }) => {
   if (section.id === "popular_movies") {
     const { data, loading } = useFetch("/movie/popular");
     return (
-      <div className="carouselSection">
+      <div className="carouselSection" data-section-id={section.id}>
         <ContentWrapper>
           <span className="carouselTitle">Popular Movies</span>
         </ContentWrapper>
@@ -82,7 +82,7 @@ const DynamicSection = ({ section, onPlayResume }) => {
   if (section.id === "popular_tv") {
     const { data, loading } = useFetch("/tv/popular");
     return (
-      <div className="carouselSection">
+      <div className="carouselSection" data-section-id={section.id}>
         <ContentWrapper>
           <span className="carouselTitle">Popular TV Shows</span>
         </ContentWrapper>
@@ -98,12 +98,14 @@ const DynamicSection = ({ section, onPlayResume }) => {
       .sort((a, b) => b.updatedAt - a.updatedAt);
     if (items.length === 0) return null;
     return (
-      <ContinueWatchingCarousel
-        items={items}
-        title="Continue Watching: Movies"
-        onPlayResume={onPlayResume}
-        sectionId={section.id}
-      />
+      <div className="carouselSection" data-section-id={section.id}>
+        <ContinueWatchingCarousel
+          items={items}
+          title="Continue Watching: Movies"
+          onPlayResume={onPlayResume}
+          sectionId={section.id}
+        />
+      </div>
     );
   }
 
@@ -114,12 +116,14 @@ const DynamicSection = ({ section, onPlayResume }) => {
       .sort((a, b) => b.updatedAt - a.updatedAt);
     if (items.length === 0) return null;
     return (
-      <ContinueWatchingCarousel
-        items={items}
-        title="Continue Watching: TV Episodes"
-        onPlayResume={onPlayResume}
-        sectionId={section.id}
-      />
+      <div className="carouselSection" data-section-id={section.id}>
+        <ContinueWatchingCarousel
+          items={items}
+          title="Continue Watching: TV Episodes"
+          onPlayResume={onPlayResume}
+          sectionId={section.id}
+        />
+      </div>
     );
   }
 

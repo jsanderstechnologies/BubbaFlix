@@ -68,7 +68,7 @@ const ContinueWatchingCarousel = ({ items: initialItems, title, onPlayResume, se
   };
 
   return (
-    <div className="carousel continueWatchingSection">
+    <div className="carousel continueWatchingSection" data-section-id={sectionId || undefined}>
       <ContentWrapper>
         {title && <div className="carouselTitle">{title}</div>}
         <div className="continueCarouselItems">

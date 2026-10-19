@@ -36,7 +36,7 @@ const getLocalVersionData = () => {
       return JSON.parse(fs.readFileSync(vFile, "utf8"));
     }
   } catch (e) {}
-  return { versionCode: 23, versionName: "1.0.22" };
+  return { versionCode: 24, versionName: "1.0.23" };
 };
 
 

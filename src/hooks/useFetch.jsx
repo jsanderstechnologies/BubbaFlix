@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { fetchDataFromAPI, getCachedDataFromAPI } from "../utils/api";
+import { fetchDataFromAPI, getCachedDataFromAPI, setCachedDataInAPI } from "../utils/api";
 
 const useFetch = (url) => {
   const initialCached = url ? getCachedDataFromAPI(url) : null;
@@ -40,13 +40,17 @@ const useFetch = (url) => {
           return true;
         });
 
-        if (res1) {
-          setData({ ...res1, results: uniqueCombined });
-        } else if (res2) {
-          setData({ ...res2, results: uniqueCombined });
-        } else {
-          setData(null);
+        const finalData = res1
+          ? { ...res1, results: uniqueCombined }
+          : res2
+          ? { ...res2, results: uniqueCombined }
+          : null;
+
+        if (finalData) {
+          setCachedDataInAPI(url, finalData);
         }
+
+        setData(finalData);
         setLoading(false);
       })
       .catch((err) => {

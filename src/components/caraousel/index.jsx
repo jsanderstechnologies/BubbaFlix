@@ -332,7 +332,7 @@ const Carousel = ({ data, loading, endpoint, title, sectionId }) => {
 	};
 
 	return (
-		<div className="carousel">
+		<div className="carousel" data-section-id={sectionId || undefined}>
 			<ContentWrapper>
 				{title && <div className="carouselTitle">{title}</div>}
 				{!loading ? (

@@ -10,6 +10,7 @@ import Spinner from "../../components/spinner";
 import avatar from "../../assets/avatar.png";
 import { FiArrowLeft } from "react-icons/fi";
 import { isAdult } from "../../utils/filterUtils";
+import { restoreLastFocusedPoster, goBackToSource } from "../../utils/focusManager";
 import "./index.scss";
 
 const PersonPage = () => {
@@ -25,6 +26,25 @@ const PersonPage = () => {
     useEffect(() => {
         window.scrollTo(0, 0);
     }, [id]);
+
+    useEffect(() => {
+        document.body.classList.add("detailsPageActive");
+        const handlePersonKeyDown = (e) => {
+            const key = e.key;
+            const code = e.keyCode;
+            if (key === "Escape" || key === "Back" || code === 27 || code === 4 || code === 10009 || code === 461) {
+                if (document.body.classList.contains("videoPlayerActive")) return;
+                e.preventDefault();
+                e.stopPropagation();
+                goBackToSource(navigate);
+            }
+        };
+        window.addEventListener("keydown", handlePersonKeyDown, true);
+        return () => {
+            document.body.classList.remove("detailsPageActive");
+            window.removeEventListener("keydown", handlePersonKeyDown, true);
+        };
+    }, [navigate]);
 
     useEffect(() => {
         if (credits?.cast) {
@@ -44,6 +64,10 @@ const PersonPage = () => {
         }
     }, [credits]);
 
+    useEffect(() => {
+        restoreLastFocusedPoster();
+    }, [filteredCredits]);
+
     return (
         <div className="personPage">
             <TopNav />
@@ -51,7 +75,7 @@ const PersonPage = () => {
                 <ContentWrapper>
                     <button
                         className="backBtn"
-                        onClick={() => navigate(-1)}
+                        onClick={() => goBackToSource(navigate)}
                         tabIndex="0"
                     >
                         <FiArrowLeft /> Back
