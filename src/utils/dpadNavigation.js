@@ -230,9 +230,11 @@ export const focusTopLeftPoster = () => {
 
     // 2. If on Details page (/movie/*, /tv/*, /person/*, /collection/*), focus details page primary action button (.playbtn, .sectionHeader, .watchCheckmark, .favoriteStarBtn)
     if (isDetailsPage) {
-      window.scrollTo(0, 0);
-      if (document.documentElement) document.documentElement.scrollTop = 0;
-      if (document.body) document.body.scrollTop = 0;
+      if (typeof window !== "undefined" && window.scrollY < 120) {
+        window.scrollTo(0, 0);
+        if (document.documentElement) document.documentElement.scrollTop = 0;
+        if (document.body) document.body.scrollTop = 0;
+      }
 
       const detailsTargets = Array.from(
         document.querySelectorAll(
@@ -244,6 +246,9 @@ export const focusTopLeftPoster = () => {
       });
 
       if (detailsTargets.length > 0) {
+        if (typeof window !== "undefined" && window.scrollY > 150) {
+          return;
+        }
         focusAndScroll(detailsTargets[0]);
         return;
       }
@@ -512,6 +517,23 @@ export const initDpadNavigation = () => {
         const progressBar = document.querySelector(".videoPlayerModal .progress-bar, .videoPlayerModal [role='slider']");
         if (progressBar) {
           focusAndScroll(progressBar);
+          return;
+        }
+      }
+      const isDetPage =
+        typeof window !== "undefined" &&
+        (window.location.pathname.startsWith("/movie/") ||
+          window.location.pathname.startsWith("/tv/") ||
+          window.location.pathname.startsWith("/person/") ||
+          window.location.pathname.startsWith("/collection/"));
+
+      if (isDetPage && typeof window !== "undefined" && window.scrollY > 150) {
+        const visibleInViewport = focusables.filter((el) => {
+          const r = el.getBoundingClientRect();
+          return r.top >= 40 && r.bottom <= window.innerHeight + 100 && r.width > 0 && r.height > 0 && !el.classList.contains("detailsPageBackBtn");
+        });
+        if (visibleInViewport.length > 0) {
+          focusAndScroll(visibleInViewport[0]);
           return;
         }
       }

@@ -44,7 +44,7 @@ const Explore = () => {
 	const [data, setData] = useState(null);
 	const [pageNum, setPageNum] = useState(1);
 	const [loading, setLoading] = useState(false);
-		const [sortby, setSortby] = useState("popularity.desc");
+	const [sortby, setSortby] = useState(() => sessionStorage.getItem(`explore_sort_${mediaType}`) || "popularity.desc");
 	
 	// Movies vs Collections Sub-Tabs
 	const [movieTab, setMovieTab] = useState(() => sessionStorage.getItem("explore_movie_tab") || "movies");
@@ -177,14 +177,15 @@ const filterEnglishCollections = (items) => {
 	};
 
 	useEffect(() => {
+		const savedSort = sessionStorage.getItem(`explore_sort_${mediaType}`) || "popularity.desc";
 		filters = { 
-			sort_by: "popularity.desc",
+			sort_by: savedSort,
 			with_original_language: "en",
 			"vote_count.gte": 10
 		};
 		setData(null);
 		setPageNum(1);
-		setSortby("popularity.desc");
+		setSortby(savedSort);
 		const savedTab = sessionStorage.getItem("explore_movie_tab") || "movies";
 		setMovieTab(savedTab);
 		fetchInitialData();
@@ -252,6 +253,7 @@ const filterEnglishCollections = (items) => {
 	const handleSortChange = (e) => {
 		const val = e.target.value;
 		setSortby(val);
+		sessionStorage.setItem(`explore_sort_${mediaType}`, val);
 		if (val) {
 			filters.sort_by = val;
 		} else {

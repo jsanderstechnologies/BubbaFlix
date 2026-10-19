@@ -353,7 +353,7 @@ class PlayerActivity : AppCompatActivity() {
                 if (isLiveStream) 1000 else 1500,
                 if (isLiveStream) 1500 else 2500
             )
-            .setTargetBufferBytes(32 * 1024 * 1024)
+            .setTargetBufferBytes(64 * 1024 * 1024)
             .setPrioritizeTimeOverSizeThresholds(false)
             .setBackBuffer(if (isLiveStream) 0 else 10000, !isLiveStream)
             .build()

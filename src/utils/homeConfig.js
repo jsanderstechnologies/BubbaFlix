@@ -3,6 +3,7 @@ import { getServerUrl } from "./serverSettings";
 export const DEFAULT_HOME_SECTIONS = [
   { id: "trending", title: "Trending Content", enabled: true },
   { id: "new_movies", title: "New Release Movies", enabled: true },
+  { id: "on_the_air", title: "On The Air", enabled: true },
   { id: "current_tv", title: "Current TV Episodes", enabled: true },
   { id: "popular_movies", title: "Popular Movies", enabled: true },
   { id: "popular_tv", title: "Popular TV Shows", enabled: true },

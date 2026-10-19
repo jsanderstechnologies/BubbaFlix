@@ -55,8 +55,20 @@ const DynamicSection = ({ section, onPlayResume }) => {
     );
   }
 
-  if (section.id === "current_tv") {
+  if (section.id === "on_the_air") {
     const { data, loading } = useFetch("/tv/on_the_air");
+    return (
+      <div className="carouselSection" data-section-id={section.id}>
+        <ContentWrapper>
+          <span className="carouselTitle">On The Air</span>
+        </ContentWrapper>
+        <Caraousel data={data?.results} loading={loading} endpoint="tv" sectionId={section.id} />
+      </div>
+    );
+  }
+
+  if (section.id === "current_tv") {
+    const { data, loading } = useFetch("/tv/airing_today");
     return (
       <div className="carouselSection" data-section-id={section.id}>
         <ContentWrapper>

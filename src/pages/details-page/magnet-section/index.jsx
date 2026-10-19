@@ -21,7 +21,8 @@ import {
   FiHardDrive, 
   FiUsers, 
   FiLayers,
-  FiShield
+  FiShield,
+  FiRefreshCw
 } from "react-icons/fi";
 import { isEnglishStreamTitle, isMatchingStreamTitle, is10BitOrHevcStream } from "../../../utils/filterUtils";
 import { isFireTabletDevice, getDeviceModelName } from "../../../utils/deviceDetection";
@@ -149,7 +150,21 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
     }
   }, [title, tmdbId, year, seasonNum, episodeNum]);
 
+  const headerId =
+    seasonNum !== undefined && episodeNum !== undefined
+      ? `streams-header-${tmdbId}-s${seasonNum}-e${episodeNum}`
+      : `streams-header-${tmdbId}`;
+
+  const refreshBtnId =
+    seasonNum !== undefined && episodeNum !== undefined
+      ? `streams-refresh-${tmdbId}-s${seasonNum}-e${episodeNum}`
+      : `streams-refresh-${tmdbId}`;
+
   const loadStreams = async () => {
+    const savedScrollY = typeof window !== "undefined" ? window.scrollY : 0;
+    const activeEl = typeof document !== "undefined" ? document.activeElement : null;
+    const restoreTargetId = (activeEl && activeEl.id) || refreshBtnId || headerId;
+
     setLoading(true);
     setUnconfigured(false);
 
@@ -260,6 +275,20 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
 
     setHiddenStreams(excluded10Bit);
     setStreams(keptStreams);
+
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: savedScrollY, behavior: "instant" });
+      setTimeout(() => {
+        window.scrollTo({ top: savedScrollY, behavior: "instant" });
+        const target =
+          document.getElementById(restoreTargetId) ||
+          document.getElementById(refreshBtnId) ||
+          document.getElementById(headerId);
+        if (target && typeof target.focus === "function") {
+          target.focus({ preventScroll: true });
+        }
+      }, 80);
+    }
   };
 
   const handlePlayStream = async (item, transcodeMode = false) => {
@@ -309,6 +338,7 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
     <div className="magnetSection">
       <div className={`sectionCard ${compact ? "compact" : ""}`}>
         <div
+          id={headerId}
           className={`sectionHeader ${isOpen ? "open" : ""}`}
           tabIndex="0"
           role="button"
@@ -346,9 +376,35 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
               </span>
             )}
           </div>
-          <button className="toggleBtn" tabIndex="-1" aria-label="Toggle streams dropdown">
-            {isOpen ? <FiChevronUp /> : <FiChevronDown />}
-          </button>
+          <div className="headerRightActions">
+            <button
+              id={refreshBtnId}
+              type="button"
+              className="refreshStreamsBtn"
+              title="Refresh Links"
+              aria-label="Refresh episode links"
+              tabIndex="0"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!isOpen) setIsOpen(true);
+                loadStreams();
+              }}
+              onKeyDown={(e) => {
+                const code = e.keyCode;
+                if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (!isOpen) setIsOpen(true);
+                  loadStreams();
+                }
+              }}
+            >
+              <FiRefreshCw className={loading ? "spin" : ""} />
+            </button>
+            <button className="toggleBtn" tabIndex="-1" aria-label="Toggle streams dropdown">
+              {isOpen ? <FiChevronUp /> : <FiChevronDown />}
+            </button>
+          </div>
         </div>
 
         {isOpen && (
@@ -367,7 +423,7 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
                       ? "Please enter your Premiumize API Key in Settings to resolve magnet torrent streams."
                       : "No torrent streams found for this title. You can try refreshing streams or check your search criteria."}
                   </p>
-                  <button className="configBtn" onClick={loadStreams} style={{ cursor: "pointer" }}>
+                  <button id={refreshBtnId + "-empty"} className="configBtn" onClick={loadStreams} style={{ cursor: "pointer" }}>
                     Refresh Streams
                   </button>
                 </div>

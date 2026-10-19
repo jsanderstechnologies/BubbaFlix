@@ -136,19 +136,60 @@
         }
       }
 
-      .toggleBtn {
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        border-radius: 50%;
-        width: 36px;
-        height: 36px;
-        color: rgba(255, 255, 255, 0.9);
-        font-size: 18px;
-        cursor: pointer;
+      .headerRightActions {
         display: flex;
         align-items: center;
-        justify-content: center;
-        transition: all 0.25s ease;
+        gap: 8px;
+
+        .refreshStreamsBtn {
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          border-radius: 50%;
+          width: 36px;
+          height: 36px;
+          color: rgba(255, 255, 255, 0.9);
+          font-size: 16px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.25s ease;
+          outline: none;
+
+          &:hover,
+          &:focus,
+          &:focus-visible {
+            background: var(--pink);
+            color: white;
+            border-color: var(--pink);
+            box-shadow: 0 0 12px var(--pink);
+            transform: scale(1.1);
+          }
+
+          .spin {
+            animation: spinRefresh 0.8s linear infinite;
+          }
+        }
+
+        .toggleBtn {
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          border-radius: 50%;
+          width: 36px;
+          height: 36px;
+          color: rgba(255, 255, 255, 0.9);
+          font-size: 18px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.25s ease;
+        }
+      }
+
+      @keyframes spinRefresh {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
       }
     }
 

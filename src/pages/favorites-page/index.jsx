@@ -14,8 +14,8 @@ import "./index.scss";
 const FavoritesPage = () => {
   const [favorites, setFavorites] = useState([]);
   const [favCollections, setFavCollections] = useState([]);
-  const [activeTab, setActiveTab] = useState("all"); // "all", "movie", "tv", "collection"
-  const [sortby, setSortby] = useState("added.desc");
+  const [activeTab, setActiveTab] = useState(() => sessionStorage.getItem("favorites_active_tab") || "all"); // "all", "movie", "tv", "collection"
+  const [sortby, setSortby] = useState(() => sessionStorage.getItem("favorites_sort") || "added.desc");
   
   const FAV_SORT_OPTIONS = [
     { value: "added.desc", label: "Date Added (Newest)" },
@@ -115,28 +115,40 @@ const FavoritesPage = () => {
                   <button
                     className={`tabItem ${activeTab === "all" ? "active" : ""}`}
                     tabIndex="0"
-                    onClick={() => setActiveTab("all")}
+                    onClick={() => {
+                      setActiveTab("all");
+                      sessionStorage.setItem("favorites_active_tab", "all");
+                    }}
                   >
                     All ({totalCount})
                   </button>
                   <button
                     className={`tabItem ${activeTab === "movie" ? "active" : ""}`}
                     tabIndex="0"
-                    onClick={() => setActiveTab("movie")}
+                    onClick={() => {
+                      setActiveTab("movie");
+                      sessionStorage.setItem("favorites_active_tab", "movie");
+                    }}
                   >
                     <FiFilm style={{ marginRight: 6 }} /> Movies ({movieFavs.length})
                   </button>
                   <button
                     className={`tabItem ${activeTab === "tv" ? "active" : ""}`}
                     tabIndex="0"
-                    onClick={() => setActiveTab("tv")}
+                    onClick={() => {
+                      setActiveTab("tv");
+                      sessionStorage.setItem("favorites_active_tab", "tv");
+                    }}
                   >
                     <FiTv style={{ marginRight: 6 }} /> TV Shows ({tvFavs.length})
                   </button>
                   <button
                     className={`tabItem ${activeTab === "collection" ? "active" : ""}`}
                     tabIndex="0"
-                    onClick={() => setActiveTab("collection")}
+                    onClick={() => {
+                      setActiveTab("collection");
+                      sessionStorage.setItem("favorites_active_tab", "collection");
+                    }}
                   >
                     <FiLayers style={{ marginRight: 6 }} /> Collections ({favCollections.length})
                   </button>
@@ -148,7 +160,11 @@ const FavoritesPage = () => {
                       <select
                           className="tvSortSelect"
                           value={sortby}
-                          onChange={(e) => setSortby(e.target.value)}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setSortby(v);
+                            sessionStorage.setItem("favorites_sort", v);
+                          }}
                           tabIndex="0"
                           style={{ 
                               appearance: "none", 

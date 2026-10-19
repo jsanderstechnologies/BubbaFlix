@@ -212,10 +212,27 @@ const CarouselItem = ({ item, endpoint, url, sectionId }) => {
 		e.stopPropagation();
 	};
 
+	const isEnterOrDpad = (e) => {
+		const code = e.keyCode;
+		const key = e.key;
+		return (
+			key === "Enter" ||
+			key === " " ||
+			key === "Select" ||
+			key === "Ok" ||
+			key === "Accept" ||
+			code === 13 ||
+			code === 23 ||
+			code === 66 ||
+			code === 32
+		);
+	};
+
 	const handleContextMenu = (e) => {
 		e.preventDefault();
 		e.stopPropagation();
 		if (timerRef.current) clearTimeout(timerRef.current);
+		if (keyTimerRef.current) clearTimeout(keyTimerRef.current);
 		isLongPressRef.current = true;
 		setShowActionModal(true);
 	};
@@ -228,37 +245,42 @@ const CarouselItem = ({ item, endpoint, url, sectionId }) => {
 			handleContextMenu(e);
 			return;
 		}
-		if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+		if (isEnterOrDpad(e)) {
 			e.preventDefault();
 			e.stopPropagation();
 			if (e.repeat) {
 				if (!isLongPressRef.current) {
 					isLongPressRef.current = true;
 					if (timerRef.current) clearTimeout(timerRef.current);
+					if (keyTimerRef.current) clearTimeout(keyTimerRef.current);
 					setShowActionModal(true);
 				}
 				return;
 			}
 			isLongPressRef.current = false;
 			pressStartTimeRef.current = Date.now();
-			if (timerRef.current) clearTimeout(timerRef.current);
-			timerRef.current = setTimeout(() => {
+			if (keyTimerRef.current) clearTimeout(keyTimerRef.current);
+			keyTimerRef.current = setTimeout(() => {
 				isLongPressRef.current = true;
 				setShowActionModal(true);
-			}, 500);
+			}, 400);
 		}
 	};
 
 	const handleKeyUp = (e) => {
-		const code = e.keyCode;
-		if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
+		if (isEnterOrDpad(e)) {
 			e.preventDefault();
 			e.stopPropagation();
+			if (keyTimerRef.current) {
+				clearTimeout(keyTimerRef.current);
+				keyTimerRef.current = null;
+			}
 			if (timerRef.current) {
 				clearTimeout(timerRef.current);
 				timerRef.current = null;
 			}
-			if (!isLongPressRef.current && pressStartTimeRef.current > 0) {
+			const duration = pressStartTimeRef.current > 0 ? Date.now() - pressStartTimeRef.current : 0;
+			if (!isLongPressRef.current && pressStartTimeRef.current > 0 && duration < 400) {
 				handleSelect();
 			}
 			isLongPressRef.current = false;
