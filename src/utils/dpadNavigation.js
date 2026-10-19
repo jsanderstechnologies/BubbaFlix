@@ -420,7 +420,25 @@ export const initDpadNavigation = () => {
         return;
       }
 
-      // 4. Details Page, Collection Details Page, or sub-routes: use goBackToSource
+      // 4. If user has scrolled down away from the top (scrollY > 400),
+      // smooth-scroll back to top first and focus top nav / header instead of exiting immediately
+      const currentScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+      if (currentScrollY > 400) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        setTimeout(() => {
+          const topTarget = document.querySelector(".topNav .navBtn.active, .topNav .navBtn, .detailsPageBackBtn");
+          if (topTarget && typeof topTarget.focus === "function") {
+            topTarget.focus();
+          } else {
+            focusTopLeftPoster();
+          }
+        }, 200);
+        return;
+      }
+
+      // 5. Details Page, Collection Details Page, or sub-routes: use goBackToSource
       if (
         document.body.classList.contains("detailsPageActive") ||
         document.body.classList.contains("collectionDetailsActive") ||
@@ -489,14 +507,30 @@ export const initDpadNavigation = () => {
       }
     }
 
+    // Handle Remote Home Key -> Smooth scroll to top and focus top target
+    if (key === "Home" || code === 36) {
+      e.preventDefault();
+      e.stopPropagation();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      setTimeout(() => {
+        const topTarget = document.querySelector(".topNav .navBtn.active, .topNav .navBtn, .detailsPageBackBtn");
+        if (topTarget && typeof topTarget.focus === "function") {
+          topTarget.focus();
+        } else {
+          focusTopLeftPoster();
+        }
+      }, 200);
+      return;
+    }
+
     let direction = null;
     let isPageJump = false;
     if (key === "ArrowUp" || code === 38 || code === 19) direction = "ArrowUp";
     else if (key === "ArrowDown" || code === 40 || code === 20) direction = "ArrowDown";
     else if (key === "ArrowLeft" || code === 37 || code === 21) direction = "ArrowLeft";
     else if (key === "ArrowRight" || code === 39 || code === 22) direction = "ArrowRight";
-    else if (key === "PageUp" || code === 33 || code === 427) { direction = "ArrowUp"; isPageJump = true; }
-    else if (key === "PageDown" || code === 34 || code === 428) { direction = "ArrowDown"; isPageJump = true; }
+    else if (key === "PageUp" || code === 33 || code === 427 || key === "ChannelUp" || code === 166) { direction = "ArrowUp"; isPageJump = true; }
+    else if (key === "PageDown" || code === 34 || code === 428 || key === "ChannelDown" || code === 167) { direction = "ArrowDown"; isPageJump = true; }
 
     if (!direction) return;
 

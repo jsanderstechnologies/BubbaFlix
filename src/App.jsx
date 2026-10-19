@@ -17,6 +17,7 @@ import PersonPage from "./pages/person-page";
 import Page404 from "./pages/404-page";
 import Footer from "./components/footer";
 import SplashScreen from "./components/splash-screen";
+import ScrollToTop from "./components/scroll-to-top";
 
 import { getSavedTheme, applyTheme } from "./utils/theme";
 import { initDpadNavigation } from "./utils/dpadNavigation";
@@ -153,6 +154,7 @@ const AppContent = () => {
             <Route path="/explore/:mediaType" element={<ExplorePage />} />
             <Route path="*" element={<Page404 />} />
           </Routes>
+          <ScrollToTop />
           <Footer />
         </div>
     </BrowserRouter>

@@ -29,6 +29,40 @@ const TopNav = () => {
 		}
 	};
 
+	const handleNav = (targetPath) => {
+		const isCurrentlyActive = isActive(targetPath) === "active" || location.pathname === targetPath;
+		if (isCurrentlyActive) {
+			window.scrollTo({ top: 0, behavior: "smooth" });
+			return;
+		}
+		navigate(targetPath);
+	};
+
+	const handleNavKey = (e, targetPath) => {
+		const code = e.keyCode;
+		if (
+			e.key === "Enter" ||
+			e.key === " " ||
+			e.key === "Select" ||
+			e.key === "Ok" ||
+			code === 13 ||
+			code === 23 ||
+			code === 32 ||
+			(code === 66 && e.key !== "b" && e.key !== "B")
+		) {
+			e.preventDefault();
+			handleNav(targetPath);
+		}
+	};
+
+	const handleLogoClick = () => {
+		if (location.pathname === "/") {
+			window.scrollTo({ top: 0, behavior: "smooth" });
+		} else {
+			navigate("/");
+		}
+	};
+
 	const isActive = (path) => {
 		const current = location.pathname;
 		
@@ -68,9 +102,15 @@ const TopNav = () => {
 			<nav className="topNav">
 				<ContentWrapper>
 					<div className="topNavInner">
-						{/* App Logo - Non-focusable branding display */}
-						<div className="navLogo" style={{ pointerEvents: "none", userSelect: "none" }}>
-							<img src="/logo.png" alt="BubbaFlix TV" tabIndex="-1" style={{ pointerEvents: "none" }} />
+						{/* App Logo - Click/Tap scrolls to top or navigates Home */}
+						<div
+							className="navLogo"
+							role="button"
+							tabIndex="-1"
+							onClick={handleLogoClick}
+							title="BubbaFlix Home / Scroll to top"
+						>
+							<img src="/logo.png" alt="BubbaFlix TV" tabIndex="-1" />
 						</div>
 
 						{/* Navigation Item Links */}
@@ -78,14 +118,8 @@ const TopNav = () => {
 							<button
 								className={`navBtn ${isActive("/")}`}
 								tabIndex="0"
-								onClick={() => navigate("/")}
-								onKeyDown={(e) => {
-									const code = e.keyCode;
-									if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || (code === 66 && e.key !== "b" && e.key !== "B")) {
-										e.preventDefault();
-										navigate("/");
-									}
-								}}
+								onClick={() => handleNav("/")}
+								onKeyDown={(e) => handleNavKey(e, "/")}
 							>
 								<FiHome className="navIcon" />
 								<span>Home</span>
@@ -94,14 +128,8 @@ const TopNav = () => {
 							<button
 								className={`navBtn ${isActive("/search")}`}
 								tabIndex="0"
-								onClick={() => navigate("/search")}
-								onKeyDown={(e) => {
-									const code = e.keyCode;
-									if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || (code === 66 && e.key !== "b" && e.key !== "B")) {
-										e.preventDefault();
-										navigate("/search");
-									}
-								}}
+								onClick={() => handleNav("/search")}
+								onKeyDown={(e) => handleNavKey(e, "/search")}
 							>
 								<HiOutlineSearch className="navIcon" />
 								<span>Search</span>
@@ -110,14 +138,8 @@ const TopNav = () => {
 							<button
 								className={`navBtn ${isActive("/favorites")}`}
 								tabIndex="0"
-								onClick={() => navigate("/favorites")}
-								onKeyDown={(e) => {
-									const code = e.keyCode;
-									if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || (code === 66 && e.key !== "b" && e.key !== "B")) {
-										e.preventDefault();
-										navigate("/favorites");
-									}
-								}}
+								onClick={() => handleNav("/favorites")}
+								onKeyDown={(e) => handleNavKey(e, "/favorites")}
 							>
 								<AiFillStar className="navIcon" style={{ color: "#ffd700" }} />
 								<span>Favorites</span>
@@ -126,14 +148,8 @@ const TopNav = () => {
 							<button
 								className={`navBtn ${isActive("/explore/movie")}`}
 								tabIndex="0"
-								onClick={() => navigate("/explore/movie")}
-								onKeyDown={(e) => {
-									const code = e.keyCode;
-									if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || (code === 66 && e.key !== "b" && e.key !== "B")) {
-										e.preventDefault();
-										navigate("/explore/movie");
-									}
-								}}
+								onClick={() => handleNav("/explore/movie")}
+								onKeyDown={(e) => handleNavKey(e, "/explore/movie")}
 							>
 								<HiOutlineFilm className="navIcon" />
 								<span>Movies</span>
@@ -142,14 +158,8 @@ const TopNav = () => {
 							<button
 								className={`navBtn ${isActive("/explore/tv")}`}
 								tabIndex="0"
-								onClick={() => navigate("/explore/tv")}
-								onKeyDown={(e) => {
-									const code = e.keyCode;
-									if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || (code === 66 && e.key !== "b" && e.key !== "B")) {
-										e.preventDefault();
-										navigate("/explore/tv");
-									}
-								}}
+								onClick={() => handleNav("/explore/tv")}
+								onKeyDown={(e) => handleNavKey(e, "/explore/tv")}
 							>
 								<FiTv className="navIcon" />
 								<span>TV Series</span>
@@ -159,14 +169,8 @@ const TopNav = () => {
 								<button
 									className={`navBtn ${isActive("/usage")}`}
 									tabIndex="0"
-									onClick={() => navigate("/usage")}
-									onKeyDown={(e) => {
-										const code = e.keyCode;
-										if (e.key === "Enter" || code === 13 || code === 23 || (code === 66 && e.key !== "b" && e.key !== "B")) {
-											e.preventDefault();
-											navigate("/usage");
-										}
-									}}
+									onClick={() => handleNav("/usage")}
+									onKeyDown={(e) => handleNavKey(e, "/usage")}
 								>
 									<FiInfo /> Usage
 								</button>
@@ -175,14 +179,8 @@ const TopNav = () => {
 							<button
 								className={`navBtn ${isActive("/settings")}`}
 								tabIndex="0"
-								onClick={() => navigate("/settings")}
-								onKeyDown={(e) => {
-									const code = e.keyCode;
-									if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || (code === 66 && e.key !== "b" && e.key !== "B")) {
-										e.preventDefault();
-										navigate("/settings");
-									}
-								}}
+								onClick={() => handleNav("/settings")}
+								onKeyDown={(e) => handleNavKey(e, "/settings")}
 							>
 								<FiSettings className="navIcon" />
 								<span>Settings</span>
@@ -191,14 +189,8 @@ const TopNav = () => {
 							<button
 								className={`navBtn ${isActive("/about")}`}
 								tabIndex="0"
-								onClick={() => navigate("/about")}
-								onKeyDown={(e) => {
-									const code = e.keyCode;
-									if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || (code === 66 && e.key !== "b" && e.key !== "B")) {
-										e.preventDefault();
-										navigate("/about");
-									}
-								}}
+								onClick={() => handleNav("/about")}
+								onKeyDown={(e) => handleNavKey(e, "/about")}
 							>
 								<FiInfo className="navIcon" />
 								<span>About</span>
