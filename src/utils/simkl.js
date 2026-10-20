@@ -76,10 +76,13 @@ const getRequiredHeaders = (clientId) => {
   return headers;
 };
 
-export const isSimklWatched = ({ tmdbId, mediaType, seasonNum, episodeNum }) => {
+export const isSimklWatched = ({ tmdbId, mediaType, seasonNum, episodeNum, episodeCount }) => {
   if (!tmdbId) return false;
   const cache = getSimklWatchCache();
   const idStr = String(tmdbId);
+
+  // If the whole show is marked watched, everything under it is watched
+  if (cache.shows[idStr]) return true;
 
   if (episodeNum !== undefined && seasonNum !== undefined) {
     const epKey = `${idStr}_s${seasonNum}_e${episodeNum}`;
@@ -91,7 +94,16 @@ export const isSimklWatched = ({ tmdbId, mediaType, seasonNum, episodeNum }) => 
 
   if (seasonNum !== undefined) {
     const seasonKey = `${idStr}_s${seasonNum}`;
-    return !!cache.seasons[seasonKey];
+    if (cache.seasons[seasonKey]) return true;
+    if (episodeCount && episodeCount > 0) {
+      for (let e = 1; e <= episodeCount; e++) {
+        if (!cache.episodes[`${idStr}_s${seasonNum}_e${e}`]) {
+          return false;
+        }
+      }
+      return true;
+    }
+    return false;
   }
 
   if (mediaType === "movie") {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import useFetch from "../../../hooks/useFetch";
 import ContentWrapper from "../../../components/content-wrapper";
 import MagnetSection from "../magnet-section";
@@ -7,80 +7,174 @@ import PosterFallback from "../../../assets/no-poster.png";
 import Spinner from "../../../components/spinner";
 import WatchCheckmark from "../../../components/watch-checkmark";
 import { isSimklWatched } from "../../../utils/simkl";
+import { getAllWatchProgress } from "../../../utils/watchProgress";
 import { useSelector } from "react-redux";
 import dayjs from "dayjs";
 import { FiTv, FiCalendar, FiClock, FiAlertCircle } from "react-icons/fi";
 import "./index.scss";
 
+export const getFirstUnwatchedInfo = (tvId, seasonsList) => {
+  if (!tvId) return { seasonNumber: 1, episodeNumber: 1 };
+
+  // 1. Check in-progress watch history first (started, but not yet completed)
+  const allProgress = getAllWatchProgress();
+  const showProgress = Object.values(allProgress)
+    .filter((p) => String(p.tmdbId) === String(tvId) && (p.mediaType === "tv" || p.seasonNum))
+    .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+
+  if (showProgress.length > 0) {
+    const latest = showProgress[0];
+    if (latest.seasonNum && latest.episodeNum) {
+      const isWatched = isSimklWatched({
+        tmdbId: tvId,
+        mediaType: "tv",
+        seasonNum: Number(latest.seasonNum),
+        episodeNum: Number(latest.episodeNum),
+      });
+      if (!isWatched) {
+        return {
+          seasonNumber: Number(latest.seasonNum),
+          episodeNumber: Number(latest.episodeNum),
+          isInProgress: true,
+        };
+      }
+    }
+  }
+
+  const validSeasons = Array.isArray(seasonsList)
+    ? seasonsList.filter((s) => s.season_number > 0).sort((a, b) => a.season_number - b.season_number)
+    : [];
+
+  if (validSeasons.length === 0) {
+    return { seasonNumber: 1, episodeNumber: 1 };
+  }
+
+  // 2. If the entire show is marked watched, default to first episode of first season
+  if (isSimklWatched({ tmdbId: tvId, mediaType: "tv" })) {
+    return { seasonNumber: validSeasons[0].season_number, episodeNumber: 1 };
+  }
+
+  // 3. Iterate through seasons in chronological order
+  for (const s of validSeasons) {
+    const sNum = s.season_number;
+    const epCount = s.episode_count || 1;
+
+    // Check if season is marked watched (either whole season or all episodes)
+    const isSeasonWatched = isSimklWatched({
+      tmdbId: tvId,
+      mediaType: "tv",
+      seasonNum: sNum,
+      episodeCount: epCount,
+    });
+
+    if (isSeasonWatched) {
+      continue;
+    }
+
+    // Season is not fully watched, find the first unwatched episode in this season
+    for (let ep = 1; ep <= epCount; ep++) {
+      const isEpWatched = isSimklWatched({
+        tmdbId: tvId,
+        mediaType: "tv",
+        seasonNum: sNum,
+        episodeNum: ep,
+      });
+
+      if (!isEpWatched) {
+        return { seasonNumber: sNum, episodeNumber: ep };
+      }
+    }
+  }
+
+  // Fallback to first valid season, episode 1
+  return { seasonNumber: validSeasons[0].season_number, episodeNumber: 1 };
+};
+
 const SeasonsSection = ({ tvId, seasons, showTitle, posterPath }) => {
   const { url } = useSelector((state) => state.home);
 
-  const validSeasons = Array.isArray(seasons) && seasons.length > 0
-    ? seasons.filter((s) => s.season_number > 0)
-    : [{ id: 1, season_number: 1, name: "Season 1", episode_count: 8 }];
+  const validSeasons = useMemo(() => {
+    return Array.isArray(seasons) && seasons.length > 0
+      ? seasons.filter((s) => s.season_number > 0).sort((a, b) => a.season_number - b.season_number)
+      : [{ id: 1, season_number: 1, name: "Season 1", episode_count: 8 }];
+  }, [seasons]);
 
-  const [selectedSeasonNumber, setSelectedSeasonNumber] = useState(1);
-  const hasAutoNavigatedSeason = useRef(false);
-  const hasAutoNavigatedEpisode = useRef(false);
+  // Determine initial target season & episode based on watch history
+  const unwatchedTarget = useMemo(() => {
+    return getFirstUnwatchedInfo(tvId, validSeasons);
+  }, [tvId, validSeasons]);
 
-  // 1. Initial Load: Auto-select the first unwatched season
+  const [selectedSeasonNumber, setSelectedSeasonNumber] = useState(unwatchedTarget.seasonNumber);
+  const targetEpisodeNumRef = useRef(unwatchedTarget.episodeNumber);
+  const hasAutoNavigated = useRef(false);
+
+  // Sync selectedSeasonNumber on initial load when seasons data arrives
   useEffect(() => {
-    if (hasAutoNavigatedSeason.current) return;
-    if (!Array.isArray(seasons) || seasons.length === 0) return;
-
-    const filtered = seasons.filter((s) => s.season_number > 0);
-    if (filtered.length === 0) return;
-
-    let targetSeasonNum = filtered[0].season_number;
-    for (const s of filtered) {
-      const isSeasonWatched = isSimklWatched({
-        tmdbId: tvId,
-        mediaType: "tv",
-        seasonNum: s.season_number,
-      });
-      if (!isSeasonWatched) {
-        targetSeasonNum = s.season_number;
-        break;
-      }
+    if (!hasAutoNavigated.current && unwatchedTarget?.seasonNumber) {
+      setSelectedSeasonNumber(unwatchedTarget.seasonNumber);
+      targetEpisodeNumRef.current = unwatchedTarget.episodeNumber;
     }
+  }, [unwatchedTarget]);
 
-    setSelectedSeasonNumber(targetSeasonNum);
-    hasAutoNavigatedSeason.current = true;
-  }, [seasons, tvId]);
-
+  // Fetch season data for the selected season (pagesCount=1)
   const { data: seasonData, loading, error } = useFetch(
-    `/tv/${tvId}/season/${selectedSeasonNumber}`
+    `/tv/${tvId}/season/${selectedSeasonNumber}`,
+    1
   );
 
-  // 2. Initial Load: Auto-scroll & focus the first unwatched episode in the selected season
+  // Auto-scroll & focus the first unwatched episode in the selected season
   useEffect(() => {
-    if (hasAutoNavigatedEpisode.current) return;
-    if (!seasonData?.episodes || seasonData.episodes.length === 0) return;
+    if (loading || !seasonData?.episodes || seasonData.episodes.length === 0) return;
 
-    const firstUnwatchedEp = seasonData.episodes.find((ep) => {
-      return !isSimklWatched({
-        tmdbId: tvId,
-        mediaType: "tv",
-        seasonNum: selectedSeasonNumber,
-        episodeNum: ep.episode_number,
-      });
-    });
+    // Find the target episode in this season
+    const targetEp =
+      seasonData.episodes.find((ep) => ep.episode_number === targetEpisodeNumRef.current) ||
+      seasonData.episodes.find((ep) => {
+        return !isSimklWatched({
+          tmdbId: tvId,
+          mediaType: "tv",
+          seasonNum: selectedSeasonNumber,
+          episodeNum: ep.episode_number,
+        });
+      }) ||
+      seasonData.episodes[0];
 
-    const targetEpNum = firstUnwatchedEp
-      ? firstUnwatchedEp.episode_number
-      : seasonData.episodes[0].episode_number;
+    const targetEpNum = targetEp.episode_number;
 
-    setTimeout(() => {
-      const epElement = document.getElementById(`episode-card-${tvId}-s${selectedSeasonNumber}-e${targetEpNum}`);
+    if (hasAutoNavigated.current) return;
+    hasAutoNavigated.current = true;
+
+    let attempts = 0;
+    const scrollAndFocusEpisode = () => {
+      const epId = `episode-card-${tvId}-s${selectedSeasonNumber}-e${targetEpNum}`;
+      const epElement = document.getElementById(epId);
+
       if (epElement) {
+        // Bring episode card into clear center view
         epElement.scrollIntoView({ behavior: "smooth", block: "center" });
-        const focusable = epElement.querySelector("button, select, input, [tabindex='0']");
-        if (focusable) focusable.focus();
-      }
-    }, 350);
 
-    hasAutoNavigatedEpisode.current = true;
-  }, [seasonData, selectedSeasonNumber, tvId]);
+        // Highlight/focus the Available Streams button or primary action of this episode
+        const streamHeader = epElement.querySelector(".sectionHeader");
+        const actionBtn =
+          streamHeader ||
+          epElement.querySelector(".refreshStreamsBtn") ||
+          epElement.querySelector("button, [tabindex='0']");
+
+        if (actionBtn && typeof actionBtn.focus === "function") {
+          actionBtn.focus({ preventScroll: true });
+        }
+        return;
+      }
+
+      attempts++;
+      if (attempts < 20) {
+        setTimeout(scrollAndFocusEpisode, 80);
+      }
+    };
+
+    const timer = setTimeout(scrollAndFocusEpisode, 120);
+    return () => clearTimeout(timer);
+  }, [loading, seasonData, selectedSeasonNumber, tvId]);
 
   const today = dayjs();
 
@@ -105,7 +199,11 @@ const SeasonsSection = ({ tvId, seasons, showTitle, posterPath }) => {
                 className="seasonSelect"
                 tabIndex="0"
                 value={selectedSeasonNumber}
-                onChange={(e) => setSelectedSeasonNumber(Number(e.target.value))}
+                onChange={(e) => {
+                  hasAutoNavigated.current = false;
+                  targetEpisodeNumRef.current = null;
+                  setSelectedSeasonNumber(Number(e.target.value));
+                }}
               >
                 {validSeasons.map((s) => {
                   const year = s.air_date ? s.air_date.substring(0, 4) : "";
@@ -133,6 +231,8 @@ const SeasonsSection = ({ tvId, seasons, showTitle, posterPath }) => {
                   const currentIndex = validSeasons.findIndex(s => s.season_number === selectedSeasonNumber);
                   if (currentIndex !== -1 && currentIndex < validSeasons.length - 1) {
                     const nextSeasonNum = validSeasons[currentIndex + 1].season_number;
+                    hasAutoNavigated.current = false;
+                    targetEpisodeNumRef.current = null;
                     setSelectedSeasonNumber(nextSeasonNum);
                     setTimeout(() => {
                       const btn = document.querySelector('.seasonControls .watchCheckmark');

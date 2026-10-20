@@ -160,7 +160,7 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
       ? `streams-refresh-${tmdbId}-s${seasonNum}-e${episodeNum}`
       : `streams-refresh-${tmdbId}`;
 
-  const loadStreams = async () => {
+  const loadStreams = async (isManualRefresh = false) => {
     const savedScrollY = typeof window !== "undefined" ? window.scrollY : 0;
     const activeEl = typeof document !== "undefined" ? document.activeElement : null;
     const restoreTargetId = (activeEl && activeEl.id) || refreshBtnId || headerId;
@@ -276,7 +276,7 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
     setHiddenStreams(excluded10Bit);
     setStreams(keptStreams);
 
-    if (typeof window !== "undefined") {
+    if (isManualRefresh && typeof window !== "undefined") {
       window.scrollTo({ top: savedScrollY, behavior: "instant" });
       setTimeout(() => {
         window.scrollTo({ top: savedScrollY, behavior: "instant" });
@@ -387,7 +387,7 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
               onClick={(e) => {
                 e.stopPropagation();
                 if (!isOpen) setIsOpen(true);
-                loadStreams();
+                loadStreams(true);
               }}
               onKeyDown={(e) => {
                 const code = e.keyCode;
@@ -395,7 +395,7 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
                   e.preventDefault();
                   e.stopPropagation();
                   if (!isOpen) setIsOpen(true);
-                  loadStreams();
+                  loadStreams(true);
                 }
               }}
             >
@@ -423,7 +423,7 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
                       ? "Please enter your Premiumize API Key in Settings to resolve magnet torrent streams."
                       : "No torrent streams found for this title. You can try refreshing streams or check your search criteria."}
                   </p>
-                  <button id={refreshBtnId + "-empty"} className="configBtn" onClick={loadStreams} style={{ cursor: "pointer" }}>
+                  <button id={refreshBtnId + "-empty"} className="configBtn" onClick={() => loadStreams(true)} style={{ cursor: "pointer" }}>
                     Refresh Streams
                   </button>
                 </div>

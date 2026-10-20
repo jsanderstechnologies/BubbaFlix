@@ -283,6 +283,21 @@ export const focusTopLeftPoster = () => {
 
     // 2. If on Details page (/movie/*, /tv/*, /person/*, /collection/*), focus details page primary action button (.playbtn, .sectionHeader, .watchCheckmark, .favoriteStarBtn)
     if (isDetailsPage) {
+      const isTvPage = path.startsWith("/tv/");
+
+      // For TV series, prioritize the unwatched episode card / season stream action
+      if (isTvPage) {
+        const epTarget = document.querySelector(
+          ".episodeCard .sectionHeader, .episodeCard .refreshStreamsBtn, .episodeCard button, .seasonsSection [tabindex='0']"
+        );
+        if (epTarget) {
+          focusAndScroll(epTarget);
+          return;
+        }
+        // If episodes are still loading, leave navigation to SeasonsSection without forcing scroll to top
+        return;
+      }
+
       if (typeof window !== "undefined" && window.scrollY < 120) {
         window.scrollTo(0, 0);
         if (document.documentElement) document.documentElement.scrollTop = 0;

@@ -29,13 +29,13 @@ const DetailsBanner = ({ video, crew }) => {
 	const { data, loading } = useFetch(`/${mediaType}/${id}`);
 
 	useEffect(() => {
-		if (!loading && data) {
+		if (!loading && data && mediaType !== "tv") {
 			const timer = setTimeout(() => {
 				focusTopLeftPoster();
 			}, 120);
 			return () => clearTimeout(timer);
 		}
-	}, [loading, data]);
+	}, [loading, data, mediaType]);
 
 	const { url } = useSelector((state) => state.home);
 

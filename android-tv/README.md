@@ -1,4 +1,4 @@
-# BubbaFlix TV 📺 - Native Android TV, Google TV & Fire TV App (v1.0.29)
+# BubbaFlix TV 📺 - Native Android TV, Google TV & Fire TV App (v1.0.30)
 
 **BubbaFlix TV** is the official native Android application for Android TV, Google TV, Chromecast with Google TV, Nvidia Shield, and Amazon Fire TV devices.
 
@@ -21,6 +21,7 @@ You can install **BubbaFlix TV** directly on any Firestick, Android TV, or Googl
 
 ## 🌟 Key Features
 
+- 🎯 **First Unwatched TV Episode Auto-Navigation (`v1.0.30`)**: When opening any TV series details page, BubbaFlix automatically switches to the correct season, scrolls down to the first unwatched (or in-progress) episode, and focuses its streams button while preventing scroll snap-back.
 - ↕️ **Home Page Vertical Viewport Scrolling (`v1.0.29`)**: Seamless vertical scrolling across all home carousel rows during remote D-pad and arrow navigation with intelligent edge-aware viewport tracking and modal protection.
 - 🛡️ **Dynamic Cache Invalidation & Stale Cache Defense (`v1.0.28`)**: Fixed long-lived immutable cache headers on metadata API requests and introduced query versioning (`_v=1.0.29`) to prevent TVs and WebViews from caching stale empty responses.
 - 🔍 **Multi-Endpoint Search & Media Type Auto-Tagging (`v1.0.28`)**: Concurrently searches `/search/tv` and `/search/movie` alongside `/search/multi`, ensuring titles with symbols and ampersands (*Georgie & Mandy's First Marriage*) are reliably found.
