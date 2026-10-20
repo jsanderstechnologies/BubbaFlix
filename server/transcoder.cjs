@@ -36,7 +36,7 @@ const getLocalVersionData = () => {
       return JSON.parse(fs.readFileSync(vFile, "utf8"));
     }
   } catch (e) {}
-  return { versionCode: 27, versionName: "1.0.26" };
+  return { versionCode: 28, versionName: "1.0.27" };
 };
 
 
@@ -70,20 +70,33 @@ const getTmdbCacheKey = (tmdbPath, queryParams) => {
 
 const FOREIGN_SCRIPT_REGEX_SERVER = /[\u0400-\u04FF\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uac00-\ud7af\u0600-\u06FF\u0900-\u097F\u0E00-\u0E7F\u0370-\u03FF\u0590-\u05FF\u1EA0-\u1EF9]/;
 
-const ADULT_KEYWORDS_SERVER = [
-  "xxx", "adult", "erotic", "porn", "hentai", "nude", "sex", "uncensored", 
-  "striptease", "playboy", "penthouse", "softcore", "hardcore", "erotica", "sensual",
-  "taboo", "fetish", "babe", "vixen", "desire", "passion", "lust", "naughty", "explicit"
+const PORN_TITLE_KEYWORDS_SERVER = [
+  "xxx", "porn", "hentai", "striptease", "playboy", "penthouse", 
+  "softcore", "hardcore", "erotica", "brazzers", "gangbang", "orgy", 
+  "suicidegirls", "playmate", "hustler", "bdsm"
 ];
+
+const PORN_OVERVIEW_REGEX_SERVER = /\b(pornography|hardcore porn|softcore porn|adult film|xxx video|gangbang|erotic sex)\b/i;
 
 const isAdultServer = (item) => {
   if (!item || typeof item !== "object") return false;
   if (item.adult === true) return true;
+
   const title = (item.title || item.name || item.original_title || item.original_name || "").toLowerCase();
+
+  // Allow mainstream exceptions like the xXx franchise
+  if ((item.vote_count || 0) > 200 && (title.includes("xander cage") || title.includes("state of the union"))) {
+    return false;
+  }
+
+  // Check whole words in title for explicit porn terms
+  const titleWords = title.split(/[\s,._\-:;!?/]+/);
+  if (titleWords.some((w) => PORN_TITLE_KEYWORDS_SERVER.includes(w))) return true;
+
+  // Overview explicit phrase check (whole word pattern, never substring match on "adult" or "sex")
   const overview = (item.overview || "").toLowerCase();
-  const words = title.split(/[\s,._\-:;]+/);
-  if (words.some((w) => ADULT_KEYWORDS_SERVER.includes(w))) return true;
-  if (ADULT_KEYWORDS_SERVER.some((kw) => title.includes(kw) || overview.includes(kw))) return true;
+  if (overview && PORN_OVERVIEW_REGEX_SERVER.test(overview)) return true;
+
   return false;
 };
 

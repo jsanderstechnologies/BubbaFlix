@@ -1,4 +1,4 @@
-# BubbaFlix TV 📺 - Native Android TV, Google TV & Fire TV App (v1.0.26)
+# BubbaFlix TV 📺 - Native Android TV, Google TV & Fire TV App (v1.0.27)
 
 **BubbaFlix TV** is the official native Android application for Android TV, Google TV, Chromecast with Google TV, Nvidia Shield, and Amazon Fire TV devices.
 
@@ -21,9 +21,12 @@ You can install **BubbaFlix TV** directly on any Firestick, Android TV, or Googl
 
 ## 🌟 Key Features
 
-- 🔍 **Interactive Search Bar Input & Soft Keyboard Engine**: Free editing and appending on the search page with instant soft keyboard toggle on OK/Enter press and seamless backspace/clear support without being kicked out.
-- ⬆️ **Smart Remote "Back to Top" & Home Key Navigation**: Pressing the remote `Home` key or pressing `Back` when scrolled deep down a page (`scrollY > 400`) smoothly returns focus and scroll to the top navigation header.
-- 📺 **Expanded "On The Air" TV Series Coverage**: Multi-page air-date querying ensures upcoming weekly episodes are reliably featured in the dedicated On The Air section.
+- 📺 **Explore TV Series "On The Air" & "Airing Today" Sorts (`v1.0.27`)**: Dedicated sorting filters with seamless infinite scrolling and persistent selection across detail screens.
+- 🛡️ **Adult Filter Precision & Title Restoration (`v1.0.27`)**: Strict word-boundary regex filtering prevents false positives on words like "adulthood", restoring titles like *Georgie & Mandy's First Marriage* to search and carousels.
+- 🕹️ **Remote D-Pad Repeat Throttle & Jitter Defense (`v1.0.27`)**: 110ms repeat throttling and dynamic instant scrolling eliminate focus jumping and jitter when holding down D-pad arrows or Page Up/Down buttons.
+- 🔍 **Interactive Search Bar Input & Soft Keyboard Engine (`v1.0.26`)**: Free editing and appending on the search page with instant soft keyboard toggle on OK/Enter press and seamless backspace/clear support without being kicked out.
+- ⬆️ **Smart Remote "Back to Top" & Home Key Navigation (`v1.0.26`)**: Pressing the remote `Home` key or pressing `Back` when scrolled deep down a page (`scrollY > 400`) smoothly returns focus and scroll to the top navigation header.
+- 📺 **Expanded "On The Air" TV Series Coverage (`v1.0.26`)**: Multi-page air-date querying ensures upcoming weekly episodes are reliably featured in the dedicated On The Air section.
 
 - ⚡ **ExoPlayer 64MB Ahead-Buffering Engine (`PlayerActivity.kt`)**: Tuned with `DefaultLoadControl` to buffer up to 64MB / 300 seconds ahead during stream playback, eliminating freezing, stutters, and buffering loops on 4K / 1080p high-bitrate media.
 - 🛡️ **`largeHeap` & Background Memory Defense**: Added Android manifest `android:largeHeap="true"` and background WebView pausing/memory trimming during video playback to prevent out-of-memory crashes on memory-constrained devices.

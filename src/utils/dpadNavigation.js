@@ -1,5 +1,8 @@
 // D-Pad / Smart TV Remote Spatial Navigation & Keyboard Control Engine for BubbaFlix
-import { goBackToSource, restoreLastFocusedPoster } from "./focusManager";
+import { goBackToSource, restoreLastFocusedPoster, cancelPosterRestore } from "./focusManager";
+
+let lastNavTime = 0;
+const NAV_REPEAT_THROTTLE_MS = 110;
 
 export const isTvDevice = () => {
   if (typeof window === "undefined") return false;
@@ -100,11 +103,13 @@ const getFocusableElements = () => {
   });
 };
 
-const focusAndScroll = (el) => {
+const focusAndScroll = (el, isHoldingKey = false) => {
   if (!el) return;
-  el.focus();
+  el.focus({ preventScroll: true });
 
   const parentCarousel = el.closest(".carouselItems");
+  const scrollBehavior = isHoldingKey ? "auto" : "smooth";
+
   if (parentCarousel) {
     const itemLeft = el.offsetLeft;
     const itemWidth = el.offsetWidth;
@@ -115,20 +120,20 @@ const focusAndScroll = (el) => {
     if (itemLeft + itemWidth > containerLeft + containerWidth - 40) {
       parentCarousel.scrollTo({
         left: itemLeft + itemWidth - containerWidth + 60,
-        behavior: "smooth",
+        behavior: scrollBehavior,
       });
     } else if (itemLeft < containerLeft + 40) {
       parentCarousel.scrollTo({
         left: Math.max(0, itemLeft - 60),
-        behavior: "smooth",
+        behavior: scrollBehavior,
       });
     }
   } else {
     const episodeCard = el.closest(".episodeCard");
     if (episodeCard) {
-      el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+      el.scrollIntoView({ behavior: scrollBehavior, block: "center", inline: "nearest" });
     } else {
-      el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+      el.scrollIntoView({ behavior: scrollBehavior, block: "nearest", inline: "nearest" });
     }
   }
 };
@@ -535,12 +540,24 @@ export const initDpadNavigation = () => {
 
     if (!direction) return;
 
+    // Immediately cancel any pending background restore timer so it never pulls focus back
+    cancelPosterRestore();
+
     // Prevent D-Pad spatial navigation from stealing focus out of video player progress bar / scroll bar on Left/Right holding
     if (isProgressBarElement(activeEl) && (direction === "ArrowLeft" || direction === "ArrowRight")) {
       e.preventDefault();
       e.stopPropagation();
       return;
     }
+
+    const now = Date.now();
+    const isRepeat = Boolean(e.repeat) || (now - lastNavTime < 130);
+    if (e.repeat && (now - lastNavTime < NAV_REPEAT_THROTTLE_MS)) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    lastNavTime = now;
 
     e.preventDefault();
 
@@ -551,7 +568,7 @@ export const initDpadNavigation = () => {
       if (document.body.classList.contains("videoPlayerActive")) {
         const progressBar = document.querySelector(".videoPlayerModal .progress-bar, .videoPlayerModal [role='slider']");
         if (progressBar) {
-          focusAndScroll(progressBar);
+          focusAndScroll(progressBar, isRepeat);
           return;
         }
       }
@@ -568,7 +585,7 @@ export const initDpadNavigation = () => {
           return r.top >= 40 && r.bottom <= window.innerHeight + 100 && r.width > 0 && r.height > 0 && !el.classList.contains("detailsPageBackBtn");
         });
         if (visibleInViewport.length > 0) {
-          focusAndScroll(visibleInViewport[0]);
+          focusAndScroll(visibleInViewport[0], isRepeat);
           return;
         }
       }
@@ -586,7 +603,7 @@ export const initDpadNavigation = () => {
         if (focusables.includes(activeEl.nextElementSibling)) {
           const rNext = activeEl.nextElementSibling.getBoundingClientRect();
           if (Math.abs(rNext.top - r1.top) < r1.height * 0.7) {
-            focusAndScroll(activeEl.nextElementSibling);
+            focusAndScroll(activeEl.nextElementSibling, isRepeat);
             return;
           }
         }
@@ -595,7 +612,7 @@ export const initDpadNavigation = () => {
         if (focusables.includes(activeEl.previousElementSibling)) {
           const rPrev = activeEl.previousElementSibling.getBoundingClientRect();
           if (Math.abs(rPrev.top - r1.top) < r1.height * 0.7) {
-            focusAndScroll(activeEl.previousElementSibling);
+            focusAndScroll(activeEl.previousElementSibling, isRepeat);
             return;
           }
         }
@@ -671,7 +688,7 @@ export const initDpadNavigation = () => {
           return rA.top - rB.top;
         });
 
-        focusAndScroll(rowCandidates[0]);
+        focusAndScroll(rowCandidates[0], isRepeat);
         return;
       } else if (direction === "ArrowUp") {
         let targetBottom = 0;
@@ -696,7 +713,7 @@ export const initDpadNavigation = () => {
           return rB.bottom - rA.bottom;
         });
 
-        focusAndScroll(rowCandidates[0]);
+        focusAndScroll(rowCandidates[0], isRepeat);
         return;
       } else {
         candidates.sort((a, b) => {
@@ -709,7 +726,7 @@ export const initDpadNavigation = () => {
           return distA - distB;
         });
 
-        focusAndScroll(candidates[0]);
+        focusAndScroll(candidates[0], isRepeat);
         return;
       }
     }
@@ -723,7 +740,7 @@ export const initDpadNavigation = () => {
           const rB = b.getBoundingClientRect();
           return Math.abs(rA.left - c1.x) - Math.abs(rB.left - c1.x);
         });
-        focusAndScroll(navButtons[0]);
+        focusAndScroll(navButtons[0], isRepeat);
       }
     }
   };
@@ -732,7 +749,6 @@ export const initDpadNavigation = () => {
 
   return () => {
     window.removeEventListener("keydown", handleKeyDown, true);
-    window.removeEventListener("focusin", handleFocusIn, true);
     window.removeEventListener("popstate", handleRouteChange);
   };
 };

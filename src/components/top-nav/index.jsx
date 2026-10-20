@@ -30,8 +30,7 @@ const TopNav = () => {
 	};
 
 	const handleNav = (targetPath) => {
-		const isCurrentlyActive = isActive(targetPath) === "active" || location.pathname === targetPath;
-		if (isCurrentlyActive) {
+		if (location.pathname === targetPath) {
 			window.scrollTo({ top: 0, behavior: "smooth" });
 			return;
 		}

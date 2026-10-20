@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import InfiniteScroll from "react-infinite-scroll-component";
+import dayjs from "dayjs";
 
 import "./index.scss";
 
@@ -15,19 +16,90 @@ import Spinner from "../../components/spinner";
 import TopNav from "../../components/top-nav";
 import { FiSliders, FiLayers, FiFilm } from "react-icons/fi";
 
-let filters = {};
 let cachedCollections = null;
 
 const getSortOptions = (mediaType) => [
 	{ value: "popularity.desc", label: "Sort by Popularity (High to Low)" },
+	...(mediaType === "tv"
+		? [
+			{ value: "tv_on_the_air", label: "TV Shows On The Air" },
+			{ value: "tv_airing_today", label: "TV Shows Airing Today" },
+		  ]
+		: []),
 	{ value: "vote_average.desc", label: "Sort by Rating (Top Rated)" },
-	{ value: "primary_release_date.desc", label: "Sort by Release Date (Newest)" },
+	{ value: mediaType === "tv" ? "first_air_date.desc" : "primary_release_date.desc", label: "Sort by Release Date (Newest)" },
 	{ value: mediaType === "tv" ? "name.asc" : "original_title.asc", label: "Sort Alphabetically (A-Z)" },
 	{ value: mediaType === "tv" ? "name.desc" : "original_title.desc", label: "Sort Alphabetically (Z-A)" },
 	{ value: "popularity.asc", label: "Sort by Popularity (Low to High)" },
 	{ value: "vote_average.asc", label: "Sort by Rating (Lowest)" },
-	{ value: "primary_release_date.asc", label: "Sort by Release Date (Oldest)" },
+	{ value: mediaType === "tv" ? "first_air_date.asc" : "primary_release_date.asc", label: "Sort by Release Date (Oldest)" },
 ];
+
+const getExploreEndpoint = (mediaType, sortBy, page) => {
+	if (mediaType === "tv") {
+		if (sortBy === "tv_on_the_air" || sortBy === "on_the_air") {
+			return `/tv/on_the_air?page=${page}`;
+		}
+		if (sortBy === "tv_airing_today" || sortBy === "airing_today") {
+			return `/tv/airing_today?page=${page}`;
+		}
+	}
+	return `/discover/${mediaType}?page=${page}`;
+};
+
+const getValidSortForMedia = (sortBy, mediaType) => {
+	if (!sortBy) return "popularity.desc";
+	let mapped = sortBy;
+	if (mediaType === "tv") {
+		if (mapped === "on_the_air") mapped = "tv_on_the_air";
+		else if (mapped === "airing_today") mapped = "tv_airing_today";
+		else if (mapped === "primary_release_date.desc") mapped = "first_air_date.desc";
+		else if (mapped === "primary_release_date.asc") mapped = "first_air_date.asc";
+		else if (mapped === "original_title.asc") mapped = "name.asc";
+		else if (mapped === "original_title.desc") mapped = "name.desc";
+	} else {
+		if (mapped === "tv_on_the_air" || mapped === "on_the_air" || mapped === "tv_airing_today" || mapped === "airing_today") {
+			mapped = "popularity.desc";
+		} else if (mapped === "first_air_date.desc") mapped = "primary_release_date.desc";
+		else if (mapped === "first_air_date.asc") mapped = "primary_release_date.asc";
+		else if (mapped === "name.asc") mapped = "original_title.asc";
+		else if (mapped === "name.desc") mapped = "original_title.desc";
+	}
+	const validValues = getSortOptions(mediaType).map((opt) => opt.value);
+	return validValues.includes(mapped) ? mapped : "popularity.desc";
+};
+
+const buildDiscoverFilters = (sortByValue, mediaType) => {
+	const today = dayjs().format("YYYY-MM-DD");
+	const baseFilters = {
+		sort_by: sortByValue || "popularity.desc",
+		with_original_language: "en",
+	};
+
+	if (sortByValue === "tv_on_the_air" || sortByValue === "tv_airing_today") {
+		return { with_original_language: "en" };
+	} else if (sortByValue === "vote_average.desc") {
+		baseFilters["vote_count.gte"] = mediaType === "tv" ? 250 : 300;
+	} else if (sortByValue === "vote_average.asc") {
+		baseFilters["vote_count.gte"] = 10;
+	} else if (sortByValue === "primary_release_date.desc") {
+		baseFilters["primary_release_date.lte"] = today;
+		baseFilters["vote_count.gte"] = 5;
+	} else if (sortByValue === "primary_release_date.asc") {
+		baseFilters["primary_release_date.gte"] = "1880-01-01";
+		baseFilters["vote_count.gte"] = 5;
+	} else if (sortByValue === "first_air_date.desc") {
+		baseFilters["first_air_date.lte"] = today;
+		baseFilters["vote_count.gte"] = 5;
+	} else if (sortByValue === "first_air_date.asc") {
+		baseFilters["first_air_date.gte"] = "1930-01-01";
+		baseFilters["vote_count.gte"] = 5;
+	} else {
+		baseFilters["vote_count.gte"] = 10;
+	}
+
+	return baseFilters;
+};
 
 const COLLECTION_KEYWORDS = [
 	"marvel", "avengers", "star", "dark", "harry", "potter", "fast", "furious", "dragon", 
@@ -42,10 +114,19 @@ const COLLECTION_KEYWORDS = [
 
 const Explore = () => {
 	const { mediaType } = useParams();
+	const navigate = useNavigate();
+	const [searchParams] = useSearchParams();
+
+	const currentFiltersRef = useRef({});
 	const [data, setData] = useState(null);
 	const [pageNum, setPageNum] = useState(1);
 	const [loading, setLoading] = useState(false);
-	const [sortby, setSortby] = useState(() => sessionStorage.getItem(`explore_sort_${mediaType}`) || "popularity.desc");
+	
+	const initialSort = getValidSortForMedia(
+		searchParams.get("sort") || sessionStorage.getItem(`explore_sort_${mediaType}`),
+		mediaType
+	);
+	const [sortby, setSortby] = useState(initialSort);
 	
 	// Movies vs Collections Sub-Tabs
 	const [movieTab, setMovieTab] = useState(() => sessionStorage.getItem("explore_movie_tab") || "movies");
@@ -57,12 +138,14 @@ const Explore = () => {
 	const [colLoading, setColLoading] = useState(false);
 	const [colHasMore, setColHasMore] = useState(true);
 
-	const fetchInitialData = () => {
+	const fetchInitialData = (overrideFilters, activeSortVal) => {
 		setLoading(true);
+		const f = overrideFilters || currentFiltersRef.current;
+		const s = activeSortVal || sortby;
 		Promise.all([
-			fetchDataFromAPI(`/discover/${mediaType}?page=1`, filters).catch(() => null),
-			fetchDataFromAPI(`/discover/${mediaType}?page=2`, filters).catch(() => null),
-			fetchDataFromAPI(`/discover/${mediaType}?page=3`, filters).catch(() => null),
+			fetchDataFromAPI(getExploreEndpoint(mediaType, s, 1), f).catch(() => null),
+			fetchDataFromAPI(getExploreEndpoint(mediaType, s, 2), f).catch(() => null),
+			fetchDataFromAPI(getExploreEndpoint(mediaType, s, 3), f).catch(() => null),
 		]).then(async ([res1, res2, res3]) => {
 			const list1 = Array.isArray(res1?.results) ? res1.results : [];
 			const list2 = Array.isArray(res2?.results) ? res2.results : [];
@@ -88,9 +171,10 @@ const Explore = () => {
 	const fetchNextPageData = () => {
 		const p1 = pageNum;
 		const p2 = pageNum + 1;
+		const f = currentFiltersRef.current;
 		Promise.all([
-			fetchDataFromAPI(`/discover/${mediaType}?page=${p1}`, filters).catch(() => null),
-			fetchDataFromAPI(`/discover/${mediaType}?page=${p2}`, filters).catch(() => null),
+			fetchDataFromAPI(getExploreEndpoint(mediaType, sortby, p1), f).catch(() => null),
+			fetchDataFromAPI(getExploreEndpoint(mediaType, sortby, p2), f).catch(() => null),
 		]).then(async ([res1, res2]) => {
 			const list1 = Array.isArray(res1?.results) ? res1.results : [];
 			const list2 = Array.isArray(res2?.results) ? res2.results : [];
@@ -110,36 +194,6 @@ const Explore = () => {
 			setPageNum((prev) => prev + 2);
 		});
 	};
-
-const filterEnglishCollections = (items) => {
-	if (!Array.isArray(items)) return [];
-
-	const adultKeywords = [
-		"xxx", "adult", "erotic", "porn", "hentai", "nude", "sex", "uncensored", 
-		"striptease", "playboy", "penthouse", "softcore", "hardcore", "erotica", "sensual"
-	];
-
-	const foreignScriptRegex = /[\u0400-\u04FF\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uac00-\ud7af\u0600-\u06FF\u0900-\u097F\u0E00-\u0E7F\u0370-\u03FF]/;
-
-	return items.filter((col) => {
-		if (!col) return false;
-		if (col.adult === true) return false;
-
-		const name = (col.name || col.title || "").toLowerCase();
-		const words = name.split(/\s+/);
-		if (words.some((w) => adultKeywords.includes(w))) return false;
-		if (adultKeywords.some((kw) => name.includes(kw))) return false;
-
-		if (foreignScriptRegex.test(col.name || col.title || "")) return false;
-
-		if (col.original_language) {
-			const lang = col.original_language.toLowerCase();
-			if (lang !== "en" && lang !== "eng") return false;
-		}
-
-		return true;
-	});
-};
 
 	const fetchNextCollectionsPage = () => {
 		if (colLoading || !colHasMore) return;
@@ -176,18 +230,23 @@ const filterEnglishCollections = (items) => {
 	};
 
 	useEffect(() => {
-		const savedSort = sessionStorage.getItem(`explore_sort_${mediaType}`) || "popularity.desc";
-		filters = { 
-			sort_by: savedSort,
-			with_original_language: "en",
-			"vote_count.gte": 10
-		};
+		const rawSort = searchParams.get("sort") || sessionStorage.getItem(`explore_sort_${mediaType}`) || "popularity.desc";
+		const activeSort = getValidSortForMedia(rawSort, mediaType);
+		setSortby(activeSort);
+		sessionStorage.setItem(`explore_sort_${mediaType}`, activeSort);
+
+		if (searchParams.get("sort") !== activeSort) {
+			navigate(`/explore/${mediaType}?sort=${encodeURIComponent(activeSort)}`, { replace: true });
+		}
+
+		const activeFilters = buildDiscoverFilters(activeSort, mediaType);
+		currentFiltersRef.current = activeFilters;
+
 		setData(null);
 		setPageNum(1);
-		setSortby(savedSort);
 		const savedTab = sessionStorage.getItem("explore_movie_tab") || "movies";
 		setMovieTab(savedTab);
-		fetchInitialData();
+		fetchInitialData(activeFilters, activeSort);
 
 		if (mediaType === "movie") {
 			setColKeywordIndex(0);
@@ -250,20 +309,21 @@ const filterEnglishCollections = (items) => {
 	}, [data, collectionsList, movieTab]);
 
 	const handleSortChange = (e) => {
-		const val = e.target.value;
-		setSortby(val);
-		sessionStorage.setItem(`explore_sort_${mediaType}`, val);
-		if (val) {
-			filters.sort_by = val;
-		} else {
-			delete filters.sort_by;
-		}
+		const rawVal = e.target.value;
+		const validSort = getValidSortForMedia(rawVal, mediaType);
+		setSortby(validSort);
+		sessionStorage.setItem(`explore_sort_${mediaType}`, validSort);
+		navigate(`/explore/${mediaType}?sort=${encodeURIComponent(validSort)}`, { replace: true });
+
+		const newFilters = buildDiscoverFilters(validSort, mediaType);
+		currentFiltersRef.current = newFilters;
+		setData(null);
 		setPageNum(1);
-		fetchInitialData();
+		fetchInitialData(newFilters, validSort);
 	};
 
 	return (
-		<div className="explorePage">
+		<div className="explorePage" data-section-id="explore">
 			<TopNav />
 			<ContentWrapper>
 				<div className="pageHeader">
@@ -310,17 +370,7 @@ const filterEnglishCollections = (items) => {
 									<select
 										className="tvSortSelect"
 										value={sortby}
-										onChange={(e) => {
-											const val = e.target.value;
-											setSortby(val);
-											if (val) {
-												filters.sort_by = val;
-											} else {
-												delete filters.sort_by;
-											}
-											setPageNum(1);
-											fetchInitialData();
-										}}
+										onChange={handleSortChange}
 										tabIndex="0"
 										style={{ 
 											appearance: "none", 
@@ -385,6 +435,7 @@ const filterEnglishCollections = (items) => {
 													key={`${item.id}-${index}`}
 													data={item}
 													mediaType={mediaType}
+													sectionId="explore"
 												/>
 											);
 										})}

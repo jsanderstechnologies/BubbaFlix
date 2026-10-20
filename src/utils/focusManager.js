@@ -48,14 +48,32 @@ export const goBackToSource = (navigate) => {
   restoreLastFocusedPoster();
 };
 
+export const cancelPosterRestore = () => {
+  if (restoreTimer) {
+    clearTimeout(restoreTimer);
+    restoreTimer = null;
+  }
+  restoreAttempts = 0;
+  if (typeof window !== "undefined") {
+    sessionStorage.removeItem("poster_restore_pending");
+    sessionStorage.removeItem("last_clicked_poster_id");
+    sessionStorage.removeItem("last_clicked_scroll_y");
+    sessionStorage.removeItem("last_clicked_source_path");
+    sessionStorage.removeItem("last_clicked_section_id");
+    sessionStorage.removeItem("last_clicked_tmdb_id");
+    sessionStorage.removeItem("last_clicked_media_type");
+  }
+};
+
 export const restoreLastFocusedPoster = () => {
   if (typeof window === "undefined") return;
 
+  const isPending = sessionStorage.getItem("poster_restore_pending") === "true";
   const lastId = sessionStorage.getItem("last_clicked_poster_id");
   const savedScrollY = sessionStorage.getItem("last_clicked_scroll_y");
-  const isPending = sessionStorage.getItem("poster_restore_pending") === "true";
 
-  if (!lastId && !isPending && !savedScrollY) return;
+  // Only restore if a return from details page is explicitly pending
+  if (!isPending || (!lastId && !savedScrollY)) return;
 
   // Clear any existing poll timer so we don't run multiple concurrent timers
   if (restoreTimer) {
@@ -203,33 +221,14 @@ export const restoreLastFocusedPoster = () => {
       el.focus({ preventScroll: true });
     }
 
-    // D. Re-verify focus and viewport visibility after smooth scroll completes (150ms)
-    setTimeout(() => {
-      const activeNow = typeof document !== "undefined" ? document.activeElement : null;
-      const inputFocusedNow =
-        activeNow &&
-        (activeNow.tagName === "INPUT" ||
-          activeNow.tagName === "TEXTAREA" ||
-          activeNow.classList?.contains("mainSearchInput") ||
-          activeNow.closest?.(".searchInputWrapper"));
-
-      if (!inputFocusedNow && activeNow !== el) {
-        el.focus({ preventScroll: true });
-      }
-      const r = el.getBoundingClientRect();
-      if (r.top < 60 || r.bottom > window.innerHeight) {
-        el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
-      }
-    }, 150);
-
-    // E. Clear session storage flags once restoration is fully complete
+    // Clear session storage flags immediately once restoration is complete
+    sessionStorage.removeItem("poster_restore_pending");
     sessionStorage.removeItem("last_clicked_poster_id");
     sessionStorage.removeItem("last_clicked_scroll_y");
     sessionStorage.removeItem("last_clicked_source_path");
     sessionStorage.removeItem("last_clicked_section_id");
     sessionStorage.removeItem("last_clicked_tmdb_id");
     sessionStorage.removeItem("last_clicked_media_type");
-    sessionStorage.removeItem("poster_restore_pending");
   };
 
   checkAndRestore();

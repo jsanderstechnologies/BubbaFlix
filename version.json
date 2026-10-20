@@ -1,6 +1,6 @@
 {
-  "versionCode": 27,
-  "versionName": "1.0.26",
+  "versionCode": 28,
+  "versionName": "1.0.27",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.26: Fixed search bar editing lock so users can freely edit and add text without leaving the page, added smart Back-to-Top remote navigation with Home key support, expanded On The Air multi-page coverage, and improved adult keyword precision."
+  "releaseNotes": "BubbaFlix TV v1.0.27: Added TV Shows On The Air & Airing Today sorting to Explore TV Series, fixed backend adult filter false-positive on adulthood (restoring Georgie & Mandy's First Marriage), hardened Explore Release Date sorting and sort retention across detail screens, and eliminated remote D-pad hold jitter with repeat pacing and instant scrolling."
 }
