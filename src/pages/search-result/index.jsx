@@ -152,15 +152,19 @@ const SearchResult = () => {
       Promise.all([
         fetchDataFromAPI(`/search/multi?query=${encodeURIComponent(queryStr)}&page=${page}`),
         fetchDataFromAPI(`/search/multi?query=${encodeURIComponent(queryStr)}&page=${page + 1}`),
+        fetchDataFromAPI(`/search/tv?query=${encodeURIComponent(queryStr)}&page=${page}`),
+        fetchDataFromAPI(`/search/movie?query=${encodeURIComponent(queryStr)}&page=${page}`),
         fetchDataFromAPI(`/search/collection?query=${encodeURIComponent(queryStr)}&page=${page}`),
       ])
-        .then(([multiRes1, multiRes2, colRes]) => {
+        .then(([multiRes1, multiRes2, tvRes, movieRes, colRes]) => {
           const list1 = filterEnglishResults(multiRes1?.results || []);
           const list2 = filterEnglishResults(multiRes2?.results || []);
+          const tvList = filterEnglishResults(tvRes?.results || []).map((item) => ({ ...item, media_type: "tv" }));
+          const movieList = filterEnglishResults(movieRes?.results || []).map((item) => ({ ...item, media_type: "movie" }));
           const colList = filterEnglishCollections(colRes?.results || []).map((item) => ({ ...item, media_type: "collection" }));
           
           const existingIds = new Set();
-          const combinedMulti = [...list1, ...list2].filter((item) => {
+          const combinedMedia = [...tvList, ...movieList, ...list1, ...list2].filter((item) => {
             if (!item || !item.id) return false;
             if (existingIds.has(item.id)) return false;
             existingIds.add(item.id);
@@ -169,7 +173,7 @@ const SearchResult = () => {
 
           setData({
             ...(multiRes1 || {}),
-            results: [...colList, ...combinedMulti],
+            results: [...colList, ...combinedMedia],
           });
           setPageNum(3);
           setLoading(false);
@@ -199,6 +203,14 @@ const SearchResult = () => {
         let list1 = filterType === "person" ? (res1?.results || []) : filterEnglishResults(res1?.results || []);
         let list2 = filterType === "person" ? (res2?.results || []) : filterEnglishResults(res2?.results || []);
         
+        if (filterType === "tv") {
+          list1 = list1.map((item) => ({ ...item, media_type: "tv" }));
+          list2 = list2.map((item) => ({ ...item, media_type: "tv" }));
+        } else if (filterType === "movie") {
+          list1 = list1.map((item) => ({ ...item, media_type: "movie" }));
+          list2 = list2.map((item) => ({ ...item, media_type: "movie" }));
+        }
+
         const existingIds = new Set();
         const combined = [...list1, ...list2].filter((item) => {
           if (!item || !item.id) return false;
@@ -383,11 +395,11 @@ const SearchResult = () => {
 
   const collectionsList = isActorSearch ? [] : (data?.results?.filter((item) => item.media_type === "collection" || activeFilter === "collection") || []);
   const moviesList = isActorSearch 
-    ? (data?.actorFeatures?.filter((item) => item.media_type === "movie") || []) 
-    : (data?.results?.filter((item) => item.media_type === "movie" || activeFilter === "movie") || []);
+    ? (data?.actorFeatures?.filter((item) => item.media_type === "movie" || (!item.media_type && item.title)) || []) 
+    : (data?.results?.filter((item) => item.media_type === "movie" || (!item.media_type && item.title) || activeFilter === "movie") || []);
   const tvList = isActorSearch 
-    ? (data?.actorFeatures?.filter((item) => item.media_type === "tv") || []) 
-    : (data?.results?.filter((item) => item.media_type === "tv" || activeFilter === "tv") || []);
+    ? (data?.actorFeatures?.filter((item) => item.media_type === "tv" || (!item.media_type && item.name)) || []) 
+    : (data?.results?.filter((item) => item.media_type === "tv" || (!item.media_type && item.name) || activeFilter === "tv") || []);
   const queryClean = searchQuery.trim().toLowerCase();
   const queryTokens = queryClean.split(/\s+/).filter(Boolean);
 

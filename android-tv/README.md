@@ -1,4 +1,4 @@
-# BubbaFlix TV 📺 - Native Android TV, Google TV & Fire TV App (v1.0.27)
+# BubbaFlix TV 📺 - Native Android TV, Google TV & Fire TV App (v1.0.28)
 
 **BubbaFlix TV** is the official native Android application for Android TV, Google TV, Chromecast with Google TV, Nvidia Shield, and Amazon Fire TV devices.
 
@@ -21,6 +21,9 @@ You can install **BubbaFlix TV** directly on any Firestick, Android TV, or Googl
 
 ## 🌟 Key Features
 
+- 🛡️ **Dynamic Cache Invalidation & Stale Cache Defense (`v1.0.28`)**: Fixed long-lived immutable cache headers on metadata API requests and introduced query versioning (`_v=1.0.28`) to prevent TVs and WebViews from caching stale empty responses.
+- 🔍 **Multi-Endpoint Search & Media Type Auto-Tagging (`v1.0.28`)**: Concurrently searches `/search/tv` and `/search/movie` alongside `/search/multi`, ensuring titles with symbols and ampersands (*Georgie & Mandy's First Marriage*) are reliably found.
+- 📺 **Prime-Time "On The Air" Sorting (`v1.0.28`)**: Re-ranked shows in the On The Air carousel to bring current prime-time broadcasting series right to the front of the home screen.
 - 📺 **Explore TV Series "On The Air" & "Airing Today" Sorts (`v1.0.27`)**: Dedicated sorting filters with seamless infinite scrolling and persistent selection across detail screens.
 - 🛡️ **Adult Filter Precision & Title Restoration (`v1.0.27`)**: Strict word-boundary regex filtering prevents false positives on words like "adulthood", restoring titles like *Georgie & Mandy's First Marriage* to search and carousels.
 - 🕹️ **Remote D-Pad Repeat Throttle & Jitter Defense (`v1.0.27`)**: 110ms repeat throttling and dynamic instant scrolling eliminate focus jumping and jitter when holding down D-pad arrows or Page Up/Down buttons.

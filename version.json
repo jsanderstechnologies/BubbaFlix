@@ -1,6 +1,6 @@
 {
-  "versionCode": 28,
-  "versionName": "1.0.27",
+  "versionCode": 29,
+  "versionName": "1.0.28",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.27: Added TV Shows On The Air & Airing Today sorting to Explore TV Series, fixed backend adult filter false-positive on adulthood (restoring Georgie & Mandy's First Marriage), hardened Explore Release Date sorting and sort retention across detail screens, and eliminated remote D-pad hold jitter with repeat pacing and instant scrolling."
+  "releaseNotes": "BubbaFlix TV v1.0.28: Resolved client and server HTTP metadata caching bugs (eliminating stale 30-day empty caches), added direct TV/Movie search integration with title-name fallbacks, ensured search and On The Air prominently display Georgie & Mandy's First Marriage, and tuned On The Air carousel prioritization for modern broadcasting hits."
 }

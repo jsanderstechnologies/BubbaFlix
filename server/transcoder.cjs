@@ -36,7 +36,7 @@ const getLocalVersionData = () => {
       return JSON.parse(fs.readFileSync(vFile, "utf8"));
     }
   } catch (e) {}
-  return { versionCode: 28, versionName: "1.0.27" };
+  return { versionCode: 29, versionName: "1.0.28" };
 };
 
 
@@ -630,7 +630,7 @@ const server = http.createServer((req, res) => {
     const memCached = tmdbMemoryCache.get(cacheKey);
     if (memCached && Date.now() - memCached.timestamp < TMDB_CACHE_TTL_MS) {
       logMessage(`[TMDB Cache Hit (RAM)] GET ${tmdbSubPath}`);
-      return sendJson(res, 200, memCached.data, { "Cache-Control": "public, max-age=2592000, s-maxage=2592000, immutable" });
+      return sendJson(res, 200, memCached.data, { "Cache-Control": "public, max-age=300, must-revalidate" });
     }
 
     // 2. Check Disk Cache
@@ -640,9 +640,13 @@ const server = http.createServer((req, res) => {
         if (Date.now() - fileStat.mtimeMs < TMDB_CACHE_TTL_MS) {
           const raw = fs.readFileSync(diskCacheFile, "utf-8");
           const parsedData = JSON.parse(raw);
-          tmdbMemoryCache.set(cacheKey, { timestamp: fileStat.mtimeMs, data: parsedData });
-          logMessage(`[TMDB Cache Hit (Disk)] GET ${tmdbSubPath}`);
-          return sendJson(res, 200, parsedData, { "Cache-Control": "public, max-age=2592000, s-maxage=2592000, immutable" });
+          // If disk cached file has empty results, treat as expired so fresh data is retrieved
+          const hasEmptyResults = Array.isArray(parsedData?.results) && parsedData.results.length === 0;
+          if (!hasEmptyResults) {
+            tmdbMemoryCache.set(cacheKey, { timestamp: fileStat.mtimeMs, data: parsedData });
+            logMessage(`[TMDB Cache Hit (Disk)] GET ${tmdbSubPath}`);
+            return sendJson(res, 200, parsedData, { "Cache-Control": "public, max-age=300, must-revalidate" });
+          }
         }
       } catch (e) {}
     }
@@ -673,10 +677,17 @@ const server = http.createServer((req, res) => {
             try {
               let parsed = JSON.parse(body);
               parsed = filterServerTmdbResults(parsed);
-              tmdbMemoryCache.set(cacheKey, { timestamp: Date.now(), data: parsed });
-              fs.writeFile(diskCacheFile, JSON.stringify(parsed), "utf-8", () => {});
+              const isEmptyResults = Array.isArray(parsed?.results) && parsed.results.length === 0;
+              // Never persist empty results to 30-day disk cache
+              if (!isEmptyResults) {
+                tmdbMemoryCache.set(cacheKey, { timestamp: Date.now(), data: parsed });
+                fs.writeFile(diskCacheFile, JSON.stringify(parsed), "utf-8", () => {});
+              } else {
+                // Short 30-second RAM cache for empty results
+                tmdbMemoryCache.set(cacheKey, { timestamp: Date.now() - TMDB_CACHE_TTL_MS + 30000, data: parsed });
+              }
               logMessage(`[TMDB Cache Miss -> Saved] GET ${tmdbSubPath}`);
-              return sendJson(res, 200, parsed, { "Cache-Control": "public, max-age=2592000, s-maxage=2592000, immutable" });
+              return sendJson(res, 200, parsed, { "Cache-Control": "public, max-age=300, must-revalidate" });
             } catch (err) {
               return sendJson(res, 500, { error: "Failed to parse TMDB response" });
             }

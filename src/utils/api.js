@@ -69,6 +69,7 @@ export const fetchDataFromAPI = async (url, params, forceRefresh = false) => {
     language: "en-US",
     with_original_language: "en",
     include_adult: false,
+    _v: "1.0.28",
     ...params,
   };
 
@@ -86,7 +87,11 @@ export const fetchDataFromAPI = async (url, params, forceRefresh = false) => {
     try {
       const serverEndpoint = `${serverBase}/api/tmdb${url}`;
       const { data } = await axios.get(serverEndpoint, {
-        headers: { Authorization: "bearer " + activeToken },
+        headers: {
+          Authorization: "bearer " + activeToken,
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+        },
         params: customParams,
         timeout: 3500, // Short timeout to fallback quickly if local server is unreachable
       });
@@ -108,6 +113,8 @@ export const fetchDataFromAPI = async (url, params, forceRefresh = false) => {
   try {
     const headers = {
       Authorization: "bearer " + activeToken,
+      "Cache-Control": "no-cache",
+      Pragma: "no-cache",
     };
 
     const { data } = await axios.get(BASE_URL + url, {

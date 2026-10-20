@@ -57,12 +57,21 @@ const DynamicSection = ({ section, onPlayResume }) => {
 
   if (section.id === "on_the_air") {
     const { data, loading } = useFetch("/tv/on_the_air", 12);
+    const sortedResults = Array.isArray(data?.results)
+      ? [...data.results].sort((a, b) => {
+          const yearA = parseInt((a.first_air_date || "2000").slice(0, 4), 10) || 2000;
+          const yearB = parseInt((b.first_air_date || "2000").slice(0, 4), 10) || 2000;
+          const scoreA = (yearA >= 2022 ? 50 : 0) + (a.vote_average || 0) * 6 + Math.min(a.popularity || 0, 80);
+          const scoreB = (yearB >= 2022 ? 50 : 0) + (b.vote_average || 0) * 6 + Math.min(b.popularity || 0, 80);
+          return scoreB - scoreA;
+        })
+      : [];
     return (
       <div className="carouselSection" data-section-id={section.id}>
         <ContentWrapper>
           <span className="carouselTitle">On The Air</span>
         </ContentWrapper>
-        <Caraousel data={data?.results} loading={loading} endpoint="tv" sectionId={section.id} />
+        <Caraousel data={sortedResults} loading={loading} endpoint="tv" sectionId={section.id} />
       </div>
     );
   }
