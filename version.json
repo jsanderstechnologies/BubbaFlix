@@ -1,6 +1,6 @@
 {
-  "versionCode": 29,
-  "versionName": "1.0.28",
+  "versionCode": 30,
+  "versionName": "1.0.29",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.28: Resolved client and server HTTP metadata caching bugs (eliminating stale 30-day empty caches), added direct TV/Movie search integration with title-name fallbacks, ensured search and On The Air prominently display Georgie & Mandy's First Marriage, and tuned On The Air carousel prioritization for modern broadcasting hits."
+  "releaseNotes": "BubbaFlix TV v1.0.29: Fixed home page vertical viewport scrolling across carousel rows during remote D-pad and keyboard navigation, added intelligent edge and jump scrolling, protected overlay modals from page scroll drift, and memoized home sections to eliminate render loops."
 }

@@ -107,8 +107,19 @@ const focusAndScroll = (el, isHoldingKey = false) => {
   if (!el) return;
   el.focus({ preventScroll: true });
 
-  const parentCarousel = el.closest(".carouselItems");
   const scrollBehavior = isHoldingKey ? "auto" : "smooth";
+
+  // Check if element is inside an overlay modal
+  const isInModal = !!el.closest(
+    ".posterActionModalOverlay, .sortModalOverlay, .customizeModalOverlay, .confirmModalOverlay, .videoPlayerModal"
+  );
+
+  if (isInModal) {
+    el.scrollIntoView({ behavior: scrollBehavior, block: "nearest", inline: "nearest" });
+    return;
+  }
+
+  const parentCarousel = el.closest(".carouselItems, .continueCarouselItems, .customCarouselGrid");
 
   if (parentCarousel) {
     const itemLeft = el.offsetLeft;
@@ -134,6 +145,33 @@ const focusAndScroll = (el, isHoldingKey = false) => {
       el.scrollIntoView({ behavior: scrollBehavior, block: "center", inline: "nearest" });
     } else {
       el.scrollIntoView({ behavior: scrollBehavior, block: "nearest", inline: "nearest" });
+    }
+  }
+
+  // Vertical viewport window scrolling for all page elements
+  if (typeof window !== "undefined") {
+    const rect = el.getBoundingClientRect();
+    const topNavOffset = 95; // TopNav / fixed header clearance
+    const bottomMargin = 60; // Bottom screen clearance
+
+    if (rect.top < topNavOffset) {
+      // Element is scrolled too far up or above the viewport: scroll up so element and row title are visible
+      window.scrollBy({
+        top: rect.top - topNavOffset - 20,
+        behavior: scrollBehavior,
+      });
+    } else if (rect.top >= window.innerHeight) {
+      // Element is completely off-screen below (PageDown / large jump): scroll down so row lands comfortably in view
+      window.scrollBy({
+        top: rect.top - topNavOffset - 20,
+        behavior: scrollBehavior,
+      });
+    } else if (rect.bottom > window.innerHeight - bottomMargin) {
+      // Element is partially cut off at bottom of viewport: scroll down just enough to reveal full element
+      window.scrollBy({
+        top: rect.bottom - window.innerHeight + bottomMargin + 20,
+        behavior: scrollBehavior,
+      });
     }
   }
 };

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import TopNav from "../../components/top-nav";
 import ContentWrapper from "../../components/content-wrapper";
@@ -26,129 +26,153 @@ import {
 } from "react-icons/fi";
 import "./index.scss";
 
-const DynamicSection = ({ section, onPlayResume }) => {
-  const navigate = useNavigate();
+const TrendingSection = ({ section }) => {
+  const [endPoint, setEndPoint] = useState("day");
+  const { data, loading } = useFetch(`/trending/all/${endPoint}`);
+  return (
+    <div className="carouselSection" data-section-id={section.id}>
+      <ContentWrapper>
+        <span className="carouselTitle">Trending Content</span>
+      </ContentWrapper>
+      <Caraousel data={data?.results} loading={loading} sectionId={section.id} />
+    </div>
+  );
+};
 
-  // Endpoints for TMDB queries
-  if (section.id === "trending") {
-    const [endPoint, setEndPoint] = useState("day");
-    const { data, loading } = useFetch(`/trending/all/${endPoint}`);
-    return (
-      <div className="carouselSection" data-section-id={section.id}>
-        <ContentWrapper>
-          <span className="carouselTitle">Trending Content</span>
-        </ContentWrapper>
-        <Caraousel data={data?.results} loading={loading} sectionId={section.id} />
-      </div>
-    );
-  }
+const NewMoviesSection = ({ section }) => {
+  const { data, loading } = useFetch("/movie/now_playing");
+  return (
+    <div className="carouselSection" data-section-id={section.id}>
+      <ContentWrapper>
+        <span className="carouselTitle">New Release Movies</span>
+      </ContentWrapper>
+      <Caraousel data={data?.results} loading={loading} endpoint="movie" sectionId={section.id} />
+    </div>
+  );
+};
 
-  if (section.id === "new_movies") {
-    const { data, loading } = useFetch("/movie/now_playing");
-    return (
-      <div className="carouselSection" data-section-id={section.id}>
-        <ContentWrapper>
-          <span className="carouselTitle">New Release Movies</span>
-        </ContentWrapper>
-        <Caraousel data={data?.results} loading={loading} endpoint="movie" sectionId={section.id} />
-      </div>
-    );
-  }
+const OnTheAirSection = ({ section }) => {
+  const { data, loading } = useFetch("/tv/on_the_air", 12);
+  const sortedResults = useMemo(() => {
+    if (!Array.isArray(data?.results)) return [];
+    return [...data.results].sort((a, b) => {
+      const yearA = parseInt((a.first_air_date || "2000").slice(0, 4), 10) || 2000;
+      const yearB = parseInt((b.first_air_date || "2000").slice(0, 4), 10) || 2000;
+      const scoreA = (yearA >= 2022 ? 50 : 0) + (a.vote_average || 0) * 6 + Math.min(a.popularity || 0, 80);
+      const scoreB = (yearB >= 2022 ? 50 : 0) + (b.vote_average || 0) * 6 + Math.min(b.popularity || 0, 80);
+      return scoreB - scoreA;
+    });
+  }, [data?.results]);
 
-  if (section.id === "on_the_air") {
-    const { data, loading } = useFetch("/tv/on_the_air", 12);
-    const sortedResults = Array.isArray(data?.results)
-      ? [...data.results].sort((a, b) => {
-          const yearA = parseInt((a.first_air_date || "2000").slice(0, 4), 10) || 2000;
-          const yearB = parseInt((b.first_air_date || "2000").slice(0, 4), 10) || 2000;
-          const scoreA = (yearA >= 2022 ? 50 : 0) + (a.vote_average || 0) * 6 + Math.min(a.popularity || 0, 80);
-          const scoreB = (yearB >= 2022 ? 50 : 0) + (b.vote_average || 0) * 6 + Math.min(b.popularity || 0, 80);
-          return scoreB - scoreA;
-        })
-      : [];
-    return (
-      <div className="carouselSection" data-section-id={section.id}>
-        <ContentWrapper>
-          <span className="carouselTitle">On The Air</span>
-        </ContentWrapper>
-        <Caraousel data={sortedResults} loading={loading} endpoint="tv" sectionId={section.id} />
-      </div>
-    );
-  }
+  return (
+    <div className="carouselSection" data-section-id={section.id}>
+      <ContentWrapper>
+        <span className="carouselTitle">On The Air</span>
+      </ContentWrapper>
+      <Caraousel data={sortedResults} loading={loading} endpoint="tv" sectionId={section.id} />
+    </div>
+  );
+};
 
-  if (section.id === "current_tv") {
-    const { data, loading } = useFetch("/tv/airing_today", 6);
-    return (
-      <div className="carouselSection" data-section-id={section.id}>
-        <ContentWrapper>
-          <span className="carouselTitle">Current TV Episodes</span>
-        </ContentWrapper>
-        <Caraousel data={data?.results} loading={loading} endpoint="tv" sectionId={section.id} />
-      </div>
-    );
-  }
+const CurrentTvSection = ({ section }) => {
+  const { data, loading } = useFetch("/tv/airing_today", 6);
+  return (
+    <div className="carouselSection" data-section-id={section.id}>
+      <ContentWrapper>
+        <span className="carouselTitle">Current TV Episodes</span>
+      </ContentWrapper>
+      <Caraousel data={data?.results} loading={loading} endpoint="tv" sectionId={section.id} />
+    </div>
+  );
+};
 
-  if (section.id === "popular_movies") {
-    const { data, loading } = useFetch("/movie/popular");
-    return (
-      <div className="carouselSection" data-section-id={section.id}>
-        <ContentWrapper>
-          <span className="carouselTitle">Popular Movies</span>
-        </ContentWrapper>
-        <Caraousel data={data?.results} loading={loading} endpoint="movie" sectionId={section.id} />
-      </div>
-    );
-  }
+const PopularMoviesSection = ({ section }) => {
+  const { data, loading } = useFetch("/movie/popular");
+  return (
+    <div className="carouselSection" data-section-id={section.id}>
+      <ContentWrapper>
+        <span className="carouselTitle">Popular Movies</span>
+      </ContentWrapper>
+      <Caraousel data={data?.results} loading={loading} endpoint="movie" sectionId={section.id} />
+    </div>
+  );
+};
 
-  if (section.id === "popular_tv") {
-    const { data, loading } = useFetch("/tv/popular");
-    return (
-      <div className="carouselSection" data-section-id={section.id}>
-        <ContentWrapper>
-          <span className="carouselTitle">Popular TV Shows</span>
-        </ContentWrapper>
-        <Caraousel data={data?.results} loading={loading} endpoint="tv" sectionId={section.id} />
-      </div>
-    );
-  }
+const PopularTvSection = ({ section }) => {
+  const { data, loading } = useFetch("/tv/popular");
+  return (
+    <div className="carouselSection" data-section-id={section.id}>
+      <ContentWrapper>
+        <span className="carouselTitle">Popular TV Shows</span>
+      </ContentWrapper>
+      <Caraousel data={data?.results} loading={loading} endpoint="tv" sectionId={section.id} />
+    </div>
+  );
+};
 
-  if (section.id === "continue_movies") {
-    const all = getAllWatchProgress();
-    const items = Object.values(all)
+const ContinueMoviesSection = ({ section, onPlayResume }) => {
+  const all = getAllWatchProgress();
+  const items = useMemo(() => {
+    return Object.values(all)
       .filter((p) => p.mediaType === "movie")
       .sort((a, b) => b.updatedAt - a.updatedAt);
-    if (items.length === 0) return null;
-    return (
-      <div className="carouselSection" data-section-id={section.id}>
-        <ContinueWatchingCarousel
-          items={items}
-          title="Continue Watching: Movies"
-          onPlayResume={onPlayResume}
-          sectionId={section.id}
-        />
-      </div>
-    );
-  }
+  }, [all]);
 
-  if (section.id === "continue_tv") {
-    const all = getAllWatchProgress();
-    const items = Object.values(all)
+  if (items.length === 0) return null;
+  return (
+    <div className="carouselSection" data-section-id={section.id}>
+      <ContinueWatchingCarousel
+        items={items}
+        title="Continue Watching: Movies"
+        onPlayResume={onPlayResume}
+        sectionId={section.id}
+      />
+    </div>
+  );
+};
+
+const ContinueTvSection = ({ section, onPlayResume }) => {
+  const all = getAllWatchProgress();
+  const items = useMemo(() => {
+    return Object.values(all)
       .filter((p) => p.mediaType === "tv")
       .sort((a, b) => b.updatedAt - a.updatedAt);
-    if (items.length === 0) return null;
-    return (
-      <div className="carouselSection" data-section-id={section.id}>
-        <ContinueWatchingCarousel
-          items={items}
-          title="Continue Watching: TV Episodes"
-          onPlayResume={onPlayResume}
-          sectionId={section.id}
-        />
-      </div>
-    );
-  }
+  }, [all]);
 
-  return null;
+  if (items.length === 0) return null;
+  return (
+    <div className="carouselSection" data-section-id={section.id}>
+      <ContinueWatchingCarousel
+        items={items}
+        title="Continue Watching: TV Episodes"
+        onPlayResume={onPlayResume}
+        sectionId={section.id}
+      />
+    </div>
+  );
+};
+
+const DynamicSection = ({ section, onPlayResume }) => {
+  switch (section.id) {
+    case "trending":
+      return <TrendingSection section={section} />;
+    case "new_movies":
+      return <NewMoviesSection section={section} />;
+    case "on_the_air":
+      return <OnTheAirSection section={section} />;
+    case "current_tv":
+      return <CurrentTvSection section={section} />;
+    case "popular_movies":
+      return <PopularMoviesSection section={section} />;
+    case "popular_tv":
+      return <PopularTvSection section={section} />;
+    case "continue_movies":
+      return <ContinueMoviesSection section={section} onPlayResume={onPlayResume} />;
+    case "continue_tv":
+      return <ContinueTvSection section={section} onPlayResume={onPlayResume} />;
+    default:
+      return null;
+  }
 };
 
 const HomePage = () => {
