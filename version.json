@@ -1,6 +1,6 @@
 {
-  "versionCode": 32,
-  "versionName": "1.0.31",
+  "versionCode": 33,
+  "versionName": "1.0.32",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.31: Precision official YouTube trailer selection algorithm (prioritizing studio trailers over clips/featurettes) and trailer back navigation fix with history pushState and double-back defense."
+  "releaseNotes": "BubbaFlix TV v1.0.32: Fullscreen edge-to-edge YouTube trailer window with automatic native fullscreen and strict D-pad/keyboard focus lock."
 }

@@ -4,7 +4,9 @@ import { FiX } from "react-icons/fi";
 import "./index.scss";
 
 const VideoModal = ({ show, setShow, videoId, setVideoId }) => {
+	const containerRef = useRef(null);
 	const closeBtnRef = useRef(null);
+	const iframeRef = useRef(null);
 	const previousFocusRef = useRef(null);
 
 	const hidePopup = (syncHistory = true) => {
@@ -12,6 +14,13 @@ const VideoModal = ({ show, setShow, videoId, setVideoId }) => {
 			window.__lastModalClosedAt = Date.now();
 			if (syncHistory && window.history?.state?.bubbaflixModal === "trailer") {
 				window.history.back();
+			}
+		}
+		if (typeof document !== "undefined" && document.fullscreenElement) {
+			if (document.exitFullscreen) {
+				document.exitFullscreen().catch(() => {});
+			} else if (document.webkitExitFullscreen) {
+				document.webkitExitFullscreen().catch?.(() => {});
 			}
 		}
 		setShow(false);
@@ -24,17 +33,40 @@ const VideoModal = ({ show, setShow, videoId, setVideoId }) => {
 		previousFocusRef.current = document.activeElement;
 		document.body.classList.add("videoPlayerActive");
 
+		// Request native fullscreen if available
+		if (typeof document !== "undefined" && !document.fullscreenElement) {
+			const targetEl = containerRef.current || document.documentElement;
+			if (targetEl) {
+				if (targetEl.requestFullscreen) {
+					targetEl.requestFullscreen().catch(() => {});
+				} else if (targetEl.webkitRequestFullscreen) {
+					targetEl.webkitRequestFullscreen().catch?.(() => {});
+				}
+			}
+		}
+
 		// Push history state so that browser / hardware back button closes the modal instead of navigating back in router history
 		if (typeof window !== "undefined" && window.history && window.history.state?.bubbaflixModal !== "trailer") {
 			window.history.pushState({ ...(window.history.state || {}), bubbaflixModal: "trailer" }, "");
 		}
 
-		// Focus close button after modal renders
+		// Focus close button initially
 		const timer = setTimeout(() => {
 			if (closeBtnRef.current) {
 				closeBtnRef.current.focus();
 			}
-		}, 80);
+		}, 60);
+
+		// Global focus trap: ensure focus never escapes the trailer modal to background elements
+		const handleFocusTrap = (e) => {
+			if (containerRef.current && !containerRef.current.contains(e.target)) {
+				e.preventDefault();
+				e.stopPropagation();
+				if (closeBtnRef.current) {
+					closeBtnRef.current.focus();
+				}
+			}
+		};
 
 		const handleKeyDown = (e) => {
 			const key = e.key;
@@ -55,6 +87,37 @@ const VideoModal = ({ show, setShow, videoId, setVideoId }) => {
 				e.stopImmediatePropagation();
 				hidePopup(true);
 				return;
+			}
+
+			// Tab trap between close button and iframe
+			if (key === "Tab") {
+				e.preventDefault();
+				e.stopPropagation();
+				if (document.activeElement === closeBtnRef.current) {
+					iframeRef.current?.focus();
+				} else {
+					closeBtnRef.current?.focus();
+				}
+				return;
+			}
+
+			// D-pad navigation trap strictly inside trailer window
+			if (key === "ArrowDown" || key === "ArrowRight") {
+				if (document.activeElement === closeBtnRef.current) {
+					e.preventDefault();
+					e.stopPropagation();
+					iframeRef.current?.focus();
+					return;
+				}
+			}
+
+			if (key === "ArrowUp" || key === "ArrowLeft") {
+				if (document.activeElement !== closeBtnRef.current) {
+					e.preventDefault();
+					e.stopPropagation();
+					closeBtnRef.current?.focus();
+					return;
+				}
 			}
 		};
 
@@ -83,6 +146,7 @@ const VideoModal = ({ show, setShow, videoId, setVideoId }) => {
 		window.addEventListener("keydown", handleKeyDown, true);
 		window.addEventListener("keyup", handleKeyUp, true);
 		window.addEventListener("popstate", handlePopState);
+		document.addEventListener("focusin", handleFocusTrap, true);
 
 		return () => {
 			clearTimeout(timer);
@@ -93,6 +157,16 @@ const VideoModal = ({ show, setShow, videoId, setVideoId }) => {
 			window.removeEventListener("keydown", handleKeyDown, true);
 			window.removeEventListener("keyup", handleKeyUp, true);
 			window.removeEventListener("popstate", handlePopState);
+			document.removeEventListener("focusin", handleFocusTrap, true);
+
+			if (typeof document !== "undefined" && document.fullscreenElement) {
+				if (document.exitFullscreen) {
+					document.exitFullscreen().catch(() => {});
+				} else if (document.webkitExitFullscreen) {
+					document.webkitExitFullscreen().catch?.(() => {});
+				}
+			}
+
 			if (previousFocusRef.current && typeof previousFocusRef.current.focus === "function") {
 				previousFocusRef.current.focus();
 			} else {
@@ -107,7 +181,7 @@ const VideoModal = ({ show, setShow, videoId, setVideoId }) => {
 	if (!show) return null;
 
 	return createPortal(
-		<div className={`videoPopup ${show ? "visible" : ""}`} tabIndex="-1">
+		<div ref={containerRef} className={`videoPopup ${show ? "visible" : ""}`} tabIndex="-1">
 			<div className="opacityLayer" onClick={() => hidePopup(true)}></div>
 			<div className="videoPlayer">
 				<button
@@ -131,7 +205,8 @@ const VideoModal = ({ show, setShow, videoId, setVideoId }) => {
 				</button>
 				{videoId && (
 					<iframe
-						src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&playsinline=1&controls=1&rel=0&enablejsapi=1`}
+						ref={iframeRef}
+						src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&controls=1&rel=0&enablejsapi=1&iv_load_policy=3&modestbranding=1`}
 						title="Trailer"
 						width="100%"
 						height="100%"

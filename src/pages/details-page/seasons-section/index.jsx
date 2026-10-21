@@ -146,6 +146,9 @@ const SeasonsSection = ({ tvId, seasons, showTitle, posterPath }) => {
 
     let attempts = 0;
     const scrollAndFocusEpisode = () => {
+      if (document.querySelector(".videoPopup, .videoPlayerModal")) {
+        return;
+      }
       const epId = `episode-card-${tvId}-s${selectedSeasonNumber}-e${targetEpNum}`;
       const epElement = document.getElementById(epId);
 

@@ -71,7 +71,10 @@ const isProgressBarElement = (el) => {
 
 const getFocusableElements = () => {
   let root = document;
-  if (document.body.classList.contains("videoPlayerActive")) {
+  const trailerModal = document.querySelector(".videoPopup");
+  if (trailerModal) {
+    root = trailerModal;
+  } else if (document.body.classList.contains("videoPlayerActive")) {
     const playerContainer = document.querySelector(".videoPlayerModal");
     if (playerContainer) {
       root = playerContainer;
@@ -111,7 +114,7 @@ const focusAndScroll = (el, isHoldingKey = false) => {
 
   // Check if element is inside an overlay modal
   const isInModal = !!el.closest(
-    ".posterActionModalOverlay, .sortModalOverlay, .customizeModalOverlay, .confirmModalOverlay, .videoPlayerModal"
+    ".posterActionModalOverlay, .sortModalOverlay, .customizeModalOverlay, .confirmModalOverlay, .videoPlayerModal, .videoPopup"
   );
 
   if (isInModal) {
@@ -246,6 +249,14 @@ export const focusTopLeftPoster = () => {
         activeEl.closest(".searchInputWrapper"))
     ) {
       return; // DO NOT STEAL FOCUS WHILE USER IS TYPING IN SEARCH OR INPUT FIELDS
+    }
+
+    if (
+      document.querySelector(
+        ".videoPopup, .videoPlayerModal, .posterActionModalOverlay, .confirmModalOverlay, .sortModalOverlay, .customizeModalOverlay"
+      )
+    ) {
+      return;
     }
 
     const path = typeof window !== "undefined" ? window.location.pathname : "";
@@ -608,6 +619,29 @@ export const initDpadNavigation = () => {
     else if (key === "PageDown" || code === 34 || code === 428 || key === "ChannelDown" || code === 167) { direction = "ArrowDown"; isPageJump = true; }
 
     if (!direction) return;
+
+    // Trap focus strictly inside trailer modal if active
+    const trailerModal = document.querySelector(".videoPopup");
+    if (trailerModal) {
+      e.preventDefault();
+      e.stopPropagation();
+      const closeBtn = trailerModal.querySelector(".closeBtn");
+      const iframe = trailerModal.querySelector("iframe");
+      if (direction === "ArrowDown" || direction === "ArrowRight") {
+        if (iframe && typeof iframe.focus === "function") {
+          iframe.focus();
+        } else if (closeBtn) {
+          closeBtn.focus();
+        }
+      } else if (direction === "ArrowUp" || direction === "ArrowLeft") {
+        if (closeBtn && typeof closeBtn.focus === "function") {
+          closeBtn.focus();
+        } else if (iframe) {
+          iframe.focus();
+        }
+      }
+      return;
+    }
 
     // Immediately cancel any pending background restore timer so it never pulls focus back
     cancelPosterRestore();
