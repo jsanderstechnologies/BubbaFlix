@@ -47,36 +47,6 @@
 		overflow: hidden !important;
 		transform: none !important;
 
-		.closeBtn {
-			position: absolute !important;
-			top: 24px !important;
-			right: 28px !important;
-			z-index: 2147483647 !important;
-			color: #ffffff !important;
-			background: rgba(0, 0, 0, 0.75) !important;
-			border: 2px solid rgba(255, 255, 255, 0.35) !important;
-			padding: 9px 20px !important;
-			border-radius: 8px !important;
-			cursor: pointer !important;
-			font-size: 15px !important;
-			font-weight: 600 !important;
-			display: flex !important;
-			align-items: center !important;
-			gap: 8px !important;
-			outline: none !important;
-			box-shadow: 0 4px 16px rgba(0, 0, 0, 0.8) !important;
-			transition: all 180ms ease !important;
-
-			&:focus,
-			&:hover {
-				background: var(--pink, #da2f68) !important;
-				border-color: #ffffff !important;
-				color: #ffffff !important;
-				transform: scale(1.08) !important;
-				box-shadow: 0 0 20px rgba(218, 47, 104, 0.8) !important;
-			}
-		}
-
 		iframe {
 			position: absolute !important;
 			top: 0 !important;

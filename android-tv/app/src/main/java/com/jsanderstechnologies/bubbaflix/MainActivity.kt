@@ -240,6 +240,17 @@ class MainActivity : AppCompatActivity() {
                 (window.decorView as ViewGroup).removeView(customView)
                 customView = null
                 customViewCallback?.onCustomViewHidden()
+                customViewCallback = null
+                webView.evaluateJavascript(
+                    "(function() {" +
+                    "  if (typeof window.__closeTrailerModal === 'function') {" +
+                    "    window.__closeTrailerModal();" +
+                    "  } else {" +
+                    "    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, code: 'Escape', which: 27, bubbles: true }));" +
+                    "  }" +
+                    "})();",
+                    null
+                )
             }
         }
 
@@ -616,6 +627,16 @@ class MainActivity : AppCompatActivity() {
                 customView = null
                 customViewCallback?.onCustomViewHidden()
                 customViewCallback = null
+                webView.evaluateJavascript(
+                    "(function() {" +
+                    "  if (typeof window.__closeTrailerModal === 'function') {" +
+                    "    window.__closeTrailerModal();" +
+                    "  } else {" +
+                    "    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, code: 'Escape', bubbles: true }));" +
+                    "  }" +
+                    "})();",
+                    null
+                )
                 return true
             }
 
@@ -633,7 +654,13 @@ class MainActivity : AppCompatActivity() {
                 val ctx = activeContext?.replace("\"", "")?.trim()
                 if (ctx != null && ctx != "none") {
                     webView.evaluateJavascript(
-                        "window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, bubbles: true }));",
+                        "(function() {" +
+                        "  if (typeof window.__closeTrailerModal === 'function') {" +
+                        "    window.__closeTrailerModal();" +
+                        "  } else {" +
+                        "    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, code: 'Escape', bubbles: true }));" +
+                        "  }" +
+                        "})();",
                         null
                     )
                 } else {

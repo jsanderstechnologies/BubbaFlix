@@ -1,6 +1,6 @@
 {
-  "versionCode": 33,
-  "versionName": "1.0.32",
+  "versionCode": 34,
+  "versionName": "1.0.33",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.32: Fullscreen edge-to-edge YouTube trailer window with automatic native fullscreen and strict D-pad/keyboard focus lock."
+  "releaseNotes": "BubbaFlix TV v1.0.33: Removed trailer exit button and direct remote back exit engine eliminating shrinking window."
 }
