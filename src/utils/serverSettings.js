@@ -226,7 +226,7 @@ export const exportAdminBackup = async () => {
 
     return {
       appName: "BubbaFlix",
-      backupVersion: "1.0.30",
+      backupVersion: "1.0.31",
       timestamp: new Date().toISOString(),
       backendBackup,
       clientLocalStorage,

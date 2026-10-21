@@ -447,8 +447,24 @@ export const initDpadNavigation = () => {
 
     // Handle Smart TV Back Button
     if (key === "Escape" || key === "Back" || code === 27 || code === 10009 || code === 461 || code === 4) {
-      // 1. If Video Player is active, let video player handle Escape or close it
-      if (document.body.classList.contains("videoPlayerActive") || document.querySelector(".videoPlayerModal, .videoModalOverlay")) {
+      // 1. If Video Player or Trailer is active, let video player handle Escape or close it
+      if (
+        document.body.classList.contains("videoPlayerActive") ||
+        document.querySelector(".videoPopup, .videoPlayerModal, .videoModalOverlay")
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        const trailerCloseBtn = document.querySelector(".videoPopup .closeBtn, .videoPopup .opacityLayer");
+        if (trailerCloseBtn) {
+          trailerCloseBtn.click();
+        }
+        return;
+      }
+
+      // If a modal was closed very recently (within 600ms), debounce back to prevent double-navigation
+      if (window.__lastModalClosedAt && Date.now() - window.__lastModalClosedAt < 600) {
+        e.preventDefault();
+        e.stopPropagation();
         return;
       }
 

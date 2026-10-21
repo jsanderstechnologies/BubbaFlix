@@ -92,18 +92,23 @@ const DetailsBanner = ({ video, crew }) => {
 									/>
 									<div
 										className="playbtn"
-										tabIndex="0"
+										tabIndex={video?.key ? "0" : "-1"}
 										role="button"
+										style={!video?.key ? { opacity: 0.6, cursor: "default" } : {}}
 										onClick={() => {
-											setShow(true);
-											if (video?.key) setVideoId(video.key);
+											if (video?.key) {
+												setVideoId(video.key);
+												setShow(true);
+											}
 										}}
 										onKeyDown={(e) => {
 											const code = e.keyCode;
 											if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
 												e.preventDefault();
-												setShow(true);
-												if (video?.key) setVideoId(video.key);
+												if (video?.key) {
+													setVideoId(video.key);
+													setShow(true);
+												}
 											}
 										}}
 									>

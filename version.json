@@ -1,6 +1,6 @@
 {
-  "versionCode": 31,
-  "versionName": "1.0.30",
+  "versionCode": 32,
+  "versionName": "1.0.31",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.30: Automatically navigates and scrolls directly to the first unwatched (or active in-progress) TV episode upon opening any series, with comprehensive SIMKL episode tracking, season resolution, and focus protection."
+  "releaseNotes": "BubbaFlix TV v1.0.31: Precision official YouTube trailer selection algorithm (prioritizing studio trailers over clips/featurettes) and trailer back navigation fix with history pushState and double-back defense."
 }

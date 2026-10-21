@@ -7,7 +7,13 @@ const VideoModal = ({ show, setShow, videoId, setVideoId }) => {
 	const closeBtnRef = useRef(null);
 	const previousFocusRef = useRef(null);
 
-	const hidePopup = () => {
+	const hidePopup = (syncHistory = true) => {
+		if (typeof window !== "undefined") {
+			window.__lastModalClosedAt = Date.now();
+			if (syncHistory && window.history?.state?.bubbaflixModal === "trailer") {
+				window.history.back();
+			}
+		}
 		setShow(false);
 		setVideoId(null);
 	};
@@ -18,12 +24,17 @@ const VideoModal = ({ show, setShow, videoId, setVideoId }) => {
 		previousFocusRef.current = document.activeElement;
 		document.body.classList.add("videoPlayerActive");
 
+		// Push history state so that browser / hardware back button closes the modal instead of navigating back in router history
+		if (typeof window !== "undefined" && window.history && window.history.state?.bubbaflixModal !== "trailer") {
+			window.history.pushState({ ...(window.history.state || {}), bubbaflixModal: "trailer" }, "");
+		}
+
 		// Focus close button after modal renders
 		const timer = setTimeout(() => {
 			if (closeBtnRef.current) {
 				closeBtnRef.current.focus();
 			}
-		}, 60);
+		}, 80);
 
 		const handleKeyDown = (e) => {
 			const key = e.key;
@@ -41,7 +52,8 @@ const VideoModal = ({ show, setShow, videoId, setVideoId }) => {
 			) {
 				e.preventDefault();
 				e.stopPropagation();
-				hidePopup();
+				e.stopImmediatePropagation();
+				hidePopup(true);
 				return;
 			}
 		};
@@ -60,19 +72,34 @@ const VideoModal = ({ show, setShow, videoId, setVideoId }) => {
 			) {
 				e.preventDefault();
 				e.stopPropagation();
+				e.stopImmediatePropagation();
 			}
+		};
+
+		const handlePopState = () => {
+			hidePopup(false);
 		};
 
 		window.addEventListener("keydown", handleKeyDown, true);
 		window.addEventListener("keyup", handleKeyUp, true);
+		window.addEventListener("popstate", handlePopState);
 
 		return () => {
 			clearTimeout(timer);
+			if (typeof window !== "undefined") {
+				window.__lastModalClosedAt = Date.now();
+			}
 			document.body.classList.remove("videoPlayerActive");
 			window.removeEventListener("keydown", handleKeyDown, true);
 			window.removeEventListener("keyup", handleKeyUp, true);
+			window.removeEventListener("popstate", handlePopState);
 			if (previousFocusRef.current && typeof previousFocusRef.current.focus === "function") {
 				previousFocusRef.current.focus();
+			} else {
+				const playBtn = document.querySelector(".detailsBanner .playbtn");
+				if (playBtn && typeof playBtn.focus === "function") {
+					playBtn.focus();
+				}
 			}
 		};
 	}, [show]);
@@ -81,20 +108,21 @@ const VideoModal = ({ show, setShow, videoId, setVideoId }) => {
 
 	return createPortal(
 		<div className={`videoPopup ${show ? "visible" : ""}`} tabIndex="-1">
-			<div className="opacityLayer" onClick={hidePopup}></div>
+			<div className="opacityLayer" onClick={() => hidePopup(true)}></div>
 			<div className="videoPlayer">
 				<button
 					ref={closeBtnRef}
 					type="button"
 					className="closeBtn"
 					tabIndex="0"
-					onClick={hidePopup}
+					onClick={() => hidePopup(true)}
 					onKeyDown={(e) => {
 						const code = e.keyCode;
 						if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
 							e.preventDefault();
 							e.stopPropagation();
-							hidePopup();
+							e.stopImmediatePropagation();
+							hidePopup(true);
 						}
 					}}
 				>

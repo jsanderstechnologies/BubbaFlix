@@ -610,9 +610,18 @@ class MainActivity : AppCompatActivity() {
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         if (keyCode == KeyEvent.KEYCODE_BACK) {
+            if (customView != null) {
+                webView.visibility = View.VISIBLE
+                (window.decorView as ViewGroup).removeView(customView)
+                customView = null
+                customViewCallback?.onCustomViewHidden()
+                customViewCallback = null
+                return true
+            }
+
             webView.evaluateJavascript(
                 "(function() {" +
-                "  if (document.body.classList.contains('videoPlayerActive') || document.querySelector('.videoPlayerModal, .videoModalOverlay')) return 'modal';" +
+                "  if (document.body.classList.contains('videoPlayerActive') || document.querySelector('.videoPopup, .videoPlayerModal, .videoModalOverlay')) return 'modal';" +
                 "  if (document.body.classList.contains('posterActionModalActive') || document.querySelector('.posterActionModalOverlay')) return 'modal';" +
                 "  if (document.querySelector('.confirmModalOverlay, .sortModalOverlay, .customizeModalOverlay')) return 'modal';" +
                 "  if (document.body.classList.contains('detailsPageActive')) return 'details';" +

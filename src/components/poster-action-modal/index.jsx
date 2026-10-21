@@ -44,6 +44,9 @@ const PosterActionModal = ({ isOpen, onClose, item, mediaType = "movie", section
 
     return () => {
       clearTimeout(timer);
+      if (typeof window !== "undefined") {
+        window.__lastModalClosedAt = Date.now();
+      }
       document.body.classList.remove("posterActionModalActive");
       if (previousFocusRef.current && typeof previousFocusRef.current.focus === "function") {
         previousFocusRef.current.focus();

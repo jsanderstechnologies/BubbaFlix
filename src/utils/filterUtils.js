@@ -291,3 +291,105 @@ export const isHevcStream = (stream) => {
   return /\b(hevc|x265|h265|h\.265)\b/i.test(fullStr);
 };
 
+/**
+ * Robustly selects the best official YouTube trailer from TMDB /videos results.
+ * Prioritizes:
+ * 1. Type: Trailer (over Teasers, Clips, Featurettes, Speeches)
+ * 2. Official badge (official === true)
+ * 3. Title keywords: "Official Trailer", "Main Trailer", "Final Trailer", "Theatrical Trailer"
+ * 4. Language: English ("en", "en-US", "en-GB")
+ * 5. Resolution & Recency
+ * Penalizes: Featurettes, behind the scenes, award speeches, clips, reviews, TV spots.
+ */
+export const getOfficialTrailer = (results) => {
+  if (!Array.isArray(results) || results.length === 0) return null;
+
+  // Filter only items with a YouTube key
+  const candidates = results.filter(
+    (item) => item?.key && (!item.site || item.site.toLowerCase() === "youtube")
+  );
+
+  if (candidates.length === 0) return null;
+
+  const scoreVideo = (v) => {
+    let score = 0;
+    const type = (v.type || "").toLowerCase();
+    const name = (v.name || "").toLowerCase();
+    const isOfficial = Boolean(v.official);
+    const lang = (v.iso_639_1 || "").toLowerCase();
+
+    // 1. Primary Video Type
+    if (type === "trailer") {
+      score += 5000;
+    } else if (type === "teaser") {
+      score += 2000;
+    } else if (type === "clip") {
+      score += 200;
+    } else {
+      score += 100;
+    }
+
+    // 2. Official Badge
+    if (isOfficial) {
+      score += 3000;
+    }
+
+    // 3. Title heuristics
+    if (name.includes("official trailer")) {
+      score += 2500;
+    } else if (name.includes("main trailer") || name.includes("final trailer")) {
+      score += 2000;
+    } else if (name.includes("theatrical trailer")) {
+      score += 1800;
+    } else if (name.includes("trailer")) {
+      score += 1000;
+    } else if (name.includes("teaser")) {
+      score += 500;
+    }
+
+    // Heavily penalize non-trailers
+    if (
+      name.includes("behind the scenes") ||
+      name.includes("featurette") ||
+      name.includes("interview") ||
+      name.includes("bloopers") ||
+      name.includes("speech") ||
+      name.includes("wins best") ||
+      name.includes("oscars") ||
+      name.includes("bafta") ||
+      name.includes("scene") ||
+      name.includes("clip") ||
+      name.includes("review") ||
+      name.includes("tv spot")
+    ) {
+      score -= 4000;
+    }
+
+    // 4. Language preference (English)
+    if (lang === "en" || lang === "en-us" || lang === "en-gb") {
+      score += 500;
+    }
+
+    // 5. Resolution preference
+    if (v.size >= 1080) {
+      score += 100;
+    } else if (v.size >= 720) {
+      score += 50;
+    }
+
+    // 6. Recency bonus for newer official trailers (e.g., Final Trailer over first Teaser)
+    if (v.published_at) {
+      const pubTime = new Date(v.published_at).getTime();
+      if (!isNaN(pubTime)) {
+        score += Math.min(pubTime / 10000000000, 200);
+      }
+    }
+
+    return score;
+  };
+
+  const sorted = [...candidates].sort((a, b) => scoreVideo(b) - scoreVideo(a));
+  return sorted[0] || null;
+};
+
+
