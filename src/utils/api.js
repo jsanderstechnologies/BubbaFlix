@@ -69,13 +69,20 @@ export const fetchDataFromAPI = async (url, params, forceRefresh = false) => {
     language: "en-US",
     with_original_language: "en",
     include_adult: false,
-    _v: "1.0.33",
+    _v: "1.0.34",
     ...params,
   };
 
   // Pre-filter on TMDB discover endpoints
   if (url.startsWith("/discover")) {
-    customParams.without_genres = "16";
+    const isAnimationRequested =
+      (params?.with_genres && String(params.with_genres).split(",").includes("16")) ||
+      url.includes("with_genres=16") ||
+      url.includes("%2C16") ||
+      url.includes(",16");
+    if (!isAnimationRequested) {
+      customParams.without_genres = "16";
+    }
     customParams.with_original_language = "en";
   }
 

@@ -16,7 +16,30 @@ import Spinner from "../../components/spinner";
 import TopNav from "../../components/top-nav";
 import { getProxiedImageUrl } from "../../utils/serverSettings";
 
-const POPULAR_TAGS = ["Action", "Comedy", "Marvel", "Sci-Fi", "Horror", "Drama", "Animation", "Thriller"];
+export const POPULAR_GENRES = [
+  { id: "action", name: "Action", movieGenreId: 28, tvGenreId: 10759 },
+  { id: "comedy", name: "Comedy", movieGenreId: 35, tvGenreId: 35 },
+  { id: "scifi", name: "Sci-Fi", movieGenreId: 878, tvGenreId: 10765 },
+  { id: "horror", name: "Horror", movieGenreId: 27, tvGenreId: 9648 },
+  { id: "drama", name: "Drama", movieGenreId: 18, tvGenreId: 18 },
+  { id: "thriller", name: "Thriller", movieGenreId: 53, tvGenreId: 9648 },
+  { id: "crime", name: "Crime", movieGenreId: 80, tvGenreId: 80 },
+  { id: "adventure", name: "Adventure", movieGenreId: 12, tvGenreId: 10759 },
+  { id: "animation", name: "Animation", movieGenreId: 16, tvGenreId: 16 },
+  { id: "mystery", name: "Mystery", movieGenreId: 9648, tvGenreId: 9648 },
+  { id: "romance", name: "Romance", movieGenreId: 10749, tvGenreId: 18 },
+  { id: "western", name: "Western", movieGenreId: 37, tvGenreId: 37 },
+];
+
+export const findGenreByNameOrId = (val) => {
+  if (!val) return null;
+  const clean = val.toLowerCase().replace(/^genre:\s*/i, "").trim();
+  return (
+    POPULAR_GENRES.find(
+      (g) => g.id.toLowerCase() === clean || g.name.toLowerCase() === clean
+    ) || null
+  );
+};
 
 const PersonCard = ({ person }) => {
   const navigate = useNavigate();
@@ -54,6 +77,12 @@ const SearchResult = () => {
   const navigate = useNavigate();
 
   const [searchQuery, setSearchQuery] = useState(urlQuery || "");
+  const [selectedGenre, setSelectedGenre] = useState(() => {
+    if (urlQuery && urlQuery.toLowerCase().startsWith("genre:")) {
+      return findGenreByNameOrId(urlQuery.slice(6));
+    }
+    return null;
+  });
   const [activeFilter, setActiveFilter] = useState("all"); // "all", "movie", "tv", "person"
   const [data, setData] = useState(null);
   const [pageNum, setPageNum] = useState(1);
@@ -63,8 +92,6 @@ const SearchResult = () => {
   const filterEnglishResults = (items) => {
     return filterEnglishMedia(items);
   };
-
-
 
   const handleVoiceSearch = () => {
     if (window.AndroidPlayer && typeof window.AndroidPlayer.startVoiceSearch === "function") {
@@ -78,6 +105,7 @@ const SearchResult = () => {
         recognition.onresult = (e) => {
           const transcript = e.results[0]?.[0]?.transcript;
           if (transcript) {
+            setSelectedGenre(null);
             setSearchQuery(transcript.trim());
             navigate(`/search/${encodeURIComponent(transcript.trim())}`, { replace: true });
           }
@@ -106,19 +134,35 @@ const SearchResult = () => {
   }, []);
 
   useEffect(() => {
-    if (urlQuery !== undefined && urlQuery !== searchQuery) {
-      setSearchQuery(urlQuery || "");
+    if (urlQuery !== undefined && urlQuery.trim().length > 0) {
+      const trimmed = urlQuery.trim();
+      if (trimmed.toLowerCase().startsWith("genre:")) {
+        const found = findGenreByNameOrId(trimmed.slice(6));
+        if (found) {
+          setSelectedGenre(found);
+          setSearchQuery(found.name);
+          return;
+        }
+      }
+      setSelectedGenre(null);
+      setSearchQuery(trimmed);
+    } else {
+      setSelectedGenre(null);
+      setSearchQuery("");
     }
   }, [urlQuery]);
 
   useEffect(() => {
-    if (searchQuery.trim().length > 0) {
+    if (selectedGenre) {
+      setPageNum(1);
+      fetchGenreResults(selectedGenre, 1, activeFilter);
+    } else if (searchQuery.trim().length > 0) {
       setPageNum(1);
       fetchSearchResults(searchQuery.trim(), 1, activeFilter);
     } else {
       setData(null);
     }
-  }, [searchQuery, activeFilter]);
+  }, [searchQuery, selectedGenre, activeFilter]);
 
   useEffect(() => {
     const activeEl = typeof document !== "undefined" ? document.activeElement : null;
@@ -134,6 +178,97 @@ const SearchResult = () => {
     restoreLastFocusedPoster();
   }, [data, activeFilter]);
 
+
+  const fetchGenreResults = (genre, page, filterType) => {
+    if (!genre) return;
+    setLoading(true);
+
+    if (filterType === "movie") {
+      Promise.all([
+        fetchDataFromAPI(`/discover/movie?with_genres=${genre.movieGenreId}&sort_by=popularity.desc&page=${page}`),
+        fetchDataFromAPI(`/discover/movie?with_genres=${genre.movieGenreId}&sort_by=popularity.desc&page=${page + 1}`),
+      ])
+        .then(([res1, res2]) => {
+          const list1 = filterEnglishResults(res1?.results || []).map((item) => ({ ...item, media_type: "movie" }));
+          const list2 = filterEnglishResults(res2?.results || []).map((item) => ({ ...item, media_type: "movie" }));
+
+          const existingIds = new Set();
+          const combined = [...list1, ...list2].filter((item) => {
+            if (!item || !item.id || existingIds.has(item.id)) return false;
+            existingIds.add(item.id);
+            return true;
+          });
+
+          setData({
+            total_pages: Math.max(res1?.total_pages || 1, res2?.total_pages || 1),
+            results: combined,
+            genre,
+          });
+          setPageNum(page + 2);
+          setLoading(false);
+        })
+        .catch(() => setLoading(false));
+      return;
+    }
+
+    if (filterType === "tv") {
+      Promise.all([
+        fetchDataFromAPI(`/discover/tv?with_genres=${genre.tvGenreId}&sort_by=popularity.desc&page=${page}`),
+        fetchDataFromAPI(`/discover/tv?with_genres=${genre.tvGenreId}&sort_by=popularity.desc&page=${page + 1}`),
+      ])
+        .then(([res1, res2]) => {
+          const list1 = filterEnglishResults(res1?.results || []).map((item) => ({ ...item, media_type: "tv" }));
+          const list2 = filterEnglishResults(res2?.results || []).map((item) => ({ ...item, media_type: "tv" }));
+
+          const existingIds = new Set();
+          const combined = [...list1, ...list2].filter((item) => {
+            if (!item || !item.id || existingIds.has(item.id)) return false;
+            existingIds.add(item.id);
+            return true;
+          });
+
+          setData({
+            total_pages: Math.max(res1?.total_pages || 1, res2?.total_pages || 1),
+            results: combined,
+            genre,
+          });
+          setPageNum(page + 2);
+          setLoading(false);
+        })
+        .catch(() => setLoading(false));
+      return;
+    }
+
+    // Default "all" (movies + tv shows)
+    Promise.all([
+      fetchDataFromAPI(`/discover/movie?with_genres=${genre.movieGenreId}&sort_by=popularity.desc&page=${page}`),
+      fetchDataFromAPI(`/discover/movie?with_genres=${genre.movieGenreId}&sort_by=popularity.desc&page=${page + 1}`),
+      fetchDataFromAPI(`/discover/tv?with_genres=${genre.tvGenreId}&sort_by=popularity.desc&page=${page}`),
+      fetchDataFromAPI(`/discover/tv?with_genres=${genre.tvGenreId}&sort_by=popularity.desc&page=${page + 1}`),
+    ])
+      .then(([movieRes1, movieRes2, tvRes1, tvRes2]) => {
+        const m1 = filterEnglishResults(movieRes1?.results || []).map((item) => ({ ...item, media_type: "movie" }));
+        const m2 = filterEnglishResults(movieRes2?.results || []).map((item) => ({ ...item, media_type: "movie" }));
+        const t1 = filterEnglishResults(tvRes1?.results || []).map((item) => ({ ...item, media_type: "tv" }));
+        const t2 = filterEnglishResults(tvRes2?.results || []).map((item) => ({ ...item, media_type: "tv" }));
+
+        const existingIds = new Set();
+        const combined = [...m1, ...m2, ...t1, ...t2].filter((item) => {
+          if (!item || !item.id || existingIds.has(item.id)) return false;
+          existingIds.add(item.id);
+          return true;
+        });
+
+        setData({
+          total_pages: Math.max(movieRes1?.total_pages || 1, tvRes1?.total_pages || 1),
+          results: combined,
+          genre,
+        });
+        setPageNum(page + 2);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  };
 
   const fetchNormalSearchResults = (queryStr, page, filterType) => {
     if (filterType === "collection") {
@@ -340,6 +475,51 @@ const SearchResult = () => {
 
   const fetchNextPageData = () => {
     if (data?.searchedActor) return;
+    if (selectedGenre) {
+      const nextPage = pageNum;
+      if (activeFilter === "movie") {
+        fetchDataFromAPI(`/discover/movie?with_genres=${selectedGenre.movieGenreId}&sort_by=popularity.desc&page=${nextPage}`)
+          .then((res) => {
+            const list = filterEnglishResults(res?.results || []).map((item) => ({ ...item, media_type: "movie" }));
+            const existingIds = new Set((data?.results || []).map((x) => x.id));
+            const newItems = list.filter((x) => !existingIds.has(x.id));
+            setData((prev) => ({
+              ...prev,
+              results: [...(prev?.results || []), ...newItems],
+            }));
+            setPageNum((prev) => prev + 1);
+          });
+      } else if (activeFilter === "tv") {
+        fetchDataFromAPI(`/discover/tv?with_genres=${selectedGenre.tvGenreId}&sort_by=popularity.desc&page=${nextPage}`)
+          .then((res) => {
+            const list = filterEnglishResults(res?.results || []).map((item) => ({ ...item, media_type: "tv" }));
+            const existingIds = new Set((data?.results || []).map((x) => x.id));
+            const newItems = list.filter((x) => !existingIds.has(x.id));
+            setData((prev) => ({
+              ...prev,
+              results: [...(prev?.results || []), ...newItems],
+            }));
+            setPageNum((prev) => prev + 1);
+          });
+      } else {
+        Promise.all([
+          fetchDataFromAPI(`/discover/movie?with_genres=${selectedGenre.movieGenreId}&sort_by=popularity.desc&page=${nextPage}`),
+          fetchDataFromAPI(`/discover/tv?with_genres=${selectedGenre.tvGenreId}&sort_by=popularity.desc&page=${nextPage}`),
+        ]).then(([mRes, tRes]) => {
+          const mList = filterEnglishResults(mRes?.results || []).map((item) => ({ ...item, media_type: "movie" }));
+          const tList = filterEnglishResults(tRes?.results || []).map((item) => ({ ...item, media_type: "tv" }));
+          const existingIds = new Set((data?.results || []).map((x) => x.id));
+          const newItems = [...mList, ...tList].filter((x) => !existingIds.has(x.id));
+          setData((prev) => ({
+            ...prev,
+            results: [...(prev?.results || []), ...newItems],
+          }));
+          setPageNum((prev) => prev + 1);
+        });
+      }
+      return;
+    }
+
     const queryStr = searchQuery.trim();
     if (!queryStr) return;
 
@@ -368,6 +548,7 @@ const SearchResult = () => {
 
   const handleInputChange = (e) => {
     const val = e.target.value;
+    setSelectedGenre(null);
     setSearchQuery(val);
     if (val.trim().length > 0) {
       navigate(`/search/${encodeURIComponent(val.trim())}`, { replace: true });
@@ -377,6 +558,7 @@ const SearchResult = () => {
   };
 
   const handleClear = () => {
+    setSelectedGenre(null);
     setSearchQuery("");
     setData(null);
     navigate(`/search`, { replace: true });
@@ -384,16 +566,23 @@ const SearchResult = () => {
     if (inputRef.current) inputRef.current.focus();
   };
 
-  const handleTagClick = (tag) => {
-    setSearchQuery(tag);
-    navigate(`/search/${encodeURIComponent(tag)}`, { replace: true });
+  const handleGenreClick = (genre) => {
+    if (selectedGenre?.id === genre.id) {
+      handleClear();
+      return;
+    }
+    setSelectedGenre(genre);
+    setSearchQuery(genre.name);
+    navigate(`/search/genre:${encodeURIComponent(genre.name)}`, { replace: true });
     enableEditing();
   };
 
   // Group filtered results into Movies, TV Shows, Actors, and Collections
-  const isActorSearch = !!data?.searchedActor;
+  const isActorSearch = !selectedGenre && !!data?.searchedActor;
 
-  const collectionsList = isActorSearch ? [] : (data?.results?.filter((item) => item.media_type === "collection" || activeFilter === "collection") || []);
+  const collectionsList = (selectedGenre || isActorSearch)
+    ? []
+    : (data?.results?.filter((item) => item.media_type === "collection" || activeFilter === "collection") || []);
   const moviesList = isActorSearch 
     ? (data?.actorFeatures?.filter((item) => item.media_type === "movie" || (!item.media_type && item.title)) || []) 
     : (data?.results?.filter((item) => item.media_type === "movie" || (!item.media_type && item.title) || activeFilter === "movie") || []);
@@ -403,8 +592,8 @@ const SearchResult = () => {
   const queryClean = searchQuery.trim().toLowerCase();
   const queryTokens = queryClean.split(/\s+/).filter(Boolean);
 
-  const peopleList = isActorSearch 
-    ? [data.searchedActor] 
+  const peopleList = (selectedGenre || isActorSearch)
+    ? (isActorSearch ? [data.searchedActor] : [])
     : (data?.results?.filter((item) => {
         if (item.media_type !== "person" && activeFilter !== "person") return false;
         if (!item || !item.name) return false;
@@ -505,13 +694,15 @@ const SearchResult = () => {
             >
               <FiGrid /> All Results
             </button>
-            <button
-              className={`chip ${activeFilter === "collection" ? "active" : ""}`}
-              onClick={() => setActiveFilter("collection")}
-              tabIndex="0"
-            >
-              <FiLayers /> Collections ({collectionsList.length})
-            </button>
+            {!selectedGenre && (
+              <button
+                className={`chip ${activeFilter === "collection" ? "active" : ""}`}
+                onClick={() => setActiveFilter("collection")}
+                tabIndex="0"
+              >
+                <FiLayers /> Collections ({collectionsList.length})
+              </button>
+            )}
             <button
               className={`chip ${activeFilter === "movie" ? "active" : ""}`}
               onClick={() => setActiveFilter("movie")}
@@ -526,28 +717,30 @@ const SearchResult = () => {
             >
               <FiTv /> TV Series ({tvList.length})
             </button>
-            <button
-              className={`chip ${activeFilter === "person" ? "active" : ""}`}
-              onClick={() => setActiveFilter("person")}
-              tabIndex="0"
-            >
-              <FiUser /> Actors & Cast ({peopleList.length})
-            </button>
+            {!selectedGenre && (
+              <button
+                className={`chip ${activeFilter === "person" ? "active" : ""}`}
+                onClick={() => setActiveFilter("person")}
+                tabIndex="0"
+              >
+                <FiUser /> Actors & Cast ({peopleList.length})
+              </button>
+            )}
           </div>
 
-          {/* Popular Tag Quick Suggestions */}
-          {!searchQuery && (
+          {/* Popular Genres Quick Suggestions */}
+          {(!searchQuery || selectedGenre) && (
             <div className="popularTagsBlock">
-              <span className="tagsLabel">POPULAR SEARCHES:</span>
+              <span className="tagsLabel">POPULAR GENRES:</span>
               <div className="tagsRow">
-                {POPULAR_TAGS.map((tag) => (
+                {POPULAR_GENRES.map((genre) => (
                   <button
-                    key={tag}
-                    className="tagBtn"
-                    onClick={() => handleTagClick(tag)}
+                    key={genre.id}
+                    className={`tagBtn ${selectedGenre?.id === genre.id ? "active" : ""}`}
+                    onClick={() => handleGenreClick(genre)}
                     tabIndex="0"
                   >
-                    {tag}
+                    {genre.name}
                   </button>
                 ))}
               </div>
@@ -585,7 +778,11 @@ const SearchResult = () => {
                   <div className="searchCategorySection">
                     <h2 className="categoryTitle">
                       <FiFilm style={{ marginRight: 8, color: "var(--pink)" }} /> 
-                      {isActorSearch ? `${data.searchedActor.name}'s Feature Movies` : "Movies"}
+                      {selectedGenre 
+                        ? `${selectedGenre.name} Movies` 
+                        : isActorSearch 
+                          ? `${data.searchedActor.name}'s Feature Movies` 
+                          : "Movies"}
                     </h2>
                     <div className="contentGrid">
                       {moviesList.map((item, idx) => (
@@ -595,12 +792,16 @@ const SearchResult = () => {
                   </div>
                 )}
 
-                {/* 2. TV Shows Category Section */}
+                {/* 3. TV Shows Category Section */}
                 {(activeFilter === "all" || activeFilter === "tv") && tvList.length > 0 && (
                   <div className="searchCategorySection">
                     <h2 className="categoryTitle">
                       <FiTv style={{ marginRight: 8, color: "var(--pink)" }} /> 
-                      {isActorSearch ? `${data.searchedActor.name}'s TV Shows & Series` : "TV Shows & Series"}
+                      {selectedGenre 
+                        ? `${selectedGenre.name} TV Shows & Series` 
+                        : isActorSearch 
+                          ? `${data.searchedActor.name}'s TV Shows & Series` 
+                          : "TV Shows & Series"}
                     </h2>
                     <div className="contentGrid">
                       {tvList.map((item, idx) => (
@@ -640,8 +841,16 @@ const SearchResult = () => {
             ) : (
               !loading && (
                 <div className="noResultsBox">
-                  <h3>No English titles or actors found for &quot;{searchQuery}&quot;</h3>
-                  <p>Try searching for another movie, TV series, or actor name.</p>
+                  <h3>
+                    {selectedGenre 
+                      ? `No titles found in the ${selectedGenre.name} genre` 
+                      : `No English titles or actors found for "${searchQuery}"`}
+                  </h3>
+                  <p>
+                    {selectedGenre 
+                      ? "Try selecting another genre or searching for another movie, TV series, or actor." 
+                      : "Try searching for another movie, TV series, or actor name."}
+                  </p>
                 </div>
               )
             )}

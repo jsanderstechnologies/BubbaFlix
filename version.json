@@ -1,6 +1,6 @@
 {
-  "versionCode": 34,
-  "versionName": "1.0.33",
+  "versionCode": 35,
+  "versionName": "1.0.34",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.33: Removed trailer exit button and direct remote back exit engine eliminating shrinking window."
+  "releaseNotes": "BubbaFlix TV v1.0.34: Popular Genres search engine on Search page querying true TMDB discover genre IDs."
 }

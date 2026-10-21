@@ -199,6 +199,14 @@
 				outline: none;
 				transition: all 0.2s ease;
 
+				&.active {
+					background: var(--pink);
+					border-color: var(--pink);
+					color: white;
+					font-weight: 600;
+					box-shadow: 0 0 14px var(--pink);
+				}
+
 				&:hover,
 				&:focus,
 				&:focus-visible {
