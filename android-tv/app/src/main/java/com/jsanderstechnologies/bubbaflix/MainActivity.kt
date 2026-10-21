@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.SharedPreferences
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.wifi.WifiManager
 import android.os.Bundle
@@ -21,6 +22,7 @@ import java.net.DatagramSocket
 import java.net.InetAddress
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.Locale
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
@@ -43,6 +45,7 @@ class MainActivity : AppCompatActivity() {
         if (result.resultCode == RESULT_OK && result.data != null) {
             val spokenText = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
             if (!spokenText.isNullOrEmpty()) {
+                RemoteLogger.i("MainActivity", "Voice search speech recognized: '$spokenText'")
                 val cleanText = spokenText.replace("'", "\\'")
                 runOnUiThread {
                     webView.evaluateJavascript(
@@ -62,12 +65,14 @@ class MainActivity : AppCompatActivity() {
 
     fun triggerVoiceSearch() {
         try {
+            RemoteLogger.i("MainActivity", "Voice search launched.")
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                 putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak to search BubbaFlix...")
             }
             speechLauncher.launch(intent)
         } catch (e: Exception) {
+            RemoteLogger.w("MainActivity", "Voice search unavailable: ${e.message}")
             runOnUiThread {
                 Toast.makeText(this, "Voice search is not available on this device.", Toast.LENGTH_SHORT).show()
             }
@@ -83,7 +88,21 @@ class MainActivity : AppCompatActivity() {
     class AndroidPlayerBridge(private val context: Context, private val activity: Activity) {
         @JavascriptInterface
         fun playStream(videoUrl: String, title: String?, logoUrl: String?, tmdbId: String?, mediaType: String?) {
+            RemoteLogger.i("MainActivity", "Bridge playStream called: title='$title', url='$videoUrl', tmdbId='$tmdbId', type='$mediaType'")
             PlayerActivity.start(context, videoUrl, title, logoUrl, tmdbId, mediaType)
+        }
+
+        @JavascriptInterface
+        fun log(level: String?, tag: String?, message: String?) {
+            val lvl = level?.uppercase(Locale.ROOT) ?: "INFO"
+            val tg = tag ?: "WebClient"
+            val msg = message ?: ""
+            when (lvl) {
+                "ERROR" -> RemoteLogger.e(tg, msg)
+                "WARN", "WARNING" -> RemoteLogger.w(tg, msg)
+                "DEBUG" -> RemoteLogger.d(tg, msg)
+                else -> RemoteLogger.i(tg, msg)
+            }
         }
 
         @JavascriptInterface
@@ -130,6 +149,7 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        RemoteLogger.init(this)
 
         hideSystemUI()
 
@@ -212,6 +232,21 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
+                if (consoleMessage != null) {
+                    val src = consoleMessage.sourceId()?.substringAfterLast("/") ?: "script"
+                    val line = consoleMessage.lineNumber()
+                    val msg = consoleMessage.message()
+                    when (consoleMessage.messageLevel()) {
+                        ConsoleMessage.MessageLevel.ERROR ->
+                            RemoteLogger.e("WebViewConsole", "[$src:$line] $msg")
+                        ConsoleMessage.MessageLevel.WARNING ->
+                            RemoteLogger.w("WebViewConsole", "[$src:$line] $msg")
+                        ConsoleMessage.MessageLevel.DEBUG ->
+                            RemoteLogger.d("WebViewConsole", "[$src:$line] $msg")
+                        else ->
+                            RemoteLogger.i("WebViewConsole", "[$src:$line] $msg")
+                    }
+                }
                 return super.onConsoleMessage(consoleMessage)
             }
 
@@ -221,6 +256,7 @@ class MainActivity : AppCompatActivity() {
                     callback?.onCustomViewHidden()
                     return
                 }
+                RemoteLogger.i("MainActivity", "Showing fullscreen trailer custom view.")
                 customView = view
                 customViewCallback = callback
                 webView.visibility = View.GONE
@@ -236,6 +272,7 @@ class MainActivity : AppCompatActivity() {
             override fun onHideCustomView() {
                 super.onHideCustomView()
                 if (customView == null) return
+                RemoteLogger.i("MainActivity", "Hiding fullscreen trailer custom view.")
                 webView.visibility = View.VISIBLE
                 (window.decorView as ViewGroup).removeView(customView)
                 customView = null
@@ -293,8 +330,14 @@ class MainActivity : AppCompatActivity() {
                 return false
             }
 
+            override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+                super.onPageStarted(view, url, favicon)
+                RemoteLogger.i("MainActivity", "WebView started loading: $url")
+            }
+
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
+                RemoteLogger.i("MainActivity", "WebView finished loading: $url")
                 view?.evaluateJavascript(
                     "document.body.style.zoom = '80%';" +
                     "if (typeof window.refreshEpgAndRecordings === 'function') window.refreshEpgAndRecordings();",
@@ -304,6 +347,7 @@ class MainActivity : AppCompatActivity() {
 
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                 super.onReceivedError(view, request, error)
+                RemoteLogger.e("MainActivity", "WebView Error [Code ${error?.errorCode}]: ${error?.description} on ${request?.url}")
                 if (request?.isForMainFrame == true) {
                     runOnUiThread {
                         Toast.makeText(this@MainActivity, "Connection Error: ${error?.description ?: "Unreachable"}. Open Server Settings.", Toast.LENGTH_LONG).show()
@@ -316,6 +360,7 @@ class MainActivity : AppCompatActivity() {
 
             override fun onReceivedHttpError(view: WebView?, request: WebResourceRequest?, errorResponse: WebResourceResponse?) {
                 super.onReceivedHttpError(view, request, errorResponse)
+                RemoteLogger.e("MainActivity", "WebView HTTP Error: Status ${errorResponse?.statusCode} on ${request?.url}")
                 if (request?.isForMainFrame == true && (errorResponse?.statusCode ?: 200) >= 400) {
                     runOnUiThread {
                         Toast.makeText(this@MainActivity, "Server Error ${errorResponse?.statusCode}. Please check server address.", Toast.LENGTH_LONG).show()
@@ -324,6 +369,11 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                 }
+            }
+
+            override fun onRenderProcessGone(view: WebView?, detail: RenderProcessGoneDetail?): Boolean {
+                RemoteLogger.e("MainActivity", "WebView Render Process Gone! DidCrash: ${detail?.didCrash()}")
+                return super.onRenderProcessGone(view, detail)
             }
         }
     }
@@ -337,6 +387,8 @@ class MainActivity : AppCompatActivity() {
             target = target.substring(0, target.length - 1)
         }
         prefs.edit().putString(KEY_SERVER_URL, target).apply()
+        RemoteLogger.setServerUrl(target)
+        RemoteLogger.i("MainActivity", "Checking connection to server: $target")
 
         // Test connectivity in background to prevent black screens if server is offline
         thread {
@@ -367,8 +419,10 @@ class MainActivity : AppCompatActivity() {
 
             runOnUiThread {
                 if (connected) {
+                    RemoteLogger.i("MainActivity", "Server reachable ($target). Loading URL in WebView.")
                     webView.loadUrl(target)
                 } else {
+                    RemoteLogger.w("MainActivity", "Server unreachable ($target). Showing server selection dialog.")
                     Toast.makeText(this@MainActivity, "Unable to reach $target. Select local server below:", Toast.LENGTH_LONG).show()
                     if (!isDialogShowing) {
                         promptForServerUrl()
@@ -380,6 +434,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun discoverLocalServers(onDiscovered: (List<String>) -> Unit) {
         thread {
+            RemoteLogger.i("MainActivity", "Starting network scan for local BubbaFlix servers...")
             val discoveredList = LinkedHashSet<String>()
 
             // 1. UDP Broadcast Discovery on port 5151
@@ -445,6 +500,7 @@ class MainActivity : AppCompatActivity() {
                 e.printStackTrace()
             }
 
+            RemoteLogger.i("MainActivity", "Local server discovery complete. Discovered ${discoveredList.size} server(s): $discoveredList")
             onDiscovered(discoveredList.toList())
         }
     }
@@ -571,11 +627,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun promptExitApp() {
+        RemoteLogger.i("MainActivity", "Exit app dialog opened.")
         runOnUiThread {
             val dialog = AlertDialog.Builder(this)
                 .setTitle("Exit BubbaFlix?")
                 .setMessage("Are you sure you want to exit BubbaFlix TV?")
                 .setPositiveButton("Exit") { _, _ ->
+                    RemoteLogger.i("MainActivity", "User confirmed exit. Terminating app.")
                     finishAffinity()
                 }
                 .setNegativeButton("Cancel", null)

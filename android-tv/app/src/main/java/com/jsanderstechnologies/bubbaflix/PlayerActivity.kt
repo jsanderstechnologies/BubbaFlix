@@ -114,10 +114,10 @@ class PlayerActivity : AppCompatActivity() {
         previousUncaughtExceptionHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             Log.e("PlayerActivity", "Uncaught exception on thread ${thread.name}", throwable)
-            sendErrorToServerLog(
-                "Fatal thread error (${thread.name}): ${throwable.message ?: throwable.javaClass.simpleName}",
-                "UNCAUGHT_THREAD_EXCEPTION",
-                intent.getStringExtra(EXTRA_VIDEO_URL) ?: ""
+            RemoteLogger.e(
+                "PlayerActivity",
+                "Fatal thread error (${thread.name}): ${throwable.message ?: throwable.javaClass.simpleName} | Stream: ${intent.getStringExtra(EXTRA_VIDEO_URL) ?: ""}",
+                throwable
             )
             try {
                 if (!isFinishing && !isDestroyed) {
@@ -167,6 +167,8 @@ class PlayerActivity : AppCompatActivity() {
         val tmdbId = intent.getStringExtra(EXTRA_TMDB_ID)
         val mediaType = intent.getStringExtra(EXTRA_MEDIA_TYPE) ?: "movie"
 
+        RemoteLogger.i("PlayerActivity", "Player launched for '$title' (TMDB: $tmdbId, Type: $mediaType, URL: $videoUrl)")
+
         txtPlayerTitle.visibility = View.GONE
 
         if (!logoUrl.isNullOrEmpty()) {
@@ -187,6 +189,7 @@ class PlayerActivity : AppCompatActivity() {
             if (!videoUrl.contains("/api/transcode")) {
                 val serverBase = getServerBaseUrl()
                 targetUrl = "$serverBase/api/transcode?url=${Uri.encode(videoUrl)}"
+                RemoteLogger.w("PlayerActivity", "Fire Tablet hardware guard: Auto-routing 10-bit HEVC stream via server transcode: $targetUrl")
                 Log.w("PlayerActivity", "Fire Tablet hardware guard: Auto-routing 10-bit HEVC stream via server transcode: $targetUrl")
                 Toast.makeText(this, "Fire Tablet: Transcoding 10-bit HEVC to prevent hardware crash", Toast.LENGTH_LONG).show()
             }
@@ -397,16 +400,23 @@ class PlayerActivity : AppCompatActivity() {
                     }
 
                     override fun onPlaybackStateChanged(state: Int) {
-                        if (state == Player.STATE_ENDED) {
-                            finish()
-                            return
-                        }
-                        if (state == Player.STATE_READY) {
-                            errorLayout.visibility = View.GONE
-                            btnPlayPause.setImageResource(
-                                if (playWhenReady) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
-                            )
-                            checkAndPromptResume()
+                        when (state) {
+                            Player.STATE_BUFFERING -> {
+                                RemoteLogger.d("PlayerActivity", "Playback State: BUFFERING (Position: ${exoPlayer?.currentPosition}ms)")
+                            }
+                            Player.STATE_READY -> {
+                                RemoteLogger.i("PlayerActivity", "Playback State: READY (Duration: ${exoPlayer?.duration}ms, Playing: $playWhenReady)")
+                                errorLayout.visibility = View.GONE
+                                btnPlayPause.setImageResource(
+                                    if (playWhenReady) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
+                                )
+                                checkAndPromptResume()
+                            }
+                            Player.STATE_ENDED -> {
+                                RemoteLogger.i("PlayerActivity", "Playback State: ENDED. Exiting player.")
+                                finish()
+                                return
+                            }
                         }
                     }
 
@@ -418,12 +428,14 @@ class PlayerActivity : AppCompatActivity() {
 
                     override fun onPlayerError(error: PlaybackException) {
                         val errDetails = error.message ?: error.cause?.message ?: "Unknown playback decoding error"
+                        RemoteLogger.e("PlayerActivity", "ExoPlayer Error [${error.errorCodeName}]: $errDetails (URL: $videoUrl)", error)
                         sendErrorToServerLog(errDetails, error.errorCodeName, videoUrl)
 
                         val errMsg = (error.message ?: "") + " " + (error.cause?.message ?: "")
                         val errName = error.errorCodeName.uppercase(Locale.ROOT)
 
                         if (error.cause is OutOfMemoryError || errMsg.contains("OutOfMemory", ignoreCase = true)) {
+                            RemoteLogger.e("PlayerActivity", "Playback OutOfMemoryError: $errMsg")
                             Log.e("PlayerActivity", "Playback OutOfMemoryError: $errMsg")
                             showError("Device memory limit reached. Please restart or close background apps.")
                             return
@@ -434,6 +446,7 @@ class PlayerActivity : AppCompatActivity() {
                             if (!videoUrl.contains("/api/transcode")) {
                                 val serverBase = getServerBaseUrl()
                                 val transcodeUrl = "$serverBase/api/transcode?url=${Uri.encode(videoUrl)}"
+                                RemoteLogger.w("PlayerActivity", "Playback error ($errName: $errMsg). Falling back to server transcode: $transcodeUrl")
                                 Log.d("PlayerActivity", "Playback error ($errName: $errMsg). Falling back to server transcode: $transcodeUrl")
                                 val fallbackItem = MediaItem.Builder()
                                     .setUri(Uri.parse(transcodeUrl))
@@ -471,34 +484,8 @@ class PlayerActivity : AppCompatActivity() {
 
     private fun sendErrorToServerLog(errorMsg: String, errorCode: String, urlStr: String) {
         try {
-            val serverBase = getServerBaseUrl()
-            val logEndpoint = "$serverBase/api/log"
-
             val title = intent.getStringExtra(EXTRA_TITLE) ?: ""
-
-            val client = OkHttpClient()
-            val jsonPayload = JSONObject().apply {
-                put("level", "ERROR")
-                put("source", "BubbaFlix Android App (ExoPlayer)")
-                put("message", errorMsg)
-                put("errorCode", errorCode)
-                put("mediaUrl", urlStr)
-                put("title", title)
-            }
-
-            val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
-            val requestBody = jsonPayload.toString().toRequestBody(mediaType)
-            val request = Request.Builder()
-                .url(logEndpoint)
-                .post(requestBody)
-                .build()
-
-            client.newCall(request).enqueue(object : Callback {
-                override fun onFailure(call: Call, e: IOException) {}
-                override fun onResponse(call: Call, response: Response) {
-                    response.close()
-                }
-            })
+            RemoteLogger.e("PlayerActivity", "Player Error [$errorCode]: $errorMsg | Title: $title | URL: $urlStr")
         } catch (e: Exception) {
             e.printStackTrace()
         }

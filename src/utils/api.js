@@ -69,7 +69,7 @@ export const fetchDataFromAPI = async (url, params, forceRefresh = false) => {
     language: "en-US",
     with_original_language: "en",
     include_adult: false,
-    _v: "1.0.34",
+    _v: "1.0.35",
     ...params,
   };
 

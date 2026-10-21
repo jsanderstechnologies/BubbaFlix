@@ -26,6 +26,7 @@ object UpdateManager {
             .build()
 
         val cacheBusterUrl = "$VERSION_CHECK_URL?t=${System.currentTimeMillis()}"
+        RemoteLogger.d(TAG, "Checking for app updates from GitHub...")
         val request = Request.Builder()
             .url(cacheBusterUrl)
             .header("Cache-Control", "no-cache, no-store, must-revalidate")
@@ -34,6 +35,7 @@ object UpdateManager {
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
+                RemoteLogger.w(TAG, "Failed to check for updates from GitHub: ${e.message}")
                 Log.w(TAG, "Failed to check for updates from GitHub: ${e.message}")
                 activity.runOnUiThread {
                     onContinueLoading?.invoke()
@@ -42,6 +44,7 @@ object UpdateManager {
 
             override fun onResponse(call: Call, response: Response) {
                 if (!response.isSuccessful) {
+                    RemoteLogger.w(TAG, "GitHub version check returned non-200 code: ${response.code}")
                     Log.w(TAG, "GitHub version check returned non-200 code: ${response.code}")
                     activity.runOnUiThread {
                         onContinueLoading?.invoke()
@@ -63,9 +66,11 @@ object UpdateManager {
                         @Suppress("DEPRECATION")
                         val localVersionCode = pInfo.versionCode
 
+                        RemoteLogger.i(TAG, "Local versionCode: $localVersionCode, Remote versionCode: $remoteVersionCode (v$remoteVersionName)")
                         Log.d(TAG, "Local versionCode: $localVersionCode, Remote versionCode: $remoteVersionCode")
 
                         if (remoteVersionCode > localVersionCode && apkUrl.isNotEmpty()) {
+                            RemoteLogger.i(TAG, "New update available: v$remoteVersionName ($remoteVersionCode). Prompting user.")
                             activity.runOnUiThread {
                                 showUpdatePromptDialog(activity, remoteVersionName, releaseNotes, apkUrl, onContinueLoading)
                             }
@@ -75,6 +80,7 @@ object UpdateManager {
                             }
                         }
                     } catch (e: Exception) {
+                        RemoteLogger.e(TAG, "Error parsing version.json from GitHub", e)
                         Log.e(TAG, "Error parsing version.json from GitHub", e)
                         activity.runOnUiThread {
                             onContinueLoading?.invoke()
@@ -154,6 +160,7 @@ object UpdateManager {
 
         val client = OkHttpClient.Builder().build()
         val downloadUrl = if (apkUrl.contains("?")) "$apkUrl&t=${System.currentTimeMillis()}" else "$apkUrl?t=${System.currentTimeMillis()}"
+        RemoteLogger.i(TAG, "Starting download of updated APK from: $downloadUrl")
         val request = Request.Builder()
             .url(downloadUrl)
             .header("Cache-Control", "no-cache, no-store, must-revalidate")
@@ -162,6 +169,7 @@ object UpdateManager {
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
+                RemoteLogger.e(TAG, "Failed to download update APK: ${e.message}", e)
                 activity.runOnUiThread {
                     progressDialog.dismiss()
                     Toast.makeText(activity, "Failed to download update: ${e.message}", Toast.LENGTH_LONG).show()
@@ -171,6 +179,7 @@ object UpdateManager {
 
             override fun onResponse(call: Call, response: Response) {
                 if (!response.isSuccessful) {
+                    RemoteLogger.e(TAG, "Download APK returned non-200 code: ${response.code}")
                     activity.runOnUiThread {
                         progressDialog.dismiss()
                         Toast.makeText(activity, "Download failed (Server code ${response.code})", Toast.LENGTH_LONG).show()
@@ -180,6 +189,7 @@ object UpdateManager {
                 }
 
                 val body = response.body ?: run {
+                    RemoteLogger.e(TAG, "Download APK returned empty response body")
                     activity.runOnUiThread {
                         progressDialog.dismiss()
                         onContinueLoading?.invoke()
@@ -211,12 +221,14 @@ object UpdateManager {
                     outputStream.close()
                     inputStream.close()
 
+                    RemoteLogger.i(TAG, "Update APK successfully downloaded ($totalRead bytes). Triggering installation.")
                     activity.runOnUiThread {
                         progressDialog.dismiss()
                         installApk(activity, apkFile)
                         onContinueLoading?.invoke()
                     }
                 } catch (e: Exception) {
+                    RemoteLogger.e(TAG, "Error writing update APK to disk: ${e.message}", e)
                     activity.runOnUiThread {
                         progressDialog.dismiss()
                         Toast.makeText(activity, "Error saving update file: ${e.message}", Toast.LENGTH_LONG).show()
@@ -229,11 +241,13 @@ object UpdateManager {
 
     private fun installApk(activity: Activity, apkFile: File) {
         if (!apkFile.exists()) {
+            RemoteLogger.e(TAG, "Update APK file does not exist at path: ${apkFile.absolutePath}")
             Toast.makeText(activity, "Update APK file not found.", Toast.LENGTH_SHORT).show()
             return
         }
 
         try {
+            RemoteLogger.i(TAG, "Launching Android package installer for: ${apkFile.absolutePath}")
             val apkUri = FileProvider.getUriForFile(
                 activity,
                 "${activity.packageName}.fileprovider",
@@ -248,6 +262,7 @@ object UpdateManager {
 
             activity.startActivity(intent)
         } catch (e: Exception) {
+            RemoteLogger.e(TAG, "Failed to launch package installer: ${e.message}", e)
             Log.e(TAG, "Failed to launch package installer", e)
             Toast.makeText(activity, "Failed to launch installer: ${e.message}", Toast.LENGTH_LONG).show()
         }

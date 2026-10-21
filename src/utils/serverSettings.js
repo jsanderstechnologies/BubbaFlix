@@ -226,7 +226,7 @@ export const exportAdminBackup = async () => {
 
     return {
       appName: "BubbaFlix",
-      backupVersion: "1.0.34",
+      backupVersion: "1.0.35",
       timestamp: new Date().toISOString(),
       backendBackup,
       clientLocalStorage,
@@ -276,3 +276,22 @@ export const importAdminBackup = async (backupPayload) => {
     return { success: false, error: err.message };
   }
 };
+
+export const fetchServerLogs = async (lines = 200, filter = "") => {
+  try {
+    const baseUrl = getServerUrl();
+    const params = new URLSearchParams();
+    if (lines) params.append("lines", lines.toString());
+    if (filter) params.append("filter", filter);
+    params.append("format", "text");
+
+    const res = await axios.get(`${baseUrl}/api/log?${params.toString()}`, {
+      timeout: 8000,
+      responseType: "text",
+    });
+    return { success: true, logs: res.data };
+  } catch (err) {
+    return { success: false, error: err.message, logs: "" };
+  }
+};
+

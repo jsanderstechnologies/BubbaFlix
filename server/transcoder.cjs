@@ -36,7 +36,7 @@ const getLocalVersionData = () => {
       return JSON.parse(fs.readFileSync(vFile, "utf8"));
     }
   } catch (e) {}
-  return { versionCode: 35, versionName: "1.0.34" };
+  return { versionCode: 36, versionName: "1.0.35" };
 };
 
 
@@ -1557,31 +1557,94 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     return;
   }
 
-  // Client Error Logging Endpoint
-  if ((cleanPath === "/api/log" || cleanPath === "/log") && req.method === "POST") {
+  // Client Logging Ingestion Endpoint (POST /api/log, POST /log)
+  if ((cleanPath === "/api/log" || cleanPath === "/log" || cleanPath === "/api/logs" || cleanPath === "/logs") && req.method === "POST") {
     let body = "";
     req.on("data", (chunk) => { body += chunk.toString(); });
     req.on("end", () => {
       try {
         const payload = body ? JSON.parse(body) : {};
-        const level = payload.level || "ERROR";
-        const msg = payload.message || payload.error || "Client Report";
-        const src = payload.source || initiator.initiatorComponent || "Client App";
-        const mediaUrl = payload.mediaUrl || payload.url || "";
-        const title = payload.title || payload.mediaTitle || "";
+        const entries = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload.logs)
+            ? payload.logs
+            : Array.isArray(payload.entries)
+              ? payload.entries
+              : [payload];
 
-        let logStr = `[Android/Client Player Error] Source: ${src} | Client IP: ${initiator.ip} | Message: ${msg}`;
-        if (title) logStr += ` | Title: ${title}`;
-        if (payload.errorCode) logStr += ` | Code: ${payload.errorCode}`;
-        if (mediaUrl) logStr += ` | Stream URL: ${mediaUrl}`;
+        const defaultDevice = payload.device || initiator.initiatorComponent || "Unknown Device";
+        const defaultAppVersion = payload.appVersion || "";
+        const defaultSource = payload.source || initiator.initiatorComponent || "Client App";
 
-        logMessage(logStr, true);
-        return sendJson(res, 200, { status: "logged" });
+        for (const entry of entries) {
+          if (!entry || typeof entry !== "object") continue;
+          const lvl = (entry.level || payload.level || "INFO").toUpperCase();
+          const tag = entry.tag || entry.source || defaultSource;
+          const device = entry.device || defaultDevice;
+          const appVer = entry.appVersion || defaultAppVersion;
+          const msg = entry.message || entry.error || entry.msg || "Log Item";
+          const isErr = (lvl === "ERROR" || lvl === "FATAL");
+
+          let logStr = `[AndroidTV ${lvl}] [${tag}] [${device}${appVer ? ` v${appVer}` : ""}] ${msg}`;
+          if (entry.title) logStr += ` | Title: ${entry.title}`;
+          if (entry.errorCode) logStr += ` | Code: ${entry.errorCode}`;
+          if (entry.mediaUrl || entry.url) logStr += ` | Stream: ${entry.mediaUrl || entry.url}`;
+          if (entry.details) logStr += ` | Details: ${entry.details}`;
+          if (entry.stack) logStr += `\nStack: ${entry.stack}`;
+
+          logMessage(logStr, isErr);
+        }
+
+        return sendJson(res, 200, { status: "logged", count: entries.length });
       } catch (e) {
-        return sendJson(res, 400, { error: "Invalid log payload" });
+        return sendJson(res, 400, { error: "Invalid log payload: " + e.message });
       }
     });
     return;
+  }
+
+  // Client & Server Log Inspection Endpoint (GET /api/log, GET /log, GET /api/logs, GET /logs)
+  if ((cleanPath === "/api/log" || cleanPath === "/log" || cleanPath === "/api/logs" || cleanPath === "/logs") && req.method === "GET") {
+    try {
+      const urlObj = new URL(req.url, "http://localhost");
+      const linesCount = Math.min(Math.max(parseInt(urlObj.searchParams.get("lines") || "200", 10), 10), 2000);
+      const filterText = (urlObj.searchParams.get("filter") || "").trim().toLowerCase();
+      const format = (urlObj.searchParams.get("format") || "text").toLowerCase();
+
+      if (!fs.existsSync(LOG_FILE)) {
+        if (format === "json") return sendJson(res, 200, { status: "success", count: 0, lines: [] });
+        res.writeHead(200, {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Access-Control-Allow-Origin": "*",
+        });
+        return res.end("No log file found.");
+      }
+
+      const content = fs.readFileSync(LOG_FILE, "utf8");
+      let allLines = content.split("\n").filter((l) => l.trim().length > 0);
+      if (filterText) {
+        allLines = allLines.filter((l) => l.toLowerCase().includes(filterText));
+      }
+      const tailLines = allLines.slice(-linesCount);
+
+      if (format === "json") {
+        return sendJson(res, 200, {
+          status: "success",
+          totalAvailable: allLines.length,
+          returned: tailLines.length,
+          lines: tailLines,
+        });
+      }
+
+      res.writeHead(200, {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Access-Control-Allow-Origin": "*",
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+      });
+      return res.end(tailLines.join("\n"));
+    } catch (err) {
+      return sendJson(res, 500, { error: `Failed to read log file: ${err.message}` });
+    }
   }
 
   // Transparent Groq AI Chat Completion Proxy Endpoint

@@ -7,11 +7,11 @@ import { getSimklConfig, testSimklConnection } from "../../utils/simkl";
 import { getGroqApiKey } from "../../utils/groqFilter";
 import { getPremiumizeKey, savePremiumizeKey } from "../../utils/premiumize";
 import dayjs from "dayjs";
-import { updateServerSettings, fetchServerSettings, getServerUrl, saveServerUrl, testBackendServerHealth, exportAdminBackup, importAdminBackup } from "../../utils/serverSettings";
+import { updateServerSettings, fetchServerSettings, getServerUrl, saveServerUrl, testBackendServerHealth, exportAdminBackup, importAdminBackup, fetchServerLogs } from "../../utils/serverSettings";
 import { getApiConfiguration } from "../../store/homeSlice";
 import { THEMES, getSavedTheme, applyTheme } from "../../utils/theme";
 import { getHomeSections, saveHomeSections, DEFAULT_HOME_SECTIONS, validateHomeSections } from "../../utils/homeConfig";
-import { FiKey, FiCheck, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning, FiCheckSquare, FiTv, FiPlus, FiMinus, FiServer, FiInfo, FiExternalLink, FiCloud, FiChevronUp, FiChevronDown, FiRotateCcw, FiDownload, FiUpload } from "react-icons/fi";
+import { FiKey, FiCheck, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning, FiCheckSquare, FiTv, FiPlus, FiMinus, FiServer, FiInfo, FiExternalLink, FiCloud, FiChevronUp, FiChevronDown, FiRotateCcw, FiDownload, FiUpload, FiTerminal } from "react-icons/fi";
 import "./index.scss";
 import { AuthContext } from "../../context/AuthContext";
 import { useContext } from "react";
@@ -138,6 +138,30 @@ const SettingsPage = () => {
       }
     };
     reader.readAsText(file);
+  };
+
+  // Troubleshooting & Client Logs State
+  const [logsText, setLogsText] = useState("");
+  const [logsFilter, setLogsFilter] = useState("AndroidTV");
+  const [logsLines, setLogsLines] = useState(200);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [logsError, setLogsError] = useState(null);
+
+  const handleFetchLogs = async () => {
+    setLoadingLogs(true);
+    setLogsError(null);
+    try {
+      const res = await fetchServerLogs(logsLines, logsFilter);
+      if (res.success) {
+        setLogsText(res.logs || "No log entries found matching current filter.");
+      } else {
+        setLogsError(res.error || "Failed to load server logs.");
+      }
+    } catch (e) {
+      setLogsError(e.message);
+    } finally {
+      setLoadingLogs(false);
+    }
   };
 
   const dispatch = useDispatch();
@@ -962,6 +986,91 @@ const SettingsPage = () => {
               </label>
             </div>
           </div>
+
+          {/* Troubleshooting & Android TV Client Logs Card */}
+          <div className="settingsCard">
+            <div className="cardHeader">
+              <h2><FiTerminal style={{ marginRight: 8 }} /> Troubleshooting & Client Logs</h2>
+              <span className="badge custom">Live Telemetry</span>
+            </div>
+            <p className="description">
+              Inspect live diagnostic logs sent back from Android TV client devices (startup, device specs, network discovery, playback states, ExoPlayer errors, and WebView console logs).
+            </p>
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 12 }}>
+              <input
+                type="text"
+                placeholder="Filter (e.g. AndroidTV, ERROR, PlayerActivity)"
+                value={logsFilter}
+                onChange={(e) => setLogsFilter(e.target.value)}
+                style={{
+                  flex: "1 1 200px",
+                  padding: "8px 12px",
+                  borderRadius: 6,
+                  border: "1px solid var(--black-light)",
+                  background: "var(--black)",
+                  color: "#fff",
+                  fontSize: 14,
+                }}
+              />
+              <select
+                value={logsLines}
+                onChange={(e) => setLogsLines(Number(e.target.value))}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: 6,
+                  border: "1px solid var(--black-light)",
+                  background: "var(--black)",
+                  color: "#fff",
+                  fontSize: 14,
+                }}
+              >
+                <option value={50}>Last 50 lines</option>
+                <option value={100}>Last 100 lines</option>
+                <option value={200}>Last 200 lines</option>
+                <option value={500}>Last 500 lines</option>
+                <option value={1000}>Last 1000 lines</option>
+              </select>
+              <button
+                type="button"
+                className="saveBtn"
+                onClick={handleFetchLogs}
+                disabled={loadingLogs}
+              >
+                <FiRefreshCw className={loadingLogs ? "spin" : ""} style={{ marginRight: 6 }} />
+                {loadingLogs ? "Fetching..." : "Fetch Logs"}
+              </button>
+            </div>
+
+            {logsError && (
+              <div className="statusBanner error" style={{ marginBottom: 12 }}>
+                <FiXCircle /> <span>{logsError}</span>
+              </div>
+            )}
+
+            {logsText && (
+              <div
+                style={{
+                  marginTop: 10,
+                  padding: 12,
+                  background: "#0a0a0f",
+                  borderRadius: 6,
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  maxHeight: 380,
+                  overflowY: "auto",
+                  fontFamily: "monospace",
+                  fontSize: 12,
+                  lineHeight: 1.5,
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-all",
+                  color: "#cfd3dc",
+                }}
+              >
+                {logsText}
+              </div>
+            )}
+          </div>
+
           {/* Backend Server Host & Address Card */}
           <div className="settingsCard">
             <div className="cardHeader">
