@@ -143,23 +143,8 @@ const IptvSetupPage = () => {
         });
       }
 
-      // Pre-populate channelsConfig with existing server rules or defaults
-      if (chs && chs.length > 0) {
-        setChannelsConfig((prev) => {
-          const merged = { ...prev };
-          chs.forEach((ch) => {
-            const sid = String(ch.stream_id);
-            if (merged[sid] === undefined) {
-              merged[sid] = {
-                enabled: ch.enabled !== false,
-                channelNumber: ch.channel_number,
-                customName: ch.name !== ch.original_name ? ch.name : "",
-              };
-            }
-          });
-          return merged;
-        });
-      }
+      // Retain existing channelsConfig customizations without generating 20,000 dummy keys
+
 
       if (forceRefresh) {
         const groupCount = grps ? grps.length : 0;
@@ -736,6 +721,7 @@ const IptvSetupPage = () => {
                               <img
                                 src={ch.stream_icon}
                                 alt=""
+                                loading="lazy"
                                 className="channelLogoThumb"
                                 onError={(e) => {
                                   e.target.style.display = "none";

@@ -604,6 +604,7 @@ if (!fs.existsSync(IPTV_CACHE_DIR)) {
 
 let iptvChannelsCache = { timestamp: 0, channels: [], groups: [], streamUrlMap: new Map() };
 let iptvXmltvCache = { timestamp: 0, byTvgId: new Map(), byName: new Map() };
+const iptvShortEpgCache = new Map(); // streamId -> { timestamp, listings }
 const IPTV_CHANNELS_CACHE_TTL = 15 * 60 * 1000; // 15 mins
 const IPTV_XMLTV_CACHE_TTL = 4 * 60 * 60 * 1000; // 4 hours
 
@@ -641,6 +642,7 @@ const saveIptvConfig = (config, credentialsChanged = false) => {
     fs.writeFileSync(IPTV_CONFIG_FILE, JSON.stringify(config, null, 2), "utf8");
     if (credentialsChanged) {
       iptvChannelsCache = { timestamp: 0, channels: [], groups: [], streamUrlMap: new Map() };
+      iptvShortEpgCache.clear();
       const diskCacheFile = path.join(IPTV_CACHE_DIR, "channels_cache.json");
       if (fs.existsSync(diskCacheFile)) {
         try { fs.unlinkSync(diskCacheFile); } catch (e) {}
@@ -666,27 +668,46 @@ const parseXmltvDate = (dateStr) => {
   return isNaN(d.getTime()) ? 0 : Math.floor(d.getTime() / 1000);
 };
 
-// Fast XMLTV Guide Parser
+// Memory-Safe XMLTV Guide Parser
 const parseXmltv = (xmlString) => {
   const byTvgId = new Map();
   const byName = new Map();
+  if (!xmlString) return { byTvgId, byName };
+
+  // Safety ceiling: avoid running regex over multi-hundred MB strings
+  const safeXml = xmlString.length > 25 * 1024 * 1024 ? xmlString.substring(0, 25 * 1024 * 1024) : xmlString;
   const progRegex = /<programme\s+start="([^"]+)"\s+stop="([^"]+)"\s+channel="([^"]+)"[^>]*>([\s\S]*?)<\/programme>/gi;
   let match;
+  let totalProgrammes = 0;
+  const nowSec = Math.floor(Date.now() / 1000);
 
-  while ((match = progRegex.exec(xmlString)) !== null) {
+  while ((match = progRegex.exec(safeXml)) !== null) {
+    if (totalProgrammes >= 40000) break; // Hard ceiling to protect Node.js heap
+
     const rawStart = match[1];
     const rawStop = match[2];
     const channelId = match[3];
-    const inner = match[4];
+    const stopTs = parseXmltvDate(rawStop);
 
+    // Skip past programmes that ended more than 2 hours ago
+    if (stopTs > 0 && stopTs < nowSec - 7200) {
+      continue;
+    }
+
+    const key = channelId.trim();
+    const existing = byTvgId.get(key);
+    // Limit to max 15 current/upcoming programmes per channel
+    if (existing && existing.length >= 15) {
+      continue;
+    }
+
+    const inner = match[4];
     const titleMatch = inner.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
     const descMatch = inner.match(/<desc[^>]*>([\s\S]*?)<\/desc>/i);
 
     const title = titleMatch ? titleMatch[1].replace(/<!\[CDATA\[(.*?)\]\]>/gi, "$1").trim() : "";
     const desc = descMatch ? descMatch[1].replace(/<!\[CDATA\[(.*?)\]\]>/gi, "$1").trim() : "";
-
     const startTs = parseXmltvDate(rawStart);
-    const stopTs = parseXmltvDate(rawStop);
 
     const prog = {
       title,
@@ -697,19 +718,20 @@ const parseXmltv = (xmlString) => {
       stop_timestamp: stopTs,
     };
 
-    const key = channelId.trim();
     if (!byTvgId.has(key)) byTvgId.set(key, []);
     byTvgId.get(key).push(prog);
 
     const normKey = key.toLowerCase().replace(/[^a-z0-9]/g, "");
     if (normKey && !byName.has(normKey)) byName.set(normKey, []);
-    if (normKey) byName.get(normKey).push(prog);
+    if (normKey && byName.get(normKey).length < 15) byName.get(normKey).push(prog);
+
+    totalProgrammes++;
   }
 
   return { byTvgId, byName };
 };
 
-// Fetch and Cache XMLTV EPG (/xmltv.php)
+// Fetch and Cache XMLTV EPG (/xmltv.php) with strict memory safeguards
 const fetchXmltvEpg = async (credentials, force = false) => {
   const now = Date.now();
   if (!force && iptvXmltvCache.timestamp > 0 && now - iptvXmltvCache.timestamp < IPTV_XMLTV_CACHE_TTL) {
@@ -721,6 +743,10 @@ const fetchXmltvEpg = async (credentials, force = false) => {
     try {
       const stats = fs.statSync(diskCacheFile);
       if (now - stats.mtimeMs < IPTV_XMLTV_CACHE_TTL) {
+        if (stats.size > 35 * 1024 * 1024) {
+          logMessage(`[XMLTV Disk Cache] File size is ${Math.round(stats.size / 1024 / 1024)}MB. Skipping full read to protect RAM.`);
+          return iptvXmltvCache;
+        }
         const cachedXml = fs.readFileSync(diskCacheFile, "utf8");
         const parsed = parseXmltv(cachedXml);
         iptvXmltvCache = {
@@ -771,6 +797,12 @@ const fetchXmltvEpg = async (credentials, force = false) => {
     const arrayBuffer = await resp.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
+    // Safeguard: Do not decompress giant XML payloads > 35MB in memory
+    if (buffer.length > 35 * 1024 * 1024) {
+      logMessage(`[XMLTV EPG Warning] XMLTV payload too large (${Math.round(buffer.length / 1024 / 1024)}MB). Skipping to prevent memory overflow.`, true);
+      return iptvXmltvCache.timestamp > 0 ? iptvXmltvCache : { byTvgId: new Map(), byName: new Map() };
+    }
+
     let xmlText = "";
     if (buffer.length > 2 && buffer[0] === 0x1f && buffer[1] === 0x8b) {
       xmlText = zlib.gunzipSync(buffer).toString("utf8");
@@ -802,31 +834,34 @@ const fetchXmltvEpg = async (credentials, force = false) => {
   }
 };
 
-// Fast M3U Plus Playlist Parser with EXTGRP support
+// Fast M3U Plus Playlist Parser with EXTGRP support & pre-compiled attribute regex
 const parseM3uPlus = (content) => {
   const lines = content.split(/\r?\n/);
   const channels = [];
   const groups = new Map();
   const streamUrlMap = new Map();
   let currentItem = null;
+  const attrRegex = /([a-zA-Z0-9_-]+)=["']([^"']*)["']/g;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue;
     if (line.startsWith("#EXTINF:")) {
-      const getAttr = (name) => {
-        const regexDouble = new RegExp(name + '="([^"]*)"', "i");
-        const regexSingle = new RegExp(name + "='([^']*)'", "i");
-        const regexBare = new RegExp(name + "=([^\\s,]+)", "i");
-        const m = line.match(regexDouble) || line.match(regexSingle) || line.match(regexBare);
-        return m ? m[1] : "";
-      };
       const commaIdx = line.lastIndexOf(",");
       const title = commaIdx !== -1 ? line.substring(commaIdx + 1).trim() : "";
-      const tvgId = getAttr("tvg-id");
-      const tvgName = getAttr("tvg-name") || title;
-      const tvgLogo = getAttr("tvg-logo");
-      const groupTitle = getAttr("group-title") || getAttr("tvg-group") || "";
+      const attrPart = commaIdx !== -1 ? line.substring(8, commaIdx) : line.substring(8);
+
+      const attrs = {};
+      let m;
+      attrRegex.lastIndex = 0;
+      while ((m = attrRegex.exec(attrPart)) !== null) {
+        attrs[m[1].toLowerCase()] = m[2];
+      }
+
+      const tvgId = attrs["tvg-id"] || "";
+      const tvgName = attrs["tvg-name"] || title;
+      const tvgLogo = attrs["tvg-logo"] || "";
+      const groupTitle = attrs["group-title"] || attrs["tvg-group"] || "";
 
       currentItem = {
         name: title || tvgName,
@@ -968,13 +1003,81 @@ const fetchM3uPlaylist = async (credentials, force = false) => {
       return { channels: [], groups: [], streamUrlMap: new Map() };
     }
 
+    const isExplicitM3u = serverUrl.includes("get.php") || serverUrl.endsWith(".m3u") || serverUrl.endsWith(".m3u8");
+
+    // 1. FAST PATH: For Xtream Codes servers, query the fast JSON API (player_api.php) FIRST! (< 2 seconds)
+    if (!isExplicitM3u) {
+      try {
+        logMessage(`[IPTV Fast Fetch] Querying Xtream player_api.php live streams & categories...`);
+        const [categories, streams] = await Promise.all([
+          callXtreamApi(credentials, "get_live_categories").catch(() => []),
+          callXtreamApi(credentials, "get_live_streams").catch(() => []),
+        ]);
+
+        if (Array.isArray(streams) && streams.length > 0) {
+          const catMap = {};
+          const groups = [];
+          if (Array.isArray(categories)) {
+            categories.forEach((c) => {
+              catMap[String(c.category_id)] = c.category_name;
+              groups.push({
+                category_id: String(c.category_id),
+                category_name: c.category_name,
+                channel_count: 0,
+              });
+            });
+          }
+
+          const channels = [];
+          const streamUrlMap = new Map();
+          streams.forEach((s) => {
+            const catId = String(s.category_id || "");
+            const streamId = String(s.stream_id || s.num);
+            const streamUrl = `${serverUrl}/live/${encodeURIComponent(username)}/${encodeURIComponent(password)}/${streamId}.m3u8`;
+            streamUrlMap.set(streamId, streamUrl);
+
+            channels.push({
+              stream_id: streamId,
+              name: s.name,
+              original_name: s.name,
+              tvg_id: s.epg_channel_id || "",
+              epg_channel_id: s.epg_channel_id || "",
+              stream_icon: s.stream_icon || "",
+              category_id: catId,
+              category_name: catMap[catId] || "Live Channels",
+              stream_url: streamUrl,
+            });
+
+            const grp = groups.find((g) => g.category_id === catId);
+            if (grp) grp.channel_count++;
+          });
+
+          iptvChannelsCache = { timestamp: now, channels, groups, streamUrlMap };
+
+          try {
+            fs.writeFileSync(
+              diskCacheFile,
+              JSON.stringify({ channels, groups }),
+              "utf8"
+            );
+          } catch (diskErr) {}
+
+          logMessage(`[IPTV Fast Fetch Success] Loaded ${channels.length} channels across ${groups.length} categories via Xtream Codes JSON API.`);
+          return iptvChannelsCache;
+        }
+      } catch (fastErr) {
+        logMessage(`[IPTV Fast Fetch Notice] player_api.php check: ${fastErr.message}. Trying /get.php...`);
+      }
+    }
+
+    // 2. Fallback to /get.php?type=m3u_plus
     const m3uUrl = serverUrl.includes("get.php")
       ? serverUrl
       : `${serverUrl}/get.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&type=m3u_plus&output=m3u8`;
 
     logMessage(`[M3U Playlist Fetch] Loading channels from ${m3uUrl.replace(password, "******")}...`);
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    const timeoutId = setTimeout(() => controller.abort(), 35000);
 
     try {
       const resp = await fetch(m3uUrl, {
@@ -1006,10 +1109,10 @@ const fetchM3uPlaylist = async (credentials, force = false) => {
               try {
                 const xtreamCats = await callXtreamApi(credentials, "get_live_categories");
                 if (Array.isArray(xtreamCats) && xtreamCats.length > 1) {
-                  finalGroups = xtreamCats.map(c => ({
+                  finalGroups = xtreamCats.map((c) => ({
                     category_id: String(c.category_id),
                     category_name: c.category_name,
-                    channel_count: 0
+                    channel_count: 0,
                   }));
                 }
               } catch (e) {}
@@ -1024,10 +1127,14 @@ const fetchM3uPlaylist = async (credentials, force = false) => {
 
             // Save to disk cache for fast future startup
             try {
-              fs.writeFileSync(diskCacheFile, JSON.stringify({
-                channels: parsed.channels,
-                groups: finalGroups,
-              }), "utf8");
+              fs.writeFileSync(
+                diskCacheFile,
+                JSON.stringify({
+                  channels: parsed.channels,
+                  groups: finalGroups,
+                }),
+                "utf8"
+              );
             } catch (diskErr) {}
 
             logMessage(`[M3U Playlist Success] Parsed ${parsed.channels.length} channels across ${finalGroups.length} categories.`);
@@ -1037,71 +1144,12 @@ const fetchM3uPlaylist = async (credentials, force = false) => {
       }
     } catch (err) {
       clearTimeout(timeoutId);
-      logMessage(`[M3U Playlist Warning] Failed /get.php fetch: ${err.message}. Trying player_api.php fallback...`, true);
+      logMessage(`[M3U Playlist Warning] Failed /get.php fetch: ${err.message}`, true);
     }
 
-    // Fallback: Query player_api.php?action=get_live_streams & get_live_categories
-    try {
-      logMessage(`[IPTV Fallback] Querying player_api.php live streams & categories...`);
-      const [categories, streams] = await Promise.all([
-        callXtreamApi(credentials, "get_live_categories").catch(() => []),
-        callXtreamApi(credentials, "get_live_streams").catch(() => []),
-      ]);
-
-      const catMap = {};
-      const groups = [];
-      if (Array.isArray(categories)) {
-        categories.forEach(c => {
-          catMap[String(c.category_id)] = c.category_name;
-          groups.push({
-            category_id: String(c.category_id),
-            category_name: c.category_name,
-            channel_count: 0,
-          });
-        });
-      }
-
-      const channels = [];
-      const streamUrlMap = new Map();
-      if (Array.isArray(streams)) {
-        streams.forEach((s) => {
-          const catId = String(s.category_id || "");
-          const streamId = String(s.stream_id || s.num);
-          const streamUrl = `${serverUrl}/live/${encodeURIComponent(username)}/${encodeURIComponent(password)}/${streamId}.m3u8`;
-          streamUrlMap.set(streamId, streamUrl);
-
-          channels.push({
-            stream_id: streamId,
-            name: s.name,
-            original_name: s.name,
-            tvg_id: s.epg_channel_id || "",
-            epg_channel_id: s.epg_channel_id || "",
-            stream_icon: s.stream_icon || "",
-            category_id: catId,
-            category_name: catMap[catId] || "Live Channels",
-            stream_url: streamUrl,
-          });
-
-          const grp = groups.find(g => g.category_id === catId);
-          if (grp) grp.channel_count++;
-        });
-      }
-
-      iptvChannelsCache = { timestamp: now, channels, groups, streamUrlMap };
-
-      // Save to disk cache
-      try {
-        fs.writeFileSync(diskCacheFile, JSON.stringify({
-          channels,
-          groups,
-        }), "utf8");
-      } catch (diskErr) {}
-
-      return iptvChannelsCache;
-    } catch (apiErr) {
-      logMessage(`[IPTV Engine Error] Both /get.php and player_api.php failed: ${apiErr.message}`, true);
-      return iptvChannelsCache.channels.length > 0 ? iptvChannelsCache : { channels: [], groups: [], streamUrlMap: new Map() };
-    }
+    return iptvChannelsCache.channels.length > 0
+      ? iptvChannelsCache
+      : { channels: [], groups: [], streamUrlMap: new Map() };
   })();
 
   try {
@@ -2448,7 +2496,13 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
           return sendJson(res, 200, { status: "success", channels: [] });
         }
         const includeAll = parsedUrl.query.all === "true";
-        const channels = await getProcessedChannels(config, includeAll);
+        let channels = await getProcessedChannels(config, includeAll);
+
+        const limit = parsedUrl.query.limit ? parseInt(parsedUrl.query.limit, 10) : 0;
+        if (limit > 0 && channels.length > limit) {
+          channels = channels.slice(0, limit);
+        }
+
         return sendJson(res, 200, { status: "success", count: channels.length, channels });
       } catch (err) {
         logMessage(`[IPTV Channels Error] ${err.message}`, true);
@@ -2458,7 +2512,7 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     return;
   }
 
-  // GET /api/iptv/epg - Get EPG for a channel (XMLTV priority with Xtream fallback)
+  // GET /api/iptv/epg - Get EPG for a channel (Xtream player API first, with XMLTV fallback)
   if (cleanPath === "/api/iptv/epg" && req.method === "GET") {
     (async () => {
       try {
@@ -2475,62 +2529,74 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
           return sendJson(res, 200, { status: "success", epg: [] });
         }
 
-        // 1. Check XMLTV guide
-        const xmltv = await fetchXmltvEpg(config.credentials);
-        let rawListings = [];
-
-        if (tvgId && xmltv.byTvgId.has(tvgId)) {
-          rawListings = xmltv.byTvgId.get(tvgId);
-        } else if (streamId && xmltv.byTvgId.has(streamId)) {
-          rawListings = xmltv.byTvgId.get(streamId);
-        } else if (channelName) {
-          const normName = channelName.toLowerCase().replace(/[^a-z0-9]/g, "");
-          if (xmltv.byName.has(normName)) {
-            rawListings = xmltv.byName.get(normName);
-          }
-        }
-
-        if (rawListings && rawListings.length > 0) {
-          const nowSec = Math.floor(Date.now() / 1000);
-          // Return programs from 2 hours ago up to 36 hours ahead
-          const relevant = rawListings.filter(p => !p.stop_timestamp || p.stop_timestamp >= nowSec - 7200)
-                                      .slice(0, 15);
-          return sendJson(res, 200, { status: "success", source: "xmltv", epg: relevant });
-        }
-
-        // 2. Fallback: Query get_short_epg or get_simple_data_table via player_api.php
+        // 1. FAST PATH: Check short EPG cache or query player_api.php get_short_epg (< 150ms)
         if (streamId) {
+          const cacheKey = `epg_${streamId}`;
+          const cached = iptvShortEpgCache.get(cacheKey);
+          if (cached && Date.now() - cached.timestamp < 10 * 60 * 1000) {
+            return sendJson(res, 200, { status: "success", source: "cache", epg: cached.listings });
+          }
+
           try {
             const data = await callXtreamApi(config.credentials, "get_short_epg", {
               stream_id: streamId,
               limit: "10"
             });
             const rawList = data && Array.isArray(data.epg_listings) ? data.epg_listings : [];
-            const listings = rawList.map((item) => {
-              let title = item.title || "";
-              try {
-                 const decoded = Buffer.from(title, "base64").toString("utf8");
-                 if (/^[\x20-\x7E\s\u00A0-\u024F]+$/.test(decoded) && decoded.length > 2) title = decoded;
-              } catch (e) {}
+            if (rawList.length > 0) {
+              const listings = rawList.map((item) => {
+                let title = item.title || "";
+                try {
+                  const decoded = Buffer.from(title, "base64").toString("utf8");
+                  if (/^[\x20-\x7E\s\u00A0-\u024F]+$/.test(decoded) && decoded.length > 2) title = decoded;
+                } catch (e) {}
 
-              let desc = item.description || "";
-              try {
-                const decodedDesc = Buffer.from(desc, "base64").toString("utf8");
-                if (/^[\x20-\x7E\s\u00A0-\u024F]+$/.test(decodedDesc) && decodedDesc.length > 2) desc = decodedDesc;
-              } catch (e) {}
+                let desc = item.description || "";
+                try {
+                  const decodedDesc = Buffer.from(desc, "base64").toString("utf8");
+                  if (/^[\x20-\x7E\s\u00A0-\u024F]+$/.test(decodedDesc) && decodedDesc.length > 2) desc = decodedDesc;
+                } catch (e) {}
 
-              return {
-                id: item.id,
-                title: title.trim(),
-                description: desc.trim(),
-                start: item.start,
-                end: item.end,
-                start_timestamp: item.start_timestamp,
-                stop_timestamp: item.stop_timestamp,
-              };
-            });
-            return sendJson(res, 200, { status: "success", source: "xtream", epg: listings });
+                return {
+                  id: item.id,
+                  title: title.trim(),
+                  description: desc.trim(),
+                  start: item.start,
+                  end: item.end,
+                  start_timestamp: item.start_timestamp,
+                  stop_timestamp: item.stop_timestamp,
+                };
+              });
+
+              iptvShortEpgCache.set(cacheKey, { timestamp: Date.now(), listings });
+              return sendJson(res, 200, { status: "success", source: "xtream", epg: listings });
+            }
           } catch (e) {}
+        }
+
+        // 2. SLOW FALLBACK: Check XMLTV guide if get_short_epg was unavailable or tvgId provided
+        if (tvgId || config.credentials.epgUrl) {
+          const xmltv = await fetchXmltvEpg(config.credentials);
+          let rawListings = [];
+
+          if (tvgId && xmltv.byTvgId.has(tvgId)) {
+            rawListings = xmltv.byTvgId.get(tvgId);
+          } else if (streamId && xmltv.byTvgId.has(streamId)) {
+            rawListings = xmltv.byTvgId.get(streamId);
+          } else if (channelName) {
+            const normName = channelName.toLowerCase().replace(/[^a-z0-9]/g, "");
+            if (xmltv.byName.has(normName)) {
+              rawListings = xmltv.byName.get(normName);
+            }
+          }
+
+          if (rawListings && rawListings.length > 0) {
+            const nowSec = Math.floor(Date.now() / 1000);
+            const relevant = rawListings
+              .filter((p) => !p.stop_timestamp || p.stop_timestamp >= nowSec - 7200)
+              .slice(0, 15);
+            return sendJson(res, 200, { status: "success", source: "xmltv", epg: relevant });
+          }
         }
 
         return sendJson(res, 200, { status: "success", epg: [] });

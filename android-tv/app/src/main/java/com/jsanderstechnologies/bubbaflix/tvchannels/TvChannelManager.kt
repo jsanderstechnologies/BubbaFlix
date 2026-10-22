@@ -357,7 +357,7 @@ object TvChannelManager {
 
     private fun fetchIptvChannelsList(serverUrl: String?): org.json.JSONArray? {
         if (serverUrl.isNullOrEmpty()) return null
-        val apiUrl = "$serverUrl/api/iptv/channels"
+        val apiUrl = "$serverUrl/api/iptv/channels?limit=25"
         try {
             val req = Request.Builder().url(apiUrl).build()
             httpClient.newCall(req).execute().use { resp ->

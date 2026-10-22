@@ -476,8 +476,18 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onRenderProcessGone(view: WebView?, detail: RenderProcessGoneDetail?): Boolean {
-                RemoteLogger.e("MainActivity", "WebView Render Process Gone! DidCrash: ${detail?.didCrash()}")
-                return super.onRenderProcessGone(view, detail)
+                val didCrash = detail?.didCrash() ?: false
+                RemoteLogger.e("MainActivity", "WebView Render Process Gone! DidCrash: $didCrash. Recovering WebView...")
+                try {
+                    (view?.parent as? ViewGroup)?.removeView(view)
+                    view?.destroy()
+                } catch (e: Exception) {
+                    RemoteLogger.w("MainActivity", "Error cleaning up crashed WebView: ${e.message}")
+                }
+                runOnUiThread {
+                    recreate()
+                }
+                return true
             }
         }
     }

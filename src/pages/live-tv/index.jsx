@@ -142,6 +142,17 @@ const LiveTvPage = () => {
     });
   }, [channels, selectedCategory, searchQuery]);
 
+  const [visibleLimit, setVisibleLimit] = useState(60);
+
+  // Reset pagination limit when category filter or search query changes
+  useEffect(() => {
+    setVisibleLimit(60);
+  }, [selectedCategory, searchQuery]);
+
+  const displayedChannels = useMemo(() => {
+    return filteredChannels.slice(0, visibleLimit);
+  }, [filteredChannels, visibleLimit]);
+
   const currentEpg = currentChannel ? epgData[String(currentChannel.stream_id)] || [] : [];
   const nowPlaying = currentEpg.length > 0 ? currentEpg[0] : null;
   const nextPlaying = currentEpg.length > 1 ? currentEpg[1] : null;
@@ -304,9 +315,19 @@ const LiveTvPage = () => {
                 />
               </div>
 
-              {/* Scrollable Channel List */}
-              <div className="channelList">
-                {filteredChannels.map((ch) => {
+              {/* Scrollable Channel List with Memory-Safe Virtual Pagination */}
+              <div
+                className="channelList"
+                onScroll={(e) => {
+                  const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+                  if (scrollTop + clientHeight >= scrollHeight - 300) {
+                    if (visibleLimit < filteredChannels.length) {
+                      setVisibleLimit((prev) => Math.min(prev + 60, filteredChannels.length));
+                    }
+                  }
+                }}
+              >
+                {displayedChannels.map((ch) => {
                   const isCurrent = currentChannel && currentChannel.stream_id === ch.stream_id;
                   const epgItems = epgData[String(ch.stream_id)] || [];
                   const activeTitle = epgItems.length > 0 ? epgItems[0].title : null;
@@ -323,6 +344,7 @@ const LiveTvPage = () => {
                           <img
                             src={ch.stream_icon}
                             alt=""
+                            loading="lazy"
                             onError={(e) => {
                               e.target.style.display = "none";
                             }}
@@ -346,6 +368,27 @@ const LiveTvPage = () => {
                     </div>
                   );
                 })}
+
+                {visibleLimit < filteredChannels.length && (
+                  <div className="loadMoreRow" style={{ padding: "16px", textAlign: "center" }}>
+                    <button
+                      className="loadMoreBtn"
+                      style={{
+                        padding: "10px 24px",
+                        background: "rgba(255, 255, 255, 0.1)",
+                        border: "1px solid rgba(255, 255, 255, 0.2)",
+                        color: "white",
+                        borderRadius: "8px",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                        fontWeight: "600",
+                      }}
+                      onClick={() => setVisibleLimit((prev) => Math.min(prev + 60, filteredChannels.length))}
+                    >
+                      Load More Channels ({displayedChannels.length} of {filteredChannels.length} shown)
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
