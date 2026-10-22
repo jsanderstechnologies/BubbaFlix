@@ -31,6 +31,7 @@ import android.content.Intent
 import android.speech.RecognizerIntent
 import androidx.activity.result.contract.ActivityResultContracts
 import com.bumptech.glide.Glide
+import com.jsanderstechnologies.bubbaflix.tvchannels.TvChannelManager
 
 class MainActivity : AppCompatActivity() {
 
@@ -40,6 +41,8 @@ class MainActivity : AppCompatActivity() {
     private var customView: View? = null
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
     private var isDialogShowing = false
+    private var pendingDeepLink: String? = null
+    private var isWebViewLoaded = false
 
     private val speechLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK && result.data != null) {
@@ -159,6 +162,11 @@ class MainActivity : AppCompatActivity() {
 
         hideSystemUI()
 
+        handleDeepLinkIntent(intent)
+
+        // Sync Android TV & Projectivy Launcher Home Screen Channels in background
+        TvChannelManager.syncChannelsAsync(this)
+
         prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
         webView = WebView(this).apply {
@@ -181,6 +189,72 @@ class MainActivity : AppCompatActivity() {
             UpdateManager.checkForUpdates(this, onContinueLoading = {
                 loadBubbaFlix(savedUrl)
             })
+        }
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleDeepLinkIntent(intent)
+    }
+
+    private fun handleDeepLinkIntent(intent: Intent?) {
+        if (intent == null) return
+        var path: String? = null
+        val data = intent.data
+        if (data != null) {
+            val scheme = data.scheme
+            val host = data.host
+            val pathSegments = data.pathSegments
+            if (scheme.equals("bubbaflix", ignoreCase = true)) {
+                if (!host.isNullOrEmpty() && pathSegments.isNotEmpty()) {
+                    path = "/$host/${pathSegments[0]}"
+                } else if (!data.path.isNullOrEmpty()) {
+                    path = data.path
+                }
+            } else if (scheme.equals("http", ignoreCase = true) || scheme.equals("https", ignoreCase = true)) {
+                val fragment = data.fragment
+                if (!fragment.isNullOrEmpty()) {
+                    path = if (fragment.startsWith("/")) fragment else "/$fragment"
+                } else if (!data.path.isNullOrEmpty() && data.path != "/") {
+                    path = data.path
+                }
+            }
+        }
+
+        if (path.isNullOrEmpty()) {
+            val mediaType = intent.getStringExtra("mediaType")
+            val tmdbId = intent.getStringExtra("tmdbId")
+            if (!mediaType.isNullOrEmpty() && !tmdbId.isNullOrEmpty()) {
+                path = "/$mediaType/$tmdbId"
+            }
+        }
+
+        if (!path.isNullOrEmpty()) {
+            RemoteLogger.i("MainActivity", "Deep link received: '$path'")
+            pendingDeepLink = path
+            navigateDeepLinkIfReady()
+        }
+    }
+
+    private fun navigateDeepLinkIfReady() {
+        val targetPath = pendingDeepLink ?: return
+        if (isWebViewLoaded && ::webView.isInitialized) {
+            val cleanPath = targetPath.trim()
+            RemoteLogger.i("MainActivity", "Executing deep link navigation to: '$cleanPath'")
+            runOnUiThread {
+                webView.evaluateJavascript(
+                    "(function() {" +
+                    "  if (typeof window.__routerNavigate === 'function') {" +
+                    "    window.__routerNavigate('$cleanPath');" +
+                    "  } else {" +
+                    "    window.location.hash = '#$cleanPath';" +
+                    "  }" +
+                    "})();",
+                    null
+                )
+            }
+            pendingDeepLink = null
         }
     }
 
@@ -343,12 +417,14 @@ class MainActivity : AppCompatActivity() {
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
+                isWebViewLoaded = true
                 RemoteLogger.i("MainActivity", "WebView finished loading: $url")
                 view?.evaluateJavascript(
                     "document.body.style.zoom = '80%';" +
                     "if (typeof window.refreshEpgAndRecordings === 'function') window.refreshEpgAndRecordings();",
                     null
                 )
+                navigateDeepLinkIfReady()
             }
 
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
@@ -782,6 +858,7 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) {
             e.printStackTrace()
         }
+        TvChannelManager.syncChannelsAsync(this)
         webView.evaluateJavascript(
             "document.body.style.zoom = '80%';" +
             "if (typeof window.refreshEpgAndRecordings === 'function') window.refreshEpgAndRecordings();",

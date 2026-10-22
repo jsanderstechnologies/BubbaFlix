@@ -1,6 +1,6 @@
 {
-  "versionCode": 38,
-  "versionName": "1.0.37",
+  "versionCode": 39,
+  "versionName": "1.0.38",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.37: Device RAM and ROM used/available memory telemetry sent to server logs, real-time memory stats in playback events, and periodic heartbeat diagnostics."
+  "releaseNotes": "BubbaFlix TV v1.0.38: Native Android TV & Projectivy Launcher Home Screen Channels (On The Air, Airing Today, Trending Movies, Popular Shows) with seamless 1-click deep linking."
 }
