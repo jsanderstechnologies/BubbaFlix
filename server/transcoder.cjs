@@ -29,14 +29,24 @@ const getLocalVersionData = () => {
       path.resolve(process.cwd(), "version.json"),
       path.resolve(__dirname, "..", "version.json"),
       path.resolve(__dirname, "version.json"),
-      "/app/version.json"
+      "/app/version.json",
+      path.resolve(process.cwd(), "package.json"),
+      path.resolve(__dirname, "..", "package.json"),
+      "/app/package.json"
     ];
-    const vFile = candidatePaths.find((p) => fs.existsSync(p));
-    if (vFile) {
-      return JSON.parse(fs.readFileSync(vFile, "utf8"));
+    for (const p of candidatePaths) {
+      if (fs.existsSync(p)) {
+        const raw = JSON.parse(fs.readFileSync(p, "utf8"));
+        if (raw.versionName) {
+          return raw;
+        }
+        if (raw.version) {
+          return { versionCode: 38, versionName: raw.version };
+        }
+      }
     }
   } catch (e) {}
-  return { versionCode: 36, versionName: "1.0.35" };
+  return { versionCode: 38, versionName: "1.0.37" };
 };
 
 
@@ -1515,7 +1525,7 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     const users = getUsers();
     
     const backupData = {
-      version: "1.0.13",
+      version: getLocalVersionData().versionName || "1.0.37",
       timestamp: new Date().toISOString(),
       serverSettings,
       users,
@@ -1836,7 +1846,7 @@ server.listen(PORT, "0.0.0.0", () => {
   logMessage(`================================================================================`);
   logMessage(`[BubbaFlix Server] HTTP API & Transcoder listening on port ${PORT}`);
   const localVersion = getLocalVersionData();
-  const serverVersionStr = localVersion.versionName || "1.0.22";
+  const serverVersionStr = localVersion.versionName || "1.0.37";
   const formattedVersion = serverVersionStr.startsWith("v") ? serverVersionStr : `v${serverVersionStr}`;
   logMessage(`[BubbaFlix Server] Version: ${formattedVersion}`);
   logMessage(`[CPU Hardware Topology] Model: ${cpuModel}`);

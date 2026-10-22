@@ -37,6 +37,10 @@ RUN apt-get update && apt-get install -y software-properties-common curl \
 
 WORKDIR /app
 
+# Copy version.json and package.json so server backend dynamically resolves release version
+COPY version.json ./
+COPY package.json ./
+
 # Copy server backend and startup script
 COPY server ./server
 COPY start.sh /docker-entrypoint.sh
