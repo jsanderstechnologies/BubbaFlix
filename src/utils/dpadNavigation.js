@@ -42,6 +42,9 @@ const FOCUSABLE_SELECTOR = [
   ".detailsPageBackBtn",
   ".viewCollectionBtn",
   ".seasonSelect",
+  ".groupCard",
+  ".toolBtn",
+  ".visToggleBtn",
   ".progress-bar",
   '[role="slider"]',
 ].join(", ");
@@ -584,6 +587,15 @@ export const initDpadNavigation = () => {
           if (wasReadonly || isDpadEnter) {
             e.preventDefault();
           }
+          return;
+        }
+
+        if (
+          (code === 23 || key === "Select" || key === "Ok" || key === "Accept") &&
+          activeEl.tagName === "BUTTON"
+        ) {
+          e.preventDefault();
+          activeEl.click();
           return;
         }
 

@@ -1,6 +1,6 @@
 {
-  "versionCode": 45,
-  "versionName": "1.0.44",
+  "versionCode": 47,
+  "versionName": "1.0.46",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.44: Instant IPTV connection test (<1s), persistent group & channel configuration, and safe setting merging."
+  "releaseNotes": "BubbaFlix TV v1.0.46: Fix individual IPTV category/group selection and focus navigation for TV remotes and mouse."
 }

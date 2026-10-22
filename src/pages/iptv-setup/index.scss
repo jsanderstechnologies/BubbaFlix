@@ -386,9 +386,10 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: 12px;
-    max-height: 500px;
+    max-height: 520px;
     overflow-y: auto;
-    padding-right: 6px;
+    padding: 6px;
+    padding-right: 8px;
 
     .groupCard {
       display: flex;
@@ -400,10 +401,33 @@
       transition: all 0.2s ease;
       background: rgba(255, 255, 255, 0.04);
       border: 1px solid rgba(255, 255, 255, 0.08);
+      font-family: inherit;
+      text-align: left;
+      width: 100%;
+      color: inherit;
+      outline: none;
+
+      &:hover,
+      &:focus,
+      &:focus-visible {
+        outline: none;
+        border-color: var(--pink) !important;
+        box-shadow: 0 0 0 3px rgba(218, 47, 104, 0.45), 0 4px 15px rgba(0, 0, 0, 0.6);
+        transform: scale(1.02);
+        background: rgba(255, 255, 255, 0.12) !important;
+        z-index: 2;
+      }
 
       &.enabled {
-        border-color: rgba(76, 175, 80, 0.35);
+        border-color: rgba(76, 175, 80, 0.4);
         background: rgba(76, 175, 80, 0.08);
+
+        &:hover,
+        &:focus,
+        &:focus-visible {
+          border-color: var(--pink) !important;
+          background: rgba(76, 175, 80, 0.2) !important;
+        }
 
         .checkOn {
           color: #4caf50;
@@ -412,13 +436,28 @@
       }
 
       &.disabled {
-        opacity: 0.6;
-        border-color: rgba(255, 255, 255, 0.06);
+        opacity: 0.65;
+        border-color: rgba(255, 255, 255, 0.08);
+
+        &:hover,
+        &:focus,
+        &:focus-visible {
+          opacity: 1;
+          border-color: var(--pink) !important;
+          background: rgba(255, 255, 255, 0.14) !important;
+        }
 
         .checkOff {
           color: rgba(255, 255, 255, 0.4);
           font-size: 18px;
         }
+      }
+
+      .checkbox {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
       }
 
       .groupInfo {

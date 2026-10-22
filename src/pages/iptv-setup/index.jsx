@@ -207,6 +207,12 @@ const IptvSetupPage = () => {
     const res = await saveIptvConfig(payload);
     setSaving(false);
     if (res.success) {
+      if (res.config?.groups) {
+        setGroupsConfig(res.config.groups);
+      }
+      if (res.config?.channels) {
+        setChannelsConfig(res.config.channels);
+      }
       setSaveStatus({
         type: "success",
         text: "IPTV settings, group visibility, and channel numbers saved successfully!",
@@ -222,6 +228,31 @@ const IptvSetupPage = () => {
     }
   };
 
+  // Helper to check group enabled state reliably across id/name maps and boolean/object representations
+  const checkGroupEnabled = (cfgMap, grp) => {
+    if (!grp) return true;
+    const cid = String(grp.category_id || "");
+    const cname = grp.category_name || "";
+    let rule = undefined;
+    if (cfgMap) {
+      if (cid && cfgMap[cid] !== undefined) {
+        rule = cfgMap[cid];
+      } else if (cname && cfgMap[cname] !== undefined) {
+        rule = cfgMap[cname];
+      }
+    }
+    if (rule === undefined) {
+      return grp.enabled !== false;
+    }
+    if (typeof rule === "boolean") {
+      return rule;
+    }
+    if (typeof rule === "object" && rule !== null) {
+      return rule.enabled !== false;
+    }
+    return true;
+  };
+
   // Group toggles (bidirectional: category_id and category_name)
   const toggleGroupVisibility = (categoryId) => {
     const cid = String(categoryId);
@@ -229,28 +260,32 @@ const IptvSetupPage = () => {
     const cname = grp?.category_name || cid;
 
     setGroupsConfig((prev) => {
-      const existing = prev[cid] || prev[cname];
-      const current = existing ? existing.enabled !== false : (grp ? grp.enabled !== false : true);
-      const nextState = !current;
-      return {
+      const isCurrentlyEnabled = checkGroupEnabled(prev, grp || { category_id: cid, category_name: cname });
+      const nextState = !isCurrentlyEnabled;
+      const updated = {
         ...prev,
         [cid]: { name: cname, enabled: nextState },
-        [cname]: { id: cid, enabled: nextState },
       };
+      if (cname && cname !== cid) {
+        updated[cname] = { id: cid, enabled: nextState };
+      }
+      return updated;
     });
   };
 
   const setAllGroupsVisibility = (visible) => {
-    const updated = { ...groupsConfig };
-    loadedGroups.forEach((g) => {
-      const cid = String(g.category_id);
-      const cname = g.category_name;
-      updated[cid] = { name: cname, enabled: visible };
-      if (cname) {
-        updated[cname] = { id: cid, enabled: visible };
-      }
+    setGroupsConfig((prev) => {
+      const updated = { ...prev };
+      loadedGroups.forEach((g) => {
+        const cid = String(g.category_id);
+        const cname = g.category_name;
+        updated[cid] = { name: cname, enabled: visible };
+        if (cname && cname !== cid) {
+          updated[cname] = { id: cid, enabled: visible };
+        }
+      });
+      return updated;
     });
-    setGroupsConfig(updated);
   };
 
   // Channel toggles & number assignments
@@ -317,8 +352,12 @@ const IptvSetupPage = () => {
   const filteredChannels = useMemo(() => {
     return loadedChannels.filter((ch) => {
       // Category match
-      if (selectedCategoryFilter !== "all" && String(ch.category_id) !== String(selectedCategoryFilter)) {
-        return false;
+      if (selectedCategoryFilter !== "all") {
+        const matchId = String(ch.category_id) === String(selectedCategoryFilter);
+        const matchName = ch.category_name && String(ch.category_name) === String(selectedCategoryFilter);
+        if (!matchId && !matchName) {
+          return false;
+        }
       }
       // Search match
       const sid = String(ch.stream_id);
@@ -332,10 +371,11 @@ const IptvSetupPage = () => {
         return false;
       }
       // Visibility match
-      const catId = String(ch.category_id || ch.category_name || "");
-      const catName = ch.category_name || "";
-      const catCfg = groupsConfig[catId] || groupsConfig[catName];
-      const catEnabled = catCfg !== undefined ? catCfg.enabled !== false : ch.group_enabled !== false;
+      const catEnabled = checkGroupEnabled(groupsConfig, {
+        category_id: ch.category_id,
+        category_name: ch.category_name,
+        enabled: ch.group_enabled,
+      });
 
       const chCfg = channelsConfig[sid];
       const isEnabled = chCfg?.enabled !== undefined ? chCfg.enabled : (ch.enabled !== undefined ? ch.enabled : catEnabled);
@@ -502,7 +542,7 @@ const IptvSetupPage = () => {
               <div className="cardHeader">
                 <h2>Category & Group Visibility</h2>
                 <span className="badge">
-                  {loadedGroups.filter((g) => groupsConfig[String(g.category_id)]?.enabled !== false).length} of {loadedGroups.length} Visible
+                  {loadedGroups.filter((g) => checkGroupEnabled(groupsConfig, g)).length} of {loadedGroups.length} Visible
                 </span>
               </div>
               <p className="description">
@@ -550,14 +590,22 @@ const IptvSetupPage = () => {
                 <div className="groupsGrid">
                   {filteredGroups.map((grp) => {
                     const cid = String(grp.category_id);
-                    const cname = grp.category_name;
-                    const cfg = groupsConfig[cid] || groupsConfig[cname];
-                    const isEnabled = cfg !== undefined ? cfg.enabled !== false : grp.enabled !== false;
+                    const isEnabled = checkGroupEnabled(groupsConfig, grp);
                     return (
-                      <div
+                      <button
                         key={cid}
+                        type="button"
+                        tabIndex={0}
                         className={`groupCard ${isEnabled ? "enabled" : "disabled"}`}
                         onClick={() => toggleGroupVisibility(cid)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " " || e.key === "Select" || e.keyCode === 23) {
+                            e.preventDefault();
+                            toggleGroupVisibility(cid);
+                          }
+                        }}
+                        aria-pressed={isEnabled}
+                        title={`${grp.category_name}: ${isEnabled ? "Visible (click to hide)" : "Hidden (click to show)"}`}
                       >
                         <div className="checkbox">
                           {isEnabled ? <FiCheckCircle className="checkOn" /> : <FiX className="checkOff" />}
@@ -566,7 +614,7 @@ const IptvSetupPage = () => {
                           <span className="groupName">{grp.category_name}</span>
                           <span className="channelCount">{grp.channel_count} channels</span>
                         </div>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>
@@ -686,10 +734,11 @@ const IptvSetupPage = () => {
                   <tbody>
                     {filteredChannels.slice(0, 300).map((ch) => {
                       const sid = String(ch.stream_id);
-                      const catId = String(ch.category_id || ch.category_name || "");
-                      const catName = ch.category_name || "";
-                      const catCfg = groupsConfig[catId] || groupsConfig[catName];
-                      const isCatEnabled = catCfg !== undefined ? catCfg.enabled !== false : ch.group_enabled !== false;
+                      const isCatEnabled = checkGroupEnabled(groupsConfig, {
+                        category_id: ch.category_id,
+                        category_name: ch.category_name,
+                        enabled: ch.group_enabled,
+                      });
 
                       const chCfg = channelsConfig[sid];
                       const isEnabled = chCfg?.enabled !== undefined ? chCfg.enabled : (ch.enabled !== undefined ? ch.enabled : isCatEnabled);
@@ -700,8 +749,16 @@ const IptvSetupPage = () => {
                         <tr key={sid} className={isEnabled ? "rowEnabled" : "rowDisabled"}>
                           <td>
                             <button
+                              type="button"
+                              tabIndex={0}
                               className={`visToggleBtn ${isEnabled ? "on" : "off"}`}
                               onClick={() => toggleChannelVisibility(sid, isCatEnabled)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " " || e.key === "Select" || e.keyCode === 23) {
+                                  e.preventDefault();
+                                  toggleChannelVisibility(sid, isCatEnabled);
+                                }
+                              }}
                               title={isEnabled ? "Click to hide" : "Click to show"}
                             >
                               {isEnabled ? <FiCheck /> : <FiX />}
