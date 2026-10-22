@@ -223,7 +223,7 @@ object TvChannelManager {
                     .setDescription(catName)
                     .setIntentUri(intentUri)
                     .setWeight(100 - count)
-                    .setType(TvContractCompat.PreviewProgramColumns.TYPE_LIVE_SCHEDULE)
+                    .setType(TvContractCompat.PreviewProgramColumns.TYPE_CHANNEL)
 
                 if (streamIcon.isNotEmpty()) {
                     programBuilder.setPosterArtUri(Uri.parse(streamIcon))
