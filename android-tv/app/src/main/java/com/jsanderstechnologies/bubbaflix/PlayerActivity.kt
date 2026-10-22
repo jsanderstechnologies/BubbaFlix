@@ -172,7 +172,7 @@ class PlayerActivity : AppCompatActivity() {
         val tmdbId = intent.getStringExtra(EXTRA_TMDB_ID)
         val mediaType = intent.getStringExtra(EXTRA_MEDIA_TYPE) ?: "movie"
 
-        RemoteLogger.i("PlayerActivity", "Player launched for '$title' (TMDB: $tmdbId, Type: $mediaType, URL: $videoUrl)")
+        RemoteLogger.i("PlayerActivity", "Player launched for '$title' (TMDB: $tmdbId, Type: $mediaType, URL: $videoUrl) | ${RemoteLogger.getDeviceMemorySummary()}")
 
         txtPlayerTitle.visibility = View.GONE
 
@@ -432,11 +432,11 @@ class PlayerActivity : AppCompatActivity() {
                         when (state) {
                             Player.STATE_BUFFERING -> {
                                 bufferingSpinner.visibility = View.VISIBLE
-                                RemoteLogger.d("PlayerActivity", "Playback State: BUFFERING (Position: ${current}ms, BufferedAhead: ${bufferedAhead}ms)")
+                                RemoteLogger.d("PlayerActivity", "Playback State: BUFFERING (Position: ${current}ms, BufferedAhead: ${bufferedAhead}ms) | ${RemoteLogger.getDeviceMemorySummary()}")
                             }
                             Player.STATE_READY -> {
                                 bufferingSpinner.visibility = View.GONE
-                                RemoteLogger.i("PlayerActivity", "Playback State: READY (Duration: ${exoPlayer?.duration}ms, Position: ${current}ms, BufferedAhead: ${bufferedAhead}ms, Playing: $playWhenReady)")
+                                RemoteLogger.i("PlayerActivity", "Playback State: READY (Duration: ${exoPlayer?.duration}ms, Position: ${current}ms, BufferedAhead: ${bufferedAhead}ms, Playing: $playWhenReady) | ${RemoteLogger.getDeviceMemorySummary()}")
                                 errorLayout.visibility = View.GONE
                                 btnPlayPause.setImageResource(
                                     if (playWhenReady) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
@@ -461,14 +461,14 @@ class PlayerActivity : AppCompatActivity() {
                     override fun onPlayerError(error: PlaybackException) {
                         bufferingSpinner.visibility = View.GONE
                         val errDetails = error.message ?: error.cause?.message ?: "Unknown playback decoding error"
-                        RemoteLogger.e("PlayerActivity", "ExoPlayer Error [${error.errorCodeName}]: $errDetails (URL: $videoUrl)", error)
+                        RemoteLogger.e("PlayerActivity", "ExoPlayer Error [${error.errorCodeName}]: $errDetails (URL: $videoUrl) | ${RemoteLogger.getDeviceMemorySummary()}", error)
                         sendErrorToServerLog(errDetails, error.errorCodeName, videoUrl)
 
                         val errMsg = (error.message ?: "") + " " + (error.cause?.message ?: "")
                         val errName = error.errorCodeName.uppercase(Locale.ROOT)
 
                         if (error.cause is OutOfMemoryError || errMsg.contains("OutOfMemory", ignoreCase = true)) {
-                            RemoteLogger.e("PlayerActivity", "Playback OutOfMemoryError: $errMsg")
+                            RemoteLogger.e("PlayerActivity", "Playback OutOfMemoryError: $errMsg | ${RemoteLogger.getDeviceMemorySummary()}")
                             Log.e("PlayerActivity", "Playback OutOfMemoryError: $errMsg")
                             showError("Device memory limit reached. Please restart or close background apps.")
                             return
@@ -1121,6 +1121,7 @@ class PlayerActivity : AppCompatActivity() {
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
+        RemoteLogger.w("PlayerActivity", "TrimMemory signal received (level=$level) | ${RemoteLogger.getDeviceMemorySummary()}")
         try {
             Glide.get(this).trimMemory(level)
             if (level >= TRIM_MEMORY_MODERATE) {

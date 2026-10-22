@@ -88,8 +88,13 @@ class MainActivity : AppCompatActivity() {
     class AndroidPlayerBridge(private val context: Context, private val activity: Activity) {
         @JavascriptInterface
         fun playStream(videoUrl: String, title: String?, logoUrl: String?, tmdbId: String?, mediaType: String?) {
-            RemoteLogger.i("MainActivity", "Bridge playStream called: title='$title', url='$videoUrl', tmdbId='$tmdbId', type='$mediaType'")
+            RemoteLogger.i("MainActivity", "Bridge playStream called: title='$title', url='$videoUrl', tmdbId='$tmdbId', type='$mediaType' | ${RemoteLogger.getDeviceMemorySummary()}")
             PlayerActivity.start(context, videoUrl, title, logoUrl, tmdbId, mediaType)
+        }
+
+        @JavascriptInterface
+        fun getMemoryStats(): String {
+            return RemoteLogger.getDeviceMemorySummary()
         }
 
         @JavascriptInterface
@@ -150,6 +155,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         RemoteLogger.init(this)
+        RemoteLogger.i("MainActivity", "MainActivity created | ${RemoteLogger.getDeviceMemorySummary()}")
 
         hideSystemUI()
 
@@ -795,6 +801,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
+        RemoteLogger.w("MainActivity", "onTrimMemory signal received (level=$level) | ${RemoteLogger.getDeviceMemorySummary()}")
         try {
             Glide.get(this).trimMemory(level)
             if (level >= TRIM_MEMORY_MODERATE) {

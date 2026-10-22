@@ -1,4 +1,4 @@
-# BubbaFlix TV 📺 - Native Android TV, Google TV & Fire TV App (v1.0.36)
+# BubbaFlix TV 📺 - Native Android TV, Google TV & Fire TV App (v1.0.37)
 
 **BubbaFlix TV** is the official native Android application for Android TV, Google TV, Chromecast with Google TV, Nvidia Shield, and Amazon Fire TV devices.
 
@@ -21,6 +21,7 @@ You can install **BubbaFlix TV** directly on any Firestick, Android TV, or Googl
 
 ## 🌟 Key Features
 
+- 💾 **Device RAM & ROM Used/Available Telemetry Engine (`v1.0.37`)**: Automated real-time measurement and transmission of total, used, and available system RAM (`ActivityManager.MemoryInfo`) and internal storage / ROM (`StatFs` on data directory). Telemetry is captured and logged at app startup, during ExoPlayer launch, buffering, and playback state transitions, memory trimming alerts, and periodic 2-minute diagnostic heartbeats, giving complete visibility into device resource health.
 - ⚡ **Optimized Video Buffering Architecture & Rebuffer Guard (`v1.0.36`)**: ExoPlayer `DefaultLoadControl` tuned with 30s–90s buffer headroom, 128MB target byte thresholds, time-priority allocation, and 6s re-buffer recovery cushion to eliminate continuous playback stutter loops on high-bitrate 1080p/4K streams. Adds an on-screen visual buffering indicator and real-time buffer telemetry (`BufferedAhead` ms).
 - 📡 **Automated Client Remote Logging Engine (`v1.0.35`)**: Real-time diagnostic telemetry sent back from Android TV devices to the server (`/api/log`). Captures app startup, device hardware specs, server discovery scans, WebView console warnings/errors, ExoPlayer playback state transitions, OutOfMemory warnings, and thread crashes via an in-memory batching queue and synchronous fatal crash handler.
 - 🎭 **Popular Genres Search Engine on Search Page (`v1.0.34`)**: Selecting a popular genre on the Search page directly queries TMDB discover genre IDs (`with_genres`) for true movies and TV shows in that genre rather than matching the genre's name as a text title.

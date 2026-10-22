@@ -1575,6 +1575,7 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
         const defaultDevice = payload.device || initiator.initiatorComponent || "Unknown Device";
         const defaultAppVersion = payload.appVersion || "";
         const defaultSource = payload.source || initiator.initiatorComponent || "Client App";
+        const memSummary = payload.memory && (payload.memory.summary || (payload.memory.ramSummary ? `RAM: ${payload.memory.ramSummary} | ROM: ${payload.memory.romSummary}` : null));
 
         for (const entry of entries) {
           if (!entry || typeof entry !== "object") continue;
@@ -1589,6 +1590,11 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
           if (entry.title) logStr += ` | Title: ${entry.title}`;
           if (entry.errorCode) logStr += ` | Code: ${entry.errorCode}`;
           if (entry.mediaUrl || entry.url) logStr += ` | Stream: ${entry.mediaUrl || entry.url}`;
+          if (entry.memory) {
+            logStr += ` | ${typeof entry.memory === "string" ? entry.memory : (entry.memory.summary || JSON.stringify(entry.memory))}`;
+          } else if (memSummary && !msg.includes("RAM:") && (tag === "AppLifecycle" || tag === "DeviceStats" || tag === "PlayerActivity" || lvl === "ERROR")) {
+            logStr += ` | ${memSummary}`;
+          }
           if (entry.details) logStr += ` | Details: ${entry.details}`;
           if (entry.stack) logStr += `\nStack: ${entry.stack}`;
 

@@ -1,8 +1,11 @@
 package com.jsanderstechnologies.bubbaflix
 
+import android.app.ActivityManager
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Build
+import android.os.Environment
+import android.os.StatFs
 import android.util.Log
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -13,6 +16,7 @@ import org.json.JSONObject
 import java.io.PrintWriter
 import java.io.StringWriter
 import java.util.ArrayList
+import java.util.Locale
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
@@ -34,6 +38,20 @@ object RemoteLogger {
         val stack: String? = null
     )
 
+    data class MemoryStats(
+        val ramTotalBytes: Long,
+        val ramAvailBytes: Long,
+        val ramUsedBytes: Long,
+        val ramPercentUsed: Int,
+        val romTotalBytes: Long,
+        val romAvailBytes: Long,
+        val romUsedBytes: Long,
+        val romPercentUsed: Int,
+        val jvmMaxBytes: Long,
+        val jvmTotalBytes: Long,
+        val jvmUsedBytes: Long
+    )
+
     private val logQueue = ConcurrentLinkedQueue<LogItem>()
     private var scheduler: ScheduledExecutorService? = null
     private val isFlushing = AtomicBoolean(false)
@@ -42,7 +60,7 @@ object RemoteLogger {
     private var prefs: SharedPreferences? = null
     private var cachedServerUrl: String = DEFAULT_SERVER_URL
     private var deviceModel: String = "${Build.MANUFACTURER} ${Build.MODEL}".trim()
-    private var appVersion: String = "1.0.35 (36)"
+    private var appVersion: String = "1.0.37 (38)"
 
     private val httpClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
@@ -58,6 +76,7 @@ object RemoteLogger {
     private var lastLoggedMessage: String? = null
     private var duplicateCount = 0
     private var lastLoggedTime = 0L
+    private var lastMemoryReportTime = 0L
 
     fun init(context: Context) {
         if (appContext != null) return
@@ -88,6 +107,7 @@ object RemoteLogger {
         }, 3, 3, TimeUnit.SECONDS)
 
         i("AppLifecycle", "BubbaFlixTV App initialized. Device: $deviceModel, Android: ${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT}), Version: $appVersion, Server: $cachedServerUrl")
+        i("DeviceStats", getDeviceMemorySummary())
     }
 
     fun setServerUrl(url: String) {
@@ -178,11 +198,81 @@ object RemoteLogger {
         }
     }
 
+    fun getMemoryStats(): MemoryStats {
+        var ramTotal = 0L
+        var ramAvail = 0L
+        try {
+            val actManager = appContext?.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+            val memInfo = ActivityManager.MemoryInfo()
+            actManager?.getMemoryInfo(memInfo)
+            ramTotal = memInfo.totalMem
+            ramAvail = memInfo.availMem
+        } catch (e: Exception) {
+            // Ignore
+        }
+        val ramUsed = (ramTotal - ramAvail).coerceAtLeast(0L)
+        val ramPercent = if (ramTotal > 0) ((ramUsed * 100) / ramTotal).toInt() else 0
+
+        var romTotal = 0L
+        var romAvail = 0L
+        try {
+            val dataDir = Environment.getDataDirectory()
+            val statFs = StatFs(dataDir.path)
+            romTotal = statFs.blockCountLong * statFs.blockSizeLong
+            romAvail = statFs.availableBlocksLong * statFs.blockSizeLong
+        } catch (e: Exception) {
+            // Ignore
+        }
+        val romUsed = (romTotal - romAvail).coerceAtLeast(0L)
+        val romPercent = if (romTotal > 0) ((romUsed * 100) / romTotal).toInt() else 0
+
+        val runtime = Runtime.getRuntime()
+        val jvmMax = runtime.maxMemory()
+        val jvmTotal = runtime.totalMemory()
+        val jvmUsed = (jvmTotal - runtime.freeMemory()).coerceAtLeast(0L)
+
+        return MemoryStats(
+            ramTotalBytes = ramTotal,
+            ramAvailBytes = ramAvail,
+            ramUsedBytes = ramUsed,
+            ramPercentUsed = ramPercent,
+            romTotalBytes = romTotal,
+            romAvailBytes = romAvail,
+            romUsedBytes = romUsed,
+            romPercentUsed = romPercent,
+            jvmMaxBytes = jvmMax,
+            jvmTotalBytes = jvmTotal,
+            jvmUsedBytes = jvmUsed
+        )
+    }
+
+    fun formatBytes(bytes: Long): String {
+        if (bytes <= 0) return "0 B"
+        val units = arrayOf("B", "KB", "MB", "GB", "TB")
+        val digitGroups = (Math.log10(bytes.toDouble()) / Math.log10(1024.0)).toInt().coerceIn(0, units.size - 1)
+        return String.format(Locale.US, "%.2f %s", bytes / Math.pow(1024.0, digitGroups.toDouble()), units[digitGroups])
+    }
+
+    fun getDeviceMemorySummary(): String {
+        val s = getMemoryStats()
+        return "RAM: ${formatBytes(s.ramUsedBytes)} / ${formatBytes(s.ramTotalBytes)} (${s.ramPercentUsed}% used, ${formatBytes(s.ramAvailBytes)} free) | ROM: ${formatBytes(s.romUsedBytes)} / ${formatBytes(s.romTotalBytes)} (${s.romPercentUsed}% used, ${formatBytes(s.romAvailBytes)} free)"
+    }
+
+    fun logMemoryStats(tag: String = "DeviceStats") {
+        i(tag, getDeviceMemorySummary())
+    }
+
     private fun flushLogsInternal(sync: Boolean) {
         if (logQueue.isEmpty()) return
         if (!isFlushing.compareAndSet(false, true)) return
 
         try {
+            val now = System.currentTimeMillis()
+            if (now - lastMemoryReportTime > 120_000L) {
+                lastMemoryReportTime = now
+                d("DeviceStats", getDeviceMemorySummary())
+            }
+
             val batch = ArrayList<LogItem>(BATCH_SIZE)
             var count = 0
             while (count < BATCH_SIZE) {
@@ -210,10 +300,24 @@ object RemoteLogger {
                 jsonArray.put(itemObj)
             }
 
+            val stats = getMemoryStats()
+            val memoryJson = JSONObject().apply {
+                put("ramUsed", formatBytes(stats.ramUsedBytes))
+                put("ramTotal", formatBytes(stats.ramTotalBytes))
+                put("ramAvailable", formatBytes(stats.ramAvailBytes))
+                put("ramPercentUsed", stats.ramPercentUsed)
+                put("romUsed", formatBytes(stats.romUsedBytes))
+                put("romTotal", formatBytes(stats.romTotalBytes))
+                put("romAvailable", formatBytes(stats.romAvailBytes))
+                put("romPercentUsed", stats.romPercentUsed)
+                put("summary", getDeviceMemorySummary())
+            }
+
             val payload = JSONObject().apply {
                 put("source", "BubbaFlix Android TV")
                 put("device", deviceModel)
                 put("appVersion", appVersion)
+                put("memory", memoryJson)
                 put("logs", jsonArray)
             }
 
