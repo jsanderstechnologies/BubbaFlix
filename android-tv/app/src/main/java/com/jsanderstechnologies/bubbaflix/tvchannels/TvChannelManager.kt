@@ -1,8 +1,6 @@
 package com.jsanderstechnologies.bubbaflix.tvchannels
 
 import android.content.Context
-import android.content.Intent
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import androidx.tvprovider.media.tv.PreviewChannel
@@ -140,17 +138,14 @@ object TvChannelManager {
 
         if (channel == null) {
             val builder = PreviewChannel.Builder()
-                .setType(TvContractCompat.Channels.TYPE_PREVIEW)
                 .setDisplayName(def.displayName)
                 .setDescription(def.description)
                 .setAppLinkIntentUri(Uri.parse("bubbaflix://home"))
                 .setInternalProviderId(def.key)
 
             try {
-                val logo = BitmapFactory.decodeResource(context.resources, R.drawable.ic_launcher)
-                if (logo != null) {
-                    builder.setLogo(logo)
-                }
+                val logoUri = Uri.parse("android.resource://${context.packageName}/${R.drawable.ic_launcher}")
+                builder.setLogo(logoUri)
             } catch (e: Exception) {
                 // Ignore icon failure
             }
@@ -207,23 +202,13 @@ object TvChannelManager {
             val mediaType = if (def.isMovie) "movie" else "tv"
             val deepLinkUri = Uri.parse("bubbaflix://$mediaType/$id")
 
-            val intent = Intent(context, MainActivity::class.java).apply {
-                action = Intent.ACTION_VIEW
-                data = deepLinkUri
-                putExtra("mediaType", mediaType)
-                putExtra("tmdbId", id.toString())
-                putExtra("title", title)
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            }
-
             val programBuilder = PreviewProgram.Builder()
                 .setChannelId(channelId)
                 .setTitle(title)
                 .setDescription(overview)
-                .setIntent(intent)
                 .setIntentUri(deepLinkUri)
                 .setWeight(100 - count)
-                .setType(if (def.isMovie) TvContractCompat.PreviewPrograms.TYPE_MOVIE else TvContractCompat.PreviewPrograms.TYPE_TV_SERIES)
+                .setType(if (def.isMovie) TvContractCompat.PreviewProgramColumns.TYPE_MOVIE else TvContractCompat.PreviewProgramColumns.TYPE_TV_SERIES)
 
             val posterUriStr = when {
                 posterPath.isNotEmpty() -> "https://image.tmdb.org/t/p/w500$posterPath"
@@ -233,7 +218,7 @@ object TvChannelManager {
 
             if (posterUriStr != null) {
                 programBuilder.setPosterArtUri(Uri.parse(posterUriStr))
-                programBuilder.setPosterArtAspectRatio(TvContractCompat.PreviewPrograms.ASPECT_RATIO_2_3)
+                programBuilder.setPosterArtAspectRatio(TvContractCompat.PreviewProgramColumns.ASPECT_RATIO_2_3)
             }
 
             try {
