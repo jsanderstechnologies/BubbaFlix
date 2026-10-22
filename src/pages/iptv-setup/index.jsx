@@ -124,18 +124,14 @@ const IptvSetupPage = () => {
     if (res.success) {
       setTestResult({
         success: true,
-        message: `Connected successfully! Status: ${res.userInfo?.status || "Active"}${
-          res.userInfo?.exp_date
-            ? ` | Expires: ${new Date(Number(res.userInfo.exp_date) * 1000).toLocaleDateString()}`
-            : ""
-        } | Max Connections: ${res.userInfo?.max_connections || "1"}`,
+        message: res.message || `Connected successfully! Found ${res.channelCount || 0} channels across ${res.groupCount || 0} categories.`,
       });
       // Auto-load provider groups and channels on successful connection
       await loadProviderData(true);
     } else {
       setTestResult({
         success: false,
-        message: res.error || "Failed to authenticate with Xtream Codes server.",
+        message: res.error || "Failed to authenticate with IPTV provider.",
       });
     }
   };
@@ -377,6 +373,22 @@ const IptvSetupPage = () => {
                       {showPassword ? <FiEyeOff /> : <FiEye />}
                     </button>
                   </div>
+                </div>
+                <div className="inputGroup fullWidth">
+                  <label>EPG URL (XMLTV Guide - Optional)</label>
+                  <input
+                    type="text"
+                    placeholder={
+                      credentials.serverUrl && credentials.username
+                        ? `${credentials.serverUrl.replace(/\/+$/, "")}/xmltv.php?username=${credentials.username}&password=...`
+                        : "http://your-provider.com:8080/xmltv.php?username=...&password=..."
+                    }
+                    value={credentials.epgUrl}
+                    onChange={(e) => setCredentials({ ...credentials, epgUrl: e.target.value })}
+                  />
+                  <span className="fieldHint" style={{ fontSize: "12px", color: "var(--text-secondary, #a0aec0)", marginTop: "4px" }}>
+                    Leave blank to automatically load from <code>/xmltv.php</code>.
+                  </span>
                 </div>
               </div>
 

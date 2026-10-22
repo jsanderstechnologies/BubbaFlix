@@ -29,26 +29,29 @@ export const saveIptvConfig = async (config) => {
   }
 };
 
-export const testIptvConnection = async ({ serverUrl, username, password }) => {
+export const testIptvConnection = async ({ serverUrl, username, password, epgUrl }) => {
   try {
     const base = getServerUrl();
     const res = await axios.post(
       `${base}/api/iptv/test`,
-      { serverUrl, username, password },
-      { timeout: 15000 }
+      { serverUrl, username, password, epgUrl },
+      { timeout: 25000 }
     );
     if (res.data?.status === "success") {
       return {
         success: true,
+        channelCount: res.data.channelCount,
+        groupCount: res.data.groupCount,
+        epgGuideCount: res.data.epgGuideCount,
+        message: res.data.message,
         userInfo: res.data.userInfo,
-        serverInfo: res.data.serverInfo,
       };
     }
     return { success: false, error: res.data?.error || "Connection test failed." };
   } catch (err) {
     return {
       success: false,
-      error: err.response?.data?.error || err.message || "Failed to connect to Xtream Codes server.",
+      error: err.response?.data?.error || err.message || "Failed to connect to IPTV provider.",
     };
   }
 };
@@ -57,7 +60,7 @@ export const fetchIptvGroups = async (forceRefresh = false) => {
   try {
     const base = getServerUrl();
     const res = await axios.get(`${base}/api/iptv/groups${forceRefresh ? "?refresh=true" : ""}`, {
-      timeout: 15000,
+      timeout: 20000,
     });
     return res.data?.groups || [];
   } catch (err) {
@@ -70,7 +73,7 @@ export const fetchIptvChannels = async (includeAll = false) => {
   try {
     const base = getServerUrl();
     const url = `${base}/api/iptv/channels${includeAll ? "?all=true" : ""}`;
-    const res = await axios.get(url, { timeout: 20000 });
+    const res = await axios.get(url, { timeout: 25000 });
     return res.data?.channels || [];
   } catch (err) {
     console.error("[IPTV] Failed to fetch channels:", err.message);
@@ -78,16 +81,21 @@ export const fetchIptvChannels = async (includeAll = false) => {
   }
 };
 
-export const fetchIptvEpg = async (streamId) => {
-  if (!streamId) return [];
+export const fetchIptvEpg = async (streamId, tvgId = "", channelName = "") => {
+  if (!streamId && !tvgId) return [];
   try {
     const base = getServerUrl();
-    const res = await axios.get(`${base}/api/iptv/epg?stream_id=${encodeURIComponent(streamId)}`, {
-      timeout: 8000,
+    const params = new URLSearchParams();
+    if (streamId) params.append("stream_id", streamId);
+    if (tvgId) params.append("tvg_id", tvgId);
+    if (channelName) params.append("name", channelName);
+
+    const res = await axios.get(`${base}/api/iptv/epg?${params.toString()}`, {
+      timeout: 10000,
     });
     return res.data?.epg || [];
   } catch (err) {
-    console.error(`[IPTV] Failed to fetch EPG for stream ${streamId}:`, err.message);
+    console.error(`[IPTV] Failed to fetch EPG for stream ${streamId || tvgId}:`, err.message);
     return [];
   }
 };

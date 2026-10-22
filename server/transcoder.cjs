@@ -5,6 +5,7 @@ const url = require("url");
 const dgram = require("dgram");
 const os = require("os");
 const { spawn } = require("child_process");
+const zlib = require("zlib");
 
 // Multi-Core & Hyperthreading Utilization Engine
 const cpusList = os.cpus();
@@ -593,7 +594,7 @@ const detectGpuCapabilities = (videoCodec = null) => {
 };
 
 // ==========================================
-// Xtream Codes IPTV Management & EPG Engine
+// IPTV Engine: M3U Plus (/get.php) & XMLTV (/xmltv.php)
 // ==========================================
 const IPTV_CONFIG_FILE = path.join(DATA_DIR, "iptv_config.json");
 const IPTV_CACHE_DIR = path.join(DATA_DIR, "cache", "iptv");
@@ -601,10 +602,10 @@ if (!fs.existsSync(IPTV_CACHE_DIR)) {
   fs.mkdirSync(IPTV_CACHE_DIR, { recursive: true });
 }
 
-let iptvStreamsCache = { timestamp: 0, data: [] };
-let iptvCategoriesCache = { timestamp: 0, data: [] };
-const iptvEpgCache = new Map();
-const IPTV_CACHE_TTL_MS = 15 * 60 * 1000; // 15 mins
+let iptvChannelsCache = { timestamp: 0, channels: [], groups: [], streamUrlMap: new Map() };
+let iptvXmltvCache = { timestamp: 0, byTvgId: new Map(), byName: new Map() };
+const IPTV_CHANNELS_CACHE_TTL = 15 * 60 * 1000; // 15 mins
+const IPTV_XMLTV_CACHE_TTL = 4 * 60 * 60 * 1000; // 4 hours
 
 const loadIptvConfig = () => {
   try {
@@ -638,8 +639,7 @@ const loadIptvConfig = () => {
 const saveIptvConfig = (config) => {
   try {
     fs.writeFileSync(IPTV_CONFIG_FILE, JSON.stringify(config, null, 2), "utf8");
-    iptvStreamsCache = { timestamp: 0, data: [] };
-    iptvCategoriesCache = { timestamp: 0, data: [] };
+    iptvChannelsCache = { timestamp: 0, channels: [], groups: [], streamUrlMap: new Map() };
     return true;
   } catch (e) {
     logMessage(`[IPTV Config Error] Failed to write ${IPTV_CONFIG_FILE}: ${e.message}`, true);
@@ -647,6 +647,215 @@ const saveIptvConfig = (config) => {
   }
 };
 
+// Parse XMLTV Date string: YYYYMMDDHHmmss [+/-ZZZZ]
+const parseXmltvDate = (dateStr) => {
+  if (!dateStr) return 0;
+  const m = String(dateStr).match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(?:\s*([+-]\d{2})(\d{2}))?/);
+  if (!m) return 0;
+  const year = m[1], month = m[2], day = m[3], hour = m[4], min = m[5], sec = m[6];
+  const tzHour = m[7] || "+00";
+  const tzMin = m[8] || "00";
+  const isoStr = `${year}-${month}-${day}T${hour}:${min}:${sec}${tzHour}:${tzMin}`;
+  const d = new Date(isoStr);
+  return isNaN(d.getTime()) ? 0 : Math.floor(d.getTime() / 1000);
+};
+
+// Fast XMLTV Guide Parser
+const parseXmltv = (xmlString) => {
+  const byTvgId = new Map();
+  const byName = new Map();
+  const progRegex = /<programme\s+start="([^"]+)"\s+stop="([^"]+)"\s+channel="([^"]+)"[^>]*>([\s\S]*?)<\/programme>/gi;
+  let match;
+
+  while ((match = progRegex.exec(xmlString)) !== null) {
+    const rawStart = match[1];
+    const rawStop = match[2];
+    const channelId = match[3];
+    const inner = match[4];
+
+    const titleMatch = inner.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+    const descMatch = inner.match(/<desc[^>]*>([\s\S]*?)<\/desc>/i);
+
+    const title = titleMatch ? titleMatch[1].replace(/<!\[CDATA\[(.*?)\]\]>/gi, "$1").trim() : "";
+    const desc = descMatch ? descMatch[1].replace(/<!\[CDATA\[(.*?)\]\]>/gi, "$1").trim() : "";
+
+    const startTs = parseXmltvDate(rawStart);
+    const stopTs = parseXmltvDate(rawStop);
+
+    const prog = {
+      title,
+      description: desc,
+      start: rawStart,
+      end: rawStop,
+      start_timestamp: startTs,
+      stop_timestamp: stopTs,
+    };
+
+    const key = channelId.trim();
+    if (!byTvgId.has(key)) byTvgId.set(key, []);
+    byTvgId.get(key).push(prog);
+
+    const normKey = key.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (normKey && !byName.has(normKey)) byName.set(normKey, []);
+    if (normKey) byName.get(normKey).push(prog);
+  }
+
+  return { byTvgId, byName };
+};
+
+// Fetch and Cache XMLTV EPG (/xmltv.php)
+const fetchXmltvEpg = async (credentials, force = false) => {
+  const now = Date.now();
+  if (!force && iptvXmltvCache.timestamp > 0 && now - iptvXmltvCache.timestamp < IPTV_XMLTV_CACHE_TTL) {
+    return iptvXmltvCache;
+  }
+
+  const diskCacheFile = path.join(IPTV_CACHE_DIR, "epg.xml");
+  if (!force && fs.existsSync(diskCacheFile)) {
+    try {
+      const stats = fs.statSync(diskCacheFile);
+      if (now - stats.mtimeMs < IPTV_XMLTV_CACHE_TTL) {
+        const cachedXml = fs.readFileSync(diskCacheFile, "utf8");
+        const parsed = parseXmltv(cachedXml);
+        iptvXmltvCache = {
+          timestamp: stats.mtimeMs,
+          byTvgId: parsed.byTvgId,
+          byName: parsed.byName,
+        };
+        logMessage(`[XMLTV EPG Cache Hit] Loaded ${parsed.byTvgId.size} channel guides from disk cache.`);
+        return iptvXmltvCache;
+      }
+    } catch (e) {
+      logMessage(`[XMLTV Disk Cache Warning] ${e.message}`, true);
+    }
+  }
+
+  let serverUrl = (credentials.serverUrl || "").trim().replace(/\/+$/, "");
+  const username = (credentials.username || "").trim();
+  const password = (credentials.password || "").trim();
+  const epgUrlOverride = (credentials.epgUrl || "").trim();
+
+  let targetUrl = epgUrlOverride;
+  if (!targetUrl && serverUrl && username && password) {
+    targetUrl = `${serverUrl}/xmltv.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
+  }
+
+  if (!targetUrl) {
+    return { byTvgId: new Map(), byName: new Map() };
+  }
+
+  logMessage(`[XMLTV EPG Fetch] Fetching guide from ${targetUrl.replace(password, "******")}...`);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 35000);
+
+  try {
+    const resp = await fetch(targetUrl, {
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "BubbaFlix/1.0 (Android TV Smart IPTV Client)",
+        "Accept-Encoding": "gzip, deflate",
+      },
+    });
+    clearTimeout(timeoutId);
+
+    if (!resp.ok) {
+      throw new Error(`XMLTV endpoint returned HTTP ${resp.status}`);
+    }
+
+    const arrayBuffer = await resp.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    let xmlText = "";
+    if (buffer.length > 2 && buffer[0] === 0x1f && buffer[1] === 0x8b) {
+      xmlText = zlib.gunzipSync(buffer).toString("utf8");
+    } else {
+      xmlText = buffer.toString("utf8");
+    }
+
+    if (!xmlText.includes("<tv") && !xmlText.includes("<programme")) {
+      logMessage(`[XMLTV EPG Warning] Response from ${targetUrl} did not contain valid XMLTV tags.`, true);
+      return { byTvgId: new Map(), byName: new Map() };
+    }
+
+    try {
+      fs.writeFileSync(diskCacheFile, xmlText, "utf8");
+    } catch (writeErr) {}
+
+    const parsed = parseXmltv(xmlText);
+    iptvXmltvCache = {
+      timestamp: now,
+      byTvgId: parsed.byTvgId,
+      byName: parsed.byName,
+    };
+    logMessage(`[XMLTV EPG Success] Successfully parsed and cached guide for ${parsed.byTvgId.size} channels.`);
+    return iptvXmltvCache;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    logMessage(`[XMLTV EPG Error] Failed to fetch XMLTV guide: ${err.message}`, true);
+    return iptvXmltvCache.timestamp > 0 ? iptvXmltvCache : { byTvgId: new Map(), byName: new Map() };
+  }
+};
+
+// Fast M3U Plus Playlist Parser
+const parseM3uPlus = (content) => {
+  const lines = content.split(/\r?\n/);
+  const channels = [];
+  const groups = new Map();
+  const streamUrlMap = new Map();
+  let currentItem = null;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    if (line.startsWith("#EXTINF:")) {
+      const getAttr = (name) => {
+        const regexDouble = new RegExp(name + '="([^"]*)"', "i");
+        const regexSingle = new RegExp(name + "='([^']*)'", "i");
+        const regexBare = new RegExp(name + "=([^\\s,]+)", "i");
+        const m = line.match(regexDouble) || line.match(regexSingle) || line.match(regexBare);
+        return m ? m[1] : "";
+      };
+      const commaIdx = line.lastIndexOf(",");
+      const title = commaIdx !== -1 ? line.substring(commaIdx + 1).trim() : "";
+      const tvgId = getAttr("tvg-id");
+      const tvgName = getAttr("tvg-name") || title;
+      const tvgLogo = getAttr("tvg-logo");
+      const groupTitle = getAttr("group-title") || "General";
+
+      currentItem = {
+        name: title || tvgName,
+        original_name: title || tvgName,
+        tvg_id: tvgId,
+        epg_channel_id: tvgId,
+        stream_icon: tvgLogo,
+        category_name: groupTitle,
+        category_id: groupTitle,
+      };
+    } else if (!line.startsWith("#") && currentItem) {
+      currentItem.stream_url = line;
+      const streamIdMatch = line.match(/\/(\d+)\.(m3u8|ts)/i);
+      const streamId = streamIdMatch ? streamIdMatch[1] : `stream_${channels.length + 1}`;
+      currentItem.stream_id = streamId;
+
+      channels.push(currentItem);
+      streamUrlMap.set(String(streamId), line);
+
+      if (!groups.has(currentItem.category_name)) {
+        groups.set(currentItem.category_name, {
+          category_id: currentItem.category_name,
+          category_name: currentItem.category_name,
+          channel_count: 0,
+        });
+      }
+      groups.get(currentItem.category_name).channel_count++;
+      currentItem = null;
+    }
+  }
+
+  return { channels, groups: Array.from(groups.values()), streamUrlMap };
+};
+
+// Fallback to Xtream Codes Player API if M3U Plus is unavailable
 const callXtreamApi = async (credentials, action = "", extraParams = {}) => {
   let serverUrl = (credentials.serverUrl || "").trim().replace(/\/+$/, "");
   const username = (credentials.username || "").trim();
@@ -692,55 +901,140 @@ const callXtreamApi = async (credentials, action = "", extraParams = {}) => {
   }
 };
 
-const fetchXtreamCategories = async (credentials, force = false) => {
+// Fetch Channels via /get.php?type=m3u_plus with Xtream player API fallback
+const fetchM3uPlaylist = async (credentials, force = false) => {
   const now = Date.now();
-  if (!force && iptvCategoriesCache.data.length > 0 && now - iptvCategoriesCache.timestamp < IPTV_CACHE_TTL_MS) {
-    return iptvCategoriesCache.data;
+  if (!force && iptvChannelsCache.channels.length > 0 && now - iptvChannelsCache.timestamp < IPTV_CHANNELS_CACHE_TTL) {
+    return iptvChannelsCache;
   }
-  const data = await callXtreamApi(credentials, "get_live_categories");
-  if (Array.isArray(data)) {
-    iptvCategoriesCache = { timestamp: now, data };
-    return data;
-  }
-  return [];
-};
 
-const fetchXtreamStreams = async (credentials, force = false) => {
-  const now = Date.now();
-  if (!force && iptvStreamsCache.data.length > 0 && now - iptvStreamsCache.timestamp < IPTV_CACHE_TTL_MS) {
-    return iptvStreamsCache.data;
+  let serverUrl = (credentials.serverUrl || "").trim().replace(/\/+$/, "");
+  const username = (credentials.username || "").trim();
+  const password = (credentials.password || "").trim();
+
+  if (!serverUrl || !username || !password) {
+    return { channels: [], groups: [], streamUrlMap: new Map() };
   }
-  const data = await callXtreamApi(credentials, "get_live_streams");
-  if (Array.isArray(data)) {
-    iptvStreamsCache = { timestamp: now, data };
-    return data;
+
+  const m3uUrl = serverUrl.includes("get.php")
+    ? serverUrl
+    : `${serverUrl}/get.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&type=m3u_plus&output=m3u8`;
+
+  logMessage(`[M3U Playlist Fetch] Loading channels from ${m3uUrl.replace(password, "******")}...`);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+  try {
+    const resp = await fetch(m3uUrl, {
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "BubbaFlix/1.0 (Android TV Smart IPTV Client)",
+        "Accept-Encoding": "gzip, deflate",
+      },
+    });
+    clearTimeout(timeoutId);
+
+    if (resp.ok) {
+      const arrayBuffer = await resp.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      let text = "";
+      if (buffer.length > 2 && buffer[0] === 0x1f && buffer[1] === 0x8b) {
+        text = zlib.gunzipSync(buffer).toString("utf8");
+      } else {
+        text = buffer.toString("utf8");
+      }
+
+      if (text.includes("#EXTM3U") || text.includes("#EXTINF")) {
+        const parsed = parseM3uPlus(text);
+        if (parsed.channels.length > 0) {
+          iptvChannelsCache = {
+            timestamp: now,
+            channels: parsed.channels,
+            groups: parsed.groups,
+            streamUrlMap: parsed.streamUrlMap,
+          };
+          logMessage(`[M3U Playlist Success] Parsed ${parsed.channels.length} channels across ${parsed.groups.length} categories.`);
+          return iptvChannelsCache;
+        }
+      }
+    }
+  } catch (err) {
+    clearTimeout(timeoutId);
+    logMessage(`[M3U Playlist Warning] Failed /get.php fetch: ${err.message}. Trying player_api.php fallback...`, true);
   }
-  return [];
+
+  // Fallback: Query player_api.php?action=get_live_streams & get_live_categories
+  try {
+    logMessage(`[IPTV Fallback] Querying player_api.php live streams & categories...`);
+    const [categories, streams] = await Promise.all([
+      callXtreamApi(credentials, "get_live_categories").catch(() => []),
+      callXtreamApi(credentials, "get_live_streams").catch(() => []),
+    ]);
+
+    const catMap = {};
+    const groups = [];
+    if (Array.isArray(categories)) {
+      categories.forEach(c => {
+        catMap[String(c.category_id)] = c.category_name;
+        groups.push({
+          category_id: String(c.category_id),
+          category_name: c.category_name,
+          channel_count: 0,
+        });
+      });
+    }
+
+    const channels = [];
+    const streamUrlMap = new Map();
+    if (Array.isArray(streams)) {
+      streams.forEach((s) => {
+        const catId = String(s.category_id || "");
+        const streamId = String(s.stream_id || s.num);
+        const streamUrl = `${serverUrl}/live/${encodeURIComponent(username)}/${encodeURIComponent(password)}/${streamId}.m3u8`;
+        streamUrlMap.set(streamId, streamUrl);
+
+        channels.push({
+          stream_id: streamId,
+          name: s.name,
+          original_name: s.name,
+          tvg_id: s.epg_channel_id || "",
+          epg_channel_id: s.epg_channel_id || "",
+          stream_icon: s.stream_icon || "",
+          category_id: catId,
+          category_name: catMap[catId] || "Live Channels",
+          stream_url: streamUrl,
+        });
+
+        const grp = groups.find(g => g.category_id === catId);
+        if (grp) grp.channel_count++;
+      });
+    }
+
+    iptvChannelsCache = { timestamp: now, channels, groups, streamUrlMap };
+    return iptvChannelsCache;
+  } catch (apiErr) {
+    logMessage(`[IPTV Engine Error] Both /get.php and player_api.php failed: ${apiErr.message}`, true);
+    return iptvChannelsCache.channels.length > 0 ? iptvChannelsCache : { channels: [], groups: [], streamUrlMap: new Map() };
+  }
 };
 
 const getProcessedChannels = async (config, includeAll = false) => {
-  const categories = await fetchXtreamCategories(config.credentials);
-  const streams = await fetchXtreamStreams(config.credentials);
-
-  const categoryMap = {};
-  categories.forEach((cat) => {
-    categoryMap[String(cat.category_id)] = cat.category_name;
-  });
+  const { channels } = await fetchM3uPlaylist(config.credentials);
 
   const processed = [];
   let fallbackNumber = 1;
 
-  for (const stream of streams) {
-    const streamId = String(stream.stream_id || stream.num);
-    const catId = String(stream.category_id || "");
-    const groupCfg = config.groups[catId];
+  for (const stream of channels) {
+    const streamId = String(stream.stream_id);
+    const catId = String(stream.category_id || stream.category_name || "");
+    const groupCfg = config.groups[catId] || config.groups[stream.category_name];
     const isGroupEnabled = groupCfg ? groupCfg.enabled !== false : true;
 
     const channelCfg = config.channels[streamId];
     const isChannelExplicitlyEnabled = channelCfg?.enabled;
     const isChannelEnabled = isChannelExplicitlyEnabled !== undefined ? isChannelExplicitlyEnabled : isGroupEnabled;
 
-    const assignedNumber = channelCfg?.channelNumber != null ? Number(channelCfg.channelNumber) : (Number(stream.num) || fallbackNumber++);
+    const assignedNumber = channelCfg?.channelNumber != null ? Number(channelCfg.channelNumber) : fallbackNumber++;
     const customName = channelCfg?.customName || stream.name;
 
     if (!includeAll && (!isChannelEnabled || !isGroupEnabled)) {
@@ -750,13 +1044,14 @@ const getProcessedChannels = async (config, includeAll = false) => {
     processed.push({
       stream_id: stream.stream_id,
       name: customName,
-      original_name: stream.name,
+      original_name: stream.original_name,
       channel_number: assignedNumber,
       category_id: catId,
-      category_name: categoryMap[catId] || "Live Channels",
+      category_name: stream.category_name,
       stream_icon: stream.stream_icon || "",
-      epg_channel_id: stream.epg_channel_id || "",
-      stream_type: stream.stream_type || "live",
+      epg_channel_id: stream.epg_channel_id || stream.tvg_id || "",
+      stream_url: stream.stream_url || "",
+      stream_type: "live",
       enabled: isChannelEnabled,
       group_enabled: isGroupEnabled,
     });
@@ -1841,7 +2136,7 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
   // IPTV & Xtream Codes Management API Routes
   // ==========================================
 
-  // POST /api/iptv/test - Test Xtream Codes credentials
+  // POST /api/iptv/test - Test IPTV connection (M3U Plus, XMLTV, and Xtream API)
   if (cleanPath === "/api/iptv/test" && req.method === "POST") {
     let body = "";
     req.on("data", (chunk) => { body += chunk.toString(); });
@@ -1851,21 +2146,45 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
         const creds = {
           serverUrl: payload.serverUrl || "",
           username: payload.username || "",
-          password: payload.password || ""
+          password: payload.password || "",
+          epgUrl: payload.epgUrl || ""
         };
-        const data = await callXtreamApi(creds, "");
-        if (data && data.user_info) {
-          logMessage(`[IPTV Test] Success for user [${creds.username}] at ${creds.serverUrl} | Status: ${data.user_info.status}`);
+
+        // 1. Test M3U Plus playlist
+        const m3uResult = await fetchM3uPlaylist(creds, true);
+        const channelCount = m3uResult.channels.length;
+        const groupCount = m3uResult.groups.length;
+
+        // 2. Test XMLTV EPG
+        let epgGuideCount = 0;
+        try {
+          const epgResult = await fetchXmltvEpg(creds, true);
+          epgGuideCount = epgResult.byTvgId.size;
+        } catch (e) {}
+
+        // 3. Optional Xtream user_info
+        let userInfo = null;
+        try {
+          const xtreamAuth = await callXtreamApi(creds, "");
+          if (xtreamAuth && xtreamAuth.user_info) userInfo = xtreamAuth.user_info;
+        } catch (e) {}
+
+        if (channelCount > 0 || userInfo) {
+          logMessage(`[IPTV Test] Success for user [${creds.username}] | Channels: ${channelCount}, Groups: ${groupCount}, XMLTV Guides: ${epgGuideCount}`);
           return sendJson(res, 200, {
             status: "success",
-            userInfo: data.user_info,
-            serverInfo: data.server_info
+            channelCount,
+            groupCount,
+            epgGuideCount,
+            userInfo,
+            message: `Connected successfully! Found ${channelCount} channels across ${groupCount} categories. XMLTV EPG: ${epgGuideCount > 0 ? `${epgGuideCount} channel guides active` : "Connected (no channel IDs matched or custom EPG URL needed)"}`
           });
         }
-        return sendJson(res, 400, { error: "Authentication failed. Server did not return user info." });
+
+        return sendJson(res, 400, { error: "Failed to load channels from /get.php or /player_api.php. Please verify credentials." });
       } catch (err) {
         logMessage(`[IPTV Test Error] ${err.message}`, true);
-        return sendJson(res, 400, { error: err.message || "Failed to connect to Xtream Codes server." });
+        return sendJson(res, 400, { error: err.message || "Failed to connect to IPTV provider." });
       }
     });
     return;
@@ -1920,27 +2239,19 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
           return sendJson(res, 200, { status: "success", groups: [] });
         }
         const force = parsedUrl.query.refresh === "true";
-        const categories = await fetchXtreamCategories(config.credentials, force);
-        const streams = await fetchXtreamStreams(config.credentials, force);
+        const { groups } = await fetchM3uPlaylist(config.credentials, force);
 
-        const countMap = {};
-        streams.forEach(s => {
-          const cid = String(s.category_id || "");
-          countMap[cid] = (countMap[cid] || 0) + 1;
-        });
-
-        const groups = categories.map(cat => {
-          const cid = String(cat.category_id);
-          const grpCfg = config.groups[cid];
+        const result = groups.map(grp => {
+          const grpCfg = config.groups[grp.category_id] || config.groups[grp.category_name];
           return {
-            category_id: cid,
-            category_name: cat.category_name,
+            category_id: grp.category_id,
+            category_name: grp.category_name,
             enabled: grpCfg ? grpCfg.enabled !== false : true,
-            channel_count: countMap[cid] || 0
+            channel_count: grp.channel_count || 0
           };
         });
 
-        return sendJson(res, 200, { status: "success", groups });
+        return sendJson(res, 200, { status: "success", groups: result });
       } catch (err) {
         logMessage(`[IPTV Groups Error] ${err.message}`, true);
         return sendJson(res, 500, { error: err.message });
@@ -1968,61 +2279,82 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     return;
   }
 
-  // GET /api/iptv/epg - Get EPG for a stream or batch
+  // GET /api/iptv/epg - Get EPG for a channel (XMLTV priority with Xtream fallback)
   if (cleanPath === "/api/iptv/epg" && req.method === "GET") {
     (async () => {
       try {
-        const streamId = parsedUrl.query.stream_id;
-        if (!streamId) {
-          return sendJson(res, 400, { error: "Missing stream_id parameter" });
+        const streamId = parsedUrl.query.stream_id || "";
+        const tvgId = (parsedUrl.query.tvg_id || "").trim();
+        const channelName = (parsedUrl.query.name || "").trim();
+
+        if (!streamId && !tvgId && !channelName) {
+          return sendJson(res, 400, { error: "Missing stream_id or tvg_id parameter" });
         }
+
         const config = loadIptvConfig();
         if (!config.credentials.serverUrl) {
           return sendJson(res, 200, { status: "success", epg: [] });
         }
 
-        const now = Date.now();
-        const cached = iptvEpgCache.get(String(streamId));
-        if (cached && now - cached.timestamp < 15 * 60 * 1000) {
-          return sendJson(res, 200, { status: "success", epg: cached.listings });
+        // 1. Check XMLTV guide
+        const xmltv = await fetchXmltvEpg(config.credentials);
+        let rawListings = [];
+
+        if (tvgId && xmltv.byTvgId.has(tvgId)) {
+          rawListings = xmltv.byTvgId.get(tvgId);
+        } else if (streamId && xmltv.byTvgId.has(streamId)) {
+          rawListings = xmltv.byTvgId.get(streamId);
+        } else if (channelName) {
+          const normName = channelName.toLowerCase().replace(/[^a-z0-9]/g, "");
+          if (xmltv.byName.has(normName)) {
+            rawListings = xmltv.byName.get(normName);
+          }
         }
 
-        const data = await callXtreamApi(config.credentials, "get_short_epg", {
-          stream_id: streamId,
-          limit: "10"
-        });
+        if (rawListings && rawListings.length > 0) {
+          const nowSec = Math.floor(Date.now() / 1000);
+          // Return programs from 2 hours ago up to 36 hours ahead
+          const relevant = rawListings.filter(p => !p.stop_timestamp || p.stop_timestamp >= nowSec - 7200)
+                                      .slice(0, 15);
+          return sendJson(res, 200, { status: "success", source: "xmltv", epg: relevant });
+        }
 
-        const rawList = data && Array.isArray(data.epg_listings) ? data.epg_listings : [];
-        const listings = rawList.map((item) => {
-          let title = item.title || "";
+        // 2. Fallback: Query get_short_epg or get_simple_data_table via player_api.php
+        if (streamId) {
           try {
-            const decoded = Buffer.from(title, "base64").toString("utf8");
-            if (/^[\x20-\x7E\s\u00A0-\u024F]+$/.test(decoded) && decoded.length > 2) {
-              title = decoded;
-            }
+            const data = await callXtreamApi(config.credentials, "get_short_epg", {
+              stream_id: streamId,
+              limit: "10"
+            });
+            const rawList = data && Array.isArray(data.epg_listings) ? data.epg_listings : [];
+            const listings = rawList.map((item) => {
+              let title = item.title || "";
+              try {
+                 const decoded = Buffer.from(title, "base64").toString("utf8");
+                 if (/^[\x20-\x7E\s\u00A0-\u024F]+$/.test(decoded) && decoded.length > 2) title = decoded;
+              } catch (e) {}
+
+              let desc = item.description || "";
+              try {
+                const decodedDesc = Buffer.from(desc, "base64").toString("utf8");
+                if (/^[\x20-\x7E\s\u00A0-\u024F]+$/.test(decodedDesc) && decodedDesc.length > 2) desc = decodedDesc;
+              } catch (e) {}
+
+              return {
+                id: item.id,
+                title: title.trim(),
+                description: desc.trim(),
+                start: item.start,
+                end: item.end,
+                start_timestamp: item.start_timestamp,
+                stop_timestamp: item.stop_timestamp,
+              };
+            });
+            return sendJson(res, 200, { status: "success", source: "xtream", epg: listings });
           } catch (e) {}
+        }
 
-          let desc = item.description || "";
-          try {
-            const decodedDesc = Buffer.from(desc, "base64").toString("utf8");
-            if (/^[\x20-\x7E\s\u00A0-\u024F]+$/.test(decodedDesc) && decodedDesc.length > 2) {
-              desc = decodedDesc;
-            }
-          } catch (e) {}
-
-          return {
-            id: item.id,
-            title: title.trim(),
-            description: desc.trim(),
-            start: item.start,
-            end: item.end,
-            start_timestamp: item.start_timestamp,
-            stop_timestamp: item.stop_timestamp,
-          };
-        });
-
-        iptvEpgCache.set(String(streamId), { timestamp: now, listings });
-        return sendJson(res, 200, { status: "success", epg: listings });
+        return sendJson(res, 200, { status: "success", epg: [] });
       } catch (err) {
         logMessage(`[IPTV EPG Error] ${err.message}`, true);
         return sendJson(res, 200, { status: "success", epg: [] });
@@ -2040,6 +2372,19 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
       if (!serverUrl || !username || !password) {
         return sendJson(res, 404, { error: "IPTV credentials not configured on server." });
       }
+
+      // 1. Direct stream URL lookup from M3U playlist
+      const targetFromM3u = iptvChannelsCache.streamUrlMap.get(String(streamId));
+      if (targetFromM3u) {
+        res.writeHead(302, {
+          "Location": targetFromM3u,
+          "Access-Control-Allow-Origin": "*",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+        });
+        return res.end();
+      }
+
+      // 2. Standard Xtream URL fallback
       const cleanServer = serverUrl.replace(/\/+$/, "");
       const liveStreamUrl = `${cleanServer}/live/${encodeURIComponent(username)}/${encodeURIComponent(password)}/${encodeURIComponent(streamId)}.m3u8`;
 
@@ -2237,7 +2582,7 @@ server.listen(PORT, "0.0.0.0", () => {
   logMessage(`================================================================================`);
   logMessage(`[BubbaFlix Server] HTTP API & Transcoder listening on port ${PORT}`);
   const localVersion = getLocalVersionData();
-  const serverVersionStr = localVersion.versionName || "1.0.40";
+  const serverVersionStr = localVersion.versionName || "1.0.41";
   const formattedVersion = serverVersionStr.startsWith("v") ? serverVersionStr : `v${serverVersionStr}`;
   logMessage(`[BubbaFlix Server] Version: ${formattedVersion}`);
   logMessage(`[CPU Hardware Topology] Model: ${cpuModel}`);

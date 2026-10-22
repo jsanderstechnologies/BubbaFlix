@@ -1,6 +1,6 @@
 {
-  "versionCode": 41,
-  "versionName": "1.0.40",
+  "versionCode": 42,
+  "versionName": "1.0.41",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.40: Xtream Codes IPTV integration, setup workbench with manual channel numbering, in-app Live TV EPG, and Projectivy Launcher home screen integration."
+  "releaseNotes": "BubbaFlix TV v1.0.41: Added M3U Plus (/get.php) channel list & XMLTV (/xmltv.php) full guide integration for IPTV providers."
 }

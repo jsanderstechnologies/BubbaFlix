@@ -72,7 +72,9 @@ const LiveTvPage = () => {
     if (epgData[sid]) return;
 
     (async () => {
-      const listings = await fetchIptvEpg(sid);
+      const tvgId = currentChannel.epg_channel_id || currentChannel.tvg_id || "";
+      const chName = currentChannel.name || currentChannel.original_name || "";
+      const listings = await fetchIptvEpg(sid, tvgId, chName);
       setEpgData((prev) => ({ ...prev, [sid]: listings }));
     })();
   }, [currentChannel]);
