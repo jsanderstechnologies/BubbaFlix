@@ -15,6 +15,8 @@ import UsagePage from "./pages/usage-page";
 import CollectionPage from "./pages/collection-page";
 import PersonPage from "./pages/person-page";
 import Page404 from "./pages/404-page";
+import IptvSetupPage from "./pages/iptv-setup";
+import LiveTvPage from "./pages/live-tv";
 import Footer from "./components/footer";
 import SplashScreen from "./components/splash-screen";
 import ScrollToTop from "./components/scroll-to-top";
@@ -76,7 +78,9 @@ const AppContent = () => {
       (window.location.pathname.startsWith("/tv/") || 
        window.location.pathname.startsWith("/movie/") ||
        window.location.pathname.startsWith("/collection/") ||
-       window.location.pathname.startsWith("/person/"));
+       window.location.pathname.startsWith("/person/") ||
+       window.location.pathname.startsWith("/live") ||
+       window.location.pathname.startsWith("/settings/iptv"));
     if (isDirectDeepLink) {
       sessionStorage.setItem("bubbaflix_splash_shown", "true");
       return false;
@@ -174,6 +178,8 @@ const AppContent = () => {
             <Route path="/about" element={<AboutPage />} />
             <Route path="/favorites" element={<FavoritesPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/settings/iptv" element={<IptvSetupPage />} />
+            <Route path="/live" element={<LiveTvPage />} />
             <Route path="/usage" element={<UsagePage />} />
             <Route path="/collection/:id" element={<CollectionPage />} />
             <Route path="/person/:id" element={<PersonPage />} />

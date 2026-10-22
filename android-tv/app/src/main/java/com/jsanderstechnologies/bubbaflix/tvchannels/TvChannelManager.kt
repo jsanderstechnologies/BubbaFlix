@@ -40,10 +40,19 @@ object TvChannelManager {
         val displayName: String,
         val description: String,
         val endpoint: String,
-        val isMovie: Boolean
+        val isMovie: Boolean,
+        val isIptv: Boolean = false
     )
 
     val CHANNELS = listOf(
+        ChannelDef(
+            key = "bubbaflix_live_tv",
+            displayName = "BubbaFlix: Live TV",
+            description = "Live IPTV Channels & Schedules",
+            endpoint = "/api/iptv/channels",
+            isMovie = false,
+            isIptv = true
+        ),
         ChannelDef(
             key = "bubbaflix_on_the_air",
             displayName = "BubbaFlix: On The Air",
@@ -163,7 +172,11 @@ object TvChannelManager {
         }
 
         // Fetch media items
-        val itemsJson = fetchMediaList(serverUrl, def.endpoint)
+        val itemsJson = if (def.isIptv) {
+            fetchIptvChannelsList(serverUrl)
+        } else {
+            fetchMediaList(serverUrl, def.endpoint)
+        }
         if (itemsJson == null || itemsJson.length() == 0) {
             RemoteLogger.w(TAG, "No items returned for '${def.displayName}' (${def.endpoint})")
             return
@@ -182,6 +195,49 @@ object TvChannelManager {
         for (i in 0 until itemsJson.length()) {
             if (count >= 20) break
             val item = itemsJson.optJSONObject(i) ?: continue
+
+            if (def.isIptv) {
+                val streamId = item.optLong("stream_id", -1L).takeIf { it > 0 } ?: item.optString("stream_id").toLongOrNull() ?: continue
+                val chNum = item.optInt("channel_number", (count + 1))
+                val name = item.optString("name").ifEmpty { "Channel $chNum" }
+                val catName = item.optString("category_name", "Live TV")
+                val streamIcon = item.optString("stream_icon", "")
+
+                val displayTitle = "Ch. $chNum | $name"
+                val deepLinkUri = Uri.parse("bubbaflix://live/$streamId")
+
+                val launchIntent = Intent(context, MainActivity::class.java).apply {
+                    action = Intent.ACTION_VIEW
+                    data = deepLinkUri
+                    putExtra("mediaType", "live")
+                    putExtra("streamId", streamId.toString())
+                    putExtra("channelNumber", chNum)
+                    putExtra("title", name)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                }
+                val intentUri = Uri.parse(launchIntent.toUri(Intent.URI_INTENT_SCHEME))
+
+                val programBuilder = PreviewProgram.Builder()
+                    .setChannelId(channelId)
+                    .setTitle(displayTitle)
+                    .setDescription(catName)
+                    .setIntentUri(intentUri)
+                    .setWeight(100 - count)
+                    .setType(TvContractCompat.PreviewProgramColumns.TYPE_LIVE_SCHEDULE)
+
+                if (streamIcon.isNotEmpty()) {
+                    programBuilder.setPosterArtUri(Uri.parse(streamIcon))
+                    programBuilder.setPosterArtAspectRatio(TvContractCompat.PreviewProgramColumns.ASPECT_RATIO_16_9)
+                }
+
+                try {
+                    helper.publishPreviewProgram(programBuilder.build())
+                    count++
+                } catch (e: Exception) {
+                    RemoteLogger.w(TAG, "Failed to publish IPTV program '$displayTitle': ${e.message}")
+                }
+                continue
+            }
 
             val origLang = item.optString("original_language", "")
             if (origLang.isNotEmpty() && origLang != "en") continue
@@ -291,6 +347,29 @@ object TvChannelManager {
             RemoteLogger.w(TAG, "Direct TMDB fetch failed for $directTmdbUrl: ${e.message}")
         }
 
+        return null
+    }
+
+    private fun fetchIptvChannelsList(serverUrl: String?): org.json.JSONArray? {
+        if (serverUrl.isNullOrEmpty()) return null
+        val apiUrl = "$serverUrl/api/iptv/channels"
+        try {
+            val req = Request.Builder().url(apiUrl).build()
+            httpClient.newCall(req).execute().use { resp ->
+                if (resp.isSuccessful) {
+                    val body = resp.body?.string()
+                    if (!body.isNullOrEmpty()) {
+                        val json = JSONObject(body)
+                        val channels = json.optJSONArray("channels")
+                        if (channels != null && channels.length() > 0) {
+                            return channels
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            RemoteLogger.w(TAG, "Failed to fetch IPTV channels from server: ${e.message}")
+        }
         return null
     }
 }

@@ -1,6 +1,6 @@
 {
-  "versionCode": 40,
-  "versionName": "1.0.39",
+  "versionCode": 41,
+  "versionName": "1.0.40",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.39: Directly open DetailsPage from Projectivy Launcher & Android TV Home Screen cards (cold and hot start)."
+  "releaseNotes": "BubbaFlix TV v1.0.40: Xtream Codes IPTV integration, setup workbench with manual channel numbering, in-app Live TV EPG, and Projectivy Launcher home screen integration."
 }

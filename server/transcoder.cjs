@@ -41,12 +41,12 @@ const getLocalVersionData = () => {
           return raw;
         }
         if (raw.version) {
-          return { versionCode: 40, versionName: raw.version };
+          return { versionCode: 41, versionName: raw.version };
         }
       }
     }
   } catch (e) {}
-  return { versionCode: 40, versionName: "1.0.39" };
+  return { versionCode: 41, versionName: "1.0.40" };
 };
 
 
@@ -590,6 +590,180 @@ const detectGpuCapabilities = (videoCodec = null) => {
   }
 
   return finalConfig;
+};
+
+// ==========================================
+// Xtream Codes IPTV Management & EPG Engine
+// ==========================================
+const IPTV_CONFIG_FILE = path.join(DATA_DIR, "iptv_config.json");
+const IPTV_CACHE_DIR = path.join(DATA_DIR, "cache", "iptv");
+if (!fs.existsSync(IPTV_CACHE_DIR)) {
+  fs.mkdirSync(IPTV_CACHE_DIR, { recursive: true });
+}
+
+let iptvStreamsCache = { timestamp: 0, data: [] };
+let iptvCategoriesCache = { timestamp: 0, data: [] };
+const iptvEpgCache = new Map();
+const IPTV_CACHE_TTL_MS = 15 * 60 * 1000; // 15 mins
+
+const loadIptvConfig = () => {
+  try {
+    if (fs.existsSync(IPTV_CONFIG_FILE)) {
+      const parsed = JSON.parse(fs.readFileSync(IPTV_CONFIG_FILE, "utf8"));
+      return {
+        credentials: {
+          serverUrl: parsed.credentials?.serverUrl || "",
+          username: parsed.credentials?.username || "",
+          password: parsed.credentials?.password || "",
+          epgUrl: parsed.credentials?.epgUrl || "",
+        },
+        groups: parsed.groups || {},
+        channels: parsed.channels || {},
+        autoNumberStrategy: parsed.autoNumberStrategy || "manual",
+        lastSync: parsed.lastSync || null,
+      };
+    }
+  } catch (e) {
+    logMessage(`[IPTV Config Warning] Failed to read ${IPTV_CONFIG_FILE}: ${e.message}`, true);
+  }
+  return {
+    credentials: { serverUrl: "", username: "", password: "", epgUrl: "" },
+    groups: {},
+    channels: {},
+    autoNumberStrategy: "manual",
+    lastSync: null,
+  };
+};
+
+const saveIptvConfig = (config) => {
+  try {
+    fs.writeFileSync(IPTV_CONFIG_FILE, JSON.stringify(config, null, 2), "utf8");
+    iptvStreamsCache = { timestamp: 0, data: [] };
+    iptvCategoriesCache = { timestamp: 0, data: [] };
+    return true;
+  } catch (e) {
+    logMessage(`[IPTV Config Error] Failed to write ${IPTV_CONFIG_FILE}: ${e.message}`, true);
+    return false;
+  }
+};
+
+const callXtreamApi = async (credentials, action = "", extraParams = {}) => {
+  let serverUrl = (credentials.serverUrl || "").trim().replace(/\/+$/, "");
+  const username = (credentials.username || "").trim();
+  const password = (credentials.password || "").trim();
+
+  if (!serverUrl || !username || !password) {
+    throw new Error("Missing Xtream Codes server URL, username, or password.");
+  }
+
+  const queryParams = new URLSearchParams({
+    username,
+    password,
+    ...(action ? { action } : {}),
+    ...extraParams,
+  });
+
+  const apiUrl = `${serverUrl}/player_api.php?${queryParams.toString()}`;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const resp = await fetch(apiUrl, {
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "BubbaFlix/1.0 (Android TV Smart IPTV Client)",
+      },
+    });
+    clearTimeout(timeoutId);
+
+    if (!resp.ok) {
+      throw new Error(`Xtream Codes server returned HTTP ${resp.status}`);
+    }
+
+    const text = await resp.text();
+    try {
+      return JSON.parse(text);
+    } catch (parseErr) {
+      throw new Error("Invalid response format received from Xtream Codes server.");
+    }
+  } catch (err) {
+    clearTimeout(timeoutId);
+    throw err;
+  }
+};
+
+const fetchXtreamCategories = async (credentials, force = false) => {
+  const now = Date.now();
+  if (!force && iptvCategoriesCache.data.length > 0 && now - iptvCategoriesCache.timestamp < IPTV_CACHE_TTL_MS) {
+    return iptvCategoriesCache.data;
+  }
+  const data = await callXtreamApi(credentials, "get_live_categories");
+  if (Array.isArray(data)) {
+    iptvCategoriesCache = { timestamp: now, data };
+    return data;
+  }
+  return [];
+};
+
+const fetchXtreamStreams = async (credentials, force = false) => {
+  const now = Date.now();
+  if (!force && iptvStreamsCache.data.length > 0 && now - iptvStreamsCache.timestamp < IPTV_CACHE_TTL_MS) {
+    return iptvStreamsCache.data;
+  }
+  const data = await callXtreamApi(credentials, "get_live_streams");
+  if (Array.isArray(data)) {
+    iptvStreamsCache = { timestamp: now, data };
+    return data;
+  }
+  return [];
+};
+
+const getProcessedChannels = async (config, includeAll = false) => {
+  const categories = await fetchXtreamCategories(config.credentials);
+  const streams = await fetchXtreamStreams(config.credentials);
+
+  const categoryMap = {};
+  categories.forEach((cat) => {
+    categoryMap[String(cat.category_id)] = cat.category_name;
+  });
+
+  const processed = [];
+  let fallbackNumber = 1;
+
+  for (const stream of streams) {
+    const streamId = String(stream.stream_id || stream.num);
+    const catId = String(stream.category_id || "");
+    const groupCfg = config.groups[catId];
+    const isGroupEnabled = groupCfg ? groupCfg.enabled !== false : true;
+
+    const channelCfg = config.channels[streamId];
+    const isChannelExplicitlyEnabled = channelCfg?.enabled;
+    const isChannelEnabled = isChannelExplicitlyEnabled !== undefined ? isChannelExplicitlyEnabled : isGroupEnabled;
+
+    const assignedNumber = channelCfg?.channelNumber != null ? Number(channelCfg.channelNumber) : (Number(stream.num) || fallbackNumber++);
+    const customName = channelCfg?.customName || stream.name;
+
+    if (!includeAll && (!isChannelEnabled || !isGroupEnabled)) {
+      continue;
+    }
+
+    processed.push({
+      stream_id: stream.stream_id,
+      name: customName,
+      original_name: stream.name,
+      channel_number: assignedNumber,
+      category_id: catId,
+      category_name: categoryMap[catId] || "Live Channels",
+      stream_icon: stream.stream_icon || "",
+      epg_channel_id: stream.epg_channel_id || "",
+      stream_type: stream.stream_type || "live",
+      enabled: isChannelEnabled,
+      group_enabled: isGroupEnabled,
+    });
+  }
+
+  processed.sort((a, b) => a.channel_number - b.channel_number);
+  return processed;
 };
 
 
@@ -1663,6 +1837,223 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     }
   }
 
+  // ==========================================
+  // IPTV & Xtream Codes Management API Routes
+  // ==========================================
+
+  // POST /api/iptv/test - Test Xtream Codes credentials
+  if (cleanPath === "/api/iptv/test" && req.method === "POST") {
+    let body = "";
+    req.on("data", (chunk) => { body += chunk.toString(); });
+    req.on("end", async () => {
+      try {
+        const payload = body ? JSON.parse(body) : {};
+        const creds = {
+          serverUrl: payload.serverUrl || "",
+          username: payload.username || "",
+          password: payload.password || ""
+        };
+        const data = await callXtreamApi(creds, "");
+        if (data && data.user_info) {
+          logMessage(`[IPTV Test] Success for user [${creds.username}] at ${creds.serverUrl} | Status: ${data.user_info.status}`);
+          return sendJson(res, 200, {
+            status: "success",
+            userInfo: data.user_info,
+            serverInfo: data.server_info
+          });
+        }
+        return sendJson(res, 400, { error: "Authentication failed. Server did not return user info." });
+      } catch (err) {
+        logMessage(`[IPTV Test Error] ${err.message}`, true);
+        return sendJson(res, 400, { error: err.message || "Failed to connect to Xtream Codes server." });
+      }
+    });
+    return;
+  }
+
+  // GET /api/iptv/config - Get saved IPTV configuration
+  if (cleanPath === "/api/iptv/config" && req.method === "GET") {
+    const config = loadIptvConfig();
+    return sendJson(res, 200, { status: "success", config });
+  }
+
+  // POST /api/iptv/config - Save updated IPTV configuration
+  if (cleanPath === "/api/iptv/config" && req.method === "POST") {
+    let body = "";
+    req.on("data", (chunk) => { body += chunk.toString(); });
+    req.on("end", () => {
+      try {
+        const payload = body ? JSON.parse(body) : {};
+        const current = loadIptvConfig();
+        const updated = {
+          ...current,
+          ...payload,
+          credentials: {
+            ...current.credentials,
+            ...(payload.credentials || {})
+          },
+          groups: payload.groups !== undefined ? payload.groups : current.groups,
+          channels: payload.channels !== undefined ? payload.channels : current.channels,
+          autoNumberStrategy: payload.autoNumberStrategy || current.autoNumberStrategy,
+          lastSync: new Date().toISOString()
+        };
+        const saved = saveIptvConfig(updated);
+        if (saved) {
+          logMessage(`[IPTV Config Saved] Groups: ${Object.keys(updated.groups).length}, Channel Rules: ${Object.keys(updated.channels).length}`);
+          return sendJson(res, 200, { status: "success", config: updated });
+        } else {
+          return sendJson(res, 500, { error: "Failed to save IPTV config to disk." });
+        }
+      } catch (err) {
+        return sendJson(res, 400, { error: `Invalid JSON payload: ${err.message}` });
+      }
+    });
+    return;
+  }
+
+  // GET /api/iptv/groups - Get all stream categories with enabled state
+  if (cleanPath === "/api/iptv/groups" && req.method === "GET") {
+    (async () => {
+      try {
+        const config = loadIptvConfig();
+        if (!config.credentials.serverUrl || !config.credentials.username) {
+          return sendJson(res, 200, { status: "success", groups: [] });
+        }
+        const force = parsedUrl.query.refresh === "true";
+        const categories = await fetchXtreamCategories(config.credentials, force);
+        const streams = await fetchXtreamStreams(config.credentials, force);
+
+        const countMap = {};
+        streams.forEach(s => {
+          const cid = String(s.category_id || "");
+          countMap[cid] = (countMap[cid] || 0) + 1;
+        });
+
+        const groups = categories.map(cat => {
+          const cid = String(cat.category_id);
+          const grpCfg = config.groups[cid];
+          return {
+            category_id: cid,
+            category_name: cat.category_name,
+            enabled: grpCfg ? grpCfg.enabled !== false : true,
+            channel_count: countMap[cid] || 0
+          };
+        });
+
+        return sendJson(res, 200, { status: "success", groups });
+      } catch (err) {
+        logMessage(`[IPTV Groups Error] ${err.message}`, true);
+        return sendJson(res, 500, { error: err.message });
+      }
+    })();
+    return;
+  }
+
+  // GET /api/iptv/channels - Get processed channels
+  if (cleanPath === "/api/iptv/channels" && req.method === "GET") {
+    (async () => {
+      try {
+        const config = loadIptvConfig();
+        if (!config.credentials.serverUrl || !config.credentials.username) {
+          return sendJson(res, 200, { status: "success", channels: [] });
+        }
+        const includeAll = parsedUrl.query.all === "true";
+        const channels = await getProcessedChannels(config, includeAll);
+        return sendJson(res, 200, { status: "success", count: channels.length, channels });
+      } catch (err) {
+        logMessage(`[IPTV Channels Error] ${err.message}`, true);
+        return sendJson(res, 500, { error: err.message });
+      }
+    })();
+    return;
+  }
+
+  // GET /api/iptv/epg - Get EPG for a stream or batch
+  if (cleanPath === "/api/iptv/epg" && req.method === "GET") {
+    (async () => {
+      try {
+        const streamId = parsedUrl.query.stream_id;
+        if (!streamId) {
+          return sendJson(res, 400, { error: "Missing stream_id parameter" });
+        }
+        const config = loadIptvConfig();
+        if (!config.credentials.serverUrl) {
+          return sendJson(res, 200, { status: "success", epg: [] });
+        }
+
+        const now = Date.now();
+        const cached = iptvEpgCache.get(String(streamId));
+        if (cached && now - cached.timestamp < 15 * 60 * 1000) {
+          return sendJson(res, 200, { status: "success", epg: cached.listings });
+        }
+
+        const data = await callXtreamApi(config.credentials, "get_short_epg", {
+          stream_id: streamId,
+          limit: "10"
+        });
+
+        const rawList = data && Array.isArray(data.epg_listings) ? data.epg_listings : [];
+        const listings = rawList.map((item) => {
+          let title = item.title || "";
+          try {
+            const decoded = Buffer.from(title, "base64").toString("utf8");
+            if (/^[\x20-\x7E\s\u00A0-\u024F]+$/.test(decoded) && decoded.length > 2) {
+              title = decoded;
+            }
+          } catch (e) {}
+
+          let desc = item.description || "";
+          try {
+            const decodedDesc = Buffer.from(desc, "base64").toString("utf8");
+            if (/^[\x20-\x7E\s\u00A0-\u024F]+$/.test(decodedDesc) && decodedDesc.length > 2) {
+              desc = decodedDesc;
+            }
+          } catch (e) {}
+
+          return {
+            id: item.id,
+            title: title.trim(),
+            description: desc.trim(),
+            start: item.start,
+            end: item.end,
+            start_timestamp: item.start_timestamp,
+            stop_timestamp: item.stop_timestamp,
+          };
+        });
+
+        iptvEpgCache.set(String(streamId), { timestamp: now, listings });
+        return sendJson(res, 200, { status: "success", epg: listings });
+      } catch (err) {
+        logMessage(`[IPTV EPG Error] ${err.message}`, true);
+        return sendJson(res, 200, { status: "success", epg: [] });
+      }
+    })();
+    return;
+  }
+
+  // GET /api/iptv/stream/:streamId - Stream Redirect / Resolver Endpoint
+  if (cleanPath.startsWith("/api/iptv/stream/") && req.method === "GET") {
+    try {
+      const streamId = cleanPath.replace("/api/iptv/stream/", "").replace(/\.(m3u8|ts)$/, "");
+      const config = loadIptvConfig();
+      const { serverUrl, username, password } = config.credentials;
+      if (!serverUrl || !username || !password) {
+        return sendJson(res, 404, { error: "IPTV credentials not configured on server." });
+      }
+      const cleanServer = serverUrl.replace(/\/+$/, "");
+      const liveStreamUrl = `${cleanServer}/live/${encodeURIComponent(username)}/${encodeURIComponent(password)}/${encodeURIComponent(streamId)}.m3u8`;
+
+      res.writeHead(302, {
+        "Location": liveStreamUrl,
+        "Access-Control-Allow-Origin": "*",
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+      });
+      return res.end();
+    } catch (err) {
+      return sendJson(res, 500, { error: err.message });
+    }
+  }
+
   // Transparent Groq AI Chat Completion Proxy Endpoint
   if ((cleanPath === "/api/groq/chat/completions" || cleanPath === "/groq/chat/completions") && req.method === "POST") {
     let body = "";
@@ -1846,7 +2237,7 @@ server.listen(PORT, "0.0.0.0", () => {
   logMessage(`================================================================================`);
   logMessage(`[BubbaFlix Server] HTTP API & Transcoder listening on port ${PORT}`);
   const localVersion = getLocalVersionData();
-  const serverVersionStr = localVersion.versionName || "1.0.39";
+  const serverVersionStr = localVersion.versionName || "1.0.40";
   const formattedVersion = serverVersionStr.startsWith("v") ? serverVersionStr : `v${serverVersionStr}`;
   logMessage(`[BubbaFlix Server] Version: ${formattedVersion}`);
   logMessage(`[CPU Hardware Topology] Model: ${cpuModel}`);

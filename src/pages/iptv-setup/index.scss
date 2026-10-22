@@ -1,0 +1,638 @@
+@import "../../mixins.scss";
+
+.iptvSetupPage {
+  min-height: 80vh;
+  padding-top: 15px;
+  padding-bottom: 70px;
+
+  .setupContainer {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .setupHeader {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    .backBtn {
+      align-self: flex-start;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: rgba(255, 255, 255, 0.8);
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      &:hover,
+      &:focus {
+        background: rgba(255, 255, 255, 0.18);
+        color: white;
+        border-color: var(--pink);
+      }
+    }
+
+    .title {
+      font-size: 26px;
+      font-weight: 700;
+      color: white;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+
+      .titleIcon {
+        color: var(--pink);
+      }
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.65);
+      line-height: 1.5;
+    }
+  }
+
+  /* Tab Navigation */
+  .tabBar {
+    display: flex;
+    gap: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    padding-bottom: 8px;
+    overflow-x: auto;
+
+    .tabBtn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: transparent;
+      border: 1px solid transparent;
+      color: rgba(255, 255, 255, 0.6);
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+
+      &:hover,
+      &:focus {
+        color: white;
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      &.active {
+        color: white;
+        background: var(--pink);
+        border-color: var(--pink);
+        box-shadow: 0 2px 10px rgba(218, 47, 104, 0.35);
+      }
+    }
+  }
+
+  .statusNotice {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+
+    &.success {
+      background: rgba(76, 175, 80, 0.15);
+      border: 1px solid rgba(76, 175, 80, 0.4);
+      color: #81c784;
+    }
+
+    &.error {
+      background: rgba(244, 67, 54, 0.15);
+      border: 1px solid rgba(244, 67, 54, 0.4);
+      color: #e57373;
+    }
+  }
+
+  .setupCard {
+    background: var(--black2);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 12px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+
+    .cardHeader {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      h2 {
+        font-size: 18px;
+        font-weight: 600;
+        color: white;
+      }
+
+      .badge {
+        font-size: 12px;
+        font-weight: 600;
+        padding: 4px 10px;
+        border-radius: 20px;
+        background: rgba(218, 47, 104, 0.18);
+        color: var(--pink);
+        border: 1px solid rgba(218, 47, 104, 0.35);
+      }
+    }
+
+    .description {
+      font-size: 13.5px;
+      color: rgba(255, 255, 255, 0.65);
+      line-height: 1.5;
+
+      code {
+        background: rgba(255, 255, 255, 0.08);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 12.5px;
+      }
+    }
+  }
+
+  /* Form Elements */
+  .formGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+
+    .inputGroup {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+
+      label {
+        font-size: 12.5px;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.75);
+      }
+
+      input {
+        height: 44px;
+        background: rgba(0, 0, 0, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 8px;
+        padding: 0 14px;
+        color: white;
+        font-size: 14px;
+
+        &:focus {
+          border-color: var(--pink);
+          outline: none;
+        }
+      }
+
+      .passwordWrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+
+        input {
+          width: 100%;
+          padding-right: 44px;
+        }
+
+        .eyeBtn {
+          position: absolute;
+          right: 12px;
+          background: none;
+          border: none;
+          color: rgba(255, 255, 255, 0.6);
+          cursor: pointer;
+          font-size: 16px;
+        }
+      }
+    }
+  }
+
+  .testNotice {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+
+    &.success {
+      background: rgba(76, 175, 80, 0.12);
+      border: 1px solid rgba(76, 175, 80, 0.35);
+      color: #81c784;
+    }
+
+    &.error {
+      background: rgba(244, 67, 54, 0.12);
+      border: 1px solid rgba(244, 67, 54, 0.35);
+      color: #e57373;
+    }
+  }
+
+  .actionRow {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-top: 10px;
+
+    button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      &.testBtn {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: white;
+
+        &:hover,
+        &:focus {
+          background: rgba(255, 255, 255, 0.18);
+        }
+      }
+
+      &.saveBtn {
+        background: var(--pink);
+        border: 1px solid var(--pink);
+        color: white;
+
+        &:hover,
+        &:focus {
+          filter: brightness(1.1);
+        }
+      }
+    }
+  }
+
+  /* Group Visibility Tab */
+  .groupToolbar {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+
+    .searchBox {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 0 12px;
+      height: 40px;
+      flex: 1;
+      max-width: 380px;
+      color: rgba(255, 255, 255, 0.5);
+
+      input {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 13.5px;
+        width: 100%;
+
+        &:focus {
+          outline: none;
+        }
+      }
+    }
+
+    .btnGroup {
+      display: flex;
+      gap: 8px;
+
+      .toolBtn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: white;
+        padding: 8px 14px;
+        border-radius: 6px;
+        font-size: 12.5px;
+        cursor: pointer;
+
+        &:hover,
+        &:focus {
+          background: rgba(255, 255, 255, 0.16);
+          border-color: var(--pink);
+        }
+      }
+    }
+  }
+
+  .groupsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+    max-height: 500px;
+    overflow-y: auto;
+    padding-right: 6px;
+
+    .groupCard {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+
+      &.enabled {
+        border-color: rgba(76, 175, 80, 0.35);
+        background: rgba(76, 175, 80, 0.08);
+
+        .checkOn {
+          color: #4caf50;
+          font-size: 20px;
+        }
+      }
+
+      &.disabled {
+        opacity: 0.6;
+        border-color: rgba(255, 255, 255, 0.06);
+
+        .checkOff {
+          color: rgba(255, 255, 255, 0.4);
+          font-size: 18px;
+        }
+      }
+
+      .groupInfo {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        overflow: hidden;
+
+        .groupName {
+          font-size: 13.5px;
+          font-weight: 600;
+          color: white;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .channelCount {
+          font-size: 11.5px;
+          color: rgba(255, 255, 255, 0.5);
+        }
+      }
+    }
+  }
+
+  /* Channels & Workbench Tab */
+  .channelToolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+
+    .filterRow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+
+      .selectWrapper {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.7);
+
+        select {
+          background: rgba(0, 0, 0, 0.4);
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          border-radius: 6px;
+          color: white;
+          padding: 8px 12px;
+          font-size: 13px;
+
+          &:focus {
+            outline: none;
+            border-color: var(--pink);
+          }
+        }
+      }
+
+      .channelSearch {
+        flex: 1;
+        min-width: 200px;
+      }
+    }
+
+    .batchNumberRow {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      .batchInput {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.8);
+
+        input {
+          width: 70px;
+          height: 32px;
+          background: rgba(0, 0, 0, 0.4);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 6px;
+          color: white;
+          text-align: center;
+          font-size: 14px;
+          font-weight: 600;
+        }
+
+        .batchBtn {
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          color: white;
+          padding: 6px 14px;
+          border-radius: 6px;
+          font-size: 12.5px;
+          cursor: pointer;
+
+          &:hover,
+          &:focus {
+            background: var(--pink);
+            border-color: var(--pink);
+          }
+        }
+      }
+    }
+  }
+
+  .channelsTableWrapper {
+    max-height: 520px;
+    overflow-y: auto;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+
+    .channelsTable {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 13px;
+
+      thead {
+        position: sticky;
+        top: 0;
+        background: #14151a;
+        z-index: 2;
+
+        th {
+          padding: 12px 14px;
+          font-weight: 600;
+          color: rgba(255, 255, 255, 0.6);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        }
+      }
+
+      tbody {
+        tr {
+          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+          transition: background 0.15s ease;
+
+          &:hover {
+            background: rgba(255, 255, 255, 0.04);
+          }
+
+          &.rowDisabled {
+            opacity: 0.55;
+          }
+
+          td {
+            padding: 10px 14px;
+            vertical-align: middle;
+          }
+        }
+      }
+
+      .visToggleBtn {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+
+        &.on {
+          background: rgba(76, 175, 80, 0.2);
+          color: #4caf50;
+          border: 1px solid rgba(76, 175, 80, 0.4);
+        }
+
+        &.off {
+          background: rgba(255, 255, 255, 0.08);
+          color: rgba(255, 255, 255, 0.4);
+          border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+      }
+
+      .channelNumberInput {
+        width: 80px;
+        height: 34px;
+        background: rgba(0, 0, 0, 0.45);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 6px;
+        color: #ffc107;
+        font-size: 15px;
+        font-weight: bold;
+        text-align: center;
+
+        &:focus {
+          border-color: var(--pink);
+          outline: none;
+        }
+      }
+
+      .channelLogoThumb {
+        width: 40px;
+        height: 30px;
+        object-fit: contain;
+        background: rgba(0, 0, 0, 0.4);
+        border-radius: 4px;
+        padding: 2px;
+      }
+
+      .fallbackLogoIcon {
+        font-size: 22px;
+        color: rgba(255, 255, 255, 0.35);
+      }
+
+      .originalNameCell {
+        font-weight: 500;
+        color: white;
+      }
+
+      .categoryCell {
+        color: rgba(255, 255, 255, 0.5);
+        font-size: 12px;
+      }
+
+      .customAliasInput {
+        width: 100%;
+        height: 34px;
+        background: rgba(0, 0, 0, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 6px;
+        color: white;
+        padding: 0 10px;
+        font-size: 13px;
+
+        &:focus {
+          border-color: var(--pink);
+          outline: none;
+        }
+      }
+    }
+
+    .paginationNotice {
+      padding: 12px;
+      text-align: center;
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.5);
+      background: rgba(0, 0, 0, 0.2);
+    }
+  }
+
+  .spinning {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+}

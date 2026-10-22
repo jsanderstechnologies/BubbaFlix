@@ -207,7 +207,10 @@ class MainActivity : AppCompatActivity() {
             val host = data.host
             val pathSegments = data.pathSegments
             if (scheme.equals("bubbaflix", ignoreCase = true)) {
-                if (!host.isNullOrEmpty() && pathSegments.isNotEmpty()) {
+                if (host.equals("live", ignoreCase = true)) {
+                    val streamId = if (pathSegments.isNotEmpty()) pathSegments[0] else null
+                    path = if (!streamId.isNullOrEmpty()) "/live?stream_id=$streamId" else "/live"
+                } else if (!host.isNullOrEmpty() && pathSegments.isNotEmpty()) {
                     path = "/$host/${pathSegments[0]}"
                 } else if (!host.isNullOrEmpty() && (host == "movie" || host == "tv")) {
                     val ssp = data.schemeSpecificPart?.trimStart('/')
@@ -230,12 +233,17 @@ class MainActivity : AppCompatActivity() {
 
         if (path.isNullOrEmpty()) {
             val mediaType = intent.getStringExtra("mediaType") ?: intent.getStringExtra("type")
-            val tmdbId = intent.getStringExtra("tmdbId")
-                ?: intent.getStringExtra("id")
-                ?: intent.getLongExtra("tmdbId", -1L).takeIf { it > 0 }?.toString()
-                ?: intent.getIntExtra("tmdbId", -1).takeIf { it > 0 }?.toString()
-            if (!mediaType.isNullOrEmpty() && !tmdbId.isNullOrEmpty()) {
-                path = "/$mediaType/$tmdbId"
+            if (mediaType.equals("live", ignoreCase = true)) {
+                val streamId = intent.getStringExtra("streamId") ?: intent.getStringExtra("id")
+                path = if (!streamId.isNullOrEmpty()) "/live?stream_id=$streamId" else "/live"
+            } else {
+                val tmdbId = intent.getStringExtra("tmdbId")
+                    ?: intent.getStringExtra("id")
+                    ?: intent.getLongExtra("tmdbId", -1L).takeIf { it > 0 }?.toString()
+                    ?: intent.getIntExtra("tmdbId", -1).takeIf { it > 0 }?.toString()
+                if (!mediaType.isNullOrEmpty() && !tmdbId.isNullOrEmpty()) {
+                    path = "/$mediaType/$tmdbId"
+                }
             }
         }
 

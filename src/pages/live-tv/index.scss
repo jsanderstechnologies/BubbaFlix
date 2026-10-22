@@ -1,0 +1,523 @@
+@import "../../mixins.scss";
+
+.liveTvPage {
+  min-height: 85vh;
+  padding-top: 15px;
+  padding-bottom: 60px;
+
+  .remoteTuningBanner {
+    position: fixed;
+    top: 30px;
+    right: 30px;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.9);
+    border: 2px solid var(--pink);
+    border-radius: 12px;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 4px 25px rgba(218, 47, 104, 0.4);
+    animation: fadeIn 0.2s ease;
+
+    .tuningLabel {
+      font-size: 15px;
+      color: rgba(255, 255, 255, 0.8);
+      font-weight: 500;
+    }
+
+    .tuningNumber {
+      font-size: 28px;
+      font-weight: 800;
+      color: #ffc107;
+      letter-spacing: 2px;
+    }
+  }
+
+  .liveTvHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+
+    .headerLeft {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+
+      .title {
+        font-size: 28px;
+        font-weight: 700;
+        color: white;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+
+        .icon {
+          color: var(--pink);
+        }
+      }
+
+      .channelCountBadge {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: rgba(255, 255, 255, 0.8);
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+    }
+
+    .headerRight {
+      .setupShortcutBtn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 13.5px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover,
+        &:focus {
+          background: var(--pink);
+          border-color: var(--pink);
+        }
+      }
+    }
+  }
+
+  .emptyIptvCard {
+    background: var(--black2);
+    border: 1px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    padding: 60px 20px;
+    text-align: center;
+    max-width: 600px;
+    margin: 40px auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+
+    .emptyIcon {
+      font-size: 52px;
+      color: rgba(255, 255, 255, 0.3);
+    }
+
+    h2 {
+      font-size: 22px;
+      color: white;
+      font-weight: 600;
+    }
+
+    p {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.6);
+      max-width: 440px;
+      line-height: 1.5;
+    }
+
+    .setupBtn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--pink);
+      border: none;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14.5px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+  }
+
+  /* Split Layout */
+  .liveTvLayout {
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    gap: 24px;
+    align-items: start;
+
+    @media (max-width: 1024px) {
+      grid-template-columns: 1fr;
+    }
+
+    .playerSection {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+
+      .playerWindow {
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        background: black;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        position: relative;
+
+        .playerContainer {
+          width: 100%;
+          height: 100%;
+          position: relative;
+
+          .liveVideoElement {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+          }
+
+          .channelOverlayHeader {
+            position: absolute;
+            top: 14px;
+            left: 14px;
+            right: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+
+            .overlayBadge {
+              background: rgba(0, 0, 0, 0.75);
+              backdrop-filter: blur(8px);
+              border: 1px solid rgba(255, 255, 255, 0.15);
+              padding: 6px 14px;
+              border-radius: 8px;
+              display: flex;
+              align-items: center;
+              gap: 10px;
+
+              .chNum {
+                font-size: 15px;
+                font-weight: 800;
+                color: #ffc107;
+              }
+
+              .chName {
+                font-size: 14px;
+                font-weight: 600;
+                color: white;
+              }
+            }
+
+            .livePill {
+              background: #e50914;
+              color: white;
+              font-size: 11px;
+              font-weight: 800;
+              padding: 3px 8px;
+              border-radius: 4px;
+              letter-spacing: 1px;
+            }
+          }
+        }
+
+        .noChannelPlaceholder {
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          color: rgba(255, 255, 255, 0.35);
+
+          svg {
+            font-size: 48px;
+          }
+
+          span {
+            font-size: 14px;
+          }
+        }
+      }
+
+      .epgDetailCard {
+        background: var(--black2);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 18px 22px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+
+        .epgHeader {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+
+          .channelLogoWrapper {
+            width: 56px;
+            height: 44px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px;
+
+            .logoImg {
+              max-width: 100%;
+              max-height: 100%;
+              object-fit: contain;
+            }
+
+            .fallbackLogo {
+              font-size: 26px;
+              color: rgba(255, 255, 255, 0.4);
+            }
+          }
+
+          .channelMeta {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+
+            .numNameRow {
+              display: flex;
+              align-items: center;
+              gap: 10px;
+
+              .num {
+                font-size: 14px;
+                font-weight: 800;
+                color: #ffc107;
+              }
+
+              .name {
+                font-size: 17px;
+                font-weight: 700;
+                color: white;
+                margin: 0;
+              }
+
+              .category {
+                font-size: 11px;
+                color: rgba(255, 255, 255, 0.5);
+                background: rgba(255, 255, 255, 0.08);
+                padding: 2px 8px;
+                border-radius: 12px;
+              }
+            }
+
+            .nowPlayingTitle {
+              font-size: 14px;
+              color: var(--pink);
+              font-weight: 600;
+            }
+          }
+        }
+
+        .nowPlayingDesc {
+          font-size: 13px;
+          color: rgba(255, 255, 255, 0.65);
+          line-height: 1.5;
+          margin: 0;
+        }
+
+        .nextRow {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 12.5px;
+          border-top: 1px solid rgba(255, 255, 255, 0.08);
+          padding-top: 8px;
+
+          .nextLabel {
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.45);
+          }
+
+          .nextTitle {
+            color: rgba(255, 255, 255, 0.85);
+            font-weight: 500;
+          }
+
+          .nextTime {
+            color: rgba(255, 255, 255, 0.45);
+          }
+        }
+      }
+    }
+
+    /* Channel Guide Section */
+    .guideSection {
+      background: var(--black2);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      max-height: calc(100vh - 120px);
+
+      .categoryFilterRow {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+
+        .categoryPill {
+          background: rgba(255, 255, 255, 0.06);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: rgba(255, 255, 255, 0.7);
+          padding: 6px 14px;
+          border-radius: 20px;
+          font-size: 12.5px;
+          font-weight: 600;
+          white-space: nowrap;
+          cursor: pointer;
+          transition: all 0.2s ease;
+
+          &:hover,
+          &:focus {
+            background: rgba(255, 255, 255, 0.14);
+            color: white;
+          }
+
+          &.active {
+            background: var(--pink);
+            border-color: var(--pink);
+            color: white;
+          }
+        }
+      }
+
+      .guideSearchBox {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(0, 0, 0, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 8px;
+        padding: 0 12px;
+        height: 38px;
+        color: rgba(255, 255, 255, 0.4);
+
+        input {
+          background: none;
+          border: none;
+          color: white;
+          font-size: 13px;
+          width: 100%;
+
+          &:focus {
+            outline: none;
+          }
+        }
+      }
+
+      .channelList {
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding-right: 4px;
+
+        .channelRow {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 10px 12px;
+          border-radius: 8px;
+          cursor: pointer;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          transition: all 0.15s ease;
+
+          &:hover,
+          &:focus {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.15);
+          }
+
+          &.active {
+            background: rgba(218, 47, 104, 0.18);
+            border-color: var(--pink);
+          }
+
+          .channelNumberBadge {
+            width: 36px;
+            font-size: 15px;
+            font-weight: 800;
+            color: #ffc107;
+            text-align: center;
+          }
+
+          .channelLogo {
+            width: 38px;
+            height: 28px;
+            background: rgba(0, 0, 0, 0.35);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+
+            img {
+              max-width: 100%;
+              max-height: 100%;
+              object-fit: contain;
+            }
+
+            svg {
+              font-size: 16px;
+              color: rgba(255, 255, 255, 0.3);
+            }
+          }
+
+          .channelInfo {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            overflow: hidden;
+
+            .topLine {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+
+              .name {
+                font-size: 13.5px;
+                font-weight: 600;
+                color: white;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+              }
+
+              .categoryBadge {
+                font-size: 10.5px;
+                color: rgba(255, 255, 255, 0.45);
+              }
+            }
+
+            .nowAiringLine {
+              font-size: 12px;
+              color: rgba(255, 255, 255, 0.6);
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+          }
+
+          .playAction {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.35);
+          }
+        }
+      }
+    }
+  }
+}

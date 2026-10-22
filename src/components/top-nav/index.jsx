@@ -85,6 +85,10 @@ const TopNav = () => {
 			return current.startsWith("/favorites") ? "active" : "";
 		}
 
+		if (path === "/live") {
+			return current.startsWith("/live") ? "active" : "";
+		}
+
 		if (path === "/settings") {
 			return current.startsWith("/settings") ? "active" : "";
 		}
@@ -162,6 +166,16 @@ const TopNav = () => {
 							>
 								<FiTv className="navIcon" />
 								<span>TV Series</span>
+							</button>
+
+							<button
+								className={`navBtn ${isActive("/live")}`}
+								tabIndex="0"
+								onClick={() => handleNav("/live")}
+								onKeyDown={(e) => handleNavKey(e, "/live")}
+							>
+								<FiTv className="navIcon" style={{ color: "var(--pink)" }} />
+								<span>Live TV</span>
 							</button>
 
 							{user?.role === "admin" && (

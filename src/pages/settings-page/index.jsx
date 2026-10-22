@@ -17,6 +17,7 @@ import { AuthContext } from "../../context/AuthContext";
 import { useContext } from "react";
 import axios from "axios";
 import { isFireTabletDevice, getDeviceModelName } from "../../utils/deviceDetection";
+import { useNavigate } from "react-router-dom";
 
 const ALL_RESOLUTIONS = [
   { id: "2160p", label: "4K / 2160p (UHD)" },
@@ -26,6 +27,7 @@ const ALL_RESOLUTIONS = [
 ];
 
 const SettingsPage = () => {
+  const navigate = useNavigate();
   // Theme State
   const [activeTheme, setActiveTheme] = useState("dark-red");
 
@@ -580,6 +582,57 @@ const SettingsPage = () => {
 
             </div>
           )}
+
+          {/* IPTV & Live Channels Setup Card */}
+          <div className="settingsCard">
+            <div className="cardHeader">
+              <h2><FiTv style={{ marginRight: 8, color: "var(--pink)" }} /> Xtream Codes IPTV & Channel Setup</h2>
+              <span className="badge custom"><FiServer style={{ marginRight: 4 }} /> Live Channels & EPG</span>
+            </div>
+            <p className="description">
+              Connect your Xtream Codes subscription, choose which categories/groups are visible, toggle individual channels, and assign custom channel numbers (e.g. Channel 1, 2, 100).
+            </p>
+            <div style={{ display: "flex", gap: 12, marginTop: 10, flexWrap: "wrap" }}>
+              <button
+                className="sectionToggleBtn"
+                style={{
+                  background: "var(--pink)",
+                  color: "white",
+                  border: "none",
+                  padding: "10px 20px",
+                  borderRadius: 8,
+                  fontWeight: 600,
+                  fontSize: 14,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+                onClick={() => navigate("/settings/iptv")}
+              >
+                <FiSliders /> Open IPTV Setup & Channel Numbering Workbench
+              </button>
+              <button
+                className="sectionToggleBtn"
+                style={{
+                  background: "rgba(255, 255, 255, 0.08)",
+                  color: "white",
+                  border: "1px solid rgba(255, 255, 255, 0.15)",
+                  padding: "10px 18px",
+                  borderRadius: 8,
+                  fontWeight: 600,
+                  fontSize: 14,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+                onClick={() => navigate("/live")}
+              >
+                <FiTv /> Watch Live TV
+              </button>
+            </div>
+          </div>
 
           {/* Home Screen Category & Layout Manager Card */}
           <div className="settingsCard">
