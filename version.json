@@ -1,6 +1,6 @@
 {
-  "versionCode": 36,
-  "versionName": "1.0.35",
+  "versionCode": 37,
+  "versionName": "1.0.36",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.35: Automatic client remote logging from Android TV to server for troubleshooting."
+  "releaseNotes": "BubbaFlix TV v1.0.36: Enhanced ExoPlayer buffering architecture, 30s-90s VOD headroom, 6s re-buffer recovery cushion, and on-screen buffering indicator to eliminate playback stutter loops."
 }

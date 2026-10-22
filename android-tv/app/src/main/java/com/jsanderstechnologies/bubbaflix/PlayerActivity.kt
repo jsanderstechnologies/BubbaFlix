@@ -1,6 +1,7 @@
 package com.jsanderstechnologies.bubbaflix
 
 import android.annotation.SuppressLint
+import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -15,6 +16,7 @@ import android.view.View
 import android.widget.Button
 import android.widget.ImageButton
 import android.widget.ImageView
+import android.widget.ProgressBar
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
@@ -28,6 +30,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
@@ -67,6 +70,7 @@ class PlayerActivity : AppCompatActivity() {
     private lateinit var seekBar: SeekBar
     private lateinit var errorLayout: View
     private lateinit var txtErrorMsg: TextView
+    private lateinit var bufferingSpinner: ProgressBar
 
     private val handler = Handler(Looper.getMainLooper())
     private var controlsVisible = true
@@ -154,6 +158,7 @@ class PlayerActivity : AppCompatActivity() {
         seekBar = findViewById(R.id.seek_bar)
         errorLayout = findViewById(R.id.error_layout)
         txtErrorMsg = findViewById(R.id.txt_error_msg)
+        bufferingSpinner = findViewById(R.id.player_buffering_spinner)
 
         listOf(btnBack, btnAudio, btnSubtitles, btnRewind30, btnRewind10, btnPlayPause, btnFF10, btnFF30, seekBar).forEach { control ->
             control.isFocusable = true
@@ -331,15 +336,19 @@ class PlayerActivity : AppCompatActivity() {
         }
 
         val okHttpClient = OkHttpClient.Builder()
-            .connectTimeout(20, TimeUnit.SECONDS)
+            .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+            .connectionPool(ConnectionPool(8, 2, TimeUnit.MINUTES))
             .followRedirects(true)
             .followSslRedirects(true)
             .build()
 
-        val dataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
+        val httpDataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
             .setUserAgent("BubbaFlixTV/1.0 (Android TV Smart Client)")
+            .setDefaultRequestProperties(mapOf("Accept-Encoding" to "identity"))
 
+        val dataSourceFactory = DefaultDataSource.Factory(this, httpDataSourceFactory)
         val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
 
         val mediaType = intent.getStringExtra(EXTRA_MEDIA_TYPE) ?: ""
@@ -349,16 +358,32 @@ class PlayerActivity : AppCompatActivity() {
                 videoUrl.contains("/api/dispatcharr/") ||
                 videoUrl.contains("/live/")
 
+        val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+        val isLowRamDevice = activityManager?.isLowRamDevice == true || (activityManager?.memoryClass ?: 192) < 256
+
+        // Buffer durations tailored for smooth Android TV playback:
+        // Live streams: low latency is key (2s min, 10s max, 1s start, 2s rebuffer)
+        // VOD streams (Movies/TV): robust buffer cushion prevents stutter loops on high-bitrate 1080p/4K streams
+        // minBufferMs: 30s ensures continuous downloading ahead of playback
+        // maxBufferMs: 60-90s gives ample network runway without stalling TCP transfers
+        // bufferForPlaybackMs: 2.5s gives responsive initial startup
+        // bufferForPlaybackAfterRebufferMs: 6s gives enough cushion after starvation to break re-buffer stutter loops
+        val minBufferMs = if (isLiveStream) 2000 else 30000
+        val maxBufferMs = if (isLiveStream) 10000 else if (isLowRamDevice) 60000 else 90000
+        val bufferForPlaybackMs = if (isLiveStream) 1000 else 2500
+        val bufferForPlaybackAfterRebufferMs = if (isLiveStream) 2000 else 6000
+        val targetBufferBytes = if (isLowRamDevice) (64 * 1024 * 1024) else (128 * 1024 * 1024)
+
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                if (isLiveStream) 1500 else 15000,
-                if (isLiveStream) 10000 else 30000,
-                if (isLiveStream) 1000 else 1500,
-                if (isLiveStream) 1500 else 2500
+                minBufferMs,
+                maxBufferMs,
+                bufferForPlaybackMs,
+                bufferForPlaybackAfterRebufferMs
             )
-            .setTargetBufferBytes(64 * 1024 * 1024)
-            .setPrioritizeTimeOverSizeThresholds(false)
-            .setBackBuffer(if (isLiveStream) 0 else 10000, !isLiveStream)
+            .setTargetBufferBytes(targetBufferBytes)
+            .setPrioritizeTimeOverSizeThresholds(true)
+            .setBackBuffer(if (isLiveStream) 0 else 15000, !isLiveStream)
             .build()
 
         playerView.setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
@@ -400,12 +425,18 @@ class PlayerActivity : AppCompatActivity() {
                     }
 
                     override fun onPlaybackStateChanged(state: Int) {
+                        val current = exoPlayer?.currentPosition ?: 0L
+                        val buffered = exoPlayer?.bufferedPosition ?: 0L
+                        val bufferedAhead = (buffered - current).coerceAtLeast(0L)
+
                         when (state) {
                             Player.STATE_BUFFERING -> {
-                                RemoteLogger.d("PlayerActivity", "Playback State: BUFFERING (Position: ${exoPlayer?.currentPosition}ms)")
+                                bufferingSpinner.visibility = View.VISIBLE
+                                RemoteLogger.d("PlayerActivity", "Playback State: BUFFERING (Position: ${current}ms, BufferedAhead: ${bufferedAhead}ms)")
                             }
                             Player.STATE_READY -> {
-                                RemoteLogger.i("PlayerActivity", "Playback State: READY (Duration: ${exoPlayer?.duration}ms, Playing: $playWhenReady)")
+                                bufferingSpinner.visibility = View.GONE
+                                RemoteLogger.i("PlayerActivity", "Playback State: READY (Duration: ${exoPlayer?.duration}ms, Position: ${current}ms, BufferedAhead: ${bufferedAhead}ms, Playing: $playWhenReady)")
                                 errorLayout.visibility = View.GONE
                                 btnPlayPause.setImageResource(
                                     if (playWhenReady) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
@@ -413,6 +444,7 @@ class PlayerActivity : AppCompatActivity() {
                                 checkAndPromptResume()
                             }
                             Player.STATE_ENDED -> {
+                                bufferingSpinner.visibility = View.GONE
                                 RemoteLogger.i("PlayerActivity", "Playback State: ENDED. Exiting player.")
                                 finish()
                                 return
@@ -427,6 +459,7 @@ class PlayerActivity : AppCompatActivity() {
                     }
 
                     override fun onPlayerError(error: PlaybackException) {
+                        bufferingSpinner.visibility = View.GONE
                         val errDetails = error.message ?: error.cause?.message ?: "Unknown playback decoding error"
                         RemoteLogger.e("PlayerActivity", "ExoPlayer Error [${error.errorCodeName}]: $errDetails (URL: $videoUrl)", error)
                         sendErrorToServerLog(errDetails, error.errorCodeName, videoUrl)
