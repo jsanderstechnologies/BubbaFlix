@@ -2582,7 +2582,7 @@ server.listen(PORT, "0.0.0.0", () => {
   logMessage(`================================================================================`);
   logMessage(`[BubbaFlix Server] HTTP API & Transcoder listening on port ${PORT}`);
   const localVersion = getLocalVersionData();
-  const serverVersionStr = localVersion.versionName || "1.0.41";
+  const serverVersionStr = localVersion.versionName || "1.0.42";
   const formattedVersion = serverVersionStr.startsWith("v") ? serverVersionStr : `v${serverVersionStr}`;
   logMessage(`[BubbaFlix Server] Version: ${formattedVersion}`);
   logMessage(`[CPU Hardware Topology] Model: ${cpuModel}`);

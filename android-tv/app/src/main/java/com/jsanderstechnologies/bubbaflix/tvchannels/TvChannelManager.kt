@@ -206,6 +206,8 @@ object TvChannelManager {
                 val displayTitle = "Ch. $chNum | $name"
                 val deepLinkUri = Uri.parse("bubbaflix://live/$streamId")
 
+                val streamUrl = item.optString("stream_url", "")
+
                 val launchIntent = Intent(context, MainActivity::class.java).apply {
                     action = Intent.ACTION_VIEW
                     data = deepLinkUri
@@ -213,6 +215,9 @@ object TvChannelManager {
                     putExtra("streamId", streamId.toString())
                     putExtra("channelNumber", chNum)
                     putExtra("title", name)
+                    if (streamUrl.isNotEmpty()) {
+                        putExtra("streamUrl", streamUrl)
+                    }
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 }
                 val intentUri = Uri.parse(launchIntent.toUri(Intent.URI_INTENT_SCHEME))

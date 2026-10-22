@@ -111,12 +111,13 @@ const LiveTvPage = () => {
 
   const handleTuneChannel = (channel) => {
     setCurrentChannel(channel);
-    const streamUrl = getIptvStreamUrl(channel.stream_id);
+    // Directly stream from IPTV provider on Android TV device (bypassing BubbaFlix server)
+    const directUrl = channel.stream_url || getIptvStreamUrl(channel.stream_id);
 
     // If on Android TV, launch native hardware-accelerated ExoPlayer directly
     if (isAndroidTvClient() && window.AndroidPlayer?.playStream) {
       window.AndroidPlayer.playStream(
-        streamUrl,
+        directUrl,
         `Ch. ${channel.channel_number} | ${channel.name}`,
         channel.stream_icon || "",
         String(channel.stream_id),
@@ -198,7 +199,14 @@ const LiveTvPage = () => {
                       id="livePlayerVideo"
                       controls
                       autoPlay
-                      src={getIptvStreamUrl(currentChannel.stream_id)}
+                      src={currentChannel.stream_url || getIptvStreamUrl(currentChannel.stream_id)}
+                      onError={(e) => {
+                        const fallback = getIptvStreamUrl(currentChannel.stream_id);
+                        if (e.target.src !== fallback) {
+                          e.target.src = fallback;
+                          e.target.play().catch(() => {});
+                        }
+                      }}
                       className="liveVideoElement"
                     />
                     <div className="channelOverlayHeader">

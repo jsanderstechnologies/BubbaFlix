@@ -352,8 +352,10 @@ class PlayerActivity : AppCompatActivity() {
         val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
 
         val mediaType = intent.getStringExtra(EXTRA_MEDIA_TYPE) ?: ""
-        val isLiveStream = mediaType == "livetv" ||
-                mediaType == "channel" ||
+        val isIptv = mediaType.equals("live", ignoreCase = true) || mediaType.equals("iptv", ignoreCase = true)
+        val isLiveStream = isIptv ||
+                mediaType.equals("livetv", ignoreCase = true) ||
+                mediaType.equals("channel", ignoreCase = true) ||
                 videoUrl.contains("/proxy/ts/") ||
                 videoUrl.contains("/api/dispatcharr/") ||
                 videoUrl.contains("/live/")
@@ -361,18 +363,30 @@ class PlayerActivity : AppCompatActivity() {
         val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
         val isLowRamDevice = activityManager?.isLowRamDevice == true || (activityManager?.memoryClass ?: 192) < 256
 
-        // Buffer durations tailored for smooth Android TV playback:
-        // Live streams: low latency is key (2s min, 10s max, 1s start, 2s rebuffer)
-        // VOD streams (Movies/TV): robust buffer cushion prevents stutter loops on high-bitrate 1080p/4K streams
-        // minBufferMs: 30s ensures continuous downloading ahead of playback
-        // maxBufferMs: 60-90s gives ample network runway without stalling TCP transfers
-        // bufferForPlaybackMs: 2.5s gives responsive initial startup
-        // bufferForPlaybackAfterRebufferMs: 6s gives enough cushion after starvation to break re-buffer stutter loops
-        val minBufferMs = if (isLiveStream) 2000 else 30000
-        val maxBufferMs = if (isLiveStream) 10000 else if (isLowRamDevice) 60000 else 90000
+        // Timeshift in IPTV ONLY:
+        // IPTV channels allocate a 30-minute rolling back buffer (10 mins on low-RAM devices) to allow pausing, rewinding,
+        // and resuming live TV without dropping frames or jumping forward to live edge.
+        // Other live streams (e.g. low-latency feeds) use 0 back-buffer.
+        // VOD streams (Movies/TV) use a standard 15s back-buffer with deep forward-cushion.
+        val backBufferDurationMs = if (isIptv) {
+            if (isLowRamDevice) 600000 else 1800000
+        } else if (isLiveStream) {
+            0
+        } else {
+            15000
+        }
+
+        val minBufferMs = if (isIptv) 15000 else if (isLiveStream) 2000 else 30000
+        val maxBufferMs = if (isIptv) 60000 else if (isLiveStream) 10000 else if (isLowRamDevice) 60000 else 90000
         val bufferForPlaybackMs = if (isLiveStream) 1000 else 2500
         val bufferForPlaybackAfterRebufferMs = if (isLiveStream) 2000 else 6000
-        val targetBufferBytes = if (isLowRamDevice) (64 * 1024 * 1024) else (128 * 1024 * 1024)
+        val targetBufferBytes = if (isIptv) {
+            if (isLowRamDevice) 96 * 1024 * 1024 else 256 * 1024 * 1024
+        } else if (isLowRamDevice) {
+            64 * 1024 * 1024
+        } else {
+            128 * 1024 * 1024
+        }
 
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
@@ -383,7 +397,7 @@ class PlayerActivity : AppCompatActivity() {
             )
             .setTargetBufferBytes(targetBufferBytes)
             .setPrioritizeTimeOverSizeThresholds(true)
-            .setBackBuffer(if (isLiveStream) 0 else 15000, !isLiveStream)
+            .setBackBuffer(backBufferDurationMs, isIptv || !isLiveStream)
             .build()
 
         playerView.setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
@@ -413,6 +427,17 @@ class PlayerActivity : AppCompatActivity() {
                 } else if (videoUrl.contains(".m3u8")) {
                     mediaItemBuilder.setMimeType(MimeTypes.APPLICATION_M3U8)
                 }
+
+                if (isIptv) {
+                    // Enable gentle catch-up for timeshift playback
+                    mediaItemBuilder.setLiveConfiguration(
+                        MediaItem.LiveConfiguration.Builder()
+                            .setMaxPlaybackSpeed(1.04f)
+                            .setMinPlaybackSpeed(0.96f)
+                            .build()
+                    )
+                }
+
                 setMediaItem(mediaItemBuilder.build())
                 prepare()
                 playWhenReady = true
@@ -768,8 +793,9 @@ class PlayerActivity : AppCompatActivity() {
                     exoPlayer?.let { player ->
                         isUserSeeking = true
                         val dur = player.duration
-                        if (dur > 0L && dur != C.TIME_UNSET) {
-                            val newPos = (dur * progress) / 1000
+                        val liveEdge = if (dur > 0L && dur != C.TIME_UNSET) dur else player.bufferedPosition.coerceAtLeast(player.currentPosition)
+                        if (liveEdge > 0L) {
+                            val newPos = (liveEdge * progress) / 1000
                             txtCurrentTime.text = formatTime(newPos)
                         }
                     }
@@ -792,8 +818,9 @@ class PlayerActivity : AppCompatActivity() {
         if (isUserSeeking) {
             exoPlayer?.let { player ->
                 val dur = player.duration
-                if (dur > 0L && dur != C.TIME_UNSET) {
-                    val newPos = (dur * seekBar.progress) / 1000
+                val liveEdge = if (dur > 0L && dur != C.TIME_UNSET) dur else player.bufferedPosition.coerceAtLeast(player.currentPosition)
+                if (liveEdge > 0L) {
+                    val newPos = (liveEdge * seekBar.progress) / 1000
                     player.seekTo(newPos)
                 }
             }
@@ -878,11 +905,12 @@ class PlayerActivity : AppCompatActivity() {
         resetControlsTimeout()
         exoPlayer?.let { player ->
             val dur = player.duration
-            val hasValidDur = dur > 0L && dur != C.TIME_UNSET
             val current = player.currentPosition
+            val buffered = player.bufferedPosition
+            val liveEdge = if (dur > 0L && dur != C.TIME_UNSET) dur else buffered.coerceAtLeast(current)
 
-            val targetPos = if (hasValidDur) {
-                (current + offsetMs).coerceIn(0L, dur)
+            val targetPos = if (liveEdge > 0L) {
+                (current + offsetMs).coerceIn(0L, liveEdge)
             } else {
                 (current + offsetMs).coerceAtLeast(0L)
             }
@@ -994,8 +1022,9 @@ class PlayerActivity : AppCompatActivity() {
                 seekBar.progress = newProgress
                 exoPlayer?.let { player ->
                     val dur = player.duration
-                    if (dur > 0L && dur != C.TIME_UNSET) {
-                        val targetMs = (dur * newProgress) / 1000
+                    val liveEdge = if (dur > 0L && dur != C.TIME_UNSET) dur else player.bufferedPosition.coerceAtLeast(player.currentPosition)
+                    if (liveEdge > 0L) {
+                        val targetMs = (liveEdge * newProgress) / 1000
                         txtCurrentTime.text = formatTime(targetMs)
                     }
                 }
@@ -1054,6 +1083,9 @@ class PlayerActivity : AppCompatActivity() {
 
     private fun saveCurrentWatchProgress() {
         val player = exoPlayer ?: return
+        val mediaType = intent.getStringExtra(EXTRA_MEDIA_TYPE) ?: ""
+        if (mediaType.equals("live", ignoreCase = true) || mediaType.equals("iptv", ignoreCase = true) || mediaType.equals("livetv", ignoreCase = true)) return
+
         val key = getProgressKey()
         val pos = player.currentPosition
         val dur = player.duration
@@ -1072,6 +1104,9 @@ class PlayerActivity : AppCompatActivity() {
     private fun checkAndPromptResume() {
         if (hasPromptedResume) return
         hasPromptedResume = true
+
+        val mediaType = intent.getStringExtra(EXTRA_MEDIA_TYPE) ?: ""
+        if (mediaType.equals("live", ignoreCase = true) || mediaType.equals("iptv", ignoreCase = true) || mediaType.equals("livetv", ignoreCase = true)) return
 
         val player = exoPlayer ?: return
         val key = getProgressKey()
