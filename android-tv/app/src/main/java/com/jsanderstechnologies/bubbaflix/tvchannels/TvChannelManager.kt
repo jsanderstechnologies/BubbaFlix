@@ -1,6 +1,7 @@
 package com.jsanderstechnologies.bubbaflix.tvchannels
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import androidx.tvprovider.media.tv.PreviewChannel
@@ -202,11 +203,21 @@ object TvChannelManager {
             val mediaType = if (def.isMovie) "movie" else "tv"
             val deepLinkUri = Uri.parse("bubbaflix://$mediaType/$id")
 
+            val launchIntent = Intent(context, MainActivity::class.java).apply {
+                action = Intent.ACTION_VIEW
+                data = deepLinkUri
+                putExtra("mediaType", mediaType)
+                putExtra("tmdbId", id.toString())
+                putExtra("title", title)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val intentUri = Uri.parse(launchIntent.toUri(Intent.URI_INTENT_SCHEME))
+
             val programBuilder = PreviewProgram.Builder()
                 .setChannelId(channelId)
                 .setTitle(title)
                 .setDescription(overview)
-                .setIntentUri(deepLinkUri)
+                .setIntentUri(intentUri)
                 .setWeight(100 - count)
                 .setType(if (def.isMovie) TvContractCompat.PreviewProgramColumns.TYPE_MOVIE else TvContractCompat.PreviewProgramColumns.TYPE_TV_SERIES)
 

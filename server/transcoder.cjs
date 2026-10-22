@@ -41,12 +41,12 @@ const getLocalVersionData = () => {
           return raw;
         }
         if (raw.version) {
-          return { versionCode: 39, versionName: raw.version };
+          return { versionCode: 40, versionName: raw.version };
         }
       }
     }
   } catch (e) {}
-  return { versionCode: 39, versionName: "1.0.38" };
+  return { versionCode: 40, versionName: "1.0.39" };
 };
 
 
@@ -1846,7 +1846,7 @@ server.listen(PORT, "0.0.0.0", () => {
   logMessage(`================================================================================`);
   logMessage(`[BubbaFlix Server] HTTP API & Transcoder listening on port ${PORT}`);
   const localVersion = getLocalVersionData();
-  const serverVersionStr = localVersion.versionName || "1.0.38";
+  const serverVersionStr = localVersion.versionName || "1.0.39";
   const formattedVersion = serverVersionStr.startsWith("v") ? serverVersionStr : `v${serverVersionStr}`;
   logMessage(`[BubbaFlix Server] Version: ${formattedVersion}`);
   logMessage(`[CPU Hardware Topology] Model: ${cpuModel}`);

@@ -209,6 +209,12 @@ class MainActivity : AppCompatActivity() {
             if (scheme.equals("bubbaflix", ignoreCase = true)) {
                 if (!host.isNullOrEmpty() && pathSegments.isNotEmpty()) {
                     path = "/$host/${pathSegments[0]}"
+                } else if (!host.isNullOrEmpty() && (host == "movie" || host == "tv")) {
+                    val ssp = data.schemeSpecificPart?.trimStart('/')
+                    val idPart = ssp?.substringAfter('/')
+                    if (!idPart.isNullOrEmpty()) {
+                        path = "/$host/$idPart"
+                    }
                 } else if (!data.path.isNullOrEmpty()) {
                     path = data.path
                 }
@@ -223,8 +229,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (path.isNullOrEmpty()) {
-            val mediaType = intent.getStringExtra("mediaType")
+            val mediaType = intent.getStringExtra("mediaType") ?: intent.getStringExtra("type")
             val tmdbId = intent.getStringExtra("tmdbId")
+                ?: intent.getStringExtra("id")
+                ?: intent.getLongExtra("tmdbId", -1L).takeIf { it > 0 }?.toString()
+                ?: intent.getIntExtra("tmdbId", -1).takeIf { it > 0 }?.toString()
             if (!mediaType.isNullOrEmpty() && !tmdbId.isNullOrEmpty()) {
                 path = "/$mediaType/$tmdbId"
             }
@@ -245,10 +254,15 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 webView.evaluateJavascript(
                     "(function() {" +
-                    "  if (typeof window.__routerNavigate === 'function') {" +
+                    "  if (typeof window.__closeTrailerModal === 'function') {" +
+                    "    window.__closeTrailerModal();" +
+                    "  }" +
+                    "  if (typeof window.__deepLinkNavigate === 'function') {" +
+                    "    window.__deepLinkNavigate('$cleanPath');" +
+                    "  } else if (typeof window.__routerNavigate === 'function') {" +
                     "    window.__routerNavigate('$cleanPath');" +
                     "  } else {" +
-                    "    window.location.hash = '#$cleanPath';" +
+                    "    window.location.href = '$cleanPath';" +
                     "  }" +
                     "})();",
                     null
@@ -501,8 +515,17 @@ class MainActivity : AppCompatActivity() {
 
             runOnUiThread {
                 if (connected) {
-                    RemoteLogger.i("MainActivity", "Server reachable ($target). Loading URL in WebView.")
-                    webView.loadUrl(target)
+                    val initialUrl = if (!pendingDeepLink.isNullOrEmpty()) {
+                        val deep = pendingDeepLink!!
+                        val path = if (deep.startsWith("/")) deep else "/$deep"
+                        val base = target.removeSuffix("/")
+                        RemoteLogger.i("MainActivity", "Server reachable ($target). Loading deep link URL in WebView: $base$path")
+                        "$base$path"
+                    } else {
+                        RemoteLogger.i("MainActivity", "Server reachable ($target). Loading URL in WebView: $target")
+                        target
+                    }
+                    webView.loadUrl(initialUrl)
                 } else {
                     RemoteLogger.w("MainActivity", "Server unreachable ($target). Showing server selection dialog.")
                     Toast.makeText(this@MainActivity, "Unable to reach $target. Select local server below:", Toast.LENGTH_LONG).show()

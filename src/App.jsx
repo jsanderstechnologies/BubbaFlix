@@ -32,12 +32,32 @@ import GlobalSearchListener from "./components/global-search-listener";
 import AuthPage from "./pages/auth-page";
 import { AuthProvider, AuthContext } from "./context/AuthContext";
 
+if (typeof window !== "undefined") {
+  window.__deepLinkNavigate = (path) => {
+    if (typeof window.__routerNavigate === "function") {
+      window.__routerNavigate(path);
+    } else {
+      window.__pendingDeepLink = path;
+    }
+  };
+}
+
 const NavigationManager = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
     window.__routerNavigate = navigate;
+    window.__deepLinkNavigate = (path) => {
+      if (path) {
+        navigate(path);
+      }
+    };
+    if (window.__pendingDeepLink) {
+      const pending = window.__pendingDeepLink;
+      window.__pendingDeepLink = null;
+      navigate(pending);
+    }
   }, [navigate]);
 
   useEffect(() => {
@@ -52,6 +72,15 @@ const AppContent = () => {
   const { url } = useSelector((state) => state.home);
   const { user, loading, setupRequired, updatePreferences } = useContext(AuthContext);
   const [showSplash, setShowSplash] = useState(() => {
+    const isDirectDeepLink = typeof window !== "undefined" && 
+      (window.location.pathname.startsWith("/tv/") || 
+       window.location.pathname.startsWith("/movie/") ||
+       window.location.pathname.startsWith("/collection/") ||
+       window.location.pathname.startsWith("/person/"));
+    if (isDirectDeepLink) {
+      sessionStorage.setItem("bubbaflix_splash_shown", "true");
+      return false;
+    }
     return !sessionStorage.getItem("bubbaflix_splash_shown");
   });
 

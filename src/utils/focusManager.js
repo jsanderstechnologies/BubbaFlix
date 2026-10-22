@@ -39,9 +39,17 @@ export const goBackToSource = (navigate) => {
       window.history.back();
     }
   } else if (typeof nav === "function") {
-    nav(-1);
+    if (typeof window !== "undefined" && window.history && window.history.length <= 1) {
+      nav("/");
+    } else {
+      nav(-1);
+    }
   } else if (typeof window !== "undefined" && window.history) {
-    window.history.back();
+    if (window.history.length <= 1 && typeof nav === "function") {
+      nav("/");
+    } else {
+      window.history.back();
+    }
   }
 
   // Trigger restore process which will poll until the reloaded page finishes rendering

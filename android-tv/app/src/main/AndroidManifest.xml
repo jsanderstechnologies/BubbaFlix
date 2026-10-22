@@ -39,7 +39,8 @@
             android:exported="true"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:screenOrientation="landscape"
-            android:theme="@style/Theme.BubbaFlixTV">
+            android:theme="@style/Theme.BubbaFlixTV"
+            android:launchMode="singleTask">
 
             <!-- Standard Launcher Intent -->
             <intent-filter>
