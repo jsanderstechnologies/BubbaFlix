@@ -35,7 +35,7 @@ export const testIptvConnection = async ({ serverUrl, username, password, epgUrl
     const res = await axios.post(
       `${base}/api/iptv/test`,
       { serverUrl, username, password, epgUrl },
-      { timeout: 25000 }
+      { timeout: 65000 }
     );
     if (res.data?.status === "success") {
       return {
@@ -60,7 +60,7 @@ export const fetchIptvGroups = async (forceRefresh = false) => {
   try {
     const base = getServerUrl();
     const res = await axios.get(`${base}/api/iptv/groups${forceRefresh ? "?refresh=true" : ""}`, {
-      timeout: 20000,
+      timeout: 65000,
     });
     return res.data?.groups || [];
   } catch (err) {
@@ -73,7 +73,7 @@ export const fetchIptvChannels = async (includeAll = false) => {
   try {
     const base = getServerUrl();
     const url = `${base}/api/iptv/channels${includeAll ? "?all=true" : ""}`;
-    const res = await axios.get(url, { timeout: 25000 });
+    const res = await axios.get(url, { timeout: 65000 });
     return res.data?.channels || [];
   } catch (err) {
     console.error("[IPTV] Failed to fetch channels:", err.message);

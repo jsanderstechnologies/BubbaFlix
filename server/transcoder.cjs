@@ -796,7 +796,7 @@ const fetchXmltvEpg = async (credentials, force = false) => {
   }
 };
 
-// Fast M3U Plus Playlist Parser
+// Fast M3U Plus Playlist Parser with EXTGRP support
 const parseM3uPlus = (content) => {
   const lines = content.split(/\r?\n/);
   const channels = [];
@@ -820,7 +820,7 @@ const parseM3uPlus = (content) => {
       const tvgId = getAttr("tvg-id");
       const tvgName = getAttr("tvg-name") || title;
       const tvgLogo = getAttr("tvg-logo");
-      const groupTitle = getAttr("group-title") || "General";
+      const groupTitle = getAttr("group-title") || getAttr("tvg-group") || "";
 
       currentItem = {
         name: title || tvgName,
@@ -828,14 +828,25 @@ const parseM3uPlus = (content) => {
         tvg_id: tvgId,
         epg_channel_id: tvgId,
         stream_icon: tvgLogo,
-        category_name: groupTitle,
-        category_id: groupTitle,
+        category_name: groupTitle || "",
+        category_id: groupTitle || "",
       };
+    } else if (line.startsWith("#EXTGRP:") && currentItem) {
+      const extGrp = line.substring(8).trim();
+      if (extGrp) {
+        currentItem.category_name = extGrp;
+        currentItem.category_id = extGrp;
+      }
     } else if (!line.startsWith("#") && currentItem) {
       currentItem.stream_url = line;
-      const streamIdMatch = line.match(/\/(\d+)\.(m3u8|ts)/i);
+      const streamIdMatch = line.match(/\/(\d+)(\.(m3u8|ts|mp4)|\?|$)/i) || line.match(/\/(\d+)\b/);
       const streamId = streamIdMatch ? streamIdMatch[1] : `stream_${channels.length + 1}`;
       currentItem.stream_id = streamId;
+
+      if (!currentItem.category_name) {
+        currentItem.category_name = "General";
+        currentItem.category_id = "General";
+      }
 
       channels.push(currentItem);
       streamUrlMap.set(String(streamId), line);
@@ -874,7 +885,7 @@ const callXtreamApi = async (credentials, action = "", extraParams = {}) => {
 
   const apiUrl = `${serverUrl}/player_api.php?${queryParams.toString()}`;
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const timeoutId = setTimeout(() => controller.abort(), 20000);
 
   try {
     const resp = await fetch(apiUrl, {
@@ -901,120 +912,197 @@ const callXtreamApi = async (credentials, action = "", extraParams = {}) => {
   }
 };
 
-// Fetch Channels via /get.php?type=m3u_plus with Xtream player API fallback
+let pendingM3uPromise = null;
+
+// Fetch Channels via /get.php?type=m3u_plus with Xtream player API fallback & disk caching
 const fetchM3uPlaylist = async (credentials, force = false) => {
   const now = Date.now();
   if (!force && iptvChannelsCache.channels.length > 0 && now - iptvChannelsCache.timestamp < IPTV_CHANNELS_CACHE_TTL) {
     return iptvChannelsCache;
   }
 
-  let serverUrl = (credentials.serverUrl || "").trim().replace(/\/+$/, "");
-  const username = (credentials.username || "").trim();
-  const password = (credentials.password || "").trim();
-
-  if (!serverUrl || !username || !password) {
-    return { channels: [], groups: [], streamUrlMap: new Map() };
-  }
-
-  const m3uUrl = serverUrl.includes("get.php")
-    ? serverUrl
-    : `${serverUrl}/get.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&type=m3u_plus&output=m3u8`;
-
-  logMessage(`[M3U Playlist Fetch] Loading channels from ${m3uUrl.replace(password, "******")}...`);
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 20000);
-
-  try {
-    const resp = await fetch(m3uUrl, {
-      signal: controller.signal,
-      headers: {
-        "User-Agent": "BubbaFlix/1.0 (Android TV Smart IPTV Client)",
-        "Accept-Encoding": "gzip, deflate",
-      },
-    });
-    clearTimeout(timeoutId);
-
-    if (resp.ok) {
-      const arrayBuffer = await resp.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      let text = "";
-      if (buffer.length > 2 && buffer[0] === 0x1f && buffer[1] === 0x8b) {
-        text = zlib.gunzipSync(buffer).toString("utf8");
-      } else {
-        text = buffer.toString("utf8");
-      }
-
-      if (text.includes("#EXTM3U") || text.includes("#EXTINF")) {
-        const parsed = parseM3uPlus(text);
-        if (parsed.channels.length > 0) {
+  const diskCacheFile = path.join(IPTV_CACHE_DIR, "channels_cache.json");
+  if (!force && fs.existsSync(diskCacheFile)) {
+    try {
+      const stats = fs.statSync(diskCacheFile);
+      if (now - stats.mtimeMs < IPTV_CHANNELS_CACHE_TTL) {
+        const rawJson = fs.readFileSync(diskCacheFile, "utf8");
+        const parsedData = JSON.parse(rawJson);
+        if (Array.isArray(parsedData.channels) && parsedData.channels.length > 0) {
+          const streamUrlMap = new Map();
+          parsedData.channels.forEach(ch => {
+            if (ch.stream_id && ch.stream_url) streamUrlMap.set(String(ch.stream_id), ch.stream_url);
+          });
           iptvChannelsCache = {
-            timestamp: now,
-            channels: parsed.channels,
-            groups: parsed.groups,
-            streamUrlMap: parsed.streamUrlMap,
+            timestamp: stats.mtimeMs,
+            channels: parsedData.channels,
+            groups: parsedData.groups || [],
+            streamUrlMap,
           };
-          logMessage(`[M3U Playlist Success] Parsed ${parsed.channels.length} channels across ${parsed.groups.length} categories.`);
+          logMessage(`[IPTV Disk Cache Hit] Loaded ${parsedData.channels.length} channels and ${(parsedData.groups || []).length} categories.`);
           return iptvChannelsCache;
         }
       }
+    } catch (e) {
+      logMessage(`[IPTV Disk Cache Warning] ${e.message}`, true);
     }
-  } catch (err) {
-    clearTimeout(timeoutId);
-    logMessage(`[M3U Playlist Warning] Failed /get.php fetch: ${err.message}. Trying player_api.php fallback...`, true);
   }
 
-  // Fallback: Query player_api.php?action=get_live_streams & get_live_categories
+  // Deduplicate concurrent requests so only 1 download stream runs against the IPTV server
+  if (pendingM3uPromise) {
+    return pendingM3uPromise;
+  }
+
+  pendingM3uPromise = (async () => {
+    let serverUrl = (credentials.serverUrl || "").trim().replace(/\/+$/, "");
+    const username = (credentials.username || "").trim();
+    const password = (credentials.password || "").trim();
+
+    if (!serverUrl || !username || !password) {
+      return { channels: [], groups: [], streamUrlMap: new Map() };
+    }
+
+    const m3uUrl = serverUrl.includes("get.php")
+      ? serverUrl
+      : `${serverUrl}/get.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&type=m3u_plus&output=m3u8`;
+
+    logMessage(`[M3U Playlist Fetch] Loading channels from ${m3uUrl.replace(password, "******")}...`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+    try {
+      const resp = await fetch(m3uUrl, {
+        signal: controller.signal,
+        headers: {
+          "User-Agent": "BubbaFlix/1.0 (Android TV Smart IPTV Client)",
+          "Accept-Encoding": "gzip, deflate",
+        },
+      });
+      clearTimeout(timeoutId);
+
+      if (resp.ok) {
+        const arrayBuffer = await resp.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        let text = "";
+        if (buffer.length > 2 && buffer[0] === 0x1f && buffer[1] === 0x8b) {
+          text = zlib.gunzipSync(buffer).toString("utf8");
+        } else {
+          text = buffer.toString("utf8");
+        }
+
+        if (text.includes("#EXTM3U") || text.includes("#EXTINF")) {
+          const parsed = parseM3uPlus(text);
+          if (parsed.channels.length > 0) {
+            let finalGroups = parsed.groups;
+
+            // If groups is empty or only 1 generic group, enrich from get_live_categories
+            if (finalGroups.length <= 1) {
+              try {
+                const xtreamCats = await callXtreamApi(credentials, "get_live_categories");
+                if (Array.isArray(xtreamCats) && xtreamCats.length > 1) {
+                  finalGroups = xtreamCats.map(c => ({
+                    category_id: String(c.category_id),
+                    category_name: c.category_name,
+                    channel_count: 0
+                  }));
+                }
+              } catch (e) {}
+            }
+
+            iptvChannelsCache = {
+              timestamp: now,
+              channels: parsed.channels,
+              groups: finalGroups,
+              streamUrlMap: parsed.streamUrlMap,
+            };
+
+            // Save to disk cache for fast future startup
+            try {
+              fs.writeFileSync(diskCacheFile, JSON.stringify({
+                channels: parsed.channels,
+                groups: finalGroups,
+              }), "utf8");
+            } catch (diskErr) {}
+
+            logMessage(`[M3U Playlist Success] Parsed ${parsed.channels.length} channels across ${finalGroups.length} categories.`);
+            return iptvChannelsCache;
+          }
+        }
+      }
+    } catch (err) {
+      clearTimeout(timeoutId);
+      logMessage(`[M3U Playlist Warning] Failed /get.php fetch: ${err.message}. Trying player_api.php fallback...`, true);
+    }
+
+    // Fallback: Query player_api.php?action=get_live_streams & get_live_categories
+    try {
+      logMessage(`[IPTV Fallback] Querying player_api.php live streams & categories...`);
+      const [categories, streams] = await Promise.all([
+        callXtreamApi(credentials, "get_live_categories").catch(() => []),
+        callXtreamApi(credentials, "get_live_streams").catch(() => []),
+      ]);
+
+      const catMap = {};
+      const groups = [];
+      if (Array.isArray(categories)) {
+        categories.forEach(c => {
+          catMap[String(c.category_id)] = c.category_name;
+          groups.push({
+            category_id: String(c.category_id),
+            category_name: c.category_name,
+            channel_count: 0,
+          });
+        });
+      }
+
+      const channels = [];
+      const streamUrlMap = new Map();
+      if (Array.isArray(streams)) {
+        streams.forEach((s) => {
+          const catId = String(s.category_id || "");
+          const streamId = String(s.stream_id || s.num);
+          const streamUrl = `${serverUrl}/live/${encodeURIComponent(username)}/${encodeURIComponent(password)}/${streamId}.m3u8`;
+          streamUrlMap.set(streamId, streamUrl);
+
+          channels.push({
+            stream_id: streamId,
+            name: s.name,
+            original_name: s.name,
+            tvg_id: s.epg_channel_id || "",
+            epg_channel_id: s.epg_channel_id || "",
+            stream_icon: s.stream_icon || "",
+            category_id: catId,
+            category_name: catMap[catId] || "Live Channels",
+            stream_url: streamUrl,
+          });
+
+          const grp = groups.find(g => g.category_id === catId);
+          if (grp) grp.channel_count++;
+        });
+      }
+
+      iptvChannelsCache = { timestamp: now, channels, groups, streamUrlMap };
+
+      // Save to disk cache
+      try {
+        fs.writeFileSync(diskCacheFile, JSON.stringify({
+          channels,
+          groups,
+        }), "utf8");
+      } catch (diskErr) {}
+
+      return iptvChannelsCache;
+    } catch (apiErr) {
+      logMessage(`[IPTV Engine Error] Both /get.php and player_api.php failed: ${apiErr.message}`, true);
+      return iptvChannelsCache.channels.length > 0 ? iptvChannelsCache : { channels: [], groups: [], streamUrlMap: new Map() };
+    }
+  })();
+
   try {
-    logMessage(`[IPTV Fallback] Querying player_api.php live streams & categories...`);
-    const [categories, streams] = await Promise.all([
-      callXtreamApi(credentials, "get_live_categories").catch(() => []),
-      callXtreamApi(credentials, "get_live_streams").catch(() => []),
-    ]);
-
-    const catMap = {};
-    const groups = [];
-    if (Array.isArray(categories)) {
-      categories.forEach(c => {
-        catMap[String(c.category_id)] = c.category_name;
-        groups.push({
-          category_id: String(c.category_id),
-          category_name: c.category_name,
-          channel_count: 0,
-        });
-      });
-    }
-
-    const channels = [];
-    const streamUrlMap = new Map();
-    if (Array.isArray(streams)) {
-      streams.forEach((s) => {
-        const catId = String(s.category_id || "");
-        const streamId = String(s.stream_id || s.num);
-        const streamUrl = `${serverUrl}/live/${encodeURIComponent(username)}/${encodeURIComponent(password)}/${streamId}.m3u8`;
-        streamUrlMap.set(streamId, streamUrl);
-
-        channels.push({
-          stream_id: streamId,
-          name: s.name,
-          original_name: s.name,
-          tvg_id: s.epg_channel_id || "",
-          epg_channel_id: s.epg_channel_id || "",
-          stream_icon: s.stream_icon || "",
-          category_id: catId,
-          category_name: catMap[catId] || "Live Channels",
-          stream_url: streamUrl,
-        });
-
-        const grp = groups.find(g => g.category_id === catId);
-        if (grp) grp.channel_count++;
-      });
-    }
-
-    iptvChannelsCache = { timestamp: now, channels, groups, streamUrlMap };
-    return iptvChannelsCache;
-  } catch (apiErr) {
-    logMessage(`[IPTV Engine Error] Both /get.php and player_api.php failed: ${apiErr.message}`, true);
-    return iptvChannelsCache.channels.length > 0 ? iptvChannelsCache : { channels: [], groups: [], streamUrlMap: new Map() };
+    const res = await pendingM3uPromise;
+    return res;
+  } finally {
+    pendingM3uPromise = null;
   }
 };
 
@@ -2239,15 +2327,46 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
           return sendJson(res, 200, { status: "success", groups: [] });
         }
         const force = parsedUrl.query.refresh === "true";
-        const { groups } = await fetchM3uPlaylist(config.credentials, force);
+        const playlist = await fetchM3uPlaylist(config.credentials, force);
+        let groups = playlist.groups ? [...playlist.groups] : [];
 
-        const result = groups.map(grp => {
+        // Guaranteed fallback: If groups is empty but channels exist, derive from channels
+        if (groups.length === 0 && playlist.channels && playlist.channels.length > 0) {
+          const map = new Map();
+          for (const ch of playlist.channels) {
+            const name = ch.category_name || "General";
+            const id = ch.category_id || name;
+            if (!map.has(id)) {
+              map.set(id, { category_id: String(id), category_name: name, channel_count: 0 });
+            }
+            map.get(id).channel_count++;
+          }
+          groups = Array.from(map.values());
+        }
+
+        // Additional fallback: If groups is still empty, call Xtream get_live_categories
+        if (groups.length === 0) {
+          try {
+            const xtreamCats = await callXtreamApi(config.credentials, "get_live_categories");
+            if (Array.isArray(xtreamCats) && xtreamCats.length > 0) {
+              groups = xtreamCats.map((c) => ({
+                category_id: String(c.category_id),
+                category_name: c.category_name,
+                channel_count: 0,
+              }));
+            }
+          } catch (e) {
+            logMessage(`[IPTV Groups Fallback] get_live_categories error: ${e.message}`, true);
+          }
+        }
+
+        const result = groups.map((grp) => {
           const grpCfg = config.groups[grp.category_id] || config.groups[grp.category_name];
           return {
             category_id: grp.category_id,
             category_name: grp.category_name,
             enabled: grpCfg ? grpCfg.enabled !== false : true,
-            channel_count: grp.channel_count || 0
+            channel_count: grp.channel_count || 0,
           };
         });
 

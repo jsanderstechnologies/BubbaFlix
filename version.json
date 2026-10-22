@@ -1,6 +1,6 @@
 {
-  "versionCode": 43,
-  "versionName": "1.0.42",
+  "versionCode": 44,
+  "versionName": "1.0.43",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.42: Direct device streaming for IPTV and timeshifting support in IPTV only."
+  "releaseNotes": "BubbaFlix TV v1.0.43: Fix IPTV group loading, EXTGRP playlist parsing, concurrent stream deduplication, and high-contrast status notifications."
 }

@@ -95,15 +95,55 @@ const IptvSetupPage = () => {
 
   const loadProviderData = async (forceRefresh = false) => {
     setLoadingData(true);
+    if (forceRefresh) {
+      setSaveStatus({
+        type: "info",
+        text: "Refreshing categories and channels from IPTV provider, please wait...",
+      });
+    }
     try {
-      const [grps, chs] = await Promise.all([
-        fetchIptvGroups(forceRefresh),
-        fetchIptvChannels(true), // includeAll=true for setup screen
-      ]);
-      setLoadedGroups(grps);
-      setLoadedChannels(chs);
+      // Sequential loading ensures we never open concurrent streams that trip provider connection limits
+      let grps = await fetchIptvGroups(forceRefresh);
+      const chs = await fetchIptvChannels(true);
+
+      // Resilient fallback: if groups list is empty but channels loaded, extract unique categories
+      if ((!grps || grps.length === 0) && chs && chs.length > 0) {
+        const derivedMap = new Map();
+        chs.forEach((c) => {
+          const cid = String(c.category_id || c.category_name || "General");
+          const cname = c.category_name || "General";
+          if (!derivedMap.has(cid)) {
+            derivedMap.set(cid, {
+              category_id: cid,
+              category_name: cname,
+              channel_count: 0,
+            });
+          }
+          derivedMap.get(cid).channel_count++;
+        });
+        grps = Array.from(derivedMap.values());
+      }
+
+      setLoadedGroups(grps || []);
+      setLoadedChannels(chs || []);
+
+      if (forceRefresh) {
+        const groupCount = grps ? grps.length : 0;
+        const channelCount = chs ? chs.length : 0;
+        setSaveStatus({
+          type: "success",
+          text: `Refreshed successfully! Loaded ${groupCount} categories and ${channelCount} channels from IPTV provider.`,
+        });
+        setTimeout(() => setSaveStatus(null), 6000);
+      }
     } catch (e) {
       console.error("Failed to load provider data:", e);
+      if (forceRefresh) {
+        setSaveStatus({
+          type: "error",
+          text: `Failed to refresh from IPTV provider: ${e.message || "Network request failed"}`,
+        });
+      }
     } finally {
       setLoadingData(false);
     }
@@ -321,7 +361,13 @@ const IptvSetupPage = () => {
           {/* Status Message */}
           {saveStatus && (
             <div className={`statusNotice ${saveStatus.type}`}>
-              {saveStatus.type === "success" ? <FiCheckCircle /> : <FiAlertCircle />}
+              {saveStatus.type === "success" ? (
+                <FiCheckCircle className="statusIcon" />
+              ) : saveStatus.type === "info" ? (
+                <FiRefreshCw className="statusIcon spinning" />
+              ) : (
+                <FiAlertCircle className="statusIcon" />
+              )}
               <span>{saveStatus.text}</span>
             </div>
           )}
@@ -457,7 +503,19 @@ const IptvSetupPage = () => {
               </div>
 
               {loadingData ? (
-                <div className="loadingNotice">Fetching categories from Xtream Codes server...</div>
+                <div className="loadingNotice">
+                  <FiRefreshCw className="spinner" />
+                  <span>Fetching and refreshing categories from IPTV server...</span>
+                </div>
+              ) : filteredGroups.length === 0 ? (
+                <div className="emptyNotice">
+                  <FiAlertCircle />
+                  <span>
+                    {groupSearch
+                      ? `No categories match "${groupSearch}".`
+                      : "No categories loaded yet. Please verify your provider credentials in Tab 1, or click Refresh above."}
+                  </span>
+                </div>
               ) : (
                 <div className="groupsGrid">
                   {filteredGroups.map((grp) => {
@@ -542,6 +600,10 @@ const IptvSetupPage = () => {
                       onChange={(e) => setChannelSearch(e.target.value)}
                     />
                   </div>
+
+                  <button className="toolBtn refreshBtn" onClick={() => loadProviderData(true)} title="Refresh channels from provider">
+                    <FiRefreshCw className={loadingData ? "spinning" : ""} /> Refresh
+                  </button>
                 </div>
 
                 {/* Batch Numbering Helper */}
@@ -561,9 +623,24 @@ const IptvSetupPage = () => {
                 </div>
               </div>
 
-              {/* Channel Table */}
-              <div className="channelsTableWrapper">
-                <table className="channelsTable">
+              {/* Channel Table / Loading / Empty */}
+              {loadingData ? (
+                <div className="loadingNotice">
+                  <FiRefreshCw className="spinner" />
+                  <span>Fetching and loading channels from IPTV server...</span>
+                </div>
+              ) : filteredChannels.length === 0 ? (
+                <div className="emptyNotice">
+                  <FiAlertCircle />
+                  <span>
+                    {channelSearch
+                      ? `No channels match "${channelSearch}".`
+                      : "No channels found. Check your category visibility in Tab 2, or click Refresh."}
+                  </span>
+                </div>
+              ) : (
+                <div className="channelsTableWrapper">
+                  <table className="channelsTable">
                   <thead>
                     <tr>
                       <th style={{ width: 80 }}>Visible</th>
@@ -638,6 +715,7 @@ const IptvSetupPage = () => {
                   </div>
                 )}
               </div>
+            )}
 
               <div className="actionRow stickyFooter">
                 <button className="saveBtn" onClick={handleSaveConfig} disabled={saving}>
