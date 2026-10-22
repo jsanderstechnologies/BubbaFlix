@@ -127,6 +127,40 @@ const IptvSetupPage = () => {
       setLoadedGroups(grps || []);
       setLoadedChannels(chs || []);
 
+      // Pre-populate groupsConfig with existing server rules or defaults so they are never lost
+      if (grps && grps.length > 0) {
+        setGroupsConfig((prev) => {
+          const merged = { ...prev };
+          grps.forEach((g) => {
+            const cid = String(g.category_id);
+            const cname = g.category_name;
+            if (merged[cid] === undefined && merged[cname] === undefined) {
+              merged[cid] = { name: cname, enabled: g.enabled !== false };
+              if (cname) merged[cname] = { id: cid, enabled: g.enabled !== false };
+            }
+          });
+          return merged;
+        });
+      }
+
+      // Pre-populate channelsConfig with existing server rules or defaults
+      if (chs && chs.length > 0) {
+        setChannelsConfig((prev) => {
+          const merged = { ...prev };
+          chs.forEach((ch) => {
+            const sid = String(ch.stream_id);
+            if (merged[sid] === undefined) {
+              merged[sid] = {
+                enabled: ch.enabled !== false,
+                channelNumber: ch.channel_number,
+                customName: ch.name !== ch.original_name ? ch.name : "",
+              };
+            }
+          });
+          return merged;
+        });
+      }
+
       if (forceRefresh) {
         const groupCount = grps ? grps.length : 0;
         const channelCount = chs ? chs.length : 0;
@@ -166,8 +200,8 @@ const IptvSetupPage = () => {
         success: true,
         message: res.message || `Connected successfully! Found ${res.channelCount || 0} channels across ${res.groupCount || 0} categories.`,
       });
-      // Auto-load provider groups and channels on successful connection
-      await loadProviderData(true);
+      // Auto-load provider groups and channels smoothly on successful connection
+      await loadProviderData(false);
     } else {
       setTestResult({
         success: false,
@@ -193,7 +227,7 @@ const IptvSetupPage = () => {
         text: "IPTV settings, group visibility, and channel numbers saved successfully!",
       });
       setTimeout(() => setSaveStatus(null), 4000);
-      // Refresh channels so changes take effect
+      // Reload provider data to reflect saved changes
       await loadProviderData(false);
     } else {
       setSaveStatus({
@@ -203,16 +237,20 @@ const IptvSetupPage = () => {
     }
   };
 
-  // Group toggles
+  // Group toggles (bidirectional: category_id and category_name)
   const toggleGroupVisibility = (categoryId) => {
+    const cid = String(categoryId);
+    const grp = loadedGroups.find((g) => String(g.category_id) === cid || g.category_name === cid);
+    const cname = grp?.category_name || cid;
+
     setGroupsConfig((prev) => {
-      const current = prev[categoryId] ? prev[categoryId].enabled !== false : true;
+      const existing = prev[cid] || prev[cname];
+      const current = existing ? existing.enabled !== false : (grp ? grp.enabled !== false : true);
+      const nextState = !current;
       return {
         ...prev,
-        [categoryId]: {
-          ...prev[categoryId],
-          enabled: !current,
-        },
+        [cid]: { name: cname, enabled: nextState },
+        [cname]: { id: cid, enabled: nextState },
       };
     });
   };
@@ -221,23 +259,24 @@ const IptvSetupPage = () => {
     const updated = { ...groupsConfig };
     loadedGroups.forEach((g) => {
       const cid = String(g.category_id);
-      updated[cid] = {
-        ...updated[cid],
-        name: g.category_name,
-        enabled: visible,
-      };
+      const cname = g.category_name;
+      updated[cid] = { name: cname, enabled: visible };
+      if (cname) {
+        updated[cname] = { id: cid, enabled: visible };
+      }
     });
     setGroupsConfig(updated);
   };
 
   // Channel toggles & number assignments
   const toggleChannelVisibility = (streamId, defaultEnabled) => {
+    const sid = String(streamId);
     setChannelsConfig((prev) => {
-      const current = prev[streamId]?.enabled !== undefined ? prev[streamId].enabled : defaultEnabled;
+      const current = prev[sid]?.enabled !== undefined ? prev[sid].enabled : defaultEnabled;
       return {
         ...prev,
-        [streamId]: {
-          ...prev[streamId],
+        [sid]: {
+          ...prev[sid],
           enabled: !current,
         },
       };
@@ -245,11 +284,12 @@ const IptvSetupPage = () => {
   };
 
   const handleChannelNumberChange = (streamId, newNumber) => {
+    const sid = String(streamId);
     const cleanNum = newNumber === "" ? "" : parseInt(newNumber, 10);
     setChannelsConfig((prev) => ({
       ...prev,
-      [streamId]: {
-        ...prev[streamId],
+      [sid]: {
+        ...prev[sid],
         channelNumber: isNaN(cleanNum) ? "" : cleanNum,
       },
     }));
@@ -307,8 +347,13 @@ const IptvSetupPage = () => {
         return false;
       }
       // Visibility match
-      const catEnabled = groupsConfig[String(ch.category_id)]?.enabled ?? true;
-      const isEnabled = channelsConfig[sid]?.enabled !== undefined ? channelsConfig[sid].enabled : catEnabled;
+      const catId = String(ch.category_id || ch.category_name || "");
+      const catName = ch.category_name || "";
+      const catCfg = groupsConfig[catId] || groupsConfig[catName];
+      const catEnabled = catCfg !== undefined ? catCfg.enabled !== false : ch.group_enabled !== false;
+
+      const chCfg = channelsConfig[sid];
+      const isEnabled = chCfg?.enabled !== undefined ? chCfg.enabled : (ch.enabled !== undefined ? ch.enabled : catEnabled);
       if (channelVisibilityFilter === "visible" && !isEnabled) return false;
       if (channelVisibilityFilter === "hidden" && isEnabled) return false;
 
@@ -520,7 +565,9 @@ const IptvSetupPage = () => {
                 <div className="groupsGrid">
                   {filteredGroups.map((grp) => {
                     const cid = String(grp.category_id);
-                    const isEnabled = groupsConfig[cid]?.enabled !== false;
+                    const cname = grp.category_name;
+                    const cfg = groupsConfig[cid] || groupsConfig[cname];
+                    const isEnabled = cfg !== undefined ? cfg.enabled !== false : grp.enabled !== false;
                     return (
                       <div
                         key={cid}
@@ -654,17 +701,22 @@ const IptvSetupPage = () => {
                   <tbody>
                     {filteredChannels.slice(0, 300).map((ch) => {
                       const sid = String(ch.stream_id);
-                      const catEnabled = groupsConfig[String(ch.category_id)]?.enabled !== false;
-                      const isEnabled = channelsConfig[sid]?.enabled !== undefined ? channelsConfig[sid].enabled : catEnabled;
-                      const channelNumber = channelsConfig[sid]?.channelNumber !== undefined ? channelsConfig[sid].channelNumber : ch.channel_number;
-                      const customName = channelsConfig[sid]?.customName || "";
+                      const catId = String(ch.category_id || ch.category_name || "");
+                      const catName = ch.category_name || "";
+                      const catCfg = groupsConfig[catId] || groupsConfig[catName];
+                      const isCatEnabled = catCfg !== undefined ? catCfg.enabled !== false : ch.group_enabled !== false;
+
+                      const chCfg = channelsConfig[sid];
+                      const isEnabled = chCfg?.enabled !== undefined ? chCfg.enabled : (ch.enabled !== undefined ? ch.enabled : isCatEnabled);
+                      const channelNumber = chCfg?.channelNumber !== undefined ? chCfg.channelNumber : ch.channel_number;
+                      const customName = chCfg?.customName !== undefined ? chCfg.customName : (ch.name !== ch.original_name ? ch.name : "");
 
                       return (
                         <tr key={sid} className={isEnabled ? "rowEnabled" : "rowDisabled"}>
                           <td>
                             <button
                               className={`visToggleBtn ${isEnabled ? "on" : "off"}`}
-                              onClick={() => toggleChannelVisibility(sid, catEnabled)}
+                              onClick={() => toggleChannelVisibility(sid, isCatEnabled)}
                               title={isEnabled ? "Click to hide" : "Click to show"}
                             >
                               {isEnabled ? <FiCheck /> : <FiX />}

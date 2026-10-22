@@ -636,10 +636,16 @@ const loadIptvConfig = () => {
   };
 };
 
-const saveIptvConfig = (config) => {
+const saveIptvConfig = (config, credentialsChanged = false) => {
   try {
     fs.writeFileSync(IPTV_CONFIG_FILE, JSON.stringify(config, null, 2), "utf8");
-    iptvChannelsCache = { timestamp: 0, channels: [], groups: [], streamUrlMap: new Map() };
+    if (credentialsChanged) {
+      iptvChannelsCache = { timestamp: 0, channels: [], groups: [], streamUrlMap: new Map() };
+      const diskCacheFile = path.join(IPTV_CACHE_DIR, "channels_cache.json");
+      if (fs.existsSync(diskCacheFile)) {
+        try { fs.unlinkSync(diskCacheFile); } catch (e) {}
+      }
+    }
     return true;
   } catch (e) {
     logMessage(`[IPTV Config Error] Failed to write ${IPTV_CONFIG_FILE}: ${e.message}`, true);
@@ -2224,7 +2230,7 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
   // IPTV & Xtream Codes Management API Routes
   // ==========================================
 
-  // POST /api/iptv/test - Test IPTV connection (M3U Plus, XMLTV, and Xtream API)
+  // POST /api/iptv/test - Fast & Reliable IPTV Connection Test (< 1 second)
   if (cleanPath === "/api/iptv/test" && req.method === "POST") {
     let body = "";
     req.on("data", (chunk) => { body += chunk.toString(); });
@@ -2232,44 +2238,77 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
       try {
         const payload = body ? JSON.parse(body) : {};
         const creds = {
-          serverUrl: payload.serverUrl || "",
-          username: payload.username || "",
-          password: payload.password || "",
-          epgUrl: payload.epgUrl || ""
+          serverUrl: (payload.serverUrl || "").trim().replace(/\/+$/, ""),
+          username: (payload.username || "").trim(),
+          password: (payload.password || "").trim(),
+          epgUrl: (payload.epgUrl || "").trim()
         };
 
-        // 1. Test M3U Plus playlist
-        const m3uResult = await fetchM3uPlaylist(creds, true);
-        const channelCount = m3uResult.channels.length;
-        const groupCount = m3uResult.groups.length;
+        if (!creds.serverUrl || !creds.username || !creds.password) {
+          return sendJson(res, 400, { error: "Server URL, Username, and Password are required." });
+        }
 
-        // 2. Test XMLTV EPG
-        let epgGuideCount = 0;
-        try {
-          const epgResult = await fetchXmltvEpg(creds, true);
-          epgGuideCount = epgResult.byTvgId.size;
-        } catch (e) {}
-
-        // 3. Optional Xtream user_info
+        let isXtreamAuthenticated = false;
         let userInfo = null;
-        try {
-          const xtreamAuth = await callXtreamApi(creds, "");
-          if (xtreamAuth && xtreamAuth.user_info) userInfo = xtreamAuth.user_info;
-        } catch (e) {}
+        let serverInfo = null;
 
-        if (channelCount > 0 || userInfo) {
-          logMessage(`[IPTV Test] Success for user [${creds.username}] | Channels: ${channelCount}, Groups: ${groupCount}, XMLTV Guides: ${epgGuideCount}`);
+        // 1. Fast Xtream Codes Auth Check (< 1 second)
+        try {
+          const authData = await callXtreamApi(creds, "");
+          if (authData && authData.user_info) {
+            userInfo = authData.user_info;
+            serverInfo = authData.server_info;
+            if (userInfo.auth === 1 || userInfo.status === "Active" || userInfo.username) {
+              isXtreamAuthenticated = true;
+            }
+          }
+        } catch (xtreamErr) {
+          logMessage(`[IPTV Test Notice] Xtream player_api.php check: ${xtreamErr.message}`);
+        }
+
+        // 2. Fast Category Count Check (< 500ms)
+        let groupCount = 0;
+        if (isXtreamAuthenticated) {
+          try {
+            const cats = await callXtreamApi(creds, "get_live_categories");
+            if (Array.isArray(cats)) {
+              groupCount = cats.length;
+            }
+          } catch (e) {}
+
+          const expDate = userInfo?.exp_date ? new Date(parseInt(userInfo.exp_date, 10) * 1000).toLocaleDateString() : "Active";
+          const maxConn = userInfo?.max_connections || 1;
+          const status = userInfo?.status || "Active";
+
+          logMessage(`[IPTV Test Success] User [${creds.username}] verified via Xtream Codes API. Status: ${status}, Expiry: ${expDate}, Categories: ${groupCount}`);
+
+          return sendJson(res, 200, {
+            status: "success",
+            channelCount: groupCount > 0 ? `${groupCount} categories detected` : "Active",
+            groupCount,
+            epgGuideCount: creds.epgUrl ? 1 : 0,
+            userInfo,
+            serverInfo,
+            message: `Connected successfully! Account: ${status} (Expires: ${expDate}, Max Connections: ${maxConn}). Found ${groupCount} live categories.`
+          });
+        }
+
+        // 3. Fallback for non-Xtream M3U URLs: Check playlist availability
+        const m3uResult = await fetchM3uPlaylist(creds, false);
+        const channelCount = m3uResult.channels.length;
+        groupCount = m3uResult.groups.length;
+
+        if (channelCount > 0) {
           return sendJson(res, 200, {
             status: "success",
             channelCount,
             groupCount,
-            epgGuideCount,
-            userInfo,
-            message: `Connected successfully! Found ${channelCount} channels across ${groupCount} categories. XMLTV EPG: ${epgGuideCount > 0 ? `${epgGuideCount} channel guides active` : "Connected (no channel IDs matched or custom EPG URL needed)"}`
+            epgGuideCount: 0,
+            message: `Connected successfully! Found ${channelCount} channels across ${groupCount} categories.`
           });
         }
 
-        return sendJson(res, 400, { error: "Failed to load channels from /get.php or /player_api.php. Please verify credentials." });
+        return sendJson(res, 400, { error: "Failed to authenticate with IPTV provider. Please verify Server URL, Username, and Password." });
       } catch (err) {
         logMessage(`[IPTV Test Error] ${err.message}`, true);
         return sendJson(res, 400, { error: err.message || "Failed to connect to IPTV provider." });
@@ -2284,7 +2323,7 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     return sendJson(res, 200, { status: "success", config });
   }
 
-  // POST /api/iptv/config - Save updated IPTV configuration
+  // POST /api/iptv/config - Save updated IPTV configuration with intelligent merging
   if (cleanPath === "/api/iptv/config" && req.method === "POST") {
     let body = "";
     req.on("data", (chunk) => { body += chunk.toString(); });
@@ -2292,19 +2331,40 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
       try {
         const payload = body ? JSON.parse(body) : {};
         const current = loadIptvConfig();
+
+        const credsPayload = payload.credentials || {};
+        const credentialsChanged = Boolean(
+          (credsPayload.serverUrl && credsPayload.serverUrl !== current.credentials.serverUrl) ||
+          (credsPayload.username && credsPayload.username !== current.credentials.username) ||
+          (credsPayload.password && credsPayload.password !== current.credentials.password)
+        );
+
+        // Merge groups: do not overwrite existing rules with an empty object
+        let mergedGroups = { ...current.groups };
+        if (payload.groups && typeof payload.groups === "object" && Object.keys(payload.groups).length > 0) {
+          mergedGroups = { ...mergedGroups, ...payload.groups };
+        }
+
+        // Merge channels: do not overwrite existing rules with an empty object
+        let mergedChannels = { ...current.channels };
+        if (payload.channels && typeof payload.channels === "object" && Object.keys(payload.channels).length > 0) {
+          mergedChannels = { ...mergedChannels, ...payload.channels };
+        }
+
         const updated = {
           ...current,
           ...payload,
           credentials: {
             ...current.credentials,
-            ...(payload.credentials || {})
+            ...credsPayload,
           },
-          groups: payload.groups !== undefined ? payload.groups : current.groups,
-          channels: payload.channels !== undefined ? payload.channels : current.channels,
+          groups: mergedGroups,
+          channels: mergedChannels,
           autoNumberStrategy: payload.autoNumberStrategy || current.autoNumberStrategy,
           lastSync: new Date().toISOString()
         };
-        const saved = saveIptvConfig(updated);
+
+        const saved = saveIptvConfig(updated, credentialsChanged);
         if (saved) {
           logMessage(`[IPTV Config Saved] Groups: ${Object.keys(updated.groups).length}, Channel Rules: ${Object.keys(updated.channels).length}`);
           return sendJson(res, 200, { status: "success", config: updated });

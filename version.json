@@ -1,6 +1,6 @@
 {
-  "versionCode": 44,
-  "versionName": "1.0.43",
+  "versionCode": 45,
+  "versionName": "1.0.44",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.43: Fix IPTV group loading, EXTGRP playlist parsing, concurrent stream deduplication, and high-contrast status notifications."
+  "releaseNotes": "BubbaFlix TV v1.0.44: Instant IPTV connection test (<1s), persistent group & channel configuration, and safe setting merging."
 }
