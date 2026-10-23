@@ -1,5 +1,6 @@
 import axios from "axios";
 import { fetchDataFromAPI } from "./api";
+import { isSeasonPackStream } from "./filterUtils";
 
 /**
  * Fetch external IMDb ID for TMDB media items if available
@@ -55,6 +56,10 @@ export const fetchTorrentStreams = async ({ tmdbId, mediaType = "movie", seasonN
               const fileName = lines[0] || "Torrent Stream";
               const metaInfo = lines.slice(1).join(" • ") || item.name || "";
 
+              if (isTv && isSeasonPackStream({ title: fileName, name: item.name, metaText: metaInfo }, seasonNum, episodeNum)) {
+                return;
+              }
+
               let quality = "HD";
               if (/2160p|4k|uhd/i.test(rawTitle)) quality = "2160p";
               else if (/1080p|fullhd/i.test(rawTitle)) quality = "1080p";
@@ -95,6 +100,9 @@ export const fetchTorrentStreams = async ({ tmdbId, mediaType = "movie", seasonN
         if (solidRes.data && Array.isArray(solidRes.data.results)) {
           solidRes.data.results.forEach((item) => {
             if (item.magnet) {
+              if (isTv && isSeasonPackStream({ title: item.title, name: item.name }, seasonNum, episodeNum)) {
+                return;
+              }
               let quality = "HD";
               const nameStr = item.title || "";
               if (/2160p|4k|uhd/i.test(nameStr)) quality = "2160p";

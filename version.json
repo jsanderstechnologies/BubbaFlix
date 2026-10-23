@@ -1,6 +1,6 @@
 {
-  "versionCode": 57,
-  "versionName": "1.0.56",
+  "versionCode": 58,
+  "versionName": "1.0.57",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.56: Proxied IPTV live streams and M3U8 segments through the backend over HTTPS to eliminate Mixed Content blocking on HTTPS domains, added transparent MPEG-TS and HLS streaming with internal redirect following, fixed stream ID parsing regex for IP-based stream URLs, and added fallback handling for expired IPTV authentication tokens."
+  "releaseNotes": "BubbaFlix TV v1.0.57: Blocked entire season packs, complete series releases, and multi-episode batches from TV show episode stream results, ensuring available streams strictly match the specific requested episode."
 }

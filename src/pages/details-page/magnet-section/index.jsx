@@ -22,9 +22,8 @@ import {
   FiUsers, 
   FiLayers,
   FiShield,
-  FiRefreshCw
 } from "react-icons/fi";
-import { isEnglishStreamTitle, isMatchingStreamTitle, is10BitOrHevcStream } from "../../../utils/filterUtils";
+import { isEnglishStreamTitle, isMatchingStreamTitle, is10BitOrHevcStream, isSeasonPackStream } from "../../../utils/filterUtils";
 import { isFireTabletDevice, getDeviceModelName } from "../../../utils/deviceDetection";
 
 const getHash = (url) => {
@@ -240,12 +239,15 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
     // Note: HEVC / x265 codec streams are allowed so the user can test transcoding.
     // The player's automatic fallback triggers backend transcode if direct playback fails.
 
-    // Apply Resolution, English Language & Title Matching Filtering
+    // Apply Resolution, English Language, Season Pack & Title Matching Filtering
     finalStreams = finalStreams.filter((item) => {
       if (excludeLowQuality && isLowQualityCamRelease(item)) {
         return false;
       }
       if (!isEnglishStreamTitle(item)) {
+        return false;
+      }
+      if (isSeasonPackStream(item, seasonNum, episodeNum)) {
         return false;
       }
       if (!isMatchingStreamTitle(item, title, mediaType || (seasonNum !== undefined ? "tv" : "movie"), seasonNum, episodeNum)) {
@@ -259,7 +261,7 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
     if (excludeLowQuality && finalStreams.length > 0 && title) {
       try {
         const { filterWithGroqAI } = await import("../../../utils/groqFilter");
-        finalStreams = await filterWithGroqAI(finalStreams, title);
+        finalStreams = await filterWithGroqAI(finalStreams, title, seasonNum, episodeNum);
       } catch (e) {
         console.warn("[MagnetSection] Groq AI stream filter error:", e);
       }

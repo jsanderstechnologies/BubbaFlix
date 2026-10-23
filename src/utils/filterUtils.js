@@ -208,6 +208,74 @@ export const isEnglishStreamTitle = (stream) => {
   return true;
 };
 
+/**
+ * Detects if a torrent stream represents an entire season, series pack, or multi-episode batch
+ * instead of a specific single episode.
+ *
+ * @param {object|string} stream Stream object or title string
+ * @param {number|string} [seasonNum] Requested season number
+ * @param {number|string} [episodeNum] Requested episode number
+ * @returns {boolean} True if the stream is a season pack / entire season, false if it is a specific episode
+ */
+export const isSeasonPackStream = (stream, seasonNum, episodeNum) => {
+  // If neither season nor episode is specified, this is a movie or unspecific media — don't block
+  if (seasonNum == null && episodeNum == null) return false;
+
+  const rawTitle = typeof stream === "string" 
+    ? stream 
+    : `${stream?.title || ""} ${stream?.name || ""} ${stream?.cleanTitle || ""} ${stream?.metaText || ""}`;
+  const text = (rawTitle || "").trim();
+  if (!text) return true;
+
+  const s = parseInt(seasonNum, 10);
+  const e = parseInt(episodeNum, 10);
+
+  // 1. Explicit Full Season / Series / Collection / Boxset pack markers
+  const explicitPackRegex = /\b(complete[\s._-]*(?:season|series|collection|boxset|pack)?|full[\s._-]*(?:season|series|pack)?|season[\s._-]*(?:complete|full|pack|boxset)|series[\s._-]*(?:complete|full|pack|boxset)|entire[\s._-]*(?:season|series)|all[\s._-]*episodes?|season[\s._-]*box[\s._-]*set|box[\s._-]*set|temporada[\s._-]*(?:completa)?|сезон[\s._-]*\d+[\s._-]*сери[ия]|сери[ия][\s._-]*\d+[\s._-]*[\-–—~to]+[\s._-]*\d+)\b/i;
+
+  // 2. Multi-season ranges (e.g. S01-S05, S1-5, Season 1-5, Seasons 1 to 4, Season 1 - 2, S01-S02-S03)
+  const multiSeasonRegex = /\b(s\d{1,2}[\s._-]*[\-–—~to]+[\s._-]*s?\d{1,2}|seasons?[\s._-]*\d{1,2}[\s._-]*[\-–—~to]+[\s._-]*\d{1,2}|s\d{1,2}(?:[\s._-]+s\d{1,2}){1,})\b/i;
+
+  // 3. Multi-episode ranges / batches (e.g. S01E01-E10, S01E01-10, E01-E08, 1x01-08, Episodes 1-10, Episodes 1 to 8)
+  const multiEpisodeRegex = /\b(s\d{1,2}[\s._-]*e\d{1,4}[\s._-]*[\-–—~to]+[\s._-]*e?\d{1,4}|e\d{1,4}[\s._-]*[\-–—~to]+[\s._-]*e?\d{1,4}|\d{1,2}x\d{1,4}[\s._-]*[\-–—~to]+[\s._-]*\d{1,4}|episodes?[\s._-]*\d{1,4}[\s._-]*[\-–—~to]+[\s._-]*\d{1,4}|ep[\s._-]*\d{1,4}[\s._-]*[\-–—~to]+[\s._-]*\d{1,4}|parts?[\s._-]*\d{1,4}[\s._-]*[\-–—~to]+[\s._-]*\d{1,4})\b/i;
+
+  if (explicitPackRegex.test(text) || multiSeasonRegex.test(text) || multiEpisodeRegex.test(text)) {
+    return true; // Blocked: Season or series pack
+  }
+
+  // 4. Season-only indicator without ANY episode marker (e.g. "Show.Name.S01.1080p.BluRay" or "Show Season 1 1080p")
+  const hasSeasonMarker = /\b(s0*(\d{1,2})|season[\s._-]*0*(\d{1,2}))\b/i.test(text);
+  const hasAnyEpisodeMarker = /\b(s\d{1,2}[\s._-]*e\d{1,4}|\d{1,2}x\d{1,4}|(?:ep|episode|e)[\s._-]*\d{1,4})\b/i.test(text);
+
+  if (hasSeasonMarker && !hasAnyEpisodeMarker) {
+    return true; // Blocked: Season-only pack (no episode specified)
+  }
+
+  // 5. If specific season and episode numbers are provided, verify the release matches this specific episode
+  if (!isNaN(s) && !isNaN(e)) {
+    // Check if a different season is explicitly specified
+    const sMatch = text.match(/\b(?:s|season[\s._-]*)0*(\d{1,2})\b/i);
+    if (sMatch && parseInt(sMatch[1], 10) !== s) {
+      return true; // Blocked: Different season
+    }
+
+    const exactPatterns = [
+      new RegExp('\\b[sS]0*' + s + '[\\s._-]*[eE]0*' + e + '\\b', 'i'),
+      new RegExp('\\b0*' + s + '[xX]0*' + e + '\\b', 'i'),
+      new RegExp('\\bseason[\\s._-]*0*' + s + '[\\s._-]*(?:episode|ep)[\\s._-]*0*' + e + '\\b', 'i'),
+      new RegExp('\\b[sS]0*' + s + '\\b.*\\b(?:ep|episode|e)[\\s._-]*0*' + e + '\\b', 'i'),
+      new RegExp('\\b(?:ep|episode)[\\s._-]*0*' + e + '\\b.*\\b[sS]0*' + s + '\\b', 'i')
+    ];
+
+    const matchesExact = exactPatterns.some((p) => p.test(text));
+    if (!matchesExact) {
+      return true; // Blocked: Does not match requested episode
+    }
+  }
+
+  return false;
+};
+
 export const isMatchingStreamTitle = (stream, expectedTitle, mediaType, seasonNum, episodeNum) => {
   if (!stream || !expectedTitle) return true;
   const titleText = `${stream.title || ""} ${stream.name || ""}`.toLowerCase().replace(/[._\-\:\,\(\)\[\]]+/g, " ");
@@ -234,18 +302,10 @@ export const isMatchingStreamTitle = (stream, expectedTitle, mediaType, seasonNu
     }
   }
 
-  // 2. TV Season & Episode check
+  // 2. TV Season & Episode check - block season packs and verify specific episode
   if (mediaType === "tv" || seasonNum !== undefined || episodeNum !== undefined) {
-    const s = seasonNum || 1;
-    const e = episodeNum || 1;
-
-    const otherSeasonMatch = titleText.match(/\bs(\d{1,2})e(\d{1,2})\b/i) || titleText.match(/\b(\d{1,2})x(\d{1,2})\b/i);
-    if (otherSeasonMatch) {
-      const foundS = parseInt(otherSeasonMatch[1], 10);
-      const foundE = parseInt(otherSeasonMatch[2], 10);
-      if (foundS !== s || foundE !== e) {
-        return false;
-      }
+    if (isSeasonPackStream(stream, seasonNum, episodeNum)) {
+      return false;
     }
   }
 
