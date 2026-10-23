@@ -141,6 +141,11 @@ export const fetchServerSettings = async (forceRefresh = false) => {
         localStorage.removeItem("premiumize_api_key");
       }
     }
+    if (s.torrentioConfig !== undefined) {
+      if (s.torrentioConfig && typeof s.torrentioConfig === "object") {
+        localStorage.setItem("torrentio_config", JSON.stringify(s.torrentioConfig));
+      }
+    }
     // We intentionally do not overwrite user stream_resolutions or stream_exclude_low_quality 
     // with global server settings so that the user's cross-device preferences take precedence.
 

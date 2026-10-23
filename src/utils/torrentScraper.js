@@ -2,6 +2,114 @@ import axios from "axios";
 import { fetchDataFromAPI } from "./api";
 import { isSeasonPackStream } from "./filterUtils";
 
+export const DEFAULT_TORRENTIO_PROVIDERS = [
+  { id: "yts", label: "YTS (Movies)" },
+  { id: "eztv", label: "EZTV (TV Shows)" },
+  { id: "rarbg", label: "RARBG" },
+  { id: "1337x", label: "1337x" },
+  { id: "thepiratebay", label: "The Pirate Bay" },
+  { id: "kickasstorrents", label: "KickassTorrents" },
+  { id: "torrentgalaxy", label: "TorrentGalaxy" },
+  { id: "magnetdl", label: "MagnetDL" },
+  { id: "nyaasi", label: "Nyaa (Anime)" },
+  { id: "tokyotosho", label: "Tokyo Toshokan" },
+  { id: "anidex", label: "AniDex" }
+];
+
+export const DEFAULT_TORRENTIO_CONFIG = {
+  enabled: true,
+  customUrl: "",
+  providers: ["yts", "eztv", "rarbg", "1337x", "thepiratebay", "kickasstorrents", "torrentgalaxy", "magnetdl"],
+  sort: "quality", // "quality" | "seeders" | "size"
+  priorityForeignLanguage: "",
+  maxResultsPerQuality: "",
+  excludeCam: true,
+  excludeTeleSync: true,
+  excludeScreener: true,
+  exclude3D: false,
+};
+
+export const getTorrentioConfig = () => {
+  if (typeof window !== "undefined") {
+    try {
+      const saved = localStorage.getItem("torrentio_config");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return { ...DEFAULT_TORRENTIO_CONFIG, ...parsed };
+      }
+    } catch (e) {}
+  }
+  return { ...DEFAULT_TORRENTIO_CONFIG };
+};
+
+export const saveTorrentioConfig = (config) => {
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem("torrentio_config", JSON.stringify(config));
+    } catch (e) {}
+  }
+};
+
+export const buildTorrentioUrl = (config, idToUse, isTv, seasonNum, episodeNum) => {
+  if (!config || config.enabled === false) return null;
+
+  let base = (config.customUrl || "").trim();
+  if (base) {
+    base = base.replace(/\/manifest\.json$/i, "").replace(/\/stream.*$/i, "").replace(/\/+$/, "");
+    if (!base.startsWith("http://") && !base.startsWith("https://")) {
+      base = "https://" + base;
+    }
+  } else {
+    const parts = [];
+    if (Array.isArray(config.providers) && config.providers.length > 0) {
+      parts.push("providers=" + config.providers.join(","));
+    }
+    if (config.sort && config.sort !== "quality") {
+      parts.push("sort=" + config.sort);
+    }
+    const qf = [];
+    if (config.excludeCam) qf.push("cam");
+    if (config.excludeTeleSync) qf.push("ts");
+    if (config.excludeScreener) qf.push("scr");
+    if (config.exclude3D) qf.push("3d");
+    if (qf.length > 0) {
+      parts.push("qualityfilter=" + qf.join(","));
+    }
+    if (config.maxResultsPerQuality) {
+      parts.push("limit=" + config.maxResultsPerQuality);
+    }
+    if (config.priorityForeignLanguage) {
+      parts.push("priority=" + config.priorityForeignLanguage);
+    }
+
+    base = "https://torrentio.strem.fun" + (parts.length > 0 ? "/" + parts.join("|") : "");
+  }
+
+  if (isTv) {
+    const s = seasonNum || 1;
+    const e = episodeNum || 1;
+    return `${base}/stream/series/${idToUse}:${s}:${e}.json`;
+  }
+  return `${base}/stream/movie/${idToUse}.json`;
+};
+
+export const testTorrentioConnection = async (customConfig = null) => {
+  try {
+    const config = customConfig || getTorrentioConfig();
+    const testUrl = buildTorrentioUrl(config, "tt0111161", false);
+    if (!testUrl) {
+      return { success: false, message: "Torrentio is disabled in settings." };
+    }
+    const res = await axios.get(testUrl, { timeout: 7000 });
+    if (res.data && Array.isArray(res.data.streams)) {
+      return { success: true, count: res.data.streams.length, message: `Connected! Found ${res.data.streams.length} test streams.` };
+    }
+    return { success: false, message: "Invalid response from Torrentio API." };
+  } catch (err) {
+    return { success: false, message: err.message || "Failed to connect to Torrentio API." };
+  }
+};
+
 /**
  * Fetch external IMDb ID for TMDB media items if available
  */
@@ -29,17 +137,12 @@ export const fetchTorrentStreams = async ({ tmdbId, mediaType = "movie", seasonN
     // 1. Primary Scraper: Torrentio Stremio API
     if (idToUse) {
       try {
-        let torrentioUrl = "";
-        if (isTv) {
-          const s = seasonNum || 1;
-          const e = episodeNum || 1;
-          torrentioUrl = `https://torrentio.strem.fun/stream/series/${idToUse}:${s}:${e}.json`;
-        } else {
-          torrentioUrl = `https://torrentio.strem.fun/stream/movie/${idToUse}.json`;
-        }
+        const torrentioConfig = getTorrentioConfig();
+        const torrentioUrl = buildTorrentioUrl(torrentioConfig, idToUse, isTv, seasonNum, episodeNum);
 
-        const res = await axios.get(torrentioUrl, { timeout: 8000 });
-        if (res.data && Array.isArray(res.data.streams)) {
+        if (torrentioUrl) {
+          const res = await axios.get(torrentioUrl, { timeout: 8000 });
+          if (res.data && Array.isArray(res.data.streams)) {
           res.data.streams.forEach((item) => {
             let magnet = item.url;
             if (!magnet && item.infoHash) {
@@ -77,7 +180,8 @@ export const fetchTorrentStreams = async ({ tmdbId, mediaType = "movie", seasonN
             }
           });
         }
-      } catch (err) {
+      }
+    } catch (err) {
         console.warn("[TorrentScraper] Torrentio fetch warning:", err.message);
       }
     }

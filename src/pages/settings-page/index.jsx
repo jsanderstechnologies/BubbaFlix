@@ -11,7 +11,14 @@ import { updateServerSettings, fetchServerSettings, getServerUrl, saveServerUrl,
 import { getApiConfiguration } from "../../store/homeSlice";
 import { THEMES, getSavedTheme, applyTheme } from "../../utils/theme";
 import { getHomeSections, saveHomeSections, DEFAULT_HOME_SECTIONS, validateHomeSections } from "../../utils/homeConfig";
-import { FiKey, FiCheck, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning, FiCheckSquare, FiTv, FiPlus, FiMinus, FiServer, FiInfo, FiExternalLink, FiCloud, FiChevronUp, FiChevronDown, FiRotateCcw, FiDownload, FiUpload, FiTerminal, FiLayers } from "react-icons/fi";
+import { FiKey, FiCheck, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning, FiCheckSquare, FiTv, FiPlus, FiMinus, FiServer, FiInfo, FiExternalLink, FiCloud, FiChevronUp, FiChevronDown, FiRotateCcw, FiDownload, FiUpload, FiTerminal, FiLayers, FiRadio } from "react-icons/fi";
+import { 
+  DEFAULT_TORRENTIO_PROVIDERS, 
+  DEFAULT_TORRENTIO_CONFIG, 
+  getTorrentioConfig, 
+  saveTorrentioConfig, 
+  testTorrentioConnection 
+} from "../../utils/torrentScraper";
 import "./index.scss";
 import { AuthContext } from "../../context/AuthContext";
 import { useContext } from "react";
@@ -72,6 +79,20 @@ const SettingsPage = () => {
   const [exclude10BitHevc, setExclude10BitHevc] = useState(() => isFireTabletDevice());
   const [disableBackgrounds, setDisableBackgrounds] = useState(false);
   const [filterStatus, setFilterStatus] = useState(null);
+
+  // Torrentio Stream Scraper Configuration State
+  const [torrentioEnabled, setTorrentioEnabled] = useState(true);
+  const [torrentioCustomUrl, setTorrentioCustomUrl] = useState("");
+  const [torrentioProviders, setTorrentioProviders] = useState(DEFAULT_TORRENTIO_CONFIG.providers);
+  const [torrentioSort, setTorrentioSort] = useState(DEFAULT_TORRENTIO_CONFIG.sort);
+  const [torrentioPriorityLang, setTorrentioPriorityLang] = useState(DEFAULT_TORRENTIO_CONFIG.priorityForeignLanguage);
+  const [torrentioMaxResults, setTorrentioMaxResults] = useState(DEFAULT_TORRENTIO_CONFIG.maxResultsPerQuality);
+  const [torrentioExcludeCam, setTorrentioExcludeCam] = useState(DEFAULT_TORRENTIO_CONFIG.excludeCam);
+  const [torrentioExcludeTeleSync, setTorrentioExcludeTeleSync] = useState(DEFAULT_TORRENTIO_CONFIG.excludeTeleSync);
+  const [torrentioExcludeScreener, setTorrentioExcludeScreener] = useState(DEFAULT_TORRENTIO_CONFIG.excludeScreener);
+  const [torrentioExclude3D, setTorrentioExclude3D] = useState(DEFAULT_TORRENTIO_CONFIG.exclude3D);
+  const [torrentioStatus, setTorrentioStatus] = useState(null);
+  const [testingTorrentio, setTestingTorrentio] = useState(false);
 
   // CPU & GPU Topology State
   const [cpuInfo, setCpuInfo] = useState(null);
@@ -236,6 +257,18 @@ const SettingsPage = () => {
     
     const disableBgConfig = (localStorage.getItem("disable_backgrounds") !== null ? JSON.parse(localStorage.getItem("disable_backgrounds")) : null) ?? user?.preferences?.disableBackgrounds ?? false;
     setDisableBackgrounds(disableBgConfig);
+
+    const activeTorrentio = serverSettings?.torrentioConfig || getTorrentioConfig();
+    setTorrentioEnabled(activeTorrentio.enabled ?? true);
+    setTorrentioCustomUrl(activeTorrentio.customUrl || "");
+    setTorrentioProviders(Array.isArray(activeTorrentio.providers) ? activeTorrentio.providers : DEFAULT_TORRENTIO_CONFIG.providers);
+    setTorrentioSort(activeTorrentio.sort || "quality");
+    setTorrentioPriorityLang(activeTorrentio.priorityForeignLanguage || "");
+    setTorrentioMaxResults(activeTorrentio.maxResultsPerQuality || "");
+    setTorrentioExcludeCam(activeTorrentio.excludeCam ?? true);
+    setTorrentioExcludeTeleSync(activeTorrentio.excludeTeleSync ?? true);
+    setTorrentioExcludeScreener(activeTorrentio.excludeScreener ?? true);
+    setTorrentioExclude3D(activeTorrentio.exclude3D ?? false);
 
     if (serverSettings?.cpuTopology) {
       setCpuInfo(serverSettings.cpuTopology);
@@ -485,6 +518,84 @@ const SettingsPage = () => {
       type: "success",
       text: "Stream resolution, 10-bit HEVC, and CAM/HDTS quality exclusion preferences saved & synced to backend server!",
     });
+  };
+
+  const handleToggleTorrentioProvider = (providerId) => {
+    setTorrentioProviders((prev) => {
+      if (prev.includes(providerId)) {
+        if (prev.length <= 1) return prev;
+        return prev.filter((p) => p !== providerId);
+      } else {
+        return [...prev, providerId];
+      }
+    });
+  };
+
+  const handleSelectAllTorrentioProviders = () => {
+    setTorrentioProviders(DEFAULT_TORRENTIO_PROVIDERS.map((p) => p.id));
+  };
+
+  const handleResetTorrentioProviders = () => {
+    setTorrentioProviders(DEFAULT_TORRENTIO_CONFIG.providers);
+  };
+
+  const handleSaveTorrentio = async (e) => {
+    if (e) e.preventDefault();
+    setTorrentioStatus(null);
+    const newConfig = {
+      enabled: torrentioEnabled,
+      customUrl: torrentioCustomUrl.trim(),
+      providers: torrentioProviders,
+      sort: torrentioSort,
+      priorityForeignLanguage: torrentioPriorityLang,
+      maxResultsPerQuality: torrentioMaxResults,
+      excludeCam: torrentioExcludeCam,
+      excludeTeleSync: torrentioExcludeTeleSync,
+      excludeScreener: torrentioExcludeScreener,
+      exclude3D: torrentioExclude3D,
+    };
+
+    saveTorrentioConfig(newConfig);
+
+    try {
+      const serverRes = await updateServerSettings({ torrentioConfig: newConfig });
+      if (serverRes.success) {
+        setTorrentioStatus({ type: "success", text: "Torrentio scraper options saved & synced to backend server!" });
+      } else {
+        setTorrentioStatus({ type: "success", text: "Torrentio options saved locally." });
+      }
+    } catch (err) {
+      setTorrentioStatus({ type: "success", text: "Torrentio options saved locally." });
+    }
+  };
+
+  const handleTestTorrentio = async () => {
+    setTestingTorrentio(true);
+    setTorrentioStatus(null);
+    const currentConfig = {
+      enabled: torrentioEnabled,
+      customUrl: torrentioCustomUrl.trim(),
+      providers: torrentioProviders,
+      sort: torrentioSort,
+      priorityForeignLanguage: torrentioPriorityLang,
+      maxResultsPerQuality: torrentioMaxResults,
+      excludeCam: torrentioExcludeCam,
+      excludeTeleSync: torrentioExcludeTeleSync,
+      excludeScreener: torrentioExcludeScreener,
+      exclude3D: torrentioExclude3D,
+    };
+    try {
+      const res = await testTorrentioConnection(currentConfig);
+      if (res.success) {
+        setTorrentioStatus({ type: "success", text: res.message || `Torrentio connected successfully (${res.count} test streams).` });
+      } else {
+        setTorrentioStatus({ type: "error", text: res.message || "Failed to connect to Torrentio." });
+      }
+    } catch (e) {
+      setTorrentioStatus({ type: "error", text: e.message || "Failed to connect to Torrentio." });
+    } finally {
+      setTestingTorrentio(false);
+    }
   };
 
   const handleTestConnection = async () => {
@@ -964,6 +1075,274 @@ const SettingsPage = () => {
               <div className="buttonGroup" style={{ marginTop: 20 }}>
                 <button type="submit" className="saveBtn">
                   <FiSave /> Save Stream Preferences
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Torrentio Stream Scraper Configuration Card */}
+          <div className="settingsCard">
+            <div className="cardHeader">
+              <h2><FiRadio style={{ marginRight: 8, color: "var(--pink)" }} /> Torrentio Stream Scraper Options</h2>
+              <span className="badge custom"><FiServer style={{ marginRight: 4 }} /> Server Synced</span>
+            </div>
+            <p className="description">
+              Customize Torrentio torrent indexers, stream sorting, result limits, quality filters, or paste a custom configured Torrentio addon manifest URL.
+            </p>
+            <form onSubmit={handleSaveTorrentio} className="tokenForm">
+              {/* Master Enable/Disable Toggle */}
+              <div className="inputGroup">
+                <label>TORRENTIO_SCRAPER_STATUS</label>
+                <div
+                  className={`qualityToggle ${torrentioEnabled ? "active" : ""}`}
+                  onClick={() => setTorrentioEnabled(!torrentioEnabled)}
+                  tabIndex="0"
+                  role="button"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setTorrentioEnabled(!torrentioEnabled);
+                    }
+                  }}
+                >
+                  <span className="toggleSwitch" />
+                  <span className="toggleLabel">
+                    {torrentioEnabled
+                      ? "Torrentio Scraper Enabled (Actively scraping streams from public indexes)"
+                      : "Torrentio Scraper Disabled (Only secondary sources like SolidTorrents will be queried)"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Custom Torrentio Base / Manifest URL */}
+              <div className="inputGroup" style={{ marginTop: 20 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                  <label style={{ margin: 0 }}>CUSTOM_TORRENTIO_URL_OR_MANIFEST</label>
+                  <a
+                    href="https://torrentio.strem.fun/configure"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="docLink"
+                    style={{ fontSize: 12, color: "var(--pink)", display: "flex", alignItems: "center", gap: 4, textDecoration: "none" }}
+                  >
+                    Configure on Torrentio Web <FiExternalLink />
+                  </a>
+                </div>
+                <div className="inputWrapper">
+                  <input
+                    type="text"
+                    value={torrentioCustomUrl}
+                    onChange={(e) => setTorrentioCustomUrl(e.target.value)}
+                    placeholder="https://torrentio.strem.fun (or paste configured manifest URL)"
+                    spellCheck="false"
+                  />
+                </div>
+                <p style={{ fontSize: 12, color: "#9ca3af", marginTop: 6, lineHeight: 1.4 }}>
+                  Paste a customized Torrentio manifest URL (e.g. from torrentio.strem.fun/configure) to use preconfigured Debrid credentials or self-hosted instances. Leave empty to use the built-in options below.
+                </p>
+              </div>
+
+              {/* Torrent Providers Multi-Select */}
+              <div className="inputGroup" style={{ marginTop: 20 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                  <label style={{ margin: 0 }}>TORRENT_PROVIDERS ({torrentioProviders.length} Selected)</label>
+                  <div className="helperBtnRow" style={{ display: "flex", gap: 8 }}>
+                    <button
+                      type="button"
+                      className="miniActionBtn"
+                      onClick={handleSelectAllTorrentioProviders}
+                      tabIndex="0"
+                    >
+                      Select All
+                    </button>
+                    <button
+                      type="button"
+                      className="miniActionBtn"
+                      onClick={handleResetTorrentioProviders}
+                      tabIndex="0"
+                    >
+                      Default
+                    </button>
+                  </div>
+                </div>
+                <div className="resolutionGrid">
+                  {DEFAULT_TORRENTIO_PROVIDERS.map((prov) => {
+                    const isSelected = torrentioProviders.includes(prov.id);
+                    return (
+                      <button
+                        key={prov.id}
+                        type="button"
+                        className={`resOption ${isSelected ? "selected" : ""}`}
+                        onClick={() => handleToggleTorrentioProvider(prov.id)}
+                        tabIndex="0"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            handleToggleTorrentioProvider(prov.id);
+                          }
+                        }}
+                      >
+                        <span className="checkbox">
+                          {isSelected ? "✓" : ""}
+                        </span>
+                        <span className="resLabel">{prov.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Sorting & Max Results Grid */}
+              <div className="twoColGrid" style={{ marginTop: 20 }}>
+                <div className="inputGroup">
+                  <label>STREAM_SORT_ORDER</label>
+                  <select
+                    value={torrentioSort}
+                    onChange={(e) => setTorrentioSort(e.target.value)}
+                    tabIndex="0"
+                  >
+                    <option value="quality">By Quality (4K &gt; 1080p &gt; 720p &gt; 480p)</option>
+                    <option value="seeders">By Seeders (Most Active Seeds First)</option>
+                    <option value="size">By File Size (Largest to Smallest)</option>
+                  </select>
+                </div>
+
+                <div className="inputGroup">
+                  <label>MAX_RESULTS_PER_QUALITY</label>
+                  <select
+                    value={torrentioMaxResults}
+                    onChange={(e) => setTorrentioMaxResults(e.target.value)}
+                    tabIndex="0"
+                  >
+                    <option value="">Unlimited / All Available</option>
+                    <option value="1">1 Stream per Resolution</option>
+                    <option value="2">2 Streams per Resolution</option>
+                    <option value="3">3 Streams per Resolution</option>
+                    <option value="4">4 Streams per Resolution</option>
+                    <option value="5">5 Streams per Resolution</option>
+                    <option value="10">10 Streams per Resolution</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Priority Language & Quality Filters */}
+              <div className="twoColGrid" style={{ marginTop: 15 }}>
+                <div className="inputGroup">
+                  <label>PRIORITY_FOREIGN_LANGUAGE</label>
+                  <select
+                    value={torrentioPriorityLang}
+                    onChange={(e) => setTorrentioPriorityLang(e.target.value)}
+                    tabIndex="0"
+                  >
+                    <option value="">None (Default English)</option>
+                    <option value="spanish">Spanish (Español)</option>
+                    <option value="french">French (Français)</option>
+                    <option value="german">German (Deutsch)</option>
+                    <option value="italian">Italian (Italiano)</option>
+                    <option value="portuguese">Portuguese (Português)</option>
+                    <option value="russian">Russian (Русский)</option>
+                    <option value="hindi">Hindi</option>
+                    <option value="japanese">Japanese (日本語)</option>
+                    <option value="korean">Korean (한국어)</option>
+                    <option value="chinese">Chinese (中文)</option>
+                  </select>
+                </div>
+
+                <div className="inputGroup">
+                  <label>TORRENTIO_QUALITY_FILTERS</label>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 4 }}>
+                    <button
+                      type="button"
+                      className={`resOption ${torrentioExcludeCam ? "selected" : ""}`}
+                      onClick={() => setTorrentioExcludeCam(!torrentioExcludeCam)}
+                      tabIndex="0"
+                      style={{ padding: "10px 14px" }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setTorrentioExcludeCam(!torrentioExcludeCam);
+                        }
+                      }}
+                    >
+                      <span className="checkbox">{torrentioExcludeCam ? "✓" : ""}</span>
+                      <span className="resLabel" style={{ fontSize: 13 }}>Exclude CAM</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className={`resOption ${torrentioExcludeTeleSync ? "selected" : ""}`}
+                      onClick={() => setTorrentioExcludeTeleSync(!torrentioExcludeTeleSync)}
+                      tabIndex="0"
+                      style={{ padding: "10px 14px" }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setTorrentioExcludeTeleSync(!torrentioExcludeTeleSync);
+                        }
+                      }}
+                    >
+                      <span className="checkbox">{torrentioExcludeTeleSync ? "✓" : ""}</span>
+                      <span className="resLabel" style={{ fontSize: 13 }}>Exclude TS</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className={`resOption ${torrentioExcludeScreener ? "selected" : ""}`}
+                      onClick={() => setTorrentioExcludeScreener(!torrentioExcludeScreener)}
+                      tabIndex="0"
+                      style={{ padding: "10px 14px" }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setTorrentioExcludeScreener(!torrentioExcludeScreener);
+                        }
+                      }}
+                    >
+                      <span className="checkbox">{torrentioExcludeScreener ? "✓" : ""}</span>
+                      <span className="resLabel" style={{ fontSize: 13 }}>Exclude SCR</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className={`resOption ${torrentioExclude3D ? "selected" : ""}`}
+                      onClick={() => setTorrentioExclude3D(!torrentioExclude3D)}
+                      tabIndex="0"
+                      style={{ padding: "10px 14px" }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setTorrentioExclude3D(!torrentioExclude3D);
+                        }
+                      }}
+                    >
+                      <span className="checkbox">{torrentioExclude3D ? "✓" : ""}</span>
+                      <span className="resLabel" style={{ fontSize: 13 }}>Exclude 3D</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Banner */}
+              {torrentioStatus && (
+                <div className={`statusBanner ${torrentioStatus.type}`} style={{ marginTop: 20 }}>
+                  {torrentioStatus.type === "success" && <FiCheckCircle />}
+                  {torrentioStatus.type === "error" && <FiXCircle />}
+                  <span>{torrentioStatus.text}</span>
+                </div>
+              )}
+
+              {/* Button Group */}
+              <div className="buttonGroup" style={{ marginTop: 20, display: "flex", gap: 12 }}>
+                <button type="submit" className="saveBtn">
+                  <FiSave /> Save Torrentio Settings
+                </button>
+                <button
+                  type="button"
+                  className="testBtn"
+                  onClick={handleTestTorrentio}
+                  disabled={testingTorrentio}
+                >
+                  <FiRefreshCw className={testingTorrentio ? "spin" : ""} /> {testingTorrentio ? "Testing..." : "Test Connection"}
                 </button>
               </div>
             </form>
