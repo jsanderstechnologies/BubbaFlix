@@ -173,11 +173,20 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
 
       h2 {
         font-size: 18px;
         font-weight: 600;
         color: white;
+      }
+
+      .badgeRow {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
       }
 
       .badge {
@@ -188,6 +197,13 @@
         background: rgba(218, 47, 104, 0.18);
         color: var(--pink);
         border: 1px solid rgba(218, 47, 104, 0.35);
+
+        &.searchActiveBadge {
+          background: rgba(255, 193, 7, 0.15);
+          border-color: rgba(255, 193, 7, 0.4);
+          color: #ffc107;
+          font-weight: 700;
+        }
       }
     }
 
@@ -530,13 +546,137 @@
           &:focus {
             outline: none;
             border-color: var(--pink);
+            box-shadow: 0 0 0 2px var(--pink);
           }
         }
       }
 
       .channelSearch {
         flex: 1;
-        min-width: 200px;
+        min-width: 240px;
+        position: relative;
+        display: flex;
+        align-items: center;
+        background: rgba(0, 0, 0, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 8px;
+        padding: 0 12px;
+        height: 40px;
+        gap: 8px;
+        transition: all 0.2s ease;
+
+        &:focus-within,
+        &:has(input:focus) {
+          border-color: var(--pink) !important;
+          box-shadow: 0 0 0 2px var(--pink), 0 0 12px rgba(218, 47, 104, 0.35);
+          background: rgba(0, 0, 0, 0.6) !important;
+        }
+
+        .searchIcon {
+          color: rgba(255, 255, 255, 0.5);
+          font-size: 15px;
+          flex-shrink: 0;
+        }
+
+        input {
+          background: transparent;
+          border: none;
+          color: white;
+          font-size: 13.5px;
+          width: 100%;
+          outline: none;
+
+          &::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+          }
+        }
+
+        .clearSearchBtn {
+          background: transparent;
+          border: none;
+          color: rgba(255, 255, 255, 0.5);
+          font-size: 16px;
+          cursor: pointer;
+          padding: 2px 6px;
+          border-radius: 4px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          outline: none;
+
+          &:hover,
+          &:focus,
+          &:focus-visible {
+            color: white;
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 0 6px var(--pink);
+          }
+        }
+      }
+    }
+
+    .channelActionRow {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 8px 14px;
+
+      .bulkVisGroup {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+
+        .enableAllBtn {
+          background: rgba(76, 175, 80, 0.18);
+          border: 1px solid rgba(76, 175, 80, 0.4);
+          color: #4caf50;
+          font-weight: 700;
+          padding: 7px 14px;
+
+          &:hover,
+          &:focus,
+          &:focus-visible {
+            background: #4caf50;
+            color: white;
+            border-color: #4caf50;
+            box-shadow: 0 0 12px rgba(76, 175, 80, 0.5);
+            transform: scale(1.04);
+          }
+        }
+
+        .disableAllBtn {
+          background: rgba(255, 71, 87, 0.18);
+          border: 1px solid rgba(255, 71, 87, 0.35);
+          color: #ff6b81;
+          font-weight: 700;
+          padding: 7px 14px;
+
+          &:hover,
+          &:focus,
+          &:focus-visible {
+            background: #ff4757;
+            color: white;
+            border-color: #ff4757;
+            box-shadow: 0 0 12px rgba(255, 71, 87, 0.5);
+            transform: scale(1.04);
+          }
+        }
+      }
+
+      .toolbarRight {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        .refreshBtn {
+          padding: 7px 14px;
+        }
       }
     }
 
@@ -610,6 +750,64 @@
           font-weight: 600;
           color: rgba(255, 255, 255, 0.6);
           border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+
+          .thVisHeader {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+
+            .thVisActions {
+              display: flex;
+              align-items: center;
+              gap: 4px;
+
+              .thToggleAllBtn {
+                padding: 2px 7px;
+                font-size: 11px;
+                font-weight: 700;
+                border-radius: 4px;
+                cursor: pointer;
+                outline: none;
+                display: inline-flex;
+                align-items: center;
+                gap: 2px;
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                font-family: inherit;
+
+                &.enable {
+                  background: rgba(76, 175, 80, 0.2);
+                  color: #4caf50;
+                  border-color: rgba(76, 175, 80, 0.35);
+
+                  &:hover,
+                  &:focus,
+                  &:focus-visible {
+                    background: #4caf50;
+                    color: white;
+                    border-color: #4caf50;
+                    box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
+                    transform: scale(1.05);
+                  }
+                }
+
+                &.disable {
+                  background: rgba(255, 71, 87, 0.2);
+                  color: #ff6b81;
+                  border-color: rgba(255, 71, 87, 0.35);
+
+                  &:hover,
+                  &:focus,
+                  &:focus-visible {
+                    background: #ff4757;
+                    color: white;
+                    border-color: #ff4757;
+                    box-shadow: 0 0 8px rgba(255, 71, 87, 0.6);
+                    transform: scale(1.05);
+                  }
+                }
+              }
+            }
+          }
         }
       }
 
@@ -741,6 +939,59 @@
       font-size: 12px;
       color: rgba(255, 255, 255, 0.5);
       background: rgba(0, 0, 0, 0.2);
+    }
+
+    .loadMoreChannelsRow {
+      padding: 12px;
+      text-align: center;
+      background: rgba(0, 0, 0, 0.28);
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+
+      .loadMoreChannelsBtn {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: white;
+        padding: 8px 24px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        outline: none;
+        transition: all 0.2s ease;
+
+        &:hover,
+        &:focus,
+        &:focus-visible {
+          background: var(--pink);
+          border-color: var(--pink);
+          box-shadow: 0 0 12px rgba(218, 47, 104, 0.5);
+          transform: scale(1.03);
+        }
+      }
+    }
+  }
+
+  .clearSearchBtnEmpty {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 7px 18px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    outline: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+
+    &:hover,
+    &:focus,
+    &:focus-visible {
+      background: var(--pink);
+      border-color: var(--pink);
+      box-shadow: 0 0 10px rgba(218, 47, 104, 0.5);
+      transform: scale(1.03);
     }
   }
 

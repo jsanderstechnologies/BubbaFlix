@@ -1,6 +1,6 @@
 {
-  "versionCode": 53,
-  "versionName": "1.0.52",
+  "versionCode": 54,
+  "versionName": "1.0.53",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.52: Pure EPG Grid view for Live TV with full-screen live playback on channel selection, remote Channel Up/Down channel flipping with on-screen OSD, on-screen 'Enter Channel #' button, and numeric keypad modal."
+  "releaseNotes": "BubbaFlix TV v1.0.53: Added bulk Enable All Showing and Disable All Showing channel visibility controls in IPTV setup, multi-field channel searching (name, original name, category, alias, channel number), table header visibility toggles, search clear button, and pagination."
 }

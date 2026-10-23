@@ -58,6 +58,11 @@ const FOCUSABLE_SELECTOR = [
   ".enterChannelBtn",
   ".keypadBtn",
   ".keypadActionBtn",
+  ".enableAllBtn",
+  ".disableAllBtn",
+  ".thToggleAllBtn",
+  ".clearSearchBtn",
+  ".loadMoreChannelsBtn",
   ".progress-bar",
   '[role="slider"]',
 ].join(", ");

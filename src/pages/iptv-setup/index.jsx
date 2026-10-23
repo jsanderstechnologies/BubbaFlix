@@ -82,6 +82,12 @@ const IptvSetupPage = () => {
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
   const [channelVisibilityFilter, setChannelVisibilityFilter] = useState("all"); // all | visible | hidden
   const [batchStartNumber, setBatchStartNumber] = useState(1);
+  const [channelDisplayLimit, setChannelDisplayLimit] = useState(300);
+
+  // Reset pagination limit when search or filters change
+  useEffect(() => {
+    setChannelDisplayLimit(300);
+  }, [channelSearch, selectedCategoryFilter, channelVisibilityFilter]);
 
   // Debounce refs to prevent double-activations from TV remotes
   const lastGroupToggleRef = useRef({ id: null, time: 0 });
@@ -426,6 +432,22 @@ const IptvSetupPage = () => {
     }, 40);
   };
 
+  // Enable or disable all channels currently showing / matching filters
+  const setAllShowingChannelsVisibility = (enabled) => {
+    if (!filteredChannels.length) return;
+    setChannelsConfig((prev) => {
+      const updated = { ...prev };
+      filteredChannels.forEach((ch) => {
+        const sid = String(ch.stream_id);
+        updated[sid] = {
+          ...updated[sid],
+          enabled: enabled,
+        };
+      });
+      return updated;
+    });
+  };
+
   const handleChannelNumberChange = (streamId, newNumber) => {
     const sid = String(streamId);
     const cleanNum = newNumber === "" ? "" : parseInt(newNumber, 10);
@@ -471,8 +493,9 @@ const IptvSetupPage = () => {
     );
   }, [loadedGroups, groupSearch]);
 
-  // Filtered Channels
+  // Filtered Channels with comprehensive multi-field search
   const filteredChannels = useMemo(() => {
+    const q = (channelSearch || "").trim().toLowerCase();
     return loadedChannels.filter((ch) => {
       // Category match
       if (selectedCategoryFilter !== "all") {
@@ -482,17 +505,24 @@ const IptvSetupPage = () => {
           return false;
         }
       }
-      // Search match
+
+      // Comprehensive search match across name, original_name, custom alias, category, and channel number
       const sid = String(ch.stream_id);
-      const customName = channelsConfig[sid]?.customName || ch.name;
-      const chNum = channelsConfig[sid]?.channelNumber ?? ch.channel_number;
-      if (
-        channelSearch &&
-        !customName.toLowerCase().includes(channelSearch.toLowerCase()) &&
-        !String(chNum).includes(channelSearch)
-      ) {
-        return false;
+      const customName = channelsConfig[sid]?.customName || ch.name || "";
+      const origName = ch.original_name || "";
+      const catName = ch.category_name || "";
+      const chNum = channelsConfig[sid]?.channelNumber ?? ch.channel_number ?? "";
+
+      if (q) {
+        const matchName = customName.toLowerCase().includes(q) || (ch.name && ch.name.toLowerCase().includes(q));
+        const matchOrig = origName.toLowerCase().includes(q);
+        const matchCat = catName.toLowerCase().includes(q);
+        const matchNum = String(chNum).includes(q);
+        if (!matchName && !matchOrig && !matchCat && !matchNum) {
+          return false;
+        }
       }
+
       // Visibility match
       const catEnabled = checkGroupEnabled(groupsConfig, {
         category_id: ch.category_id,
@@ -508,6 +538,20 @@ const IptvSetupPage = () => {
       return true;
     });
   }, [loadedChannels, selectedCategoryFilter, channelSearch, channelVisibilityFilter, channelsConfig, groupsConfig]);
+
+  // Count of showing channels that are currently enabled
+  const showingEnabledCount = useMemo(() => {
+    return filteredChannels.filter((ch) => {
+      const sid = String(ch.stream_id);
+      const isCatEnabled = checkGroupEnabled(groupsConfig, {
+        category_id: ch.category_id,
+        category_name: ch.category_name,
+        enabled: ch.group_enabled,
+      });
+      const chCfg = channelsConfig[sid];
+      return chCfg?.enabled !== undefined ? chCfg.enabled : (ch.enabled !== undefined ? ch.enabled : isCatEnabled);
+    }).length;
+  }, [filteredChannels, channelsConfig, groupsConfig]);
 
   return (
     <div className="iptvSetupPage">
@@ -767,12 +811,19 @@ const IptvSetupPage = () => {
             <div className="setupCard">
               <div className="cardHeader">
                 <h2>Channel Visibility & Numbering Workbench</h2>
-                <span className="badge">
-                  {filteredChannels.length} Channels Displayed
-                </span>
+                <div className="badgeRow">
+                  <span className="badge">
+                    {showingEnabledCount} of {filteredChannels.length} Enabled ({loadedChannels.length} Total)
+                  </span>
+                  {channelSearch && (
+                    <span className="badge searchActiveBadge">
+                      Search: "{channelSearch}"
+                    </span>
+                  )}
+                </div>
               </div>
               <p className="description">
-                Assign manual channel numbers (e.g. Channel 1, 2, 100, 206) and toggle individual channel visibility. Remote controls with number pads can jump straight to these channel numbers!
+                Assign manual channel numbers (e.g. Channel 1, 2, 100, 206), enable or disable all currently showing channels in bulk, and filter by category or name. Remote controls with number pads can jump straight to these channel numbers!
               </p>
 
               {/* Filters & Tools */}
@@ -805,19 +856,71 @@ const IptvSetupPage = () => {
                     </select>
                   </div>
 
+                  {/* Channel Search Input with clear button and remote enter navigation */}
                   <div className="searchBox channelSearch">
-                    <FiSearch />
+                    <FiSearch className="searchIcon" />
                     <input
                       type="text"
-                      placeholder="Search by name or channel #..."
+                      placeholder="Search channels (e.g. ESPN, HBO, News, 206)..."
                       value={channelSearch}
                       onChange={(e) => setChannelSearch(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.keyCode === 13 || e.keyCode === 23 || e.keyCode === 66) {
+                          e.preventDefault();
+                          e.currentTarget.blur();
+                          const target = document.querySelector(".enableAllBtn, .visToggleBtn");
+                          if (target) target.focus({ preventScroll: true });
+                        }
+                      }}
                     />
+                    {channelSearch && (
+                      <button
+                        type="button"
+                        tabIndex={0}
+                        className="clearSearchBtn"
+                        onClick={() => setChannelSearch("")}
+                        title="Clear search"
+                      >
+                        <FiX />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Bulk Actions: Enable / Disable All Showing Channels */}
+                <div className="channelActionRow">
+                  <div className="bulkVisGroup">
+                    <button
+                      type="button"
+                      tabIndex={0}
+                      className="toolBtn enableAllBtn"
+                      onClick={() => setAllShowingChannelsVisibility(true)}
+                      title={`Enable all ${filteredChannels.length} channels currently showing`}
+                    >
+                      <FiCheckCircle /> Enable All Showing ({filteredChannels.length})
+                    </button>
+                    <button
+                      type="button"
+                      tabIndex={0}
+                      className="toolBtn disableAllBtn"
+                      onClick={() => setAllShowingChannelsVisibility(false)}
+                      title={`Disable all ${filteredChannels.length} channels currently showing`}
+                    >
+                      <FiX /> Disable All Showing ({filteredChannels.length})
+                    </button>
                   </div>
 
-                  <button className="toolBtn refreshBtn" onClick={() => loadProviderData(true)} title="Refresh channels from provider">
-                    <FiRefreshCw className={loadingData ? "spinning" : ""} /> Refresh
-                  </button>
+                  <div className="toolbarRight">
+                    <button
+                      type="button"
+                      tabIndex={0}
+                      className="toolBtn refreshBtn"
+                      onClick={() => loadProviderData(true)}
+                      title="Refresh channels from provider"
+                    >
+                      <FiRefreshCw className={loadingData ? "spinning" : ""} /> Refresh
+                    </button>
+                  </div>
                 </div>
 
                 {/* Batch Numbering Helper */}
@@ -857,13 +960,48 @@ const IptvSetupPage = () => {
                       ? `No channels match "${channelSearch}".`
                       : "No channels found. Check your category visibility in Tab 2, or click Refresh."}
                   </span>
+                  {channelSearch && (
+                    <button
+                      type="button"
+                      tabIndex={0}
+                      className="toolBtn clearSearchBtnEmpty"
+                      style={{ marginTop: 10 }}
+                      onClick={() => setChannelSearch("")}
+                    >
+                      <FiX /> Clear Search
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="channelsTableWrapper">
                   <table className="channelsTable">
                   <thead>
                     <tr>
-                      <th style={{ width: 80 }}>Visible</th>
+                      <th style={{ minWidth: 110, width: 120 }}>
+                        <div className="thVisHeader">
+                          <span>Visible</span>
+                          <div className="thVisActions">
+                            <button
+                              type="button"
+                              tabIndex={0}
+                              className="toolBtn thToggleAllBtn enable"
+                              onClick={() => setAllShowingChannelsVisibility(true)}
+                              title="Enable all showing channels"
+                            >
+                              <FiCheck /> All
+                            </button>
+                            <button
+                              type="button"
+                              tabIndex={0}
+                              className="toolBtn thToggleAllBtn disable"
+                              onClick={() => setAllShowingChannelsVisibility(false)}
+                              title="Disable all showing channels"
+                            >
+                              <FiX /> None
+                            </button>
+                          </div>
+                        </div>
+                      </th>
                       <th style={{ width: 110 }}>Ch. #</th>
                       <th style={{ width: 60 }}>Logo</th>
                       <th>Channel Name</th>
@@ -872,7 +1010,7 @@ const IptvSetupPage = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredChannels.slice(0, 300).map((ch) => {
+                    {filteredChannels.slice(0, channelDisplayLimit).map((ch) => {
                       const sid = String(ch.stream_id);
                       const isCatEnabled = checkGroupEnabled(groupsConfig, {
                         category_id: ch.category_id,
@@ -967,9 +1105,16 @@ const IptvSetupPage = () => {
                     })}
                   </tbody>
                 </table>
-                {filteredChannels.length > 300 && (
-                  <div className="paginationNotice">
-                    Showing top 300 of {filteredChannels.length} channels. Use the category filter or search above to refine.
+                {filteredChannels.length > channelDisplayLimit && (
+                  <div className="loadMoreChannelsRow">
+                    <button
+                      type="button"
+                      tabIndex={0}
+                      className="toolBtn loadMoreChannelsBtn"
+                      onClick={() => setChannelDisplayLimit((prev) => prev + 300)}
+                    >
+                      Load More Channels ({channelDisplayLimit} of {filteredChannels.length} showing)
+                    </button>
                   </div>
                 )}
               </div>
