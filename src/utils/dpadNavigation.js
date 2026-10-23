@@ -52,6 +52,7 @@ const FOCUSABLE_SELECTOR = [
   ".timelineNavBtn",
   ".setupShortcutBtn",
   ".liveTvBackBtn",
+  ".iptvBackBtn",
   ".channelRow",
   ".progress-bar",
   '[role="slider"]',
@@ -143,6 +144,20 @@ const focusAndScroll = (el, isHoldingKey = false) => {
       const topNavOffset = 95;
       if (gRect.top < topNavOffset) {
         window.scrollBy({ top: gRect.top - topNavOffset, behavior: scrollBehavior });
+      }
+    }
+    return;
+  }
+
+  // Handle IPTV Setup scrollable containers (.groupsGrid, .channelsTableWrapper) without runaway window scroll
+  const inScrollableGrid = el.closest(".groupsGrid, .channelsTableWrapper, .channelsTableContainer");
+  if (inScrollableGrid) {
+    el.scrollIntoView({ behavior: scrollBehavior, block: "nearest", inline: "nearest" });
+    if (typeof window !== "undefined") {
+      const containerRect = inScrollableGrid.getBoundingClientRect();
+      const topNavOffset = 95;
+      if (containerRect.top < topNavOffset) {
+        window.scrollBy({ top: containerRect.top - topNavOffset, behavior: scrollBehavior });
       }
     }
     return;
@@ -468,11 +483,15 @@ export const initDpadNavigation = () => {
     const code = e.keyCode;
     const activeEl = document.activeElement;
 
-    // Allow full keyboard typing if user is focused inside an input or textarea
+    // Allow full keyboard typing if user is actively editing inside an input or textarea
     if (activeEl && (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA")) {
+      const isEditing = activeEl.getAttribute("data-editing-active") === "true";
+
       if (key === "Escape" || key === "Back" || code === 27 || code === 10009 || code === 461 || code === 4) {
         activeEl.removeAttribute("data-editing-active");
         activeEl.blur();
+        e.preventDefault();
+        e.stopPropagation();
         return;
       }
 
@@ -484,12 +503,33 @@ export const initDpadNavigation = () => {
         code === 19 ||
         code === 20;
 
-      // Unblock and enable editing for all typing, editing, and Enter keys
-      if (!isNavDownOrUp) {
-        activeEl.removeAttribute("readonly");
-        activeEl.removeAttribute("inputmode");
-        activeEl.setAttribute("data-editing-active", "true");
-        return;
+      if (isEditing) {
+        // When actively editing, allow Up/Down to exit input, but allow typing/Left/Right inside text
+        if (!isNavDownOrUp) {
+          return;
+        }
+      } else {
+        // Not actively editing: allow Arrow keys (Left, Right, Up, Down) to perform spatial navigation
+        const isDpadNavKey =
+          key === "ArrowUp" ||
+          key === "ArrowDown" ||
+          key === "ArrowLeft" ||
+          key === "ArrowRight" ||
+          code === 38 ||
+          code === 40 ||
+          code === 37 ||
+          code === 39 ||
+          code === 19 ||
+          code === 20 ||
+          code === 21 ||
+          code === 22;
+
+        if (!isDpadNavKey) {
+          activeEl.removeAttribute("readonly");
+          activeEl.removeAttribute("inputmode");
+          activeEl.setAttribute("data-editing-active", "true");
+          return;
+        }
       }
     }
 
@@ -595,7 +635,19 @@ export const initDpadNavigation = () => {
         return;
       }
 
-      // 6. Other non-home routes (e.g. /explore, /search, /favorites, /settings)
+      // 6. IPTV Setup route (/settings/iptv): always navigate cleanly back to /settings
+      if (window.location.pathname.startsWith("/settings/iptv")) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof window.__routerNavigate === "function") {
+          window.__routerNavigate("/settings");
+        } else {
+          window.location.href = "/settings";
+        }
+        return;
+      }
+
+      // 7. Other non-home routes (e.g. /explore, /search, /favorites, /settings)
       if (window.location.pathname !== "/") {
         e.preventDefault();
         e.stopPropagation();

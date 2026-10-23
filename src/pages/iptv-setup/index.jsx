@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import ContentWrapper from "../../components/content-wrapper";
 import TopNav from "../../components/top-nav";
 import {
@@ -61,6 +61,56 @@ const IptvSetupPage = () => {
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
   const [channelVisibilityFilter, setChannelVisibilityFilter] = useState("all"); // all | visible | hidden
   const [batchStartNumber, setBatchStartNumber] = useState(1);
+
+  // Debounce refs to prevent double-activations from TV remotes
+  const lastGroupToggleRef = useRef({ id: null, time: 0 });
+  const lastChannelToggleRef = useRef({ id: null, time: 0 });
+
+  // Window-level Smart TV Back Button handler -> Always exits cleanly to Settings
+  useEffect(() => {
+    const handleBackPress = (e) => {
+      const key = e.key;
+      const code = e.keyCode;
+      if (key === "Escape" || key === "Back" || code === 27 || code === 10009 || code === 461 || code === 4) {
+        const active = document.activeElement;
+        if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) {
+          if (active.getAttribute("data-editing-active") === "true") {
+            active.removeAttribute("data-editing-active");
+            active.blur();
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+          }
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        navigate("/settings");
+      }
+    };
+
+    window.addEventListener("keydown", handleBackPress, true);
+    return () => {
+      window.removeEventListener("keydown", handleBackPress, true);
+    };
+  }, [navigate]);
+
+  // Auto-focus first interactive element when switching tabs
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (activeTab === "groups") {
+        const firstCard = document.querySelector(".groupsGrid .groupCard, .groupToolbar .toolBtn");
+        if (firstCard && typeof firstCard.focus === "function") {
+          firstCard.focus({ preventScroll: true });
+        }
+      } else if (activeTab === "channels") {
+        const firstChannelToggle = document.querySelector(".channelsTable .visToggleBtn, .channelsToolbar .toolBtn");
+        if (firstChannelToggle && typeof firstChannelToggle.focus === "function") {
+          firstChannelToggle.focus({ preventScroll: true });
+        }
+      }
+    }, 120);
+    return () => clearTimeout(timer);
+  }, [activeTab]);
 
   // Load initial config from server
   useEffect(() => {
@@ -255,7 +305,14 @@ const IptvSetupPage = () => {
 
   // Group toggles (bidirectional: category_id and category_name)
   const toggleGroupVisibility = (categoryId) => {
+    const now = Date.now();
     const cid = String(categoryId);
+    // Ignore rapid double-activations on the same category within 250ms
+    if (lastGroupToggleRef.current.id === cid && now - lastGroupToggleRef.current.time < 250) {
+      return;
+    }
+    lastGroupToggleRef.current = { id: cid, time: now };
+
     const grp = loadedGroups.find((g) => String(g.category_id) === cid || g.category_name === cid);
     const cname = grp?.category_name || cid;
 
@@ -290,7 +347,14 @@ const IptvSetupPage = () => {
 
   // Channel toggles & number assignments
   const toggleChannelVisibility = (streamId, defaultEnabled) => {
+    const now = Date.now();
     const sid = String(streamId);
+    // Ignore rapid double-activations on the same stream within 250ms
+    if (lastChannelToggleRef.current.id === sid && now - lastChannelToggleRef.current.time < 250) {
+      return;
+    }
+    lastChannelToggleRef.current = { id: sid, time: now };
+
     setChannelsConfig((prev) => {
       const current = prev[sid]?.enabled !== undefined ? prev[sid].enabled : defaultEnabled;
       return {
@@ -393,7 +457,12 @@ const IptvSetupPage = () => {
         <div className="setupContainer">
           {/* Header */}
           <div className="setupHeader">
-            <button className="backBtn" onClick={() => navigate("/settings")}>
+            <button
+              type="button"
+              className="backBtn iptvBackBtn"
+              tabIndex={0}
+              onClick={() => navigate("/settings")}
+            >
               <FiArrowLeft /> Settings
             </button>
             <div className="headerText">
@@ -598,12 +667,6 @@ const IptvSetupPage = () => {
                         tabIndex={0}
                         className={`groupCard ${isEnabled ? "enabled" : "disabled"}`}
                         onClick={() => toggleGroupVisibility(cid)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " " || e.key === "Select" || e.keyCode === 23) {
-                            e.preventDefault();
-                            toggleGroupVisibility(cid);
-                          }
-                        }}
                         aria-pressed={isEnabled}
                         title={`${grp.category_name}: ${isEnabled ? "Visible (click to hide)" : "Hidden (click to show)"}`}
                       >
@@ -753,12 +816,6 @@ const IptvSetupPage = () => {
                               tabIndex={0}
                               className={`visToggleBtn ${isEnabled ? "on" : "off"}`}
                               onClick={() => toggleChannelVisibility(sid, isCatEnabled)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " " || e.key === "Select" || e.keyCode === 23) {
-                                  e.preventDefault();
-                                  toggleChannelVisibility(sid, isCatEnabled);
-                                }
-                              }}
                               title={isEnabled ? "Click to hide" : "Click to show"}
                             >
                               {isEnabled ? <FiCheck /> : <FiX />}

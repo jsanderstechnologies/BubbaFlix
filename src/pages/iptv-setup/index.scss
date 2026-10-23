@@ -33,10 +33,13 @@
       transition: all 0.2s ease;
 
       &:hover,
-      &:focus {
-        background: rgba(255, 255, 255, 0.18);
+      &:focus,
+      &:focus-visible {
+        background: rgba(255, 255, 255, 0.22);
         color: white;
         border-color: var(--pink);
+        box-shadow: 0 0 0 3px rgba(218, 47, 104, 0.45);
+        outline: none;
       }
     }
 
@@ -626,6 +629,15 @@
         border: none;
         cursor: pointer;
         font-size: 16px;
+        outline: none;
+        transition: all 0.2s ease;
+
+        &:focus,
+        &:focus-visible {
+          outline: none;
+          box-shadow: 0 0 0 3px var(--pink);
+          transform: scale(1.15);
+        }
 
         &.on {
           background: rgba(76, 175, 80, 0.2);
@@ -650,9 +662,13 @@
         font-size: 15px;
         font-weight: bold;
         text-align: center;
+        outline: none;
+        transition: all 0.2s ease;
 
-        &:focus {
+        &:focus,
+        &:focus-visible {
           border-color: var(--pink);
+          box-shadow: 0 0 0 2px var(--pink);
           outline: none;
         }
       }
