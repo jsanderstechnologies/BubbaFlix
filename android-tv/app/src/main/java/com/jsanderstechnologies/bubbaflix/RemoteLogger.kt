@@ -1,5 +1,6 @@
 package com.jsanderstechnologies.bubbaflix
 
+import com.jsanderstechnologies.bubbaflix.BuildConfig
 import android.app.ActivityManager
 import android.content.Context
 import android.content.SharedPreferences
