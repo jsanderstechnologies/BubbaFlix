@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { createPortal } from "react-dom";
 import ContentWrapper from "../../components/content-wrapper";
 import TopNav from "../../components/top-nav";
 import {
@@ -155,6 +156,7 @@ const LiveTvPage = () => {
   const [showControls, setShowControls] = useState(true);
   const [channelOsd, setChannelOsd] = useState(null);
   const [isBuffering, setIsBuffering] = useState(false);
+  const [hasVideoFrame, setHasVideoFrame] = useState(false);
 
   const controlsTimeoutRef = useRef(null);
   const channelOsdTimeoutRef = useRef(null);
@@ -316,9 +318,18 @@ const LiveTvPage = () => {
     setCurrentChannel(channel);
     triggerChannelOsd(channel);
     if (startPlaying) {
+      setHasVideoFrame(false);
+      setIsBuffering(true);
       setIsPlayingLive(true);
       setShowControls(true);
       resetControlsTimeout();
+      try {
+        if (typeof document !== "undefined" && !document.fullscreenElement && document.documentElement.requestFullscreen) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        }
+      } catch (e) {
+        // Ignore fullscreen restriction if gesture disallowed
+      }
     }
   }, [triggerChannelOsd, resetControlsTimeout]);
 
@@ -327,6 +338,8 @@ const LiveTvPage = () => {
     if (channels.length === 0 || !currentChannel) return;
     const currIdx = channels.findIndex((c) => String(c.stream_id) === String(currentChannel.stream_id));
     const nextIdx = (currIdx + 1) % channels.length;
+    setHasVideoFrame(false);
+    setIsBuffering(true);
     handleTuneChannel(channels[nextIdx], true);
   }, [channels, currentChannel, handleTuneChannel]);
 
@@ -335,6 +348,8 @@ const LiveTvPage = () => {
     if (channels.length === 0 || !currentChannel) return;
     const currIdx = channels.findIndex((c) => String(c.stream_id) === String(currentChannel.stream_id));
     const prevIdx = (currIdx - 1 + channels.length) % channels.length;
+    setHasVideoFrame(false);
+    setIsBuffering(true);
     handleTuneChannel(channels[prevIdx], true);
   }, [channels, currentChannel, handleTuneChannel]);
 
@@ -429,8 +444,15 @@ const LiveTvPage = () => {
       video.play().catch(() => {});
     }
 
-    video.onplaying = () => setIsBuffering(false);
+    video.onplaying = () => {
+      setIsBuffering(false);
+      setHasVideoFrame(true);
+    };
+    video.onloadeddata = () => {
+      setHasVideoFrame(true);
+    };
     video.onwaiting = () => setIsBuffering(true);
+    video.onerror = () => setIsBuffering(false);
 
     return () => {
       if (hlsRef.current) {
@@ -532,6 +554,14 @@ const LiveTvPage = () => {
           e.stopPropagation();
           setIsPlayingLive(false);
           setShowControls(false);
+          setHasVideoFrame(false);
+          try {
+            if (typeof document !== "undefined" && document.fullscreenElement && document.exitFullscreen) {
+              document.exitFullscreen().catch(() => {});
+            }
+          } catch (err) {
+            // Ignore
+          }
           setTimeout(() => {
             const target = document.querySelector(".epgRow.isCurrentChannel .epgChannelCell, .epgChannelCell");
             if (target && typeof target.focus === "function") {
@@ -703,18 +733,17 @@ const LiveTvPage = () => {
     <div className={`liveTvPage ${isPlayingLive ? "inPlayerMode" : ""}`}>
       {!isPlayingLive && <TopNav />}
 
-      <ContentWrapper>
-        {/* Remote Numeric Direct Tuning Overlay */}
-        {numberBuffer && (
-          <div className="remoteTuningBanner">
-            <span className="tuningLabel">Tuning Channel:</span>
-            <span className="tuningNumber">{numberBuffer}</span>
-          </div>
-        )}
+      {!isPlayingLive && (
+        <ContentWrapper>
+          {/* Remote Numeric Direct Tuning Overlay */}
+          {numberBuffer && (
+            <div className="remoteTuningBanner">
+              <span className="tuningLabel">Tuning Channel:</span>
+              <span className="tuningNumber">{numberBuffer}</span>
+            </div>
+          )}
 
-        {/* GUIDE MODE: Compact Header & Full EPG Timeline Grid */}
-        {!isPlayingLive && (
-          <>
+          {/* GUIDE MODE: Compact Header & Full EPG Timeline Grid */}
             {/* Header & Controls Bar */}
             <div className="liveTvHeader">
               <div className="headerLeft">
@@ -996,27 +1025,51 @@ const LiveTvPage = () => {
                 </div>
               </div>
             )}
-          </>
-        )}
+        </ContentWrapper>
+      )}
 
-        {/* PLAYER MODE: Live Video Player with Channel Up/Down & Direct Channel # Entry */}
-        {isPlayingLive && currentChannel && (
+      {/* FULLSCREEN LIVE PLAYER MODE: Mount directly to document.body */}
+      {isPlayingLive &&
+        currentChannel &&
+        typeof document !== "undefined" &&
+        createPortal(
           <div className="livePlayerFullscreen">
+            {/* Centered BubbaFlix Logo Background */}
+            <div
+              className={`livePlayerLogoBackground ${
+                hasVideoFrame && !isBuffering ? "videoActive" : "videoLoading"
+              }`}
+            >
+              <img
+                src="/logo.png"
+                alt="BubbaFlix"
+                className="livePlayerCenteredLogo"
+              />
+            </div>
+
             <video
               ref={liveVideoRef}
               id="livePlayerVideo"
-              className="liveVideoElement"
+              className={`liveVideoElement ${hasVideoFrame ? "hasFrame" : "loadingFrame"}`}
               autoPlay
               playsInline
               onClick={resetControlsTimeout}
               onMouseMove={resetControlsTimeout}
             />
 
-            {/* Buffering Indicator */}
+            {/* Buffering Indicator positioned directly beneath centered BubbaFlix logo */}
             {isBuffering && (
               <div className="liveBufferingSpinner">
                 <FiRefreshCw className="spinning" />
                 <span>Loading live channel...</span>
+              </div>
+            )}
+
+            {/* Remote Numeric Direct Tuning Overlay in Player */}
+            {numberBuffer && (
+              <div className="remoteTuningBanner inPlayer">
+                <span className="tuningLabel">Tuning Channel:</span>
+                <span className="tuningNumber">{numberBuffer}</span>
               </div>
             )}
 
@@ -1063,6 +1116,12 @@ const LiveTvPage = () => {
                     onClick={() => {
                       setIsPlayingLive(false);
                       setShowControls(false);
+                      setHasVideoFrame(false);
+                      try {
+                        if (typeof document !== "undefined" && document.fullscreenElement && document.exitFullscreen) {
+                          document.exitFullscreen().catch(() => {});
+                        }
+                      } catch (err) {}
                       setTimeout(() => {
                         const target = document.querySelector(".epgRow.isCurrentChannel .epgChannelCell, .epgChannelCell");
                         if (target && typeof target.focus === "function") {
@@ -1226,9 +1285,9 @@ const LiveTvPage = () => {
                 </div>
               </div>
             )}
-          </div>
+          </div>,
+          document.body
         )}
-      </ContentWrapper>
     </div>
   );
 };
