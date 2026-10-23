@@ -1165,6 +1165,9 @@ const SettingsPage = () => {
                     </button>
                   </div>
                 </div>
+                <p style={{ fontSize: 12, color: "#9ca3af", marginBottom: 10, lineHeight: 1.4 }}>
+                  Tip: Selecting all providers (or default) enables Torrentio&apos;s full aggregation pool (including external and community indexers) to return the maximum number of streams.
+                </p>
                 <div className="resolutionGrid">
                   {DEFAULT_TORRENTIO_PROVIDERS.map((prov) => {
                     const isSelected = torrentioProviders.includes(prov.id);

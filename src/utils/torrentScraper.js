@@ -19,7 +19,7 @@ export const DEFAULT_TORRENTIO_PROVIDERS = [
 export const DEFAULT_TORRENTIO_CONFIG = {
   enabled: true,
   customUrl: "",
-  providers: ["yts", "eztv", "rarbg", "1337x", "thepiratebay", "kickasstorrents", "torrentgalaxy", "magnetdl"],
+  providers: DEFAULT_TORRENTIO_PROVIDERS.map((p) => p.id),
   sort: "quality", // "quality" | "seeders" | "size"
   priorityForeignLanguage: "",
   maxResultsPerQuality: "",
@@ -61,7 +61,15 @@ export const buildTorrentioUrl = (config, idToUse, isTv, seasonNum, episodeNum) 
     }
   } else {
     const parts = [];
-    if (Array.isArray(config.providers) && config.providers.length > 0) {
+    // Only pass providers parameter if the user explicitly customized/restricted to a subset.
+    // When omitted or when all default providers are active, Torrentio searches across its entire
+    // global index (including EXT, BestTorrents, etc.) which yields 2x-5x more streams!
+    const allProviderIds = DEFAULT_TORRENTIO_PROVIDERS.map((p) => p.id);
+    const hasRestrictedProviders = Array.isArray(config.providers) &&
+      config.providers.length > 0 &&
+      config.providers.length < allProviderIds.length;
+
+    if (hasRestrictedProviders) {
       parts.push("providers=" + config.providers.join(","));
     }
     if (config.sort && config.sort !== "quality") {

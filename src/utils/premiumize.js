@@ -2,6 +2,17 @@ import axios from "axios";
 import { fetchServerSettings } from "./serverSettings";
 
 const premAxios = axios.create();
+premAxios.interceptors.request.use((config) => {
+  if (config.headers) {
+    delete config.headers["Authorization"];
+    delete config.headers["authorization"];
+    if (config.headers.common) {
+      delete config.headers.common["Authorization"];
+      delete config.headers.common["authorization"];
+    }
+  }
+  return config;
+});
 
 export const getPremiumizeKey = () => {
   if (typeof window !== "undefined") {
@@ -177,7 +188,7 @@ export const checkPremiumizeCache = async (magnets) => {
     const params = new URLSearchParams();
     magnets.forEach(m => params.append("items[]", m));
 
-    const res = await axios.post(`https://www.premiumize.me/api/cache/check?apikey=${apiKey}`, params, {
+    const res = await premAxios.post(`https://www.premiumize.me/api/cache/check?apikey=${apiKey}`, params, {
       headers: { "Content-Type": "application/x-www-form-urlencoded" }
     });
 
@@ -199,7 +210,7 @@ export const getPremiumizeTransfers = async () => {
   if (!apiKey) return [];
 
   try {
-    const res = await axios.get(`https://www.premiumize.me/api/transfer/list?apikey=${apiKey}`);
+    const res = await premAxios.get(`https://www.premiumize.me/api/transfer/list?apikey=${apiKey}`);
     if (res.data?.status === "success") {
       return res.data.transfers || [];
     }

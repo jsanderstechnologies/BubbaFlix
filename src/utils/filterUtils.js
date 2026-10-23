@@ -231,32 +231,60 @@ export const isSeasonPackStream = (stream, seasonNum, episodeNum) => {
   const e = parseInt(episodeNum, 10);
 
   // 1. Explicit Full Season / Series / Collection / Boxset pack markers
-  const explicitPackRegex = /\b(complete[\s._-]*(?:season|series|collection|boxset|pack)?|full[\s._-]*(?:season|series|pack)?|season[\s._-]*(?:complete|full|pack|boxset)|series[\s._-]*(?:complete|full|pack|boxset)|entire[\s._-]*(?:season|series)|all[\s._-]*episodes?|season[\s._-]*box[\s._-]*set|box[\s._-]*set|temporada[\s._-]*(?:completa)?|сезон[\s._-]*\d+[\s._-]*сери[ия]|сери[ия][\s._-]*\d+[\s._-]*[\-–—~to]+[\s._-]*\d+)\b/i;
+  const explicitPackRegex = /\b(complete[\s._-]*(?:season|series|collection|boxset|pack)?|full[\s._-]*(?:season|series|pack)?|season[\s._-]*(?:complete|full|pack|boxset)|series[\s._-]*(?:complete|full|pack|boxset)|entire[\s._-]*(?:season|series)|all[\s._-]*episodes?|season[\s._-]*box[\s._-]*set|box[\s._-]*set|temporada[\s._-]*(?:completa)?|сезон[\s._-]*\d+[\s._-]*сери[ия])\b/i;
+  if (explicitPackRegex.test(text)) return true;
 
   // 2. Multi-season ranges (e.g. S01-S05, S1-5, Season 1-5, Seasons 1 to 4, Season 1 - 2, S01-S02-S03)
   const multiSeasonRegex = /\b(s\d{1,2}[\s._-]*[\-–—~to]+[\s._-]*s?\d{1,2}|seasons?[\s._-]*\d{1,2}[\s._-]*[\-–—~to]+[\s._-]*\d{1,2}|s\d{1,2}(?:[\s._-]+s\d{1,2}){1,})\b/i;
+  if (multiSeasonRegex.test(text)) return true;
 
-  // 3. Multi-episode ranges / batches (e.g. S01E01-E10, S01E01-10, E01-E08, 1x01-08, Episodes 1-10, Episodes 1 to 8)
-  const multiEpisodeRegex = /\b(s\d{1,2}[\s._-]*e\d{1,4}[\s._-]*[\-–—~to]+[\s._-]*e?\d{1,4}|e\d{1,4}[\s._-]*[\-–—~to]+[\s._-]*e?\d{1,4}|\d{1,2}x\d{1,4}[\s._-]*[\-–—~to]+[\s._-]*\d{1,4}|episodes?[\s._-]*\d{1,4}[\s._-]*[\-–—~to]+[\s._-]*\d{1,4}|ep[\s._-]*\d{1,4}[\s._-]*[\-–—~to]+[\s._-]*\d{1,4}|parts?[\s._-]*\d{1,4}[\s._-]*[\-–—~to]+[\s._-]*\d{1,4})\b/i;
+  // 3. Multi-episode ranges / batches (e.g. S01E01-E10, S01E01-10, E01-E08, 1x01-08)
+  const rangeMatch = text.match(/\b(?:s\d{1,2}[\s._-]*)?(?:e|ep|episode|\b)(\d{1,4})[\s._-]*[\-–—~to]+[\s._-]*(?:e|ep|episode|\b)(\d{1,4})\b/i) ||
+                     text.match(/\b\d{1,2}x(\d{1,4})[\s._-]*[\-–—~to]+[\s._-]*(?:\d{1,2}x)?(\d{1,4})\b/i);
 
-  if (explicitPackRegex.test(text) || multiSeasonRegex.test(text) || multiEpisodeRegex.test(text)) {
-    return true; // Blocked: Season or series pack
+  if (rangeMatch) {
+    const startEp = parseInt(rangeMatch[1], 10);
+    const endEp = parseInt(rangeMatch[2], 10);
+    if (!isNaN(startEp) && !isNaN(endEp) && endEp >= startEp) {
+      const span = endEp - startEp;
+      // If batch is 3 or more episodes (e.g. E01-E04, E01-E10), treat as multi-episode season batch pack
+      if (span >= 2) {
+        return true;
+      }
+      // If span is 0 or 1 (e.g. E01-E01 or 2-part double episode E01-E02):
+      // Verify requested episode e is within [startEp, endEp]
+      if (!isNaN(e) && (e < startEp || e > endEp)) {
+        return true;
+      }
+    }
   }
 
   // 4. Season-only indicator without ANY episode marker (e.g. "Show.Name.S01.1080p.BluRay" or "Show Season 1 1080p")
   const hasSeasonMarker = /\b(s0*(\d{1,2})|season[\s._-]*0*(\d{1,2}))\b/i.test(text);
-  const hasAnyEpisodeMarker = /\b(s\d{1,2}[\s._-]*e\d{1,4}|\d{1,2}x\d{1,4}|(?:ep|episode|e)[\s._-]*\d{1,4})\b/i.test(text);
+  const hasAnyEpisodeMarker = /\b(s\d{1,2}[\s._-]*e\d{1,4}|\d{1,2}x\d{1,4}|(?:ep|episode|e)[\s._-]*\d{1,4}|cap\.?\s*\d{3,4})\b/i.test(text);
 
   if (hasSeasonMarker && !hasAnyEpisodeMarker) {
     return true; // Blocked: Season-only pack (no episode specified)
   }
 
   // 5. If specific season and episode numbers are provided, verify the release matches this specific episode
-  if (!isNaN(s) && !isNaN(e)) {
-    // Check if a different season is explicitly specified
+  if (!isNaN(s)) {
     const sMatch = text.match(/\b(?:s|season[\s._-]*)0*(\d{1,2})\b/i);
     if (sMatch && parseInt(sMatch[1], 10) !== s) {
       return true; // Blocked: Different season
+    }
+  }
+
+  if (!isNaN(s) && !isNaN(e)) {
+    // Check Cap.XYZ (e.g. Cap.101 -> s=1, e=1)
+    const capMatch = text.match(/\bcap\.?\s*(\d)(\d{2})\b/i);
+    if (capMatch) {
+      const capS = parseInt(capMatch[1], 10);
+      const capE = parseInt(capMatch[2], 10);
+      if (capS !== s || capE !== e) {
+        return true;
+      }
+      return false; // Valid Cap.XYZ
     }
 
     const exactPatterns = [
@@ -264,11 +292,12 @@ export const isSeasonPackStream = (stream, seasonNum, episodeNum) => {
       new RegExp('\\b0*' + s + '[xX]0*' + e + '\\b', 'i'),
       new RegExp('\\bseason[\\s._-]*0*' + s + '[\\s._-]*(?:episode|ep)[\\s._-]*0*' + e + '\\b', 'i'),
       new RegExp('\\b[sS]0*' + s + '\\b.*\\b(?:ep|episode|e)[\\s._-]*0*' + e + '\\b', 'i'),
-      new RegExp('\\b(?:ep|episode)[\\s._-]*0*' + e + '\\b.*\\b[sS]0*' + s + '\\b', 'i')
+      new RegExp('\\b(?:ep|episode)[\\s._-]*0*' + e + '\\b.*\\b[sS]0*' + s + '\\b', 'i'),
+      ...(s === 1 ? [new RegExp('\\b(?:ep|episode)[\\s._-]*0*' + e + '\\b', 'i')] : [])
     ];
 
     const matchesExact = exactPatterns.some((p) => p.test(text));
-    if (!matchesExact) {
+    if (!matchesExact && !rangeMatch) {
       return true; // Blocked: Does not match requested episode
     }
   }

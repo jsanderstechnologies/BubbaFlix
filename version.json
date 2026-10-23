@@ -1,6 +1,6 @@
 {
-  "versionCode": 60,
-  "versionName": "1.0.59",
+  "versionCode": 61,
+  "versionName": "1.0.60",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.59: Fix details page loading crash by restoring missing FiRefreshCw icon import in MagnetSection and adding DetailsErrorBoundary protection."
+  "releaseNotes": "BubbaFlix TV v1.0.60: Maximize stream availability by lifting restrictive provider whitelist in Torrentio scraper, supporting 2-part double episodes & Cap.XYZ in episode filtering, and resolving CORS authorization issue on Premiumize cache checks."
 }
