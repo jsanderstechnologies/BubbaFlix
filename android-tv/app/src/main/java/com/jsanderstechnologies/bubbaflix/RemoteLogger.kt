@@ -60,7 +60,7 @@ object RemoteLogger {
     private var prefs: SharedPreferences? = null
     private var cachedServerUrl: String = DEFAULT_SERVER_URL
     private var deviceModel: String = "${Build.MANUFACTURER} ${Build.MODEL}".trim()
-    private var appVersion: String = "1.0.37 (38)"
+    private var appVersion: String = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
 
     private val httpClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
@@ -92,9 +92,16 @@ object RemoteLogger {
             @Suppress("DEPRECATION")
             val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
             @Suppress("DEPRECATION")
-            appVersion = "${pInfo.versionName} (${pInfo.versionCode})"
+            val vName = pInfo.versionName ?: BuildConfig.VERSION_NAME
+            @Suppress("DEPRECATION")
+            val vCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                pInfo.longVersionCode.toInt()
+            } else {
+                pInfo.versionCode
+            }
+            appVersion = "$vName ($vCode)"
         } catch (e: Exception) {
-            // Default fallback
+            appVersion = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
         }
 
         installCrashHandler()
@@ -293,6 +300,9 @@ object RemoteLogger {
                     put("level", item.level)
                     put("tag", item.tag)
                     put("message", item.message)
+                    put("appVersion", appVersion)
+                    put("versionName", BuildConfig.VERSION_NAME)
+                    put("versionCode", BuildConfig.VERSION_CODE)
                     if (!item.stack.isNullOrEmpty()) {
                         put("stack", item.stack)
                     }
@@ -317,6 +327,8 @@ object RemoteLogger {
                 put("source", "BubbaFlix Android TV")
                 put("device", deviceModel)
                 put("appVersion", appVersion)
+                put("versionName", BuildConfig.VERSION_NAME)
+                put("versionCode", BuildConfig.VERSION_CODE)
                 put("memory", memoryJson)
                 put("logs", jsonArray)
             }

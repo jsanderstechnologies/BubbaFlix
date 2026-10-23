@@ -728,12 +728,14 @@ export const initDpadNavigation = () => {
 
         if (isDpadEnter && activeEl.tagName === "BUTTON") {
           e.preventDefault();
+          e.stopPropagation();
           activeEl.click();
           return;
         }
 
         if (isDpadEnter && activeEl.tagName === "A") {
           e.preventDefault();
+          e.stopPropagation();
           activeEl.click();
           return;
         }
@@ -748,6 +750,7 @@ export const initDpadNavigation = () => {
           !activeEl.classList.contains("collectionCard")
         ) {
           e.preventDefault();
+          e.stopPropagation();
           activeEl.click();
           return;
         }

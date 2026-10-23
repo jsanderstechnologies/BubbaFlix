@@ -1,6 +1,6 @@
 {
-  "versionCode": 54,
-  "versionName": "1.0.53",
+  "versionCode": 55,
+  "versionName": "1.0.54",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.53: Added bulk Enable All Showing and Disable All Showing channel visibility controls in IPTV setup, multi-field channel searching (name, original name, category, alias, channel number), table header visibility toggles, search clear button, and pagination."
+  "releaseNotes": "BubbaFlix TV v1.0.54: Fixed Available Streams droplist opening on Android TV remotes and mouse clicks, auto-opened streams on movie details, included app version in all Android TV log transmissions, and exposed app version to web bridge."
 }

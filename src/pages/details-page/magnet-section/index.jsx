@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import "./index.scss";
 import { fetchTorrentStreams } from "../../../utils/torrentScraper";
 import { getPremiumizeKey, resolveMagnetWithPremiumize } from "../../../utils/premiumize";
@@ -81,9 +81,24 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
   const [hiddenStreams, setHiddenStreams] = useState([]);
   const [showHiddenStreams, setShowHiddenStreams] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [isOpen, setIsOpen] = useState(false); // Start out closed by default
+  const isMovie = mediaType === "movie" || (seasonNum === undefined && episodeNum === undefined);
+  const [isOpen, setIsOpen] = useState(isMovie);
   const [unconfigured, setUnconfigured] = useState(false);
   const [streamStatuses, setStreamStatuses] = useState({});
+
+  const lastToggleTimeRef = useRef(0);
+  const handleToggleOpen = (e) => {
+    if (e) {
+      if (typeof e.preventDefault === "function") e.preventDefault();
+      if (typeof e.stopPropagation === "function") e.stopPropagation();
+    }
+    const now = Date.now();
+    if (now - lastToggleTimeRef.current < 350) {
+      return;
+    }
+    lastToggleTimeRef.current = now;
+    setIsOpen((prev) => !prev);
+  };
 
   // Streaming state
 
@@ -276,6 +291,10 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
     setHiddenStreams(excluded10Bit);
     setStreams(keptStreams);
 
+    if (isMovie && (keptStreams.length > 0 || excluded10Bit.length > 0)) {
+      setIsOpen(true);
+    }
+
     if (isManualRefresh && typeof window !== "undefined") {
       window.scrollTo({ top: savedScrollY, behavior: "instant" });
       setTimeout(() => {
@@ -343,12 +362,11 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
           tabIndex="0"
           role="button"
           aria-expanded={isOpen}
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={handleToggleOpen}
           onKeyDown={(e) => {
             const code = e.keyCode;
             if (e.key === "Enter" || e.key === " " || code === 13 || code === 23 || code === 66) {
-              e.preventDefault();
-              setIsOpen(!isOpen);
+              handleToggleOpen(e);
             }
           }}
         >
@@ -401,7 +419,13 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
             >
               <FiRefreshCw className={loading ? "spin" : ""} />
             </button>
-            <button className="toggleBtn" tabIndex="-1" aria-label="Toggle streams dropdown">
+            <button
+              type="button"
+              className="toggleBtn"
+              tabIndex="-1"
+              aria-label="Toggle streams dropdown"
+              onClick={handleToggleOpen}
+            >
               {isOpen ? <FiChevronUp /> : <FiChevronDown />}
             </button>
           </div>

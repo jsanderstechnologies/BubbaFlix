@@ -152,6 +152,21 @@ class MainActivity : AppCompatActivity() {
             val model = android.os.Build.MODEL ?: ""
             return "$manufacturer $model".trim()
         }
+
+        @JavascriptInterface
+        fun getAppVersion(): String {
+            return "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
+        }
+
+        @JavascriptInterface
+        fun getVersionName(): String {
+            return BuildConfig.VERSION_NAME
+        }
+
+        @JavascriptInterface
+        fun getVersionCode(): Int {
+            return BuildConfig.VERSION_CODE
+        }
     }
 
     @SuppressLint("SetJavaScriptEnabled")

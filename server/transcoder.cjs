@@ -2194,7 +2194,7 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
               : [payload];
 
         const defaultDevice = payload.device || initiator.initiatorComponent || "Unknown Device";
-        const defaultAppVersion = payload.appVersion || "";
+        const defaultAppVersion = payload.appVersion || (payload.versionName ? `${payload.versionName}${payload.versionCode ? ` (${payload.versionCode})` : ""}` : "");
         const defaultSource = payload.source || initiator.initiatorComponent || "Client App";
         const memSummary = payload.memory && (payload.memory.summary || (payload.memory.ramSummary ? `RAM: ${payload.memory.ramSummary} | ROM: ${payload.memory.romSummary}` : null));
 
@@ -2203,11 +2203,12 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
           const lvl = (entry.level || payload.level || "INFO").toUpperCase();
           const tag = entry.tag || entry.source || defaultSource;
           const device = entry.device || defaultDevice;
-          const appVer = entry.appVersion || defaultAppVersion;
+          const rawAppVer = entry.appVersion || (entry.versionName ? `${entry.versionName}${entry.versionCode ? ` (${entry.versionCode})` : ""}` : "") || defaultAppVersion;
+          const appVer = rawAppVer ? (rawAppVer.startsWith("v") ? rawAppVer : `v${rawAppVer}`) : "";
           const msg = entry.message || entry.error || entry.msg || "Log Item";
           const isErr = (lvl === "ERROR" || lvl === "FATAL");
 
-          let logStr = `[AndroidTV ${lvl}] [${tag}] [${device}${appVer ? ` v${appVer}` : ""}] ${msg}`;
+          let logStr = `[AndroidTV ${lvl}] [${tag}] [${device}${appVer ? ` ${appVer}` : ""}] ${msg}`;
           if (entry.title) logStr += ` | Title: ${entry.title}`;
           if (entry.errorCode) logStr += ` | Code: ${entry.errorCode}`;
           if (entry.mediaUrl || entry.url) logStr += ` | Stream: ${entry.mediaUrl || entry.url}`;
