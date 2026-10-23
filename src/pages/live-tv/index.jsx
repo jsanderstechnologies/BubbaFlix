@@ -8,7 +8,6 @@ import {
   fetchIptvEpgBatch,
   getIptvStreamUrl,
 } from "../../utils/iptv";
-import { isAndroidTvClient } from "../../utils/serverSettings";
 import {
   FiTv,
   FiSearch,
@@ -23,8 +22,11 @@ import {
   FiChevronRight,
   FiArrowLeft,
   FiLayers,
+  FiHash,
+  FiX,
 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
+import Hls from "hls.js";
 import "./index.scss";
 
 // Robust Unix timestamp parser from varied date formats (seconds, ms, ISO, XMLTV)
@@ -64,7 +66,6 @@ const formatTimeRange = (startTs, stopTs) => {
 };
 
 // Compute contiguous, gap-free program tiles along the timeline
-// Breaks gaps and placeholder periods into discrete 30-min program slots for full 2D D-Pad navigation
 const getProgramsForChannel = (channel, listings, timelineStartTs, timelineEndTs) => {
   const result = [];
   const validListings = (listings || [])
@@ -86,8 +87,6 @@ const getProgramsForChannel = (channel, listings, timelineStartTs, timelineEndTs
     )
     .sort((a, b) => a.start_timestamp - b.start_timestamp);
 
-  // Helper to append 30-minute time-slot chunks for gaps and placeholders
-  // so every channel row is divided into discrete, navigable grid cells across the horizontal axis
   const appendChunkedGaps = (start, end, isPlaceholder) => {
     let t = start;
     const intervalSec = 30 * 60; // 30 minutes per time slot
@@ -111,7 +110,6 @@ const getProgramsForChannel = (channel, listings, timelineStartTs, timelineEndTs
   let cursor = timelineStartTs;
 
   for (const prog of validListings) {
-    // Fill gap before program if any with 30-minute chunks
     if (prog.start_timestamp > cursor + 60) {
       appendChunkedGaps(cursor, prog.start_timestamp, true);
     }
@@ -131,7 +129,6 @@ const getProgramsForChannel = (channel, listings, timelineStartTs, timelineEndTs
     if (cursor >= timelineEndTs) break;
   }
 
-  // Fill remaining time until end of timeline with 30-minute chunks
   if (cursor < timelineEndTs - 60) {
     appendChunkedGaps(cursor, timelineEndTs, validListings.length === 0);
   }
@@ -150,7 +147,21 @@ const LiveTvPage = () => {
   const [epgData, setEpgData] = useState({}); // streamId -> listings array
   const [focusedItem, setFocusedItem] = useState(null); // { program, channel }
 
-  // Timeline offset (-120m, 0, +120m, etc.)
+  // Live Player & Channel Control States
+  const [isPlayingLive, setIsPlayingLive] = useState(false);
+  const [isKeypadOpen, setIsKeypadOpen] = useState(false);
+  const [keypadInput, setKeypadInput] = useState("");
+  const [keypadError, setKeypadError] = useState("");
+  const [showControls, setShowControls] = useState(true);
+  const [channelOsd, setChannelOsd] = useState(null);
+  const [isBuffering, setIsBuffering] = useState(false);
+
+  const controlsTimeoutRef = useRef(null);
+  const channelOsdTimeoutRef = useRef(null);
+  const liveVideoRef = useRef(null);
+  const hlsRef = useRef(null);
+
+  // Timeline geometry
   const [timelineOffsetMinutes, setTimelineOffsetMinutes] = useState(0);
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -161,7 +172,7 @@ const LiveTvPage = () => {
   // Scroll synchronization refs
   const headerScrollRef = useRef(null);
   const bodyScrollRef = useRef(null);
-  const [visibleLimit, setVisibleLimit] = useState(50);
+  const [visibleLimit, setVisibleLimit] = useState(60);
 
   // Update current time tick every 30 seconds
   useEffect(() => {
@@ -187,12 +198,16 @@ const LiveTvPage = () => {
           if (chs.length > 0) {
             const params = new URLSearchParams(window.location.search);
             const targetStreamId = params.get("stream_id");
+            const shouldPlay = params.get("play") === "true";
             let initial = chs[0];
             if (targetStreamId) {
               const matched = chs.find((c) => String(c.stream_id) === String(targetStreamId));
               if (matched) initial = matched;
             }
             setCurrentChannel(initial);
+            if (shouldPlay) {
+              setIsPlayingLive(true);
+            }
           }
         }
       } catch (err) {
@@ -227,7 +242,7 @@ const LiveTvPage = () => {
 
   // Reset pagination limit on filter change
   useEffect(() => {
-    setVisibleLimit(50);
+    setVisibleLimit(60);
   }, [selectedCategory, searchQuery]);
 
   const displayedChannels = useMemo(() => {
@@ -239,7 +254,6 @@ const LiveTvPage = () => {
     if (displayedChannels.length === 0) return;
     let isMounted = true;
 
-    // Channels in current view needing EPG
     const uncached = displayedChannels.filter((c) => !epgData[String(c.stream_id)]);
     if (uncached.length === 0) return;
 
@@ -260,7 +274,7 @@ const LiveTvPage = () => {
     };
   }, [displayedChannels, epgData]);
 
-  // Dedicated single-channel EPG refresher on channel tune
+  // Single-channel EPG refresher on channel tune
   useEffect(() => {
     if (!currentChannel) return;
     const sid = String(currentChannel.stream_id);
@@ -276,117 +290,304 @@ const LiveTvPage = () => {
     })();
   }, [currentChannel]);
 
-  // Handle direct numeric tuning from physical remote control
+  // Reset controls timer
+  const resetControlsTimeout = useCallback(() => {
+    setShowControls(true);
+    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    controlsTimeoutRef.current = setTimeout(() => {
+      if (!isKeypadOpen) {
+        setShowControls(false);
+      }
+    }, 4500);
+  }, [isKeypadOpen]);
+
+  // Trigger on-screen channel OSD banner
+  const triggerChannelOsd = useCallback((channel) => {
+    setChannelOsd(channel);
+    if (channelOsdTimeoutRef.current) clearTimeout(channelOsdTimeoutRef.current);
+    channelOsdTimeoutRef.current = setTimeout(() => {
+      setChannelOsd(null);
+    }, 3800);
+  }, []);
+
+  // Tune to a channel
+  const handleTuneChannel = useCallback((channel, startPlaying = true) => {
+    if (!channel) return;
+    setCurrentChannel(channel);
+    triggerChannelOsd(channel);
+    if (startPlaying) {
+      setIsPlayingLive(true);
+      setShowControls(true);
+      resetControlsTimeout();
+    }
+  }, [triggerChannelOsd, resetControlsTimeout]);
+
+  // Channel Up (Next channel)
+  const handleNextChannel = useCallback(() => {
+    if (channels.length === 0 || !currentChannel) return;
+    const currIdx = channels.findIndex((c) => String(c.stream_id) === String(currentChannel.stream_id));
+    const nextIdx = (currIdx + 1) % channels.length;
+    handleTuneChannel(channels[nextIdx], true);
+  }, [channels, currentChannel, handleTuneChannel]);
+
+  // Channel Down (Previous channel)
+  const handlePrevChannel = useCallback(() => {
+    if (channels.length === 0 || !currentChannel) return;
+    const currIdx = channels.findIndex((c) => String(c.stream_id) === String(currentChannel.stream_id));
+    const prevIdx = (currIdx - 1 + channels.length) % channels.length;
+    handleTuneChannel(channels[prevIdx], true);
+  }, [channels, currentChannel, handleTuneChannel]);
+
+  // Direct Number Tune
+  const handleDirectNumberTune = useCallback((numStr) => {
+    const targetNum = parseInt(numStr, 10);
+    if (isNaN(targetNum)) return false;
+    const matched = channels.find((c) => c.channel_number === targetNum);
+    if (matched) {
+      handleTuneChannel(matched, true);
+      return true;
+    }
+    return false;
+  }, [channels, handleTuneChannel]);
+
+  // Keypad submit
+  const handleKeypadSubmit = useCallback(() => {
+    const num = parseInt(keypadInput, 10);
+    if (isNaN(num)) {
+      setKeypadError("Please enter a valid channel number");
+      return;
+    }
+    const matched = channels.find((c) => c.channel_number === num);
+    if (matched) {
+      setIsKeypadOpen(false);
+      setKeypadInput("");
+      setKeypadError("");
+      handleTuneChannel(matched, true);
+    } else {
+      setKeypadError(`Channel ${num} not found`);
+    }
+  }, [keypadInput, channels, handleTuneChannel]);
+
+  // Manage body class for player
+  useEffect(() => {
+    if (isPlayingLive) {
+      document.body.classList.add("livePlayerActive");
+    } else {
+      document.body.classList.remove("livePlayerActive");
+    }
+    return () => {
+      document.body.classList.remove("livePlayerActive");
+    };
+  }, [isPlayingLive]);
+
+  // Stream Video Player Management with Hls.js
+  useEffect(() => {
+    if (!isPlayingLive || !currentChannel) return;
+    const video = liveVideoRef.current;
+    if (!video) return;
+
+    setIsBuffering(true);
+    const streamUrl = currentChannel.stream_url || getIptvStreamUrl(currentChannel.stream_id);
+
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+
+    if (Hls.isSupported() && (streamUrl.includes(".m3u8") || !video.canPlayType("application/vnd.apple.mpegurl"))) {
+      const hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: true,
+        backBufferLength: 60,
+      });
+      hlsRef.current = hls;
+      hls.loadSource(streamUrl);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        setIsBuffering(false);
+        video.play().catch(() => {});
+      });
+      hls.on(Hls.Events.ERROR, (event, data) => {
+        if (data.fatal) {
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              hls.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              hls.recoverMediaError();
+              break;
+            default:
+              hls.destroy();
+              video.src = streamUrl;
+              video.play().catch(() => {});
+              break;
+          }
+        }
+      });
+    } else {
+      video.src = streamUrl;
+      video.play().catch(() => {});
+    }
+
+    video.onplaying = () => setIsBuffering(false);
+    video.onwaiting = () => setIsBuffering(true);
+
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+    };
+  }, [isPlayingLive, currentChannel]);
+
+  // Global Remote Control Handler: Channel Up, Channel Down, Numeric Tuning, Back
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) {
+      const key = e.key;
+      const code = e.keyCode;
+
+      // 1. When Keypad Modal is open:
+      if (isKeypadOpen) {
+        if (key === "Escape" || key === "Back" || code === 27 || code === 4 || code === 10009) {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsKeypadOpen(false);
+          setKeypadInput("");
+          setKeypadError("");
+          return;
+        }
+        if (key >= "0" && key <= "9") {
+          e.preventDefault();
+          setKeypadInput((prev) => (prev.length < 5 ? prev + key : prev));
+          setKeypadError("");
+          return;
+        }
+        if (key === "Backspace") {
+          e.preventDefault();
+          setKeypadInput((prev) => prev.slice(0, -1));
+          return;
+        }
+        if (key === "Enter" || code === 13 || code === 23 || code === 66) {
+          if (e.target && e.target.tagName !== "BUTTON" && keypadInput.length > 0) {
+            e.preventDefault();
+            handleKeypadSubmit();
+            return;
+          }
+        }
         return;
       }
-      if (e.key >= "0" && e.key <= "9") {
-        const newBuf = numberBuffer + e.key;
-        setNumberBuffer(newBuf);
 
-        if (numberBufferTimerRef.current) {
-          clearTimeout(numberBufferTimerRef.current);
+      // 2. While Live Player is active:
+      if (isPlayingLive) {
+        resetControlsTimeout();
+
+        // Remote Channel Up (ChannelUp, PageUp, code 166, code 427, code 33)
+        if (key === "ChannelUp" || code === 166 || code === 427 || key === "PageUp" || code === 33) {
+          e.preventDefault();
+          e.stopPropagation();
+          handleNextChannel();
+          return;
         }
 
+        // Remote Channel Down (ChannelDown, PageDown, code 167, code 428, code 34)
+        if (key === "ChannelDown" || code === 167 || code === 428 || key === "PageDown" || code === 34) {
+          e.preventDefault();
+          e.stopPropagation();
+          handlePrevChannel();
+          return;
+        }
+
+        // When controls are hidden, D-Pad Up / Down tunes Next / Prev channel
+        if (!showControls) {
+          if (key === "ArrowUp" || code === 38 || code === 19) {
+            e.preventDefault();
+            e.stopPropagation();
+            handleNextChannel();
+            return;
+          }
+          if (key === "ArrowDown" || code === 40 || code === 20) {
+            e.preventDefault();
+            e.stopPropagation();
+            handlePrevChannel();
+            return;
+          }
+        }
+
+        // Direct numeric keys (0-9) while watching
+        if (key >= "0" && key <= "9") {
+          e.preventDefault();
+          const newBuf = numberBuffer + key;
+          setNumberBuffer(newBuf);
+          if (numberBufferTimerRef.current) clearTimeout(numberBufferTimerRef.current);
+          numberBufferTimerRef.current = setTimeout(() => {
+            handleDirectNumberTune(newBuf);
+            setNumberBuffer("");
+          }, 1200);
+          return;
+        }
+
+        // Remote Back / Escape returns to EPG Guide
+        if (key === "Escape" || key === "Back" || code === 27 || code === 4 || code === 10009 || code === 461) {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsPlayingLive(false);
+          setShowControls(false);
+          setTimeout(() => {
+            const target = document.querySelector(".epgRow.isCurrentChannel .epgChannelCell, .epgChannelCell");
+            if (target && typeof target.focus === "function") {
+              target.focus({ preventScroll: true });
+            }
+          }, 100);
+          return;
+        }
+        return;
+      }
+
+      // 3. While on EPG Guide:
+      if (key === "Escape" || key === "Back" || code === 27 || code === 4 || code === 10009 || code === 461) {
+        e.preventDefault();
+        e.stopPropagation();
+        navigate("/", { replace: true });
+        return;
+      }
+
+      // Direct numeric keys (0-9) on Guide jumps to channel
+      if (key >= "0" && key <= "9") {
+        if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
+        const newBuf = numberBuffer + key;
+        setNumberBuffer(newBuf);
+        if (numberBufferTimerRef.current) clearTimeout(numberBufferTimerRef.current);
         numberBufferTimerRef.current = setTimeout(() => {
           const targetNum = parseInt(newBuf, 10);
           const matched = channels.find((c) => c.channel_number === targetNum);
           if (matched) {
-            handleTuneChannel(matched);
-            const targetEl = document.querySelector(`[data-stream-id="${matched.stream_id}"]`);
-            if (targetEl && typeof targetEl.focus === "function") {
-              targetEl.focus();
-            }
+            handleTuneChannel(matched, true);
           }
           setNumberBuffer("");
         }, 1200);
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown, true);
     return () => {
-      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keydown", handleKeyDown, true);
       if (numberBufferTimerRef.current) clearTimeout(numberBufferTimerRef.current);
     };
-  }, [numberBuffer, channels]);
-
-  const handleTuneChannel = useCallback((channel) => {
-    if (!channel) return;
-    setCurrentChannel(channel);
-    const directUrl = channel.stream_url || getIptvStreamUrl(channel.stream_id);
-
-    if (isAndroidTvClient() && window.AndroidPlayer?.playStream) {
-      window.AndroidPlayer.playStream(
-        directUrl,
-        `Ch. ${channel.channel_number} | ${channel.name}`,
-        channel.stream_icon || "",
-        String(channel.stream_id),
-        "live"
-      );
-    }
-  }, []);
-
-  // Unconditional Remote Back / Escape Key Handler to exit Live TV cleanly back to Home
-  useEffect(() => {
-    const handleLiveTvKeyDown = (e) => {
-      const key = e.key;
-      const code = e.keyCode;
-      if (
-        key === "Escape" ||
-        key === "Back" ||
-        code === 27 ||
-        code === 4 ||
-        code === 10009 ||
-        code === 461
-      ) {
-        // If an input is focused, let it blur first
-        if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) {
-          e.target.blur();
-          e.preventDefault();
-          e.stopPropagation();
-          return;
-        }
-
-        // If fullscreen video is active, exit fullscreen
-        if (document.fullscreenElement) {
-          document.exitFullscreen().catch(() => {});
-          e.preventDefault();
-          e.stopPropagation();
-          return;
-        }
-
-        // Always navigate cleanly back to Home
-        e.preventDefault();
-        e.stopPropagation();
-        navigate("/", { replace: true });
-      }
-    };
-
-    window.addEventListener("keydown", handleLiveTvKeyDown, true);
-    return () => {
-      window.removeEventListener("keydown", handleLiveTvKeyDown, true);
-    };
-  }, [navigate]);
-
-  // Automatically focus the tuned channel or first program card when channels load
-  useEffect(() => {
-    if (channels.length > 0 && !loading) {
-      const focusTimer = setTimeout(() => {
-        const activeEl = document.activeElement;
-        if (!activeEl || activeEl === document.body || activeEl.classList.contains("navBtn")) {
-          const target = document.querySelector(
-            ".epgRow.isCurrentChannel .epgChannelCell, .epgChannelCell, .epgProgramBlock"
-          );
-          if (target && typeof target.focus === "function") {
-            target.focus();
-          }
-        }
-      }, 300);
-      return () => clearTimeout(focusTimer);
-    }
-  }, [channels.length, loading]);
+  }, [
+    isPlayingLive,
+    isKeypadOpen,
+    keypadInput,
+    showControls,
+    numberBuffer,
+    channels,
+    handleNextChannel,
+    handlePrevChannel,
+    handleDirectNumberTune,
+    handleTuneChannel,
+    handleKeypadSubmit,
+    resetControlsTimeout,
+    navigate,
+  ]);
 
   // Timeline geometry calculations
   const slotMinutes = 30;
@@ -447,50 +648,23 @@ const LiveTvPage = () => {
     }
   };
 
-  // Fullscreen toggle handler
-  const handleToggleFullscreen = () => {
-    const video = document.getElementById("livePlayerVideo");
-    if (video) {
-      if (document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {});
-      } else if (video.requestFullscreen) {
-        video.requestFullscreen().catch(() => {});
-      } else if (video.webkitRequestFullscreen) {
-        video.webkitRequestFullscreen();
-      }
-    }
-    if (isAndroidTvClient() && currentChannel && window.AndroidPlayer?.playStream) {
-      const directUrl = currentChannel.stream_url || getIptvStreamUrl(currentChannel.stream_id);
-      window.AndroidPlayer.playStream(
-        directUrl,
-        `Ch. ${currentChannel.channel_number} | ${currentChannel.name}`,
-        currentChannel.stream_icon || "",
-        String(currentChannel.stream_id),
-        "live"
-      );
-    }
-  };
-
-  // Active item in detail banner (hovered / remote focused, or tuned channel's now playing)
-  const activeDisplayChannel = focusedItem?.channel || currentChannel;
-
+  // Active program on current channel for player display
   const currentChannelProgs = useMemo(() => {
-    if (!activeDisplayChannel) return [];
+    if (!currentChannel) return [];
     return getProgramsForChannel(
-      activeDisplayChannel,
-      epgData[String(activeDisplayChannel.stream_id)],
+      currentChannel,
+      epgData[String(currentChannel.stream_id)],
       timelineStartTs,
       timelineEndTs
     );
-  }, [activeDisplayChannel, epgData, timelineStartTs, timelineEndTs]);
+  }, [currentChannel, epgData, timelineStartTs, timelineEndTs]);
 
   const activeDisplayProgram = useMemo(() => {
-    if (focusedItem?.program) return focusedItem.program;
     const nowP = currentChannelProgs.find(
       (p) => (p.raw_start || p.start_timestamp) <= nowSec && (p.raw_stop || p.stop_timestamp) >= nowSec
     );
     return nowP || currentChannelProgs[0] || null;
-  }, [focusedItem, currentChannelProgs, nowSec]);
+  }, [currentChannelProgs, nowSec]);
 
   const isActiveProgramAiring = useMemo(() => {
     if (!activeDisplayProgram) return false;
@@ -507,15 +681,28 @@ const LiveTvPage = () => {
     return Math.min(100, Math.max(0, ((nowSec - start) / (stop - start)) * 100));
   }, [isActiveProgramAiring, activeDisplayProgram, nowSec]);
 
-  const elapsedMins = useMemo(() => {
-    if (!isActiveProgramAiring || !activeDisplayProgram) return 0;
-    const start = activeDisplayProgram.raw_start || activeDisplayProgram.start_timestamp;
-    return Math.max(0, Math.floor((nowSec - start) / 60));
-  }, [isActiveProgramAiring, activeDisplayProgram, nowSec]);
+  // Focus tuned channel or first program cell on guide load
+  useEffect(() => {
+    if (channels.length > 0 && !loading && !isPlayingLive) {
+      const focusTimer = setTimeout(() => {
+        const activeEl = document.activeElement;
+        if (!activeEl || activeEl === document.body || activeEl.classList.contains("navBtn")) {
+          const target = document.querySelector(
+            ".epgRow.isCurrentChannel .epgChannelCell, .epgChannelCell, .epgProgramBlock"
+          );
+          if (target && typeof target.focus === "function") {
+            target.focus({ preventScroll: true });
+          }
+        }
+      }, 250);
+      return () => clearTimeout(focusTimer);
+    }
+  }, [channels.length, loading, isPlayingLive]);
 
   return (
-    <div className="liveTvPage">
-      <TopNav />
+    <div className={`liveTvPage ${isPlayingLive ? "inPlayerMode" : ""}`}>
+      {!isPlayingLive && <TopNav />}
+
       <ContentWrapper>
         {/* Remote Numeric Direct Tuning Overlay */}
         {numberBuffer && (
@@ -525,230 +712,55 @@ const LiveTvPage = () => {
           </div>
         )}
 
-        {/* Top Header Bar */}
-        <div className="liveTvHeader">
-          <div className="headerLeft">
-            <button
-              type="button"
-              tabIndex={0}
-              className="liveTvBackBtn"
-              onClick={() => navigate("/")}
-              title="Return to BubbaFlix Home"
-            >
-              <FiArrowLeft /> Home
-            </button>
-            <h1 className="title">
-              <FiTv className="icon" /> Live TV
-            </h1>
-            <span className="channelCountBadge">{channels.length} Channels Available</span>
-          </div>
-          <div className="headerRight">
-            <button
-              type="button"
-              tabIndex={0}
-              className="setupShortcutBtn"
-              onClick={() => navigate("/settings/iptv?tab=groups")}
-              title="Configure which channel categories and groups are visible"
-            >
-              <FiLayers /> Manage Groups
-            </button>
-            <button
-              type="button"
-              tabIndex={0}
-              className="setupShortcutBtn"
-              onClick={() => navigate("/settings/iptv?tab=channels")}
-              title="Configure channel visibility and custom channel numbers"
-            >
-              <FiSliders /> Channel Setup & Numbering
-            </button>
-          </div>
-        </div>
-
-        {/* Empty State */}
-        {!loading && channels.length === 0 && (
-          <div className="emptyIptvCard">
-            <FiTv className="emptyIcon" />
-            <h2>No IPTV Channels Configured</h2>
-            <p>
-              Connect your Xtream Codes subscription to enable live channels and customize your channel numbers.
-            </p>
-            <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginTop: 12 }}>
-              <button className="setupBtn" onClick={() => navigate("/settings/iptv?tab=groups")}>
-                <FiLayers /> Manage Groups
-              </button>
-              <button className="setupBtn" onClick={() => navigate("/settings/iptv?tab=credentials")}>
-                <FiSliders /> Configure IPTV Setup
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Main Live TV Content */}
-        {channels.length > 0 && (
-          <div className="liveTvMain">
-            {/* Top Preview Section: Video Player & Rich Program Detail Banner */}
-            <div className="liveTvTopSection">
-              {/* Player Window */}
-              <div className="playerBox">
-                {currentChannel ? (
-                  <div className="videoWrapper">
-                    <video
-                      id="livePlayerVideo"
-                      controls
-                      autoPlay
-                      src={currentChannel.stream_url || getIptvStreamUrl(currentChannel.stream_id)}
-                      onError={(e) => {
-                        const fallback = getIptvStreamUrl(currentChannel.stream_id);
-                        if (e.target.src !== fallback) {
-                          e.target.src = fallback;
-                          e.target.play().catch(() => {});
-                        }
-                      }}
-                      className="liveVideoElement"
-                    />
-                    <div className="playerOverlay">
-                      <div className="overlayLeft">
-                        <span className="chNum">Ch. {currentChannel.channel_number}</span>
-                        <span className="chName">{currentChannel.name}</span>
-                      </div>
-                      <div className="overlayRight">
-                        <span className="liveIndicator">● LIVE</span>
-                        <button
-                          type="button"
-                          className="fsBtn"
-                          onClick={handleToggleFullscreen}
-                          title="Fullscreen"
-                        >
-                          <FiMaximize />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="noPlayerPlaceholder">
-                    <FiTv />
-                    <span>Select any channel in the EPG grid below to watch</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Rich Program Detail Banner */}
-              <div className="epgDetailBanner">
-                {activeDisplayProgram && activeDisplayChannel ? (
-                  <div className="detailContent">
-                    <div className="detailHeader">
-                      <div className="channelIdentity">
-                        {activeDisplayChannel.stream_icon ? (
-                          <img
-                            src={activeDisplayChannel.stream_icon}
-                            alt=""
-                            className="detailLogo"
-                            onError={(e) => {
-                              e.target.style.display = "none";
-                            }}
-                          />
-                        ) : (
-                          <FiTv className="fallbackDetailIcon" />
-                        )}
-                        <div className="idText">
-                          <div className="channelNumName">
-                            <span className="chNumTag">Ch. {activeDisplayChannel.channel_number}</span>
-                            <span className="chNameTag">{activeDisplayChannel.name}</span>
-                          </div>
-                          <span className="categoryTag">{activeDisplayChannel.category_name}</span>
-                        </div>
-                      </div>
-                      <div className="actionButtons">
-                        <button
-                          type="button"
-                          tabIndex={0}
-                          className="tuneActionBtn"
-                          onClick={() => handleTuneChannel(activeDisplayChannel)}
-                        >
-                          <FiPlay />{" "}
-                          {currentChannel?.stream_id === activeDisplayChannel.stream_id
-                            ? "Watching Live"
-                            : "Tune Channel"}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="programMainInfo">
-                      <h2 className="detailTitle">{activeDisplayProgram.title}</h2>
-                      <div className="detailMetaRow">
-                        <span className="detailTime">
-                          <FiClock />{" "}
-                          {formatTimeRange(
-                            activeDisplayProgram.raw_start || activeDisplayProgram.start_timestamp,
-                            activeDisplayProgram.raw_stop || activeDisplayProgram.stop_timestamp
-                          )}
-                        </span>
-                        {isActiveProgramAiring && (
-                          <span className="airingBadge">
-                            Airing Now {elapsedMins > 0 ? `(${elapsedMins}m in)` : ""}
-                          </span>
-                        )}
-                      </div>
-                      {isActiveProgramAiring && (
-                        <div className="detailProgress">
-                          <div
-                            className="detailProgressFill"
-                            style={{ width: `${activeProgressPercent}%` }}
-                          />
-                        </div>
-                      )}
-                      <p className="detailDesc">
-                        {activeDisplayProgram.description ||
-                          `Live broadcast on ${activeDisplayChannel.name}. Use your TV remote D-Pad to explore upcoming programs.`}
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="emptyDetailNotice">
-                    <FiAlertCircle />
-                    <span>Navigate or hover over any program in the EPG grid below to view details</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* EPG Toolbar: Category Filter Pills, Search, & Time Navigation */}
-            <div className="epgToolbar">
-              <div className="categoryFilterRow">
+        {/* GUIDE MODE: Compact Header & Full EPG Timeline Grid */}
+        {!isPlayingLive && (
+          <>
+            {/* Header & Controls Bar */}
+            <div className="liveTvHeader">
+              <div className="headerLeft">
                 <button
                   type="button"
                   tabIndex={0}
-                  className={`categoryPill ${selectedCategory === "all" ? "active" : ""}`}
-                  onClick={() => setSelectedCategory("all")}
+                  className="liveTvBackBtn"
+                  onClick={() => navigate("/")}
+                  title="Return to BubbaFlix Home"
                 >
-                  All ({channels.length})
+                  <FiArrowLeft /> Home
                 </button>
-                {groups
-                  .filter((g) => g.enabled)
-                  .map((grp) => (
-                    <button
-                      key={grp.category_id}
-                      type="button"
-                      tabIndex={0}
-                      className={`categoryPill ${String(selectedCategory) === String(grp.category_id) ? "active" : ""}`}
-                      onClick={() => setSelectedCategory(String(grp.category_id))}
-                    >
-                      {grp.category_name} ({grp.channel_count})
-                    </button>
-                  ))}
+                <h1 className="title">
+                  <FiTv className="icon" /> Live TV
+                </h1>
+                <span className="channelCountBadge">{channels.length} Channels</span>
               </div>
 
-              <div className="toolbarControls">
-                <div className="guideSearchBox">
-                  <FiSearch />
-                  <input
-                    type="text"
-                    placeholder="Search channel or Ch. #..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
+              {/* Category Filter Pills & Time Navigation */}
+              <div className="headerCenter">
+                <div className="categoryFilterRow">
+                  <button
+                    type="button"
+                    tabIndex={0}
+                    className={`categoryPill ${selectedCategory === "all" ? "active" : ""}`}
+                    onClick={() => setSelectedCategory("all")}
+                  >
+                    All ({channels.length})
+                  </button>
+                  {groups
+                    .filter((g) => g.enabled)
+                    .map((grp) => (
+                      <button
+                        key={grp.category_id}
+                        type="button"
+                        tabIndex={0}
+                        className={`categoryPill ${String(selectedCategory) === String(grp.category_id) ? "active" : ""}`}
+                        onClick={() => setSelectedCategory(String(grp.category_id))}
+                      >
+                        {grp.category_name} ({grp.channel_count})
+                      </button>
+                    ))}
                 </div>
+              </div>
 
+              <div className="headerRight">
                 <div className="timeNavGroup">
                   <button
                     type="button"
@@ -778,183 +790,442 @@ const LiveTvPage = () => {
                     +2h <FiChevronRight />
                   </button>
                 </div>
+
+                <button
+                  type="button"
+                  tabIndex={0}
+                  className="setupShortcutBtn"
+                  onClick={() => navigate("/settings/iptv?tab=groups")}
+                  title="Configure which channel categories and groups are visible"
+                >
+                  <FiLayers /> Manage Groups
+                </button>
               </div>
             </div>
 
-            {/* FULL EPG TIMELINE GRID */}
-            <div className="epgGridContainer">
-              {/* Synchronized Timeline Header Row */}
-              <div className="timelineHeaderRow">
-                <div className="timelineCorner">
-                  <span>Channels ({displayedChannels.length})</span>
-                </div>
-                <div className="timelineHeaderScroll" ref={headerScrollRef}>
-                  <div className="timeSlotsTrack" style={{ width: `${totalGridWidth}px` }}>
-                    {timeSlots.map((slot, idx) => (
-                      <div key={idx} className="timeSlotHeader" style={{ width: `${slotWidth}px` }}>
-                        <span>{formatSlotTime(slot)}</span>
-                      </div>
-                    ))}
-                    {isNowInView && (
-                      <div className="nowMarkerPill" style={{ left: `${nowLeftPx}px` }}>
-                        <span>NOW</span>
-                      </div>
-                    )}
-                  </div>
+            {/* Empty State */}
+            {!loading && channels.length === 0 && (
+              <div className="emptyIptvCard">
+                <FiTv className="emptyIcon" />
+                <h2>No IPTV Channels Configured</h2>
+                <p>
+                  Connect your Xtream Codes subscription to enable live channels and customize your channel numbers.
+                </p>
+                <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginTop: 12 }}>
+                  <button className="setupBtn" onClick={() => navigate("/settings/iptv?tab=groups")}>
+                    <FiLayers /> Manage Groups
+                  </button>
+                  <button className="setupBtn" onClick={() => navigate("/settings/iptv?tab=credentials")}>
+                    <FiSliders /> Configure IPTV Setup
+                  </button>
                 </div>
               </div>
+            )}
 
-              {/* Scrollable EPG Body (Channels + Programs Grid) */}
-              <div className="epgBodyScroll" ref={bodyScrollRef} onScroll={handleBodyScroll}>
-                {displayedChannels.map((ch) => {
-                  const isCurrent = currentChannel && String(currentChannel.stream_id) === String(ch.stream_id);
-                  const channelListings = epgData[String(ch.stream_id)] || [];
-                  const programs = getProgramsForChannel(
-                    ch,
-                    channelListings,
-                    timelineStartTs,
-                    timelineEndTs
-                  );
+            {/* FULL EPG TIMELINE GRID ONLY */}
+            {channels.length > 0 && (
+              <div className="epgGridContainer fullGridMode">
+                {/* Synchronized Timeline Header Row */}
+                <div className="timelineHeaderRow">
+                  <div className="timelineCorner">
+                    <span>Channels ({displayedChannels.length})</span>
+                  </div>
+                  <div className="timelineHeaderScroll" ref={headerScrollRef}>
+                    <div className="timeSlotsTrack" style={{ width: `${totalGridWidth}px` }}>
+                      {timeSlots.map((slot, idx) => (
+                        <div key={idx} className="timeSlotHeader" style={{ width: `${slotWidth}px` }}>
+                          <span>{formatSlotTime(slot)}</span>
+                        </div>
+                      ))}
+                      {isNowInView && (
+                        <div className="nowMarkerPill" style={{ left: `${nowLeftPx}px` }}>
+                          <span>NOW</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
 
-                  return (
-                    <div
-                      key={ch.stream_id}
-                      data-stream-id={ch.stream_id}
-                      className={`epgRow ${isCurrent ? "isCurrentChannel" : ""}`}
-                    >
-                      {/* Sticky Channel Identification Cell */}
+                {/* Scrollable EPG Body (Channels + Programs Grid) */}
+                <div className="epgBodyScroll" ref={bodyScrollRef} onScroll={handleBodyScroll}>
+                  {displayedChannels.map((ch) => {
+                    const isCurrent = currentChannel && String(currentChannel.stream_id) === String(ch.stream_id);
+                    const channelListings = epgData[String(ch.stream_id)] || [];
+                    const programs = getProgramsForChannel(
+                      ch,
+                      channelListings,
+                      timelineStartTs,
+                      timelineEndTs
+                    );
+
+                    return (
+                      <div
+                        key={ch.stream_id}
+                        data-stream-id={ch.stream_id}
+                        className={`epgRow ${isCurrent ? "isCurrentChannel" : ""}`}
+                      >
+                        {/* Channel Cell (Click or Enter tunes and opens player) */}
+                        <button
+                          type="button"
+                          tabIndex={0}
+                          className={`epgChannelCell ${isCurrent ? "tuned" : ""}`}
+                          onClick={() => handleTuneChannel(ch, true)}
+                          onKeyDown={(e) => {
+                            if (
+                              e.key === "Enter" ||
+                              e.key === " " ||
+                              e.key === "Select" ||
+                              e.keyCode === 23 ||
+                              e.keyCode === 66 ||
+                              e.keyCode === 13
+                            ) {
+                              e.preventDefault();
+                              handleTuneChannel(ch, true);
+                            }
+                          }}
+                          title={`Select Ch. ${ch.channel_number} - ${ch.name} to watch live`}
+                        >
+                          <div className="chNumBadge">{ch.channel_number}</div>
+                          <div className="chLogoWrapper">
+                            {ch.stream_icon ? (
+                              <img
+                                src={ch.stream_icon}
+                                alt=""
+                                loading="lazy"
+                                className="chLogoImg"
+                                onError={(e) => {
+                                  e.target.style.display = "none";
+                                }}
+                              />
+                            ) : (
+                              <FiTv className="chFallbackIcon" />
+                            )}
+                          </div>
+                          <div className="chNameCol">
+                            <span className="chTitle">{ch.name}</span>
+                            <span className="chCategory">{ch.category_name}</span>
+                          </div>
+                          {isCurrent && (
+                            <span className="tunedIndicator">
+                              <FiVolume2 /> LIVE
+                            </span>
+                          )}
+                        </button>
+
+                        {/* Programs Timeline Track */}
+                        <div className="epgProgramsTrack" style={{ width: `${totalGridWidth}px` }}>
+                          {isNowInView && (
+                            <div className="epgNowVerticalLine" style={{ left: `${nowLeftPx}px` }} />
+                          )}
+                          {programs.map((prog) => {
+                            const isAiringNow =
+                              (prog.raw_start || prog.start_timestamp) <= nowSec &&
+                              (prog.raw_stop || prog.stop_timestamp) >= nowSec;
+                            const durationSec = Math.max(60, prog.stop_timestamp - prog.start_timestamp);
+                            const widthPx = Math.max(120, (durationSec / 1800) * slotWidth);
+
+                            let progressPercent = 0;
+                            if (isAiringNow && prog.raw_stop > prog.raw_start) {
+                              progressPercent = Math.min(
+                                100,
+                                Math.max(0, ((nowSec - prog.raw_start) / (prog.raw_stop - prog.raw_start)) * 100)
+                              );
+                            }
+
+                            return (
+                              <button
+                                key={prog.id}
+                                type="button"
+                                tabIndex={0}
+                                className={`epgProgramBlock ${isAiringNow ? "airingNow" : ""} ${isCurrent ? "onTunedChannel" : ""}`}
+                                style={{ width: `${widthPx}px` }}
+                                onClick={() => handleTuneChannel(ch, true)}
+                                onKeyDown={(e) => {
+                                  if (
+                                    e.key === "Enter" ||
+                                    e.key === " " ||
+                                    e.key === "Select" ||
+                                    e.keyCode === 23 ||
+                                    e.keyCode === 66 ||
+                                    e.keyCode === 13
+                                  ) {
+                                    e.preventDefault();
+                                    handleTuneChannel(ch, true);
+                                  }
+                                }}
+                              >
+                                <div className="progTop">
+                                  <span className="progTitle">{prog.title}</span>
+                                  {isAiringNow && <span className="liveBadge">NOW</span>}
+                                </div>
+                                <div className="progTime">
+                                  {formatTimeRange(
+                                    prog.raw_start || prog.start_timestamp,
+                                    prog.raw_stop || prog.stop_timestamp
+                                  )}
+                                </div>
+                                {isAiringNow && (
+                                  <div className="progressBarContainer">
+                                    <div
+                                      className="progressBarFill"
+                                      style={{ width: `${progressPercent}%` }}
+                                    />
+                                  </div>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Load More Pagination */}
+                  {visibleLimit < filteredChannels.length && (
+                    <div className="loadMoreRow">
                       <button
                         type="button"
                         tabIndex={0}
-                        className={`epgChannelCell ${isCurrent ? "tuned" : ""}`}
-                        onClick={() => handleTuneChannel(ch)}
-                        onFocus={() => {
-                          const activeProg =
-                            programs.find((p) => (p.raw_start || p.start_timestamp) <= nowSec && (p.raw_stop || p.stop_timestamp) >= nowSec) ||
-                            programs[0];
-                          setFocusedItem({ program: activeProg, channel: ch });
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " " || e.key === "Select" || e.keyCode === 23) {
-                            e.preventDefault();
-                            handleTuneChannel(ch);
-                          }
-                        }}
-                        title={`Tune Ch. ${ch.channel_number} - ${ch.name}`}
+                        className="loadMoreBtn"
+                        onClick={() => setVisibleLimit((prev) => Math.min(prev + 40, filteredChannels.length))}
                       >
-                        <div className="chNumBadge">{ch.channel_number}</div>
-                        <div className="chLogoWrapper">
-                          {ch.stream_icon ? (
-                            <img
-                              src={ch.stream_icon}
-                              alt=""
-                              loading="lazy"
-                              className="chLogoImg"
-                              onError={(e) => {
-                                e.target.style.display = "none";
-                              }}
-                            />
-                          ) : (
-                            <FiTv className="chFallbackIcon" />
-                          )}
-                        </div>
-                        <div className="chNameCol">
-                          <span className="chTitle">{ch.name}</span>
-                          <span className="chCategory">{ch.category_name}</span>
-                        </div>
-                        {isCurrent && (
-                          <span className="tunedIndicator">
-                            <FiVolume2 /> LIVE
-                          </span>
-                        )}
+                        Load More Channels ({displayedChannels.length} of {filteredChannels.length} displayed)
                       </button>
-
-                      {/* Programs Timeline Track */}
-                      <div className="epgProgramsTrack" style={{ width: `${totalGridWidth}px` }}>
-                        {isNowInView && (
-                          <div className="epgNowVerticalLine" style={{ left: `${nowLeftPx}px` }} />
-                        )}
-                        {programs.map((prog) => {
-                          const isAiringNow =
-                            (prog.raw_start || prog.start_timestamp) <= nowSec &&
-                            (prog.raw_stop || prog.stop_timestamp) >= nowSec;
-                          const isFocused =
-                            focusedItem?.program?.id === prog.id &&
-                            String(focusedItem?.channel?.stream_id) === String(ch.stream_id);
-                          const durationSec = Math.max(60, prog.stop_timestamp - prog.start_timestamp);
-                          const widthPx = Math.max(120, (durationSec / 1800) * slotWidth);
-
-                          let progressPercent = 0;
-                          if (isAiringNow && prog.raw_stop > prog.raw_start) {
-                            progressPercent = Math.min(
-                              100,
-                              Math.max(0, ((nowSec - prog.raw_start) / (prog.raw_stop - prog.raw_start)) * 100)
-                            );
-                          }
-
-                          return (
-                            <button
-                              key={prog.id}
-                              type="button"
-                              tabIndex={0}
-                              className={`epgProgramBlock ${isAiringNow ? "airingNow" : ""} ${isCurrent ? "onTunedChannel" : ""} ${isFocused ? "focusedBlock" : ""}`}
-                              style={{ width: `${widthPx}px` }}
-                              onClick={() => handleTuneChannel(ch)}
-                              onFocus={() => setFocusedItem({ program: prog, channel: ch })}
-                              onMouseEnter={() => setFocusedItem({ program: prog, channel: ch })}
-                              onKeyDown={(e) => {
-                                if (
-                                  e.key === "Enter" ||
-                                  e.key === " " ||
-                                  e.key === "Select" ||
-                                  e.keyCode === 23
-                                ) {
-                                  e.preventDefault();
-                                  handleTuneChannel(ch);
-                                }
-                              }}
-                            >
-                              <div className="progTop">
-                                <span className="progTitle">{prog.title}</span>
-                                {isAiringNow && <span className="liveBadge">NOW</span>}
-                              </div>
-                              <div className="progTime">
-                                {formatTimeRange(
-                                  prog.raw_start || prog.start_timestamp,
-                                  prog.raw_stop || prog.stop_timestamp
-                                )}
-                              </div>
-                              {isAiringNow && (
-                                <div className="progressBarContainer">
-                                  <div
-                                    className="progressBarFill"
-                                    style={{ width: `${progressPercent}%` }}
-                                  />
-                                </div>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
                     </div>
-                  );
-                })}
+                  )}
+                </div>
+              </div>
+            )}
+          </>
+        )}
 
-                {/* Load More Pagination */}
-                {visibleLimit < filteredChannels.length && (
-                  <div className="loadMoreRow">
+        {/* PLAYER MODE: Live Video Player with Channel Up/Down & Direct Channel # Entry */}
+        {isPlayingLive && currentChannel && (
+          <div className="livePlayerFullscreen">
+            <video
+              ref={liveVideoRef}
+              id="livePlayerVideo"
+              className="liveVideoElement"
+              autoPlay
+              playsInline
+              onClick={resetControlsTimeout}
+              onMouseMove={resetControlsTimeout}
+            />
+
+            {/* Buffering Indicator */}
+            {isBuffering && (
+              <div className="liveBufferingSpinner">
+                <FiRefreshCw className="spinning" />
+                <span>Loading live channel...</span>
+              </div>
+            )}
+
+            {/* On-Screen Channel OSD Banner (Pops up on Channel Up/Down/Change) */}
+            {channelOsd && (
+              <div className="liveChannelOsd">
+                <div className="osdLeft">
+                  <span className="osdChNum">Ch. {channelOsd.channel_number}</span>
+                  {channelOsd.stream_icon && (
+                    <img
+                      src={channelOsd.stream_icon}
+                      alt=""
+                      className="osdLogo"
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                      }}
+                    />
+                  )}
+                  <div className="osdTitles">
+                    <span className="osdChName">{channelOsd.name}</span>
+                    <span className="osdProgTitle">
+                      {activeDisplayProgram?.title || channelOsd.category_name || "Live Broadcast"}
+                    </span>
+                  </div>
+                </div>
+                <div className="osdRight">
+                  <span className="liveBadge">● LIVE</span>
+                </div>
+              </div>
+            )}
+
+            {/* Player Controls Overlay */}
+            <div
+              className={`livePlayerOverlay ${showControls ? "visible" : "hidden"}`}
+              onClick={resetControlsTimeout}
+            >
+              {/* Top Controls Bar */}
+              <div className="playerTopBar">
+                <div className="barLeft">
+                  <button
+                    type="button"
+                    tabIndex={0}
+                    className="livePlayerBtn guideBtn"
+                    onClick={() => {
+                      setIsPlayingLive(false);
+                      setShowControls(false);
+                      setTimeout(() => {
+                        const target = document.querySelector(".epgRow.isCurrentChannel .epgChannelCell, .epgChannelCell");
+                        if (target && typeof target.focus === "function") {
+                          target.focus({ preventScroll: true });
+                        }
+                      }, 100);
+                    }}
+                    title="Return to EPG Guide (Remote Back)"
+                  >
+                    <FiArrowLeft /> Guide
+                  </button>
+                  <div className="currentChannelBadge">
+                    <span className="chNum">Ch. {currentChannel.channel_number}</span>
+                    <span className="chName">{currentChannel.name}</span>
+                    <span className="liveTag">● LIVE</span>
+                  </div>
+                </div>
+
+                {/* On-Screen Button to Enter Channel Number */}
+                <div className="barRight">
+                  <button
+                    type="button"
+                    tabIndex={0}
+                    className="livePlayerBtn enterChannelBtn"
+                    onClick={() => {
+                      setIsKeypadOpen(true);
+                      setKeypadInput("");
+                      setKeypadError("");
+                    }}
+                    title="Enter Channel Number to jump directly to channel"
+                  >
+                    <FiHash /> Enter Channel #
+                  </button>
+                </div>
+              </div>
+
+              {/* Bottom Controls Bar */}
+              <div className="playerBottomBar">
+                <div className="programInfoCol">
+                  <h3 className="progTitle">{activeDisplayProgram?.title || currentChannel.name}</h3>
+                  <div className="progTimeRow">
+                    {activeDisplayProgram && (
+                      <span className="timeText">
+                        <FiClock />{" "}
+                        {formatTimeRange(
+                          activeDisplayProgram.raw_start || activeDisplayProgram.start_timestamp,
+                          activeDisplayProgram.raw_stop || activeDisplayProgram.stop_timestamp
+                        )}
+                      </span>
+                    )}
+                    <span className="catTag">{currentChannel.category_name}</span>
+                  </div>
+                  {activeDisplayProgram?.description && (
+                    <p className="progDesc">{activeDisplayProgram.description}</p>
+                  )}
+                </div>
+
+                {/* Quick Channel Up / Down buttons on screen */}
+                <div className="channelNavRow">
+                  <button
+                    type="button"
+                    tabIndex={0}
+                    className="livePlayerBtn channelNavBtn"
+                    onClick={handlePrevChannel}
+                    title="Previous Channel (Remote Channel Down / Page Down)"
+                  >
+                    <FiChevronLeft /> Prev Channel
+                  </button>
+                  <button
+                    type="button"
+                    tabIndex={0}
+                    className="livePlayerBtn channelNavBtn"
+                    onClick={handleNextChannel}
+                    title="Next Channel (Remote Channel Up / Page Up)"
+                  >
+                    Next Channel <FiChevronRight />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Direct Channel Number Entry Keypad Modal */}
+            {isKeypadOpen && (
+              <div
+                className="liveChannelKeypadOverlay"
+                onClick={() => setIsKeypadOpen(false)}
+              >
+                <div className="keypadCard" onClick={(e) => e.stopPropagation()}>
+                  <div className="keypadHeader">
+                    <h2>Go to Channel Number</h2>
+                    <p>Enter channel number or press remote 0-9</p>
+                  </div>
+
+                  <div className="keypadDisplayBox">
+                    <span className="keypadDigits">{keypadInput || "---"}</span>
+                    {keypadError && <span className="keypadError">{keypadError}</span>}
+                  </div>
+
+                  <div className="keypadGrid">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        tabIndex={0}
+                        className="keypadBtn"
+                        onClick={() => {
+                          setKeypadInput((prev) => (prev.length < 5 ? prev + String(n) : prev));
+                          setKeypadError("");
+                        }}
+                      >
+                        {n}
+                      </button>
+                    ))}
                     <button
                       type="button"
                       tabIndex={0}
-                      className="loadMoreBtn"
-                      onClick={() => setVisibleLimit((prev) => Math.min(prev + 40, filteredChannels.length))}
+                      className="keypadBtn keypadClearBtn"
+                      onClick={() => {
+                        setKeypadInput((prev) => prev.slice(0, -1));
+                        setKeypadError("");
+                      }}
+                      title="Backspace"
                     >
-                      Load More Channels ({displayedChannels.length} of {filteredChannels.length} displayed)
+                      ⌫
+                    </button>
+                    <button
+                      type="button"
+                      tabIndex={0}
+                      className="keypadBtn"
+                      onClick={() => {
+                        setKeypadInput((prev) => (prev.length < 5 ? prev + "0" : prev));
+                        setKeypadError("");
+                      }}
+                    >
+                      0
+                    </button>
+                    <button
+                      type="button"
+                      tabIndex={0}
+                      className="keypadBtn keypadGoBtn"
+                      onClick={handleKeypadSubmit}
+                    >
+                      GO
                     </button>
                   </div>
-                )}
+
+                  <div className="keypadFooter">
+                    <button
+                      type="button"
+                      tabIndex={0}
+                      className="keypadActionBtn cancelBtn"
+                      onClick={() => {
+                        setIsKeypadOpen(false);
+                        setKeypadInput("");
+                        setKeypadError("");
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
       </ContentWrapper>

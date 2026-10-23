@@ -54,6 +54,10 @@ const FOCUSABLE_SELECTOR = [
   ".liveTvBackBtn",
   ".iptvBackBtn",
   ".channelRow",
+  ".livePlayerBtn",
+  ".enterChannelBtn",
+  ".keypadBtn",
+  ".keypadActionBtn",
   ".progress-bar",
   '[role="slider"]',
 ].join(", ");
@@ -84,8 +88,15 @@ const isProgressBarElement = (el) => {
 const getFocusableElements = () => {
   let root = document;
   const trailerModal = document.querySelector(".videoPopup");
+  const keypadModal = document.querySelector(".liveChannelKeypadOverlay");
+  const livePlayer = document.querySelector(".livePlayerFullscreen");
+
   if (trailerModal) {
     root = trailerModal;
+  } else if (keypadModal) {
+    root = keypadModal;
+  } else if (document.body.classList.contains("livePlayerActive") && livePlayer) {
+    root = livePlayer;
   } else if (document.body.classList.contains("videoPlayerActive")) {
     const playerContainer = document.querySelector(".videoPlayerModal");
     if (playerContainer) {
@@ -635,8 +646,16 @@ export const initDpadNavigation = () => {
         return;
       }
 
-      // 5. Live TV route (/live): always navigate cleanly back to Home
+      // 5. Live TV route (/live)
       if (window.location.pathname.startsWith("/live")) {
+        // If live player or keypad modal is active, let Live TV handle closing player/modal
+        if (
+          document.body.classList.contains("livePlayerActive") ||
+          document.querySelector(".liveChannelKeypadOverlay") ||
+          document.querySelector(".livePlayerFullscreen")
+        ) {
+          return;
+        }
         e.preventDefault();
         e.stopPropagation();
         if (typeof window.__routerNavigate === "function") {

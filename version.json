@@ -1,6 +1,6 @@
 {
-  "versionCode": 52,
-  "versionName": "1.0.51",
+  "versionCode": 53,
+  "versionName": "1.0.52",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.51: Locked D-Pad and remote focus inside the Channels & Manual Numbering container, prevented focus loss when toggling or editing channels, added channelRow selection and highlight styling, and fixed focus recovery to never jump to the top menu."
+  "releaseNotes": "BubbaFlix TV v1.0.52: Pure EPG Grid view for Live TV with full-screen live playback on channel selection, remote Channel Up/Down channel flipping with on-screen OSD, on-screen 'Enter Channel #' button, and numeric keypad modal."
 }
