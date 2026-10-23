@@ -398,6 +398,8 @@ const IptvSetupPage = () => {
     }
     lastChannelToggleRef.current = { id: sid, time: now };
 
+    const currentIndex = filteredChannels.findIndex((c) => String(c.stream_id) === sid);
+
     setChannelsConfig((prev) => {
       const current = prev[sid]?.enabled !== undefined ? prev[sid].enabled : defaultEnabled;
       return {
@@ -408,6 +410,20 @@ const IptvSetupPage = () => {
         },
       };
     });
+
+    // Keep focus firmly inside the channels container on this channel or its immediate sibling
+    setTimeout(() => {
+      const sameBtn = document.getElementById(`vis-btn-${sid}`);
+      if (sameBtn) {
+        sameBtn.focus({ preventScroll: true });
+      } else if (currentIndex >= 0) {
+        const nextChannel = filteredChannels[currentIndex + 1] || filteredChannels[currentIndex - 1] || filteredChannels[0];
+        if (nextChannel) {
+          const nextBtn = document.getElementById(`vis-btn-${nextChannel.stream_id}`);
+          if (nextBtn) nextBtn.focus({ preventScroll: true });
+        }
+      }
+    }, 40);
   };
 
   const handleChannelNumberChange = (streamId, newNumber) => {
@@ -525,7 +541,6 @@ const IptvSetupPage = () => {
               tabIndex={0}
               className={`tabBtn ${activeTab === "credentials" ? "active" : ""}`}
               onClick={() => setActiveTab("credentials")}
-              onFocus={() => setActiveTab("credentials")}
             >
               <FiServer /> Provider & Credentials
             </button>
@@ -534,7 +549,6 @@ const IptvSetupPage = () => {
               tabIndex={0}
               className={`tabBtn ${activeTab === "groups" ? "active" : ""}`}
               onClick={() => setActiveTab("groups")}
-              onFocus={() => setActiveTab("groups")}
             >
               <FiLayers /> Category & Group Visibility ({loadedGroups.length})
             </button>
@@ -543,7 +557,6 @@ const IptvSetupPage = () => {
               tabIndex={0}
               className={`tabBtn ${activeTab === "channels" ? "active" : ""}`}
               onClick={() => setActiveTab("channels")}
-              onFocus={() => setActiveTab("channels")}
             >
               <FiHash /> Channels & Manual Numbering ({loadedChannels.length})
             </button>
@@ -873,13 +886,28 @@ const IptvSetupPage = () => {
                       const customName = chCfg?.customName !== undefined ? chCfg.customName : (ch.name !== ch.original_name ? ch.name : "");
 
                       return (
-                        <tr key={sid} className={isEnabled ? "rowEnabled" : "rowDisabled"}>
+                        <tr
+                          key={sid}
+                          className={`channelRow ${isEnabled ? "rowEnabled" : "rowDisabled"}`}
+                          data-stream-id={sid}
+                          onClick={(e) => {
+                            if (e.target.tagName !== "INPUT" && e.target.tagName !== "BUTTON") {
+                              e.preventDefault();
+                              toggleChannelVisibility(sid, isCatEnabled);
+                            }
+                          }}
+                        >
                           <td>
                             <button
                               type="button"
+                              id={`vis-btn-${sid}`}
+                              data-stream-id={sid}
                               tabIndex={0}
                               className={`visToggleBtn ${isEnabled ? "on" : "off"}`}
-                              onClick={() => toggleChannelVisibility(sid, isCatEnabled)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleChannelVisibility(sid, isCatEnabled);
+                              }}
                               title={isEnabled ? "Click to hide" : "Click to show"}
                             >
                               {isEnabled ? <FiCheck /> : <FiX />}
@@ -892,6 +920,13 @@ const IptvSetupPage = () => {
                               value={channelNumber}
                               placeholder={String(ch.channel_number || "")}
                               onChange={(e) => handleChannelNumberChange(sid, e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.keyCode === 13 || e.keyCode === 23 || e.keyCode === 66) {
+                                  e.currentTarget.blur();
+                                  const btn = document.getElementById(`vis-btn-${sid}`);
+                                  if (btn) btn.focus({ preventScroll: true });
+                                }
+                              }}
                             />
                           </td>
                           <td>
@@ -918,6 +953,13 @@ const IptvSetupPage = () => {
                               placeholder={ch.original_name || ch.name}
                               value={customName}
                               onChange={(e) => handleCustomNameChange(sid, e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.keyCode === 13 || e.keyCode === 23 || e.keyCode === 66) {
+                                  e.currentTarget.blur();
+                                  const btn = document.getElementById(`vis-btn-${sid}`);
+                                  if (btn) btn.focus({ preventScroll: true });
+                                }
+                              }}
                             />
                           </td>
                         </tr>

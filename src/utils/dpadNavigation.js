@@ -376,6 +376,18 @@ export const focusTopLeftPoster = () => {
 
     // 3. If on Settings page (/settings), focus first focusable element inside settings page content
     if (path.startsWith("/settings")) {
+      const channelsTableTarget = document.querySelector(
+        ".channelsTableWrapper .visToggleBtn, .channelsTableWrapper .channelNumberInput, .channelsTableWrapper .channelRow"
+      );
+      if (channelsTableTarget) {
+        focusAndScroll(channelsTableTarget);
+        return;
+      }
+      const groupsGridTarget = document.querySelector(".groupsGrid .groupCard");
+      if (groupsGridTarget) {
+        focusAndScroll(groupsGridTarget);
+        return;
+      }
       const settingsContent = document.querySelector(
         "#root div:not(.header):not(.topNav) button, #root div:not(.header):not(.topNav) input, #root div:not(.header):not(.topNav) select, #root div:not(.header):not(.topNav) [tabindex='0']"
       );
@@ -791,6 +803,28 @@ export const initDpadNavigation = () => {
           return;
         }
       }
+
+      // Container Focus Recovery: Prioritize active container on IPTV Workbench / Groups page
+      const activeChannelsContainer = document.querySelector(".channelsTableWrapper, .channelsTableContainer");
+      if (activeChannelsContainer) {
+        const fallbackTarget =
+          activeChannelsContainer.querySelector(".visToggleBtn:focus, .channelNumberInput:focus, .channelRow:focus") ||
+          activeChannelsContainer.querySelector(".visToggleBtn, .channelNumberInput, .channelRow");
+        if (fallbackTarget) {
+          focusAndScroll(fallbackTarget, isRepeat);
+          return;
+        }
+      }
+
+      const activeGroupsGrid = document.querySelector(".groupsGrid");
+      if (activeGroupsGrid) {
+        const fallbackGroup = activeGroupsGrid.querySelector(".groupCard:focus, .groupCard");
+        if (fallbackGroup) {
+          focusAndScroll(fallbackGroup, isRepeat);
+          return;
+        }
+      }
+
       const isDetPage =
         typeof window !== "undefined" &&
         (window.location.pathname.startsWith("/movie/") ||
@@ -815,7 +849,27 @@ export const initDpadNavigation = () => {
     const r1 = activeEl.getBoundingClientRect();
     const c1 = { x: r1.left + r1.width / 2, y: r1.top + r1.height / 2 };
 
-    // 1. CAROUSEL & ROW DIRECT SIBLING NAVIGATION (Left & Right)
+    // 1A. CHANNEL ROW CONTROL CYCLING (VisToggle <-> Ch# <-> CustomAlias)
+    const activeChannelRow = activeEl.closest(".channelRow");
+    if (activeChannelRow && (direction === "ArrowLeft" || direction === "ArrowRight")) {
+      const rowFocusables = Array.from(
+        activeChannelRow.querySelectorAll(".visToggleBtn, .channelNumberInput, .customAliasInput")
+      ).filter((el) => !el.disabled && el.offsetParent !== null);
+      if (rowFocusables.length > 1) {
+        const currIdx = rowFocusables.indexOf(activeEl);
+        if (direction === "ArrowRight" && currIdx >= 0 && currIdx < rowFocusables.length - 1) {
+          focusAndScroll(rowFocusables[currIdx + 1], isRepeat);
+          return;
+        } else if (direction === "ArrowLeft" && currIdx > 0) {
+          focusAndScroll(rowFocusables[currIdx - 1], isRepeat);
+          return;
+        }
+        // At the left/right boundary of a channel row: trap focus inside the container
+        return;
+      }
+    }
+
+    // 1B. CAROUSEL & ROW DIRECT SIBLING NAVIGATION (Left & Right)
     const inRowContainer = activeEl.closest(".carouselItems") || activeEl.closest(".menuItems") || activeEl.closest(".navLinks") || activeEl.closest(".content") || activeEl.closest(".listItems") || activeEl.closest(".searchFilterChips") || activeEl.closest(".tagsRow");
     if (inRowContainer) {
       if (direction === "ArrowRight" && activeEl.nextElementSibling) {
@@ -881,6 +935,28 @@ export const initDpadNavigation = () => {
         const r2 = el.getBoundingClientRect();
         return r2.right <= r1.left + 15 && el !== activeEl;
       });
+    }
+
+    // Container Boundary Containment: Keep focus inside scrollable containers until navigating out at the edges
+    const activeContainer = activeEl.closest(".channelsTableWrapper, .channelsTableContainer, .groupsGrid");
+    if (activeContainer) {
+      if (direction === "ArrowLeft" || direction === "ArrowRight") {
+        const horizontalContainerCandidates = candidates.filter(
+          (el) => el.closest(".channelsTableWrapper, .channelsTableContainer, .groupsGrid") === activeContainer
+        );
+        if (horizontalContainerCandidates.length > 0) {
+          candidates = horizontalContainerCandidates;
+        } else {
+          return; // Prevent Left/Right from escaping out of the container to TopNav
+        }
+      } else {
+        const verticalContainerCandidates = candidates.filter(
+          (el) => el.closest(".channelsTableWrapper, .channelsTableContainer, .groupsGrid") === activeContainer
+        );
+        if (verticalContainerCandidates.length > 0) {
+          candidates = verticalContainerCandidates;
+        }
+      }
     }
 
     if (candidates.length > 0) {
