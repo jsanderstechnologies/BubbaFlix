@@ -32,7 +32,28 @@ import "./index.scss";
 
 const IptvSetupPage = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("credentials"); // credentials | groups | channels
+
+  // Read ?tab= from URL or default to credentials
+  const getInitialTab = () => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const t = params.get("tab");
+      if (t === "groups" || t === "channels" || t === "credentials") return t;
+    }
+    return "credentials";
+  };
+  const [activeTab, setActiveTab] = useState(getInitialTab);
+
+  // Sync activeTab if URL query param changes
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const t = params.get("tab");
+      if (t && (t === "groups" || t === "channels" || t === "credentials")) {
+        setActiveTab(t);
+      }
+    }
+  }, [window.location.search]);
 
   // Config State
   const [credentials, setCredentials] = useState({
@@ -127,7 +148,29 @@ const IptvSetupPage = () => {
             epgUrl: cfg.credentials.epgUrl || "",
           });
         }
-        if (cfg.groups) setGroupsConfig(cfg.groups);
+        if (cfg.groups && Object.keys(cfg.groups).length > 0) {
+          setGroupsConfig(cfg.groups);
+          // Immediately populate loadedGroups so categories appear instantly without network delay
+          const initialGroups = [];
+          const seen = new Set();
+          for (const [key, val] of Object.entries(cfg.groups)) {
+            const name = typeof val === "object" ? val.name || key : key;
+            if (!seen.has(name)) {
+              seen.add(name);
+              initialGroups.push({
+                category_id: key,
+                category_name: name,
+                channel_count: 0,
+                enabled: typeof val === "object" ? val.enabled !== false : Boolean(val),
+              });
+            }
+          }
+          if (initialGroups.length > 0) {
+            setLoadedGroups(initialGroups);
+          }
+        } else if (cfg.groups) {
+          setGroupsConfig(cfg.groups);
+        }
         if (cfg.channels) setChannelsConfig(cfg.channels);
         if (cfg.autoNumberStrategy) setAutoNumberStrategy(cfg.autoNumberStrategy);
 
@@ -478,20 +521,29 @@ const IptvSetupPage = () => {
           {/* Tab Navigation */}
           <div className="tabBar">
             <button
+              type="button"
+              tabIndex={0}
               className={`tabBtn ${activeTab === "credentials" ? "active" : ""}`}
               onClick={() => setActiveTab("credentials")}
+              onFocus={() => setActiveTab("credentials")}
             >
               <FiServer /> Provider & Credentials
             </button>
             <button
+              type="button"
+              tabIndex={0}
               className={`tabBtn ${activeTab === "groups" ? "active" : ""}`}
               onClick={() => setActiveTab("groups")}
+              onFocus={() => setActiveTab("groups")}
             >
               <FiLayers /> Category & Group Visibility ({loadedGroups.length})
             </button>
             <button
+              type="button"
+              tabIndex={0}
               className={`tabBtn ${activeTab === "channels" ? "active" : ""}`}
               onClick={() => setActiveTab("channels")}
+              onFocus={() => setActiveTab("channels")}
             >
               <FiHash /> Channels & Manual Numbering ({loadedChannels.length})
             </button>
@@ -641,7 +693,13 @@ const IptvSetupPage = () => {
                 </div>
               </div>
 
-              {loadingData ? (
+              {loadingData && loadedGroups.length > 0 && (
+                <div style={{ fontSize: "13px", color: "var(--pink)", display: "flex", alignItems: "center", gap: 6, margin: "4px 0 8px 4px" }}>
+                  <FiRefreshCw className="spinner" /> <span>Syncing latest categories in background...</span>
+                </div>
+              )}
+
+              {loadingData && loadedGroups.length === 0 ? (
                 <div className="loadingNotice">
                   <FiRefreshCw className="spinner" />
                   <span>Fetching and refreshing categories from IPTV server...</span>
@@ -767,7 +825,13 @@ const IptvSetupPage = () => {
               </div>
 
               {/* Channel Table / Loading / Empty */}
-              {loadingData ? (
+              {loadingData && loadedChannels.length > 0 && (
+                <div style={{ fontSize: "13px", color: "var(--pink)", display: "flex", alignItems: "center", gap: 6, margin: "4px 0 8px 4px" }}>
+                  <FiRefreshCw className="spinner" /> <span>Syncing latest channels in background...</span>
+                </div>
+              )}
+
+              {loadingData && loadedChannels.length === 0 ? (
                 <div className="loadingNotice">
                   <FiRefreshCw className="spinner" />
                   <span>Fetching and loading channels from IPTV server...</span>

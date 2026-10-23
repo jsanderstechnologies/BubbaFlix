@@ -1,6 +1,6 @@
 {
-  "versionCode": 50,
-  "versionName": "1.0.49",
+  "versionCode": 51,
+  "versionName": "1.0.50",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.49: Fixed IPTV Category & Group Visibility toggling with single remote OK/Enter press, resolved TV remote Back button exit to Settings, and optimized D-Pad 2D grid navigation and scroll isolation inside the Groups editor."
+  "releaseNotes": "BubbaFlix TV v1.0.50: Fixed D-Pad Enter (keycode 66/13) button activation across all TV remotes, added direct shortcuts to Category & Group Visibility from Live TV and Settings, enabled tab switching on focus, and eliminated full-screen loading spinners blocking group cards."
 }

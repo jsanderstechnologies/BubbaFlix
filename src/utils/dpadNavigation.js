@@ -668,7 +668,9 @@ export const initDpadNavigation = () => {
       key === "Select" ||
       key === "Accept" ||
       key === "Ok" ||
+      key === "Enter" ||
       code === 23 ||
+      code === 13 ||
       (code === 66 && key !== "b" && key !== "B");
 
     if (isDpadEnter || (key === "Enter" && activeEl && activeEl.tagName === "INPUT")) {
@@ -688,10 +690,13 @@ export const initDpadNavigation = () => {
           return;
         }
 
-        if (
-          (code === 23 || key === "Select" || key === "Ok" || key === "Accept") &&
-          activeEl.tagName === "BUTTON"
-        ) {
+        if (isDpadEnter && activeEl.tagName === "BUTTON") {
+          e.preventDefault();
+          activeEl.click();
+          return;
+        }
+
+        if (isDpadEnter && activeEl.tagName === "A") {
           e.preventDefault();
           activeEl.click();
           return;

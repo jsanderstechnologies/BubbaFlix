@@ -11,7 +11,7 @@ import { updateServerSettings, fetchServerSettings, getServerUrl, saveServerUrl,
 import { getApiConfiguration } from "../../store/homeSlice";
 import { THEMES, getSavedTheme, applyTheme } from "../../utils/theme";
 import { getHomeSections, saveHomeSections, DEFAULT_HOME_SECTIONS, validateHomeSections } from "../../utils/homeConfig";
-import { FiKey, FiCheck, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning, FiCheckSquare, FiTv, FiPlus, FiMinus, FiServer, FiInfo, FiExternalLink, FiCloud, FiChevronUp, FiChevronDown, FiRotateCcw, FiDownload, FiUpload, FiTerminal } from "react-icons/fi";
+import { FiKey, FiCheck, FiCheckCircle, FiXCircle, FiSave, FiRefreshCw, FiEye, FiEyeOff, FiSliders, FiSun, FiCpu, FiCloudLightning, FiCheckSquare, FiTv, FiPlus, FiMinus, FiServer, FiInfo, FiExternalLink, FiCloud, FiChevronUp, FiChevronDown, FiRotateCcw, FiDownload, FiUpload, FiTerminal, FiLayers } from "react-icons/fi";
 import "./index.scss";
 import { AuthContext } from "../../context/AuthContext";
 import { useContext } from "react";
@@ -594,6 +594,8 @@ const SettingsPage = () => {
             </p>
             <div style={{ display: "flex", gap: 12, marginTop: 10, flexWrap: "wrap" }}>
               <button
+                type="button"
+                tabIndex={0}
                 className="sectionToggleBtn"
                 style={{
                   background: "var(--pink)",
@@ -608,11 +610,55 @@ const SettingsPage = () => {
                   alignItems: "center",
                   gap: 8,
                 }}
-                onClick={() => navigate("/settings/iptv")}
+                onClick={() => navigate("/settings/iptv?tab=groups")}
               >
-                <FiSliders /> Open IPTV Setup & Channel Numbering Workbench
+                <FiLayers /> Category & Group Visibility
               </button>
               <button
+                type="button"
+                tabIndex={0}
+                className="sectionToggleBtn"
+                style={{
+                  background: "rgba(255, 255, 255, 0.08)",
+                  color: "white",
+                  border: "1px solid rgba(255, 255, 255, 0.15)",
+                  padding: "10px 18px",
+                  borderRadius: 8,
+                  fontWeight: 600,
+                  fontSize: 14,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+                onClick={() => navigate("/settings/iptv?tab=channels")}
+              >
+                <FiSliders /> Channel Numbering & Visibility
+              </button>
+              <button
+                type="button"
+                tabIndex={0}
+                className="sectionToggleBtn"
+                style={{
+                  background: "rgba(255, 255, 255, 0.08)",
+                  color: "white",
+                  border: "1px solid rgba(255, 255, 255, 0.15)",
+                  padding: "10px 18px",
+                  borderRadius: 8,
+                  fontWeight: 600,
+                  fontSize: 14,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+                onClick={() => navigate("/settings/iptv?tab=credentials")}
+              >
+                <FiServer /> Provider Credentials
+              </button>
+              <button
+                type="button"
+                tabIndex={0}
                 className="sectionToggleBtn"
                 style={{
                   background: "rgba(255, 255, 255, 0.08)",

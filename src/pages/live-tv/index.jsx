@@ -22,6 +22,7 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiArrowLeft,
+  FiLayers,
 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import "./index.scss";
@@ -546,7 +547,17 @@ const LiveTvPage = () => {
               type="button"
               tabIndex={0}
               className="setupShortcutBtn"
-              onClick={() => navigate("/settings/iptv")}
+              onClick={() => navigate("/settings/iptv?tab=groups")}
+              title="Configure which channel categories and groups are visible"
+            >
+              <FiLayers /> Manage Groups
+            </button>
+            <button
+              type="button"
+              tabIndex={0}
+              className="setupShortcutBtn"
+              onClick={() => navigate("/settings/iptv?tab=channels")}
+              title="Configure channel visibility and custom channel numbers"
             >
               <FiSliders /> Channel Setup & Numbering
             </button>
@@ -561,9 +572,14 @@ const LiveTvPage = () => {
             <p>
               Connect your Xtream Codes subscription to enable live channels and customize your channel numbers.
             </p>
-            <button className="setupBtn" onClick={() => navigate("/settings/iptv")}>
-              <FiSliders /> Configure IPTV Setup
-            </button>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginTop: 12 }}>
+              <button className="setupBtn" onClick={() => navigate("/settings/iptv?tab=groups")}>
+                <FiLayers /> Manage Groups
+              </button>
+              <button className="setupBtn" onClick={() => navigate("/settings/iptv?tab=credentials")}>
+                <FiSliders /> Configure IPTV Setup
+              </button>
+            </div>
           </div>
         )}
 
