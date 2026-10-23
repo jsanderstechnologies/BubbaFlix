@@ -51,6 +51,7 @@ const FOCUSABLE_SELECTOR = [
   ".jumpNowBtn",
   ".timelineNavBtn",
   ".setupShortcutBtn",
+  ".liveTvBackBtn",
   ".channelRow",
   ".progress-bar",
   '[role="slider"]',
@@ -129,6 +130,21 @@ const focusAndScroll = (el, isHoldingKey = false) => {
 
   if (isInModal) {
     el.scrollIntoView({ behavior: scrollBehavior, block: "nearest", inline: "nearest" });
+    return;
+  }
+
+  // Handle EPG Grid scrolling inside .epgBodyScroll without forcing full-window scroll runaway
+  const inEpgBody = el.closest(".epgBodyScroll");
+  if (inEpgBody) {
+    el.scrollIntoView({ behavior: scrollBehavior, block: "nearest", inline: "nearest" });
+    const gridContainer = el.closest(".epgGridContainer");
+    if (gridContainer && typeof window !== "undefined") {
+      const gRect = gridContainer.getBoundingClientRect();
+      const topNavOffset = 95;
+      if (gRect.top < topNavOffset) {
+        window.scrollBy({ top: gRect.top - topNavOffset, behavior: scrollBehavior });
+      }
+    }
     return;
   }
 
@@ -354,7 +370,18 @@ export const focusTopLeftPoster = () => {
       }
     }
 
-    // 4. Look for visible content posters on current page
+    // 4. If on Live TV page (/live), focus tuned channel cell or first program in EPG grid
+    if (path.startsWith("/live")) {
+      const liveTarget = document.querySelector(
+        ".epgRow.isCurrentChannel .epgChannelCell, .epgChannelCell, .epgProgramBlock, .categoryPill.active, .liveTvBackBtn"
+      );
+      if (liveTarget) {
+        focusAndScroll(liveTarget);
+        return;
+      }
+    }
+
+    // 5. Look for visible content posters on current page
     const posters = Array.from(
       document.querySelectorAll(".movieCard, .carouselItem, .seasonCard, .episodeItem, .collectionCard")
     ).filter((el) => {
@@ -556,7 +583,19 @@ export const initDpadNavigation = () => {
         return;
       }
 
-      // 5. Other non-home routes (e.g. /explore, /search, /favorites, /settings)
+      // 5. Live TV route (/live): always navigate cleanly back to Home
+      if (window.location.pathname.startsWith("/live")) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof window.__routerNavigate === "function") {
+          window.__routerNavigate("/");
+        } else {
+          window.location.href = "/";
+        }
+        return;
+      }
+
+      // 6. Other non-home routes (e.g. /explore, /search, /favorites, /settings)
       if (window.location.pathname !== "/") {
         e.preventDefault();
         e.stopPropagation();
@@ -564,7 +603,7 @@ export const initDpadNavigation = () => {
         return;
       }
 
-      // 6. On Root Home (/) with no active modals: prompt exit app
+      // 7. On Root Home (/) with no active modals: prompt exit app
       e.preventDefault();
       if (typeof window !== "undefined" && window.AndroidPlayer && typeof window.AndroidPlayer.promptExitApp === "function") {
         window.AndroidPlayer.promptExitApp();

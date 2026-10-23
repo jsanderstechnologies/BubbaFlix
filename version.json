@@ -1,6 +1,6 @@
 {
-  "versionCode": 48,
-  "versionName": "1.0.47",
+  "versionCode": 49,
+  "versionName": "1.0.48",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.47: Full interactive Live TV EPG Grid timeline, batch EPG schedule loading, and 2D remote D-Pad navigation."
+  "releaseNotes": "BubbaFlix TV v1.0.48: Fixed Live TV remote navigation with 30-min discrete EPG grid blocks, added Home exit button & remote Back key handler to exit Live TV, and optimized viewport scrolling."
 }

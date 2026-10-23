@@ -49,6 +49,31 @@
       align-items: center;
       gap: 14px;
 
+      .liveTvBackBtn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: white;
+        padding: 7px 16px;
+        border-radius: 8px;
+        font-size: 13.5px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        outline: none;
+
+        &:hover,
+        &:focus,
+        &:focus-visible {
+          background: var(--pink);
+          border-color: var(--pink);
+          box-shadow: 0 0 12px rgba(218, 47, 104, 0.5);
+          transform: scale(1.04);
+        }
+      }
+
       .title {
         font-size: 28px;
         font-weight: 700;
@@ -164,8 +189,8 @@
   /* Top Preview: Video Player & Rich Program Detail Banner */
   .liveTvTopSection {
     display: grid;
-    grid-template-columns: 460px 1fr;
-    gap: 20px;
+    grid-template-columns: 420px 1fr;
+    gap: 18px;
     align-items: stretch;
 
     @media (max-width: 1100px) {
@@ -178,6 +203,7 @@
       overflow: hidden;
       border: 1px solid rgba(255, 255, 255, 0.12);
       aspect-ratio: 16 / 9;
+      max-height: 236px;
       position: relative;
       display: flex;
       align-items: center;
@@ -288,11 +314,12 @@
       background: var(--black2);
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 12px;
-      padding: 18px 24px;
+      padding: 16px 22px;
       display: flex;
       flex-direction: column;
       justify-content: center;
-      min-height: 220px;
+      min-height: 190px;
+      max-height: 236px;
 
       .detailContent {
         display: flex;
@@ -674,7 +701,7 @@
 
     /* Scrollable EPG Body */
     .epgBodyScroll {
-      max-height: 520px;
+      max-height: 480px;
       overflow-y: auto;
       overflow-x: auto;
       position: relative;

@@ -21,6 +21,7 @@ import {
   FiVolume2,
   FiChevronLeft,
   FiChevronRight,
+  FiArrowLeft,
 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import "./index.scss";
@@ -62,6 +63,7 @@ const formatTimeRange = (startTs, stopTs) => {
 };
 
 // Compute contiguous, gap-free program tiles along the timeline
+// Breaks gaps and placeholder periods into discrete 30-min program slots for full 2D D-Pad navigation
 const getProgramsForChannel = (channel, listings, timelineStartTs, timelineEndTs) => {
   const result = [];
   const validListings = (listings || [])
@@ -83,21 +85,34 @@ const getProgramsForChannel = (channel, listings, timelineStartTs, timelineEndTs
     )
     .sort((a, b) => a.start_timestamp - b.start_timestamp);
 
+  // Helper to append 30-minute time-slot chunks for gaps and placeholders
+  // so every channel row is divided into discrete, navigable grid cells across the horizontal axis
+  const appendChunkedGaps = (start, end, isPlaceholder) => {
+    let t = start;
+    const intervalSec = 30 * 60; // 30 minutes per time slot
+    while (t < end - 30) {
+      const nextBoundary = (Math.floor(t / intervalSec) + 1) * intervalSec;
+      const chunkEnd = Math.min(end, nextBoundary);
+      result.push({
+        id: `chunk_${channel.stream_id}_${t}_${chunkEnd}`,
+        title: isPlaceholder ? "Live Broadcast" : "Regular Programming",
+        description: `Live broadcast on ${channel.name}`,
+        start_timestamp: t,
+        stop_timestamp: chunkEnd,
+        raw_start: t,
+        raw_stop: chunkEnd,
+        isPlaceholder: isPlaceholder,
+      });
+      t = chunkEnd;
+    }
+  };
+
   let cursor = timelineStartTs;
 
   for (const prog of validListings) {
-    // Fill gap before program if any
+    // Fill gap before program if any with 30-minute chunks
     if (prog.start_timestamp > cursor + 60) {
-      result.push({
-        id: `gap_${channel.stream_id}_${cursor}`,
-        title: "Live Broadcast",
-        description: `Regular programming on ${channel.name}`,
-        start_timestamp: cursor,
-        stop_timestamp: prog.start_timestamp,
-        raw_start: cursor,
-        raw_stop: prog.start_timestamp,
-        isPlaceholder: true,
-      });
+      appendChunkedGaps(cursor, prog.start_timestamp, true);
     }
 
     result.push({
@@ -115,18 +130,9 @@ const getProgramsForChannel = (channel, listings, timelineStartTs, timelineEndTs
     if (cursor >= timelineEndTs) break;
   }
 
-  // Fill remaining time until end of timeline
+  // Fill remaining time until end of timeline with 30-minute chunks
   if (cursor < timelineEndTs - 60) {
-    result.push({
-      id: `end_${channel.stream_id}_${cursor}`,
-      title: validListings.length === 0 ? "Live Broadcast" : "Regular Programming",
-      description: `Live broadcast on ${channel.name}`,
-      start_timestamp: cursor,
-      stop_timestamp: timelineEndTs,
-      raw_start: cursor,
-      raw_stop: timelineEndTs,
-      isPlaceholder: validListings.length === 0,
-    });
+    appendChunkedGaps(cursor, timelineEndTs, validListings.length === 0);
   }
 
   return result;
@@ -321,6 +327,66 @@ const LiveTvPage = () => {
     }
   }, []);
 
+  // Unconditional Remote Back / Escape Key Handler to exit Live TV cleanly back to Home
+  useEffect(() => {
+    const handleLiveTvKeyDown = (e) => {
+      const key = e.key;
+      const code = e.keyCode;
+      if (
+        key === "Escape" ||
+        key === "Back" ||
+        code === 27 ||
+        code === 4 ||
+        code === 10009 ||
+        code === 461
+      ) {
+        // If an input is focused, let it blur first
+        if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) {
+          e.target.blur();
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+
+        // If fullscreen video is active, exit fullscreen
+        if (document.fullscreenElement) {
+          document.exitFullscreen().catch(() => {});
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+
+        // Always navigate cleanly back to Home
+        e.preventDefault();
+        e.stopPropagation();
+        navigate("/", { replace: true });
+      }
+    };
+
+    window.addEventListener("keydown", handleLiveTvKeyDown, true);
+    return () => {
+      window.removeEventListener("keydown", handleLiveTvKeyDown, true);
+    };
+  }, [navigate]);
+
+  // Automatically focus the tuned channel or first program card when channels load
+  useEffect(() => {
+    if (channels.length > 0 && !loading) {
+      const focusTimer = setTimeout(() => {
+        const activeEl = document.activeElement;
+        if (!activeEl || activeEl === document.body || activeEl.classList.contains("navBtn")) {
+          const target = document.querySelector(
+            ".epgRow.isCurrentChannel .epgChannelCell, .epgChannelCell, .epgProgramBlock"
+          );
+          if (target && typeof target.focus === "function") {
+            target.focus();
+          }
+        }
+      }, 300);
+      return () => clearTimeout(focusTimer);
+    }
+  }, [channels.length, loading]);
+
   // Timeline geometry calculations
   const slotMinutes = 30;
   const slotCount = 8; // 4 hours window (8 x 30m slots)
@@ -461,6 +527,15 @@ const LiveTvPage = () => {
         {/* Top Header Bar */}
         <div className="liveTvHeader">
           <div className="headerLeft">
+            <button
+              type="button"
+              tabIndex={0}
+              className="liveTvBackBtn"
+              onClick={() => navigate("/")}
+              title="Return to BubbaFlix Home"
+            >
+              <FiArrowLeft /> Home
+            </button>
             <h1 className="title">
               <FiTv className="icon" /> Live TV
             </h1>
