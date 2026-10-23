@@ -45,6 +45,13 @@ const FOCUSABLE_SELECTOR = [
   ".groupCard",
   ".toolBtn",
   ".visToggleBtn",
+  ".epgProgramBlock",
+  ".epgChannelCell",
+  ".categoryPill",
+  ".jumpNowBtn",
+  ".timelineNavBtn",
+  ".setupShortcutBtn",
+  ".channelRow",
   ".progress-bar",
   '[role="slider"]',
 ].join(", ");

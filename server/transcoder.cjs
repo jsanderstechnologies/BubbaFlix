@@ -2512,6 +2512,122 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     return;
   }
 
+  // POST /api/iptv/epg/batch - Get batch EPG for visible channels in the EPG Grid
+  if ((cleanPath === "/api/iptv/epg/batch" || (cleanPath === "/api/iptv/epg" && req.method === "POST")) && (req.method === "POST" || req.method === "GET")) {
+    let body = "";
+    req.on("data", (chunk) => { body += chunk; });
+    req.on("end", async () => {
+      try {
+        let channelsList = [];
+        if (body) {
+          try {
+            const parsed = JSON.parse(body);
+            if (Array.isArray(parsed.channels)) channelsList = parsed.channels;
+            else if (Array.isArray(parsed.streamIds)) {
+              channelsList = parsed.streamIds.map((id) => ({ stream_id: String(id) }));
+            }
+          } catch (e) {}
+        }
+        if (channelsList.length === 0 && parsedUrl.query.stream_ids) {
+          channelsList = parsedUrl.query.stream_ids.split(",").map((id) => ({ stream_id: id.trim() }));
+        }
+
+        const config = loadIptvConfig();
+        const results = {};
+        const nowSec = Math.floor(Date.now() / 1000);
+
+        // 1. Check in-memory caches (iptvShortEpgCache and iptvXmltvCache)
+        const uncached = [];
+        for (const ch of channelsList) {
+          const sid = String(ch.stream_id || "");
+          if (!sid) continue;
+          const cacheKey = `epg_${sid}`;
+          const cached = iptvShortEpgCache.get(cacheKey);
+          if (cached && Date.now() - cached.timestamp < 10 * 60 * 1000) {
+            results[sid] = cached.listings;
+            continue;
+          }
+
+          // Check XMLTV memory cache
+          if (iptvXmltvCache && iptvXmltvCache.timestamp > 0) {
+            const tvgId = (ch.tvg_id || ch.epg_channel_id || "").trim();
+            const normName = (ch.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+            let raw = null;
+            if (tvgId && iptvXmltvCache.byTvgId && iptvXmltvCache.byTvgId.has(tvgId)) {
+              raw = iptvXmltvCache.byTvgId.get(tvgId);
+            } else if (iptvXmltvCache.byTvgId && iptvXmltvCache.byTvgId.has(sid)) {
+              raw = iptvXmltvCache.byTvgId.get(sid);
+            } else if (normName && iptvXmltvCache.byName && iptvXmltvCache.byName.has(normName)) {
+              raw = iptvXmltvCache.byName.get(normName);
+            }
+            if (raw && raw.length > 0) {
+              const relevant = raw
+                .filter((p) => !p.stop_timestamp || p.stop_timestamp >= nowSec - 7200)
+                .slice(0, 15);
+              results[sid] = relevant;
+              iptvShortEpgCache.set(cacheKey, { timestamp: Date.now(), listings: relevant });
+              continue;
+            }
+          }
+
+          uncached.push(ch);
+        }
+
+        // 2. Query Xtream player_api.php get_short_epg for remaining channels in controlled parallel batches
+        if (uncached.length > 0 && config.credentials.serverUrl && config.credentials.username) {
+          const toFetch = uncached.slice(0, 20);
+          await Promise.all(toFetch.map(async (ch) => {
+            const sid = String(ch.stream_id);
+            try {
+              const data = await callXtreamApi(config.credentials, "get_short_epg", {
+                stream_id: sid,
+                limit: "10"
+              });
+              const rawList = data && Array.isArray(data.epg_listings) ? data.epg_listings : [];
+              if (rawList.length > 0) {
+                const listings = rawList.map((item) => {
+                  let title = item.title || "";
+                  try {
+                    const decoded = Buffer.from(title, "base64").toString("utf8");
+                    if (/^[\x20-\x7E\s\u00A0-\u024F]+$/.test(decoded) && decoded.length > 2) title = decoded;
+                  } catch (e) {}
+
+                  let desc = item.description || "";
+                  try {
+                    const decodedDesc = Buffer.from(desc, "base64").toString("utf8");
+                    if (/^[\x20-\x7E\s\u00A0-\u024F]+$/.test(decodedDesc) && decodedDesc.length > 2) desc = decodedDesc;
+                  } catch (e) {}
+
+                  return {
+                    id: item.id,
+                    title: title.trim(),
+                    description: desc.trim(),
+                    start: item.start,
+                    end: item.end,
+                    start_timestamp: item.start_timestamp,
+                    stop_timestamp: item.stop_timestamp,
+                  };
+                });
+                results[sid] = listings;
+                iptvShortEpgCache.set(`epg_${sid}`, { timestamp: Date.now(), listings });
+              } else {
+                results[sid] = [];
+              }
+            } catch (err) {
+              results[sid] = [];
+            }
+          }));
+        }
+
+        return sendJson(res, 200, { status: "success", epg: results });
+      } catch (err) {
+        logMessage(`[IPTV Batch EPG Error] ${err.message}`, true);
+        return sendJson(res, 200, { status: "success", epg: {} });
+      }
+    });
+    return;
+  }
+
   // GET /api/iptv/epg - Get EPG for a channel (Xtream player API first, with XMLTV fallback)
   if (cleanPath === "/api/iptv/epg" && req.method === "GET") {
     (async () => {

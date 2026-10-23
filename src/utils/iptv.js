@@ -99,3 +99,24 @@ export const fetchIptvEpg = async (streamId, tvgId = "", channelName = "") => {
     return [];
   }
 };
+
+export const fetchIptvEpgBatch = async (channels = []) => {
+  if (!channels || channels.length === 0) return {};
+  try {
+    const base = getServerUrl();
+    const payload = {
+      channels: channels.map((c) => ({
+        stream_id: String(c.stream_id),
+        tvg_id: c.epg_channel_id || c.tvg_id || "",
+        name: c.name || c.original_name || "",
+      })),
+    };
+    const res = await axios.post(`${base}/api/iptv/epg/batch`, payload, {
+      timeout: 12000,
+    });
+    return res.data?.epg || {};
+  } catch (err) {
+    console.error("[IPTV] Failed to fetch batch EPG:", err.message);
+    return {};
+  }
+};
