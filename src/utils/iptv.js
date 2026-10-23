@@ -1,10 +1,12 @@
 import axios from "axios";
 import { getServerUrl } from "./serverSettings";
 
-export const getIptvStreamUrl = (streamId) => {
-  if (!streamId) return "";
+export const getIptvStreamUrl = (streamId, rawStreamUrl = "") => {
+  if (!streamId && !rawStreamUrl) return "";
   const base = getServerUrl();
-  return `${base}/api/iptv/stream/${streamId}.m3u8`;
+  const sid = streamId ? encodeURIComponent(streamId) : "live";
+  const query = rawStreamUrl ? `?url=${encodeURIComponent(rawStreamUrl)}` : "";
+  return `${base}/api/iptv/stream/${sid}.m3u8${query}`;
 };
 
 export const fetchIptvConfig = async () => {

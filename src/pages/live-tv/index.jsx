@@ -402,7 +402,7 @@ const LiveTvPage = () => {
     if (!video) return;
 
     setIsBuffering(true);
-    const streamUrl = currentChannel.stream_url || getIptvStreamUrl(currentChannel.stream_id);
+    const streamUrl = getIptvStreamUrl(currentChannel.stream_id, currentChannel.stream_url);
 
     if (hlsRef.current) {
       hlsRef.current.destroy();

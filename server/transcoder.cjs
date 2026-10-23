@@ -880,9 +880,19 @@ const parseM3uPlus = (content) => {
       }
     } else if (!line.startsWith("#") && currentItem) {
       currentItem.stream_url = line;
-      const streamIdMatch = line.match(/\/(\d+)(\.(m3u8|ts|mp4)|\?|$)/i) || line.match(/\/(\d+)\b/);
-      const streamId = streamIdMatch ? streamIdMatch[1] : `stream_${channels.length + 1}`;
-      currentItem.stream_id = streamId;
+      let streamId = null;
+      try {
+        const u = new URL(line);
+        const pMatch = u.pathname.match(/\/(\d+)(\.(m3u8|ts|mp4)|\?|$)/i);
+        if (pMatch) streamId = pMatch[1];
+      } catch (e) {
+        const pMatch = line.replace(/^https?:\/\/[^\/]+/, "").match(/\/(\d+)(\.(m3u8|ts|mp4)|\?|$)/i);
+        if (pMatch) streamId = pMatch[1];
+      }
+      if (!streamId) {
+        streamId = currentItem.tvg_id || `stream_${channels.length + 1}`;
+      }
+      currentItem.stream_id = String(streamId);
 
       if (!currentItem.category_name) {
         currentItem.category_name = "General";
@@ -2002,8 +2012,7 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     return;
   }
 
-  // CORS-transparent Stream Proxy Endpoint
-  // Allows MoviPlayer (WASM) to fetch video bytes from CDNs that don't send CORS headers.
+  // CORS-transparent Stream Proxy Endpoint with server-side redirect following
   // Pure pipe-through — zero transcoding, no FFmpeg.
   if ((cleanPath === "/api/proxy" || cleanPath === "/proxy") && (req.method === "GET" || req.method === "HEAD")) {
     const targetUrl = parsedUrl.searchParams.get("url");
@@ -2011,62 +2020,84 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
       return sendJson(res, 400, { error: "Missing or invalid 'url' parameter." });
     }
 
-    try {
-      const parsed = new URL(targetUrl);
-      const isHttps = parsed.protocol === "https:";
-      const httpModule = isHttps ? require("https") : require("http");
-
-      const proxyHeaders = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "Accept": "*/*",
-        "Accept-Language": "en-US,en;q=0.9",
-      };
-
-      if (req.headers["range"]) {
-        proxyHeaders["Range"] = req.headers["range"];
+    const forwardRequest = (currentUrl, redirectCount = 0) => {
+      if (redirectCount > 5) {
+        logMessage(`[Stream Proxy Error] Too many redirects for: ${targetUrl}`, true);
+        if (!res.headersSent) sendJson(res, 502, { error: "Too many redirects from upstream." });
+        return;
       }
 
-      logMessage(`[Stream Proxy] Forwarding ${req.method} request for [${initiator.initiatorComponent}] (${initiator.ip}): ${targetUrl.substring(0, 100)}...`);
+      try {
+        const parsed = new URL(currentUrl);
+        const isHttps = parsed.protocol === "https:";
+        const httpModule = isHttps ? require("https") : require("http");
 
-      const upstream = httpModule.request(targetUrl, {
-        method: req.method,
-        headers: proxyHeaders,
-        rejectUnauthorized: false,
-        timeout: 15000,
-      }, (upstreamRes) => {
-        const responseHeaders = {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Headers": "Range, Content-Type",
-          "Access-Control-Expose-Headers": "Content-Range, Content-Length, Accept-Ranges",
+        const proxyHeaders = {
+          "User-Agent": "VLC/3.0.18 LibVLC/3.0.18",
+          "Accept": "*/*",
+          "Accept-Language": "en-US,en;q=0.9",
         };
 
-        const forwardHeaders = [
-          "content-type", "content-length", "content-range",
-          "accept-ranges", "last-modified", "etag"
-        ];
-        for (const h of forwardHeaders) {
-          if (upstreamRes.headers[h]) {
-            responseHeaders[h] = upstreamRes.headers[h];
+        if (req.headers["range"]) {
+          proxyHeaders["Range"] = req.headers["range"];
+        }
+
+        if (redirectCount === 0) {
+          logMessage(`[Stream Proxy] Forwarding ${req.method} request for [${initiator.initiatorComponent}] (${initiator.ip}): ${targetUrl.substring(0, 100)}...`);
+        }
+
+        const upstream = httpModule.request(currentUrl, {
+          method: req.method,
+          headers: proxyHeaders,
+          rejectUnauthorized: false,
+          timeout: 20000,
+        }, (upstreamRes) => {
+          // Follow HTTP redirects internally on the backend to avoid Mixed Content on client
+          if ([301, 302, 303, 307, 308].includes(upstreamRes.statusCode) && upstreamRes.headers.location) {
+            let nextUrl = upstreamRes.headers.location;
+            if (!nextUrl.startsWith("http://") && !nextUrl.startsWith("https://")) {
+              nextUrl = new URL(nextUrl, currentUrl).href;
+            }
+            upstreamRes.resume();
+            return forwardRequest(nextUrl, redirectCount + 1);
           }
-        }
 
-        res.writeHead(upstreamRes.statusCode || 200, responseHeaders);
-        upstreamRes.pipe(res);
-        req.on("close", () => upstream.destroy());
-      });
+          const responseHeaders = {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "Range, Content-Type",
+            "Access-Control-Expose-Headers": "Content-Range, Content-Length, Accept-Ranges",
+          };
 
-      upstream.on("error", (err) => {
-        logMessage(`[Stream Proxy Error] ${err.message}`, true);
-        if (!res.headersSent) {
-          sendJson(res, 502, { error: "Upstream stream error." });
-        }
-      });
+          const forwardHeaders = [
+            "content-type", "content-length", "content-range",
+            "accept-ranges", "last-modified", "etag"
+          ];
+          for (const h of forwardHeaders) {
+            if (upstreamRes.headers[h]) {
+              responseHeaders[h] = upstreamRes.headers[h];
+            }
+          }
 
-      upstream.end();
-    } catch (err) {
-      logMessage(`[Stream Proxy Exception] ${err.message}`, true);
-      if (!res.headersSent) sendJson(res, 500, { error: err.message });
-    }
+          res.writeHead(upstreamRes.statusCode || 200, responseHeaders);
+          upstreamRes.pipe(res);
+          req.on("close", () => upstream.destroy());
+        });
+
+        upstream.on("error", (err) => {
+          logMessage(`[Stream Proxy Error] ${err.message}`, true);
+          if (!res.headersSent) {
+            sendJson(res, 502, { error: "Upstream stream error." });
+          }
+        });
+
+        upstream.end();
+      } catch (err) {
+        logMessage(`[Stream Proxy Exception] ${err.message}`, true);
+        if (!res.headersSent) sendJson(res, 500, { error: err.message });
+      }
+    };
+
+    forwardRequest(targetUrl);
     return;
   }
 
@@ -2725,40 +2756,163 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     return;
   }
 
-  // GET /api/iptv/stream/:streamId - Stream Redirect / Resolver Endpoint
+  // GET /api/iptv/stream/:streamId - Stream Resolver & HTTPS Proxy Endpoint
   if (cleanPath.startsWith("/api/iptv/stream/") && req.method === "GET") {
-    try {
-      const streamId = cleanPath.replace("/api/iptv/stream/", "").replace(/\.(m3u8|ts)$/, "");
-      const config = loadIptvConfig();
-      const { serverUrl, username, password } = config.credentials;
-      if (!serverUrl || !username || !password) {
-        return sendJson(res, 404, { error: "IPTV credentials not configured on server." });
-      }
+    (async () => {
+      try {
+        const streamId = cleanPath.replace("/api/iptv/stream/", "").replace(/\.(m3u8|ts)$/, "");
+        const directUrl = parsedUrl.query.url;
+        const config = loadIptvConfig();
+        const { serverUrl, username, password } = config.credentials;
 
-      // 1. Direct stream URL lookup from M3U playlist
-      const targetFromM3u = iptvChannelsCache.streamUrlMap.get(String(streamId));
-      if (targetFromM3u) {
-        res.writeHead(302, {
-          "Location": targetFromM3u,
+        logMessage(`[IPTV Stream Request] Stream ID: "${streamId}" | Direct URL: ${directUrl ? directUrl.substring(0, 80) : "none"}`);
+
+        // Candidates to attempt
+        const candidates = [];
+        if (directUrl && directUrl.startsWith("http")) {
+          candidates.push(directUrl);
+        }
+        const cachedUrl = iptvChannelsCache.streamUrlMap.get(String(streamId)) || iptvChannelsCache.streamUrlMap.get(decodeURIComponent(streamId));
+        if (cachedUrl && !candidates.includes(cachedUrl)) {
+          candidates.push(cachedUrl);
+        }
+
+        const cleanServer = (serverUrl || "").trim().replace(/\/+$/, "").replace(/\/get\.php.*$/, "");
+        if (cleanServer && username && password) {
+          const xtreamHls = `${cleanServer}/live/${encodeURIComponent(username)}/${encodeURIComponent(password)}/${encodeURIComponent(streamId)}.m3u8`;
+          const xtreamTs = `${cleanServer}/live/${encodeURIComponent(username)}/${encodeURIComponent(password)}/${encodeURIComponent(streamId)}.ts`;
+          const xtreamDirect = `${cleanServer}/${encodeURIComponent(username)}/${encodeURIComponent(password)}/${encodeURIComponent(streamId)}`;
+
+          if (!candidates.includes(xtreamHls)) candidates.push(xtreamHls);
+          if (!candidates.includes(xtreamTs)) candidates.push(xtreamTs);
+          if (!candidates.includes(xtreamDirect)) candidates.push(xtreamDirect);
+        }
+
+        if (candidates.length === 0) {
+          return sendJson(res, 404, { error: `No stream URL found for channel ${streamId}` });
+        }
+
+        let successfulRes = null;
+        let successfulUrl = null;
+        let lastError = null;
+
+        for (const candidate of candidates) {
+          try {
+            logMessage(`[IPTV Stream] Trying candidate: ${candidate.substring(0, 100)}...`);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+            const upstreamRes = await fetch(candidate, {
+              signal: controller.signal,
+              headers: {
+                "User-Agent": "VLC/3.0.18 LibVLC/3.0.18",
+                "Accept": "*/*",
+                "Connection": "keep-alive",
+              },
+              redirect: "follow",
+            });
+            clearTimeout(timeoutId);
+
+            if (upstreamRes.ok) {
+              successfulRes = upstreamRes;
+              successfulUrl = candidate;
+              break;
+            } else {
+              logMessage(`[IPTV Stream] Candidate returned status ${upstreamRes.status} on ${candidate.substring(0, 80)}`);
+              lastError = `HTTP ${upstreamRes.status}`;
+            }
+          } catch (e) {
+            logMessage(`[IPTV Stream] Candidate fetch error: ${e.message} on ${candidate.substring(0, 80)}`, true);
+            lastError = e.message;
+          }
+        }
+
+        if (!successfulRes) {
+          // If all candidates failed and any candidate contained /auth/, trigger background M3U refresh
+          if (candidates.some((c) => c.includes("/auth/")) && config.credentials.serverUrl) {
+            logMessage(`[IPTV Stream Token Refresh] Stale tokens detected. Triggering background M3U refresh...`);
+            fetchM3uPlaylist(config.credentials, true).catch(() => {});
+          }
+          return sendJson(res, 502, { error: `Unable to connect to IPTV stream: ${lastError || "Upstream 404"}` });
+        }
+
+        const contentType = (successfulRes.headers.get("content-type") || "").toLowerCase();
+        const reader = successfulRes.body.getReader();
+        const firstChunk = await reader.read();
+        if (firstChunk.done || !firstChunk.value) {
+          return sendJson(res, 502, { error: "Empty response from IPTV upstream." });
+        }
+
+        const chunkStr = new TextDecoder().decode(firstChunk.value.slice(0, 1024));
+        const isM3u8 = chunkStr.includes("#EXTM3U") || contentType.includes("mpegurl");
+
+        // 1. If upstream returns an HLS playlist (M3U8)
+        if (isM3u8) {
+          let playlistText = new TextDecoder().decode(firstChunk.value);
+          while (true) {
+            const next = await reader.read();
+            if (next.done) break;
+            if (next.value) playlistText += new TextDecoder().decode(next.value);
+          }
+
+          const finalUrl = successfulRes.url || successfulUrl;
+          const lines = playlistText.split(/\r?\n/);
+          const rewritten = lines.map((l) => {
+            const trimmed = l.trim();
+            if (!trimmed || trimmed.startsWith("#")) return l;
+            let absUrl = trimmed;
+            if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
+              try {
+                absUrl = new URL(trimmed, finalUrl).href;
+              } catch (e) {
+                absUrl = trimmed;
+              }
+            }
+            return `/api/proxy?url=${encodeURIComponent(absUrl)}`;
+          }).join("\n");
+
+          res.writeHead(200, {
+            "Content-Type": "application/vnd.apple.mpegurl",
+            "Access-Control-Allow-Origin": "*",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+          });
+          return res.end(rewritten);
+        }
+
+        // 2. Upstream returned a binary stream or MPEG-TS
+        res.writeHead(200, {
+          "Content-Type": contentType || "video/mp2t",
           "Access-Control-Allow-Origin": "*",
           "Cache-Control": "no-cache, no-store, must-revalidate",
         });
-        return res.end();
+
+        res.write(Buffer.from(firstChunk.value.buffer, firstChunk.value.byteOffset, firstChunk.value.byteLength));
+
+        let clientClosed = false;
+        req.on("close", () => {
+          clientClosed = true;
+          try {
+            reader.cancel();
+          } catch (e) {}
+        });
+
+        while (!clientClosed) {
+          const next = await reader.read();
+          if (next.done || !next.value) break;
+          const chunkBuf = Buffer.from(next.value.buffer, next.value.byteOffset, next.value.byteLength);
+          if (!res.write(chunkBuf)) {
+            await new Promise((resolve) => res.once("drain", resolve));
+          }
+        }
+        if (!res.writableEnded) {
+          res.end();
+        }
+      } catch (err) {
+        logMessage(`[IPTV Stream Exception] ${err.message}`, true);
+        if (!res.headersSent) sendJson(res, 500, { error: err.message });
       }
-
-      // 2. Standard Xtream URL fallback
-      const cleanServer = serverUrl.replace(/\/+$/, "");
-      const liveStreamUrl = `${cleanServer}/live/${encodeURIComponent(username)}/${encodeURIComponent(password)}/${encodeURIComponent(streamId)}.m3u8`;
-
-      res.writeHead(302, {
-        "Location": liveStreamUrl,
-        "Access-Control-Allow-Origin": "*",
-        "Cache-Control": "no-cache, no-store, must-revalidate",
-      });
-      return res.end();
-    } catch (err) {
-      return sendJson(res, 500, { error: err.message });
-    }
+    })();
+    return;
   }
 
   // Transparent Groq AI Chat Completion Proxy Endpoint
