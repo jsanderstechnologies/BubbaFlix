@@ -22,6 +22,7 @@ import {
   FiUsers, 
   FiLayers,
   FiShield,
+  FiRefreshCw,
 } from "react-icons/fi";
 import { isEnglishStreamTitle, isMatchingStreamTitle, is10BitOrHevcStream, isSeasonPackStream } from "../../../utils/filterUtils";
 import { isFireTabletDevice, getDeviceModelName } from "../../../utils/deviceDetection";

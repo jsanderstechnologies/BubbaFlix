@@ -1,6 +1,6 @@
 {
-  "versionCode": 59,
-  "versionName": "1.0.58",
+  "versionCode": 60,
+  "versionName": "1.0.59",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.58: Added dedicated Torrentio Stream Scraper settings section in Settings page with provider selection, sorting, limits, quality exclusions, custom URL support, and live connection testing."
+  "releaseNotes": "BubbaFlix TV v1.0.59: Fix details page loading crash by restoring missing FiRefreshCw icon import in MagnetSection and adding DetailsErrorBoundary protection."
 }

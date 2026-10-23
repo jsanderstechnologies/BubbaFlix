@@ -10,6 +10,36 @@ import { useParams, useNavigate } from "react-router-dom";
 import { restoreLastFocusedPoster, goBackToSource } from "../../utils/focusManager";
 import { getOfficialTrailer } from "../../utils/filterUtils";
 
+class DetailsErrorBoundary extends React.Component {
+	constructor(props) {
+		super(props);
+		this.state = { hasError: false, error: null };
+	}
+	static getDerivedStateFromError(error) {
+		return { hasError: true, error };
+	}
+	componentDidCatch(error, errorInfo) {
+		console.error("[DetailsPage ErrorBoundary caught]:", error, errorInfo);
+	}
+	render() {
+		if (this.state.hasError) {
+			return (
+				<div style={{ padding: "60px 20px", textAlign: "center", color: "#fff" }}>
+					<h2>Unable to load details for this title</h2>
+					<p style={{ opacity: 0.7, margin: "16px 0" }}>{this.state.error?.message || "An unexpected error occurred."}</p>
+					<button 
+						onClick={() => window.location.reload()} 
+						style={{ padding: "10px 24px", background: "#da2f68", border: "none", color: "#fff", borderRadius: "8px", cursor: "pointer", fontSize: "16px" }}
+					>
+						Reload
+					</button>
+				</div>
+			);
+		}
+		return this.props.children;
+	}
+}
+
 const DetailsPage = () => {
 	const { mediaType, id } = useParams();
 	const navigate = useNavigate();
@@ -59,8 +89,6 @@ const DetailsPage = () => {
 		};
 	}, [navigate]);
 
-
-
 	return (
 		<div className="details-page">
 			<button
@@ -73,20 +101,22 @@ const DetailsPage = () => {
 				<FiArrowLeft />
 			</button>
 			<TopNav />
-			<DetailsBanner video={officialTrailer} crew={credits?.crew} />
+			<DetailsErrorBoundary>
+				<DetailsBanner video={officialTrailer} crew={credits?.crew} />
 
-			{/* Show season dropdown & episode magnet streams ONLY for TV series */}
-			{mediaType === "tv" && (
-				<SeasonsSection
-					tvId={id}
-					seasons={detailsData?.seasons}
-					showTitle={title}
-					posterPath={detailsData?.poster_path}
-				/>
-			)}
+				{/* Show season dropdown & episode magnet streams ONLY for TV series */}
+				{mediaType === "tv" && (
+					<SeasonsSection
+						tvId={id}
+						seasons={detailsData?.seasons}
+						showTitle={title}
+						posterPath={detailsData?.poster_path}
+					/>
+				)}
 
-			<Cast data={credits?.cast} loading={creditsLoading} />
-					</div>
+				<Cast data={credits?.cast} loading={creditsLoading} />
+			</DetailsErrorBoundary>
+		</div>
 	);
 };
 
