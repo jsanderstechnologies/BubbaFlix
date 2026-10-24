@@ -10,8 +10,12 @@ import {
   FiAlertCircle,
   FiCheckCircle,
   FiLayers,
+  FiZap,
+  FiKey,
 } from "react-icons/fi";
-import { fetchAvailableEpgChannels, assignChannelEpg } from "../../utils/iptv";
+import { fetchAvailableEpgChannels, fetchAllAvailableEpgChannels, assignChannelEpg } from "../../utils/iptv";
+import { matchChannelWithGroq, getGroqApiKey, saveGroqApiKey } from "../../utils/groqFilter";
+import { fetchServerSettings } from "../../utils/serverSettings";
 import "./index.scss";
 
 const ChannelEpgModal = ({ channel, isOpen, onClose, onSave }) => {
@@ -26,6 +30,13 @@ const ChannelEpgModal = ({ channel, isOpen, onClose, onSave }) => {
   const [loadingAvailable, setLoadingAvailable] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null);
+
+  // Groq AI State
+  const [aiMatching, setAiMatching] = useState(false);
+  const [aiMatchResult, setAiMatchResult] = useState(null);
+  const [showKeyPrompt, setShowKeyPrompt] = useState(false);
+  const [keyInput, setKeyInput] = useState("");
+  const [allDbChannels, setAllDbChannels] = useState([]);
 
   const searchTimerRef = useRef(null);
 
@@ -109,6 +120,69 @@ const ChannelEpgModal = ({ channel, isOpen, onClose, onSave }) => {
     setSelectedEpgId("");
   };
 
+  const handleAiAutoMatch = async () => {
+    setAiMatching(true);
+    setSaveStatus(null);
+    setAiMatchResult(null);
+
+    let key = getGroqApiKey();
+    if (!key) {
+      const settings = await fetchServerSettings();
+      if (settings?.groqKey) {
+        key = settings.groqKey;
+        localStorage.setItem("groq_api_key", key);
+      }
+    }
+
+    if (!key) {
+      setAiMatching(false);
+      setShowKeyPrompt(true);
+      return;
+    }
+
+    try {
+      let pool = allDbChannels;
+      if (!pool || pool.length === 0) {
+        pool = await fetchAllAvailableEpgChannels(5000);
+        if (pool && pool.length > 0) setAllDbChannels(pool);
+      }
+      if (!pool || pool.length === 0) {
+        pool = availableChannels;
+      }
+
+      const res = await matchChannelWithGroq(channel, pool);
+      setAiMatching(false);
+
+      if (res && res.matched_epg_id) {
+        setSelectedEpgId(res.matched_epg_id);
+        setAiMatchResult(res);
+        setSaveStatus({
+          type: "info",
+          text: `✨ Groq AI recommended "${res.matched_name || res.matched_epg_id}" (${res.confidence}% confidence). Review and click Save!`,
+        });
+        setSearchQuery(res.matched_name || res.matched_epg_id);
+      } else {
+        setSaveStatus({
+          type: "error",
+          text: res?.reason || "Groq AI could not find a confident match for this channel.",
+        });
+      }
+    } catch (err) {
+      setAiMatching(false);
+      setSaveStatus({
+        type: "error",
+        text: `Groq AI Error: ${err.message}`,
+      });
+    }
+  };
+
+  const handleSaveKeyAndMatch = async () => {
+    if (!keyInput.trim()) return;
+    await saveGroqApiKey(keyInput.trim());
+    setShowKeyPrompt(false);
+    handleAiAutoMatch();
+  };
+
   const isCustom = selectedEpgId && selectedEpgId !== defaultEpg;
 
   return (
@@ -172,6 +246,25 @@ const ChannelEpgModal = ({ channel, isOpen, onClose, onSave }) => {
           <div className="sectionLabelRow">
             <label>Assigned EPG Channel ID (XMLTV ID or Stream ID):</label>
             <div className="quickActions">
+              <button
+                type="button"
+                tabIndex={0}
+                className={`quickBtn aiAutoMatchBtn ${aiMatching ? "loading" : ""}`}
+                onClick={handleAiAutoMatch}
+                disabled={aiMatching}
+                title="Use Groq LLaMA 3.3 AI to automatically detect the matching EPG guide"
+              >
+                {aiMatching ? (
+                  <>
+                    <FiRefreshCw className="spinning" /> Matching with Groq AI...
+                  </>
+                ) : (
+                  <>
+                    <FiZap className="aiIcon" /> ✨ AI Auto-Match
+                  </>
+                )}
+              </button>
+
               {defaultEpg && selectedEpgId !== defaultEpg && (
                 <button
                   type="button"
@@ -213,6 +306,63 @@ const ChannelEpgModal = ({ channel, isOpen, onClose, onSave }) => {
             />
             {isCustom && <span className="customBadge">CUSTOM ASSIGNED</span>}
           </div>
+
+          {/* AI Key Configuration Prompt if key missing */}
+          {showKeyPrompt && (
+            <div className="aiKeyPromptCard">
+              <div className="keyPromptHeader">
+                <FiKey className="keyIcon" />
+                <span>Enter Groq API Key to enable AI Auto-Matching:</span>
+                <button
+                  type="button"
+                  className="closeKeyBtn"
+                  onClick={() => setShowKeyPrompt(false)}
+                >
+                  <FiX />
+                </button>
+              </div>
+              <p className="keyPromptDesc">
+                Get a free key in seconds at <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer">console.groq.com/keys</a>.
+              </p>
+              <div className="keyInputRow">
+                <input
+                  type="password"
+                  placeholder="gsk_..."
+                  value={keyInput}
+                  onChange={(e) => setKeyInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSaveKeyAndMatch();
+                  }}
+                />
+                <button type="button" className="saveKeyBtn" onClick={handleSaveKeyAndMatch}>
+                  Save & Match
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* AI Match Recommendation Card */}
+          {aiMatchResult && (
+            <div className="aiResultCard">
+              <div className="aiResultHeader">
+                <span className="aiResultBadge">
+                  <FiZap /> Groq AI Recommendation
+                </span>
+                <span className={`confidenceTag ${aiMatchResult.confidence >= 80 ? "high" : aiMatchResult.confidence >= 50 ? "medium" : "low"}`}>
+                  {aiMatchResult.confidence}% Confidence
+                </span>
+              </div>
+              <div className="aiResultBody">
+                <div className="aiResultName">
+                  <strong>{aiMatchResult.matched_name || aiMatchResult.matched_epg_id}</strong>
+                  <code>{aiMatchResult.matched_epg_id}</code>
+                </div>
+                {aiMatchResult.reason && (
+                  <div className="aiResultReason">"{aiMatchResult.reason}"</div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* EPG Database Search & Picker */}

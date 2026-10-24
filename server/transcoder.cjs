@@ -2606,7 +2606,8 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
         }
 
         const total = results.length;
-        const capped = results.slice(0, 200);
+        const requestedLimit = parsedUrl.query.limit !== undefined ? parseInt(parsedUrl.query.limit, 10) : 200;
+        const capped = requestedLimit > 0 ? results.slice(0, requestedLimit) : results;
 
         return sendJson(res, 200, {
           status: "success",
@@ -3120,8 +3121,10 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     req.on("end", () => {
       try {
         const settings = loadServerSettings();
-        const serverGroqKey = settings.groqKey || process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY || "";
-        const authHeader = req.headers.authorization || (serverGroqKey ? `Bearer ${serverGroqKey}` : "");
+        let authHeader = req.headers.authorization;
+        if (!authHeader || authHeader.trim() === "Bearer" || authHeader.trim() === "Bearer undefined" || authHeader.trim() === "Bearer null") {
+          authHeader = serverGroqKey ? `Bearer ${serverGroqKey}` : "";
+        }
 
         if (!authHeader) {
           return sendJson(res, 400, { error: "Missing Groq API Key" });

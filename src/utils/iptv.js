@@ -137,6 +137,19 @@ export const fetchAvailableEpgChannels = async (query = "") => {
   }
 };
 
+export const fetchAllAvailableEpgChannels = async (limit = 5000) => {
+  try {
+    const base = getServerUrl();
+    const res = await axios.get(`${base}/api/iptv/epg/channels?limit=${limit}`, {
+      timeout: 20000,
+    });
+    return res.data?.channels || [];
+  } catch (err) {
+    console.error("[IPTV] Failed to fetch all available EPG channels:", err.message);
+    return [];
+  }
+};
+
 export const assignChannelEpg = async (streamId, epgChannelId) => {
   try {
     const base = getServerUrl();

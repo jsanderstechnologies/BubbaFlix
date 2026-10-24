@@ -185,6 +185,12 @@
         color: #f44336;
         border: 1px solid rgba(244, 67, 54, 0.3);
       }
+
+      &.info {
+        background: rgba(138, 43, 226, 0.15);
+        color: #dfb2ff;
+        border: 1px solid rgba(175, 76, 255, 0.3);
+      }
     }
 
     .assignmentSection {
@@ -242,6 +248,31 @@
               color: #f44336;
               border-color: #f44336;
             }
+
+            &.aiAutoMatchBtn {
+              background: linear-gradient(135deg, rgba(138, 43, 226, 0.25) 0%, rgba(218, 47, 104, 0.25) 100%);
+              border: 1px solid rgba(175, 76, 255, 0.4);
+              color: #dfb2ff;
+              font-weight: 600;
+
+              .aiIcon {
+                color: #e0a3ff;
+              }
+
+              &:hover,
+              &:focus,
+              &:focus-visible {
+                background: linear-gradient(135deg, rgba(138, 43, 226, 0.45) 0%, rgba(218, 47, 104, 0.45) 100%);
+                color: #ffffff;
+                border-color: #dfb2ff;
+                box-shadow: 0 0 10px rgba(175, 76, 255, 0.35);
+              }
+
+              &.loading {
+                opacity: 0.8;
+                cursor: wait;
+              }
+            }
           }
         }
       }
@@ -282,6 +313,165 @@
           padding: 3px 6px;
           border-radius: 4px;
           letter-spacing: 0.5px;
+        }
+      }
+
+      .aiKeyPromptCard {
+        margin-top: 10px;
+        padding: 12px 14px;
+        background: #141124;
+        border: 1px solid rgba(175, 76, 255, 0.3);
+        border-radius: 8px;
+
+        .keyPromptHeader {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 13px;
+          font-weight: 600;
+          color: #dfb2ff;
+
+          .keyIcon {
+            color: #e0a3ff;
+          }
+
+          .closeKeyBtn {
+            margin-left: auto;
+            background: transparent;
+            border: none;
+            color: rgba(255, 255, 255, 0.5);
+            cursor: pointer;
+            padding: 2px 4px;
+
+            &:hover {
+              color: white;
+            }
+          }
+        }
+
+        .keyPromptDesc {
+          font-size: 11.5px;
+          color: rgba(255, 255, 255, 0.55);
+          margin: 4px 0 8px;
+
+          a {
+            color: #e0a3ff;
+            text-decoration: underline;
+          }
+        }
+
+        .keyInputRow {
+          display: flex;
+          gap: 8px;
+
+          input {
+            flex: 1;
+            background: #090a10;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 12.5px;
+            color: white;
+            font-family: monospace;
+            outline: none;
+
+            &:focus {
+              border-color: #dfb2ff;
+            }
+          }
+
+          .saveKeyBtn {
+            background: #8a2be2;
+            border: none;
+            color: white;
+            padding: 0 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+
+            &:hover,
+            &:focus {
+              background: #9d46ea;
+            }
+          }
+        }
+      }
+
+      .aiResultCard {
+        margin-top: 10px;
+        padding: 10px 14px;
+        background: rgba(138, 43, 226, 0.1);
+        border: 1px solid rgba(175, 76, 255, 0.25);
+        border-radius: 8px;
+
+        .aiResultHeader {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 6px;
+
+          .aiResultBadge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #dfb2ff;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+
+          .confidenceTag {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 10px;
+
+            &.high {
+              background: rgba(76, 175, 80, 0.2);
+              color: #81c784;
+              border: 1px solid rgba(76, 175, 80, 0.4);
+            }
+
+            &.medium {
+              background: rgba(255, 152, 0, 0.2);
+              color: #ffb74d;
+              border: 1px solid rgba(255, 152, 0, 0.4);
+            }
+
+            &.low {
+              background: rgba(244, 67, 54, 0.2);
+              color: #e57373;
+              border: 1px solid rgba(244, 67, 54, 0.4);
+            }
+          }
+        }
+
+        .aiResultBody {
+          .aiResultName {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: white;
+
+            code {
+              color: #ffd54f;
+              background: rgba(255, 213, 79, 0.12);
+              padding: 1px 6px;
+              border-radius: 4px;
+              font-family: monospace;
+              font-size: 11.5px;
+            }
+          }
+
+          .aiResultReason {
+            margin-top: 4px;
+            font-size: 11.5px;
+            color: rgba(255, 255, 255, 0.65);
+            font-style: italic;
+          }
         }
       }
     }

@@ -27,9 +27,11 @@ import {
   FiArrowLeft,
   FiList,
   FiEdit2,
+  FiZap,
 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import ChannelEpgModal from "../../components/channel-epg-modal";
+import BatchAiEpgModal from "../../components/batch-ai-epg-modal";
 import "./index.scss";
 
 const IptvSetupPage = () => {
@@ -87,6 +89,7 @@ const IptvSetupPage = () => {
   const [batchStartNumber, setBatchStartNumber] = useState(1);
   const [channelDisplayLimit, setChannelDisplayLimit] = useState(300);
   const [editingEpgChannel, setEditingEpgChannel] = useState(null);
+  const [batchAiModalOpen, setBatchAiModalOpen] = useState(false);
 
   // Reset pagination limit when search or filters change
   useEffect(() => {
@@ -472,6 +475,66 @@ const IptvSetupPage = () => {
         customName: newName,
       },
     }));
+  };
+
+  // Bulk Apply Groq AI EPG Matches
+  const handleApplyBatchAiMatches = async (matchedMap) => {
+    const updatedChannelsConfig = { ...channelsConfig };
+    let count = 0;
+    for (const [sid, epgId] of Object.entries(matchedMap)) {
+      if (epgId) {
+        updatedChannelsConfig[sid] = {
+          ...(updatedChannelsConfig[sid] || {}),
+          epgChannelId: epgId,
+        };
+        count++;
+      }
+    }
+    setChannelsConfig(updatedChannelsConfig);
+
+    setSaving(true);
+    setSaveStatus({ type: "info", text: `Saving ${count} AI-matched EPG assignments...` });
+
+    try {
+      const res = await saveIptvConfig({
+        credentials,
+        groups: groupsConfig,
+        channels: updatedChannelsConfig,
+        autoNumberStrategy,
+      });
+
+      setSaving(false);
+      if (res.success) {
+        setSaveStatus({
+          type: "success",
+          text: `✨ Successfully assigned ${count} channel EPGs with Groq AI!`,
+        });
+        setLoadedChannels((prev) =>
+          prev.map((c) => {
+            const sid = String(c.stream_id);
+            if (matchedMap[sid]) {
+              return {
+                ...c,
+                epg_channel_id: matchedMap[sid],
+                custom_epg: Boolean(matchedMap[sid] && matchedMap[sid] !== (c.default_epg_id || c.tvg_id)),
+              };
+            }
+            return c;
+          })
+        );
+      } else {
+        setSaveStatus({
+          type: "error",
+          text: res.error || "Failed to save EPG assignments to server.",
+        });
+      }
+    } catch (err) {
+      setSaving(false);
+      setSaveStatus({
+        type: "error",
+        text: err.message || "Failed to save EPG assignments to server.",
+      });
+    }
   };
 
   // Batch Auto-numbering
@@ -942,6 +1005,15 @@ const IptvSetupPage = () => {
                     <button
                       type="button"
                       tabIndex={0}
+                      className="toolBtn aiBatchBtn"
+                      onClick={() => setBatchAiModalOpen(true)}
+                      title="Use Groq AI to automatically detect and assign EPG guides for your channels"
+                    >
+                      <FiZap className="aiZapIcon" /> ✨ AI Auto-Match EPG
+                    </button>
+                    <button
+                      type="button"
+                      tabIndex={0}
                       className="toolBtn refreshBtn"
                       onClick={() => loadProviderData(true)}
                       title="Refresh channels from provider"
@@ -1224,6 +1296,16 @@ const IptvSetupPage = () => {
               )
             );
           }}
+        />
+      )}
+
+      {batchAiModalOpen && (
+        <BatchAiEpgModal
+          isOpen={batchAiModalOpen}
+          onClose={() => setBatchAiModalOpen(false)}
+          channels={filteredChannels}
+          channelsConfig={channelsConfig}
+          onApplyMatches={handleApplyBatchAiMatches}
         />
       )}
     </div>

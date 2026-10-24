@@ -674,6 +674,33 @@
         align-items: center;
         gap: 8px;
 
+        .aiBatchBtn {
+          background: linear-gradient(135deg, rgba(138, 43, 226, 0.25) 0%, rgba(218, 47, 104, 0.25) 100%);
+          border: 1px solid rgba(175, 76, 255, 0.45);
+          color: #dfb2ff;
+          font-weight: 700;
+          padding: 7px 14px;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          box-shadow: 0 0 10px rgba(138, 43, 226, 0.2);
+
+          .aiZapIcon {
+            color: #e0a3ff;
+          }
+
+          &:hover,
+          &:focus,
+          &:focus-visible {
+            background: linear-gradient(135deg, #8a2be2 0%, #da2f68 100%);
+            border-color: #dfb2ff;
+            color: white;
+            box-shadow: 0 0 16px rgba(175, 76, 255, 0.5);
+            transform: scale(1.04);
+            outline: none;
+          }
+        }
+
         .refreshBtn {
           padding: 7px 14px;
         }

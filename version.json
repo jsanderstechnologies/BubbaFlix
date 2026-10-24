@@ -1,6 +1,6 @@
 {
-  "versionCode": 63,
-  "versionName": "1.0.62",
+  "versionCode": 64,
+  "versionName": "1.0.63",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.62: Add channel EPG assignment capability with interactive guide search and mapping modal, EPG status filtering in IPTV Setup, and instant guide assignment directly from Live TV."
+  "releaseNotes": "BubbaFlix TV v1.0.63: Add Groq AI EPG auto-matching for live TV channels with single-channel instant matching and batch AI auto-matching workbench in IPTV Setup."
 }
