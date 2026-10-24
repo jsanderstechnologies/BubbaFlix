@@ -162,7 +162,7 @@ class PlayerActivity : AppCompatActivity() {
 
         listOf(btnBack, btnAudio, btnSubtitles, btnRewind30, btnRewind10, btnPlayPause, btnFF10, btnFF30, seekBar).forEach { control ->
             control.isFocusable = true
-            control.isFocusableInTouchMode = true
+            control.isFocusableInTouchMode = false
         }
         btnPlayPause.requestFocus()
 
@@ -866,6 +866,8 @@ class PlayerActivity : AppCompatActivity() {
                 if (behindMs > 4000L) {
                     txtDuration.text = "GO TO LIVE (-${formatTime(behindMs)})"
                     txtDuration.setTextColor(android.graphics.Color.parseColor("#DA2F68"))
+                    txtDuration.isFocusable = true
+                    txtDuration.isFocusableInTouchMode = false
                     txtDuration.setOnClickListener {
                         player.seekToDefaultPosition()
                         player.playWhenReady = true
@@ -874,9 +876,14 @@ class PlayerActivity : AppCompatActivity() {
                 } else {
                     txtDuration.text = "● LIVE"
                     txtDuration.setTextColor(android.graphics.Color.parseColor("#4CAF50"))
+                    txtDuration.isFocusable = false
+                    txtDuration.isFocusableInTouchMode = false
+                    txtDuration.setOnClickListener(null)
                 }
             } else {
                 txtDuration.setTextColor(android.graphics.Color.parseColor("#FFFFFF"))
+                txtDuration.isFocusable = false
+                txtDuration.isFocusableInTouchMode = false
                 txtDuration.setOnClickListener(null)
                 if (dur > 0L && dur != C.TIME_UNSET) {
                     val progress = ((current * 1000) / dur).toInt()
@@ -940,10 +947,12 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private fun showControls() {
+        val wasHidden = !controlsVisible
         controlsVisible = true
         controlsOverlay.visibility = View.VISIBLE
-        if (currentFocus == null || currentFocus == playerView || currentFocus == controlsOverlay) {
-            btnPlayPause.post {
+        if (wasHidden) {
+            val focused = currentFocus
+            if (focused == null || focused == playerView || focused == controlsOverlay) {
                 btnPlayPause.requestFocus()
             }
         }
@@ -972,103 +981,133 @@ class PlayerActivity : AppCompatActivity() {
         )
     }
 
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        val keyCode = event.keyCode
+        val action = event.action
+
+        // Dedicated hardware media playback keys
+        if (action == KeyEvent.ACTION_DOWN) {
+            when (keyCode) {
+                KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE -> {
+                    btnPlayPause.performClick()
+                    return true
+                }
+                KeyEvent.KEYCODE_MEDIA_REWIND -> {
+                    btnRewind10.performClick()
+                    return true
+                }
+                KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
+                    btnFF10.performClick()
+                    return true
+                }
+            }
+        }
+
+        // Back button navigation
         if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == 4 || keyCode == 27 || keyCode == 10009 || keyCode == 461) {
-            if (!controlsVisible) {
-                resetControlsTimeout()
-                return true
-            } else {
-                saveCurrentWatchProgress()
-                finish()
-                return true
-            }
-        }
-
-        // If user tries to navigate above the back button when controls are visible, immediately hide controls
-        if (controlsVisible && keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-            val focused = currentFocus
-            if (btnBack.isFocused || focused == btnBack || (focused != null && focused.id == R.id.btn_back)) {
-                handler.removeCallbacks(hideControlsRunnable)
-                hideControls()
-                return true
-            }
-        }
-
-        resetControlsTimeout()
-
-        if (!controlsVisible) {
-            if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER ||
-                keyCode == KeyEvent.KEYCODE_DPAD_UP || keyCode == KeyEvent.KEYCODE_DPAD_DOWN ||
-                keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-                showControls()
-                btnPlayPause.post {
-                    btnPlayPause.requestFocus()
-                }
-                return true
-            }
-        }
-
-        if (seekBar.isFocused) {
-            if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-                resetControlsTimeout()
-                isUserSeeking = true
-                val isRepeat = (event?.repeatCount ?: 0) > 0
-                val step = if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
-                    if (isRepeat) -20 else -10
+            if (action == KeyEvent.ACTION_DOWN) {
+                if (!controlsVisible) {
+                    resetControlsTimeout()
+                    return true
                 } else {
-                    if (isRepeat) 20 else 10
+                    saveCurrentWatchProgress()
+                    finish()
+                    return true
                 }
-                val newProgress = (seekBar.progress + step).coerceIn(0, 1000)
-                seekBar.progress = newProgress
-                exoPlayer?.let { player ->
-                    val dur = player.duration
-                    val liveEdge = if (dur > 0L && dur != C.TIME_UNSET) dur else player.bufferedPosition.coerceAtLeast(player.currentPosition)
-                    if (liveEdge > 0L) {
-                        val targetMs = (liveEdge * newProgress) / 1000
-                        txtCurrentTime.text = formatTime(targetMs)
-                    }
-                }
-                return true
             }
+            return true
         }
 
-        when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> {
+        // When controls are hidden, ANY navigation key wakes up controls without triggering action
+        if (!controlsVisible) {
+            if (action == KeyEvent.ACTION_DOWN) {
+                if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER ||
+                    keyCode == KeyEvent.KEYCODE_DPAD_UP || keyCode == KeyEvent.KEYCODE_DPAD_DOWN ||
+                    keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    resetControlsTimeout()
+                    btnPlayPause.requestFocus()
+                    return true
+                }
+            }
+            return super.dispatchKeyEvent(event)
+        }
+
+        // Controls are visible from here onwards
+        if (action == KeyEvent.ACTION_DOWN) {
+            // D-Pad Up when back button is focused hides controls
+            if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                val focused = currentFocus
+                if (btnBack.isFocused || focused == btnBack || (focused != null && focused.id == R.id.btn_back)) {
+                    handler.removeCallbacks(hideControlsRunnable)
+                    hideControls()
+                    return true
+                }
+            }
+
+            // SeekBar D-Pad scrubbing
+            if (seekBar.isFocused) {
+                if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    resetControlsTimeout()
+                    isUserSeeking = true
+                    val isRepeat = event.repeatCount > 0
+                    val step = if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                        if (isRepeat) -20 else -10
+                    } else {
+                        if (isRepeat) 20 else 10
+                    }
+                    val newProgress = (seekBar.progress + step).coerceIn(0, 1000)
+                    seekBar.progress = newProgress
+                    exoPlayer?.let { player ->
+                        val dur = player.duration
+                        val liveEdge = if (dur > 0L && dur != C.TIME_UNSET) dur else player.bufferedPosition.coerceAtLeast(player.currentPosition)
+                        if (liveEdge > 0L) {
+                            val targetMs = (liveEdge * newProgress) / 1000
+                            txtCurrentTime.text = formatTime(targetMs)
+                        }
+                    }
+                    return true
+                }
+            }
+
+            // D-Pad Center / Enter click execution: executes the focused button action immediately on a single press
+            if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER) {
+                resetControlsTimeout()
                 if (seekBar.isFocused || isUserSeeking) {
                     commitPendingSeek()
                     return true
                 }
                 val focused = currentFocus
                 if (focused != null && focused != playerView && focused != controlsOverlay) {
-                    return super.onKeyDown(keyCode, event)
+                    focused.performClick()
+                    return true
                 } else {
                     btnPlayPause.requestFocus()
                     btnPlayPause.performClick()
                     return true
                 }
             }
-            KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE -> {
-                btnPlayPause.performClick()
+
+            resetControlsTimeout()
+        } else if (action == KeyEvent.ACTION_UP) {
+            if (seekBar.isFocused && (keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT)) {
+                commitPendingSeek()
+                resetControlsTimeout()
                 return true
             }
-            KeyEvent.KEYCODE_MEDIA_REWIND -> {
-                btnRewind10.performClick()
-                return true
-            }
-            KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
-                btnFF10.performClick()
+            // Consume key-up for Center / Enter so View doesn't perform a second synthetic click
+            if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER) {
                 return true
             }
         }
+
+        return super.dispatchKeyEvent(event)
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         return super.onKeyDown(keyCode, event)
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
-        if (seekBar.isFocused && (keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT)) {
-            commitPendingSeek()
-            resetControlsTimeout()
-            return true
-        }
         return super.onKeyUp(keyCode, event)
     }
 
