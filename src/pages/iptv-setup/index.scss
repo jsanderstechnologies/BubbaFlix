@@ -931,6 +931,79 @@
           outline: none;
         }
       }
+
+      .epgCell {
+        .epgCellWrapper {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+
+          .epgPill {
+            font-size: 11px;
+            font-family: monospace;
+            padding: 3px 8px;
+            border-radius: 4px;
+            max-width: 140px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+
+            &.default {
+              background: rgba(255, 255, 255, 0.08);
+              color: rgba(255, 255, 255, 0.7);
+              border: 1px solid rgba(255, 255, 255, 0.12);
+            }
+
+            &.custom {
+              background: rgba(218, 47, 104, 0.16);
+              color: #ff6b8b;
+              border: 1px solid rgba(218, 47, 104, 0.4);
+
+              .customTag {
+                font-size: 8.5px;
+                background: #da2f68;
+                color: white;
+                padding: 1px 4px;
+                border-radius: 2px;
+                font-weight: 800;
+              }
+            }
+
+            &.none {
+              background: rgba(255, 255, 255, 0.04);
+              color: rgba(255, 255, 255, 0.3);
+              font-style: italic;
+            }
+          }
+
+          .editEpgBtn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.15s ease;
+
+            &:hover,
+            &:focus,
+            &:focus-visible {
+              background: var(--pink, #da2f68);
+              color: white;
+              border-color: var(--pink, #da2f68);
+              outline: none;
+            }
+          }
+        }
+      }
     }
 
     .paginationNotice {

@@ -603,7 +603,7 @@ if (!fs.existsSync(IPTV_CACHE_DIR)) {
 }
 
 let iptvChannelsCache = { timestamp: 0, channels: [], groups: [], streamUrlMap: new Map() };
-let iptvXmltvCache = { timestamp: 0, byTvgId: new Map(), byName: new Map() };
+let iptvXmltvCache = { timestamp: 0, byTvgId: new Map(), byName: new Map(), epgChannels: [] };
 const iptvShortEpgCache = new Map(); // streamId -> { timestamp, listings }
 const IPTV_CHANNELS_CACHE_TTL = 15 * 60 * 1000; // 15 mins
 const IPTV_XMLTV_CACHE_TTL = 4 * 60 * 60 * 1000; // 4 hours
@@ -672,10 +672,30 @@ const parseXmltvDate = (dateStr) => {
 const parseXmltv = (xmlString) => {
   const byTvgId = new Map();
   const byName = new Map();
-  if (!xmlString) return { byTvgId, byName };
+  const epgChannelsMap = new Map();
+  if (!xmlString) return { byTvgId, byName, epgChannels: [] };
 
   // Safety ceiling: avoid running regex over multi-hundred MB strings
   const safeXml = xmlString.length > 25 * 1024 * 1024 ? xmlString.substring(0, 25 * 1024 * 1024) : xmlString;
+
+  // 1. Extract <channel id="..."> tags for channel discovery & EPG assignment
+  const chRegex = /<channel\s+id="([^"]+)"[^>]*>([\s\S]*?)<\/channel>/gi;
+  let chMatch;
+  while ((chMatch = chRegex.exec(safeXml)) !== null) {
+    const id = chMatch[1].trim();
+    const inner = chMatch[2];
+    const nameMatch = inner.match(/<display-name[^>]*>([\s\S]*?)<\/display-name>/i);
+    const iconMatch = inner.match(/<icon[^>]+src="([^"]+)"/i);
+
+    const name = nameMatch ? nameMatch[1].replace(/<!\[CDATA\[(.*?)\]\]>/gi, "$1").trim() : id;
+    const icon = iconMatch ? iconMatch[1].trim() : "";
+
+    if (!epgChannelsMap.has(id)) {
+      epgChannelsMap.set(id, { id, name, icon });
+    }
+  }
+
+  // 2. Extract <programme> listings
   const progRegex = /<programme\s+start="([^"]+)"\s+stop="([^"]+)"\s+channel="([^"]+)"[^>]*>([\s\S]*?)<\/programme>/gi;
   let match;
   let totalProgrammes = 0;
@@ -695,6 +715,10 @@ const parseXmltv = (xmlString) => {
     }
 
     const key = channelId.trim();
+    if (!epgChannelsMap.has(key)) {
+      epgChannelsMap.set(key, { id: key, name: key, icon: "" });
+    }
+
     const existing = byTvgId.get(key);
     // Limit to max 15 current/upcoming programmes per channel
     if (existing && existing.length >= 15) {
@@ -728,7 +752,11 @@ const parseXmltv = (xmlString) => {
     totalProgrammes++;
   }
 
-  return { byTvgId, byName };
+  return {
+    byTvgId,
+    byName,
+    epgChannels: Array.from(epgChannelsMap.values()),
+  };
 };
 
 // Fetch and Cache XMLTV EPG (/xmltv.php) with strict memory safeguards
@@ -753,6 +781,7 @@ const fetchXmltvEpg = async (credentials, force = false) => {
           timestamp: stats.mtimeMs,
           byTvgId: parsed.byTvgId,
           byName: parsed.byName,
+          epgChannels: parsed.epgChannels || [],
         };
         logMessage(`[XMLTV EPG Cache Hit] Loaded ${parsed.byTvgId.size} channel guides from disk cache.`);
         return iptvXmltvCache;
@@ -824,6 +853,7 @@ const fetchXmltvEpg = async (credentials, force = false) => {
       timestamp: now,
       byTvgId: parsed.byTvgId,
       byName: parsed.byName,
+      epgChannels: parsed.epgChannels || [],
     };
     logMessage(`[XMLTV EPG Success] Successfully parsed and cached guide for ${parsed.byTvgId.size} channels.`);
     return iptvXmltvCache;
@@ -1188,6 +1218,9 @@ const getProcessedChannels = async (config, includeAll = false) => {
 
     const assignedNumber = channelCfg?.channelNumber != null ? Number(channelCfg.channelNumber) : fallbackNumber++;
     const customName = channelCfg?.customName || stream.name;
+    const defaultEpgId = stream.epg_channel_id || stream.tvg_id || "";
+    const customEpgId = channelCfg?.epgChannelId !== undefined ? channelCfg.epgChannelId : channelCfg?.epg_channel_id;
+    const assignedEpgId = (customEpgId != null && customEpgId !== "") ? customEpgId : defaultEpgId;
 
     if (!includeAll && (!isChannelEnabled || !isGroupEnabled)) {
       continue;
@@ -1201,7 +1234,9 @@ const getProcessedChannels = async (config, includeAll = false) => {
       category_id: catId,
       category_name: stream.category_name,
       stream_icon: stream.stream_icon || "",
-      epg_channel_id: stream.epg_channel_id || stream.tvg_id || "",
+      epg_channel_id: assignedEpgId,
+      default_epg_id: defaultEpgId,
+      custom_epg: Boolean(customEpgId && customEpgId !== defaultEpgId),
       stream_url: stream.stream_url || "",
       stream_type: "live",
       enabled: isChannelEnabled,
@@ -2446,6 +2481,9 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
 
         const saved = saveIptvConfig(updated, credentialsChanged);
         if (saved) {
+          if (payload.channels) {
+            iptvShortEpgCache.clear();
+          }
           logMessage(`[IPTV Config Saved] Groups: ${Object.keys(updated.groups).length}, Channel Rules: ${Object.keys(updated.channels).length}`);
           return sendJson(res, 200, { status: "success", config: updated });
         } else {
@@ -2455,6 +2493,132 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
         return sendJson(res, 400, { error: `Invalid JSON payload: ${err.message}` });
       }
     });
+    return;
+  }
+
+  // POST /api/iptv/channel/epg - Assign or update a channel's EPG ID
+  if (cleanPath === "/api/iptv/channel/epg" && req.method === "POST") {
+    let body = "";
+    req.on("data", (chunk) => { body += chunk.toString(); });
+    req.on("end", () => {
+      try {
+        const payload = body ? JSON.parse(body) : {};
+        const streamId = String(payload.stream_id || "").trim();
+        const epgChannelId = payload.epg_channel_id !== undefined ? String(payload.epg_channel_id).trim() : null;
+
+        if (!streamId) {
+          return sendJson(res, 400, { error: "Missing stream_id parameter." });
+        }
+
+        const config = loadIptvConfig();
+        const currentChannelCfg = config.channels[streamId] || {};
+
+        if (epgChannelId === null || epgChannelId === "") {
+          // Reset to default
+          delete currentChannelCfg.epgChannelId;
+          delete currentChannelCfg.epg_channel_id;
+        } else {
+          currentChannelCfg.epgChannelId = epgChannelId;
+        }
+
+        config.channels[streamId] = currentChannelCfg;
+        config.lastSync = new Date().toISOString();
+
+        saveIptvConfig(config, false);
+
+        // Invalidate short EPG cache for this stream
+        for (const k of iptvShortEpgCache.keys()) {
+          if (k.startsWith(`epg_${streamId}`)) {
+            iptvShortEpgCache.delete(k);
+          }
+        }
+
+        logMessage(`[IPTV Channel EPG Assigned] Stream ${streamId} -> EPG ID "${epgChannelId || "(reset to default)"}"`);
+        return sendJson(res, 200, {
+          status: "success",
+          stream_id: streamId,
+          epg_channel_id: epgChannelId || "",
+          message: "EPG assignment saved successfully."
+        });
+      } catch (err) {
+        return sendJson(res, 400, { error: `Invalid JSON payload: ${err.message}` });
+      }
+    });
+    return;
+  }
+
+  // GET /api/iptv/epg/channels - Search or list available EPG channels from XMLTV guide & playlist
+  if (cleanPath === "/api/iptv/epg/channels" && req.method === "GET") {
+    (async () => {
+      try {
+        const config = loadIptvConfig();
+        const q = (parsedUrl.query.query || parsedUrl.query.q || "").trim().toLowerCase();
+
+        // 1. Ensure XMLTV guide is loaded in memory if credentials exist
+        let xmltvList = [];
+        if (iptvXmltvCache && iptvXmltvCache.epgChannels && iptvXmltvCache.epgChannels.length > 0) {
+          xmltvList = iptvXmltvCache.epgChannels;
+        } else if (config.credentials.serverUrl || config.credentials.epgUrl) {
+          const xmltv = await fetchXmltvEpg(config.credentials);
+          if (xmltv && Array.isArray(xmltv.epgChannels)) {
+            xmltvList = xmltv.epgChannels;
+          }
+        }
+
+        // 2. Extract unique EPG IDs and channel names from playlist
+        const playlist = await fetchM3uPlaylist(config.credentials);
+        const map = new Map();
+
+        // Add XMLTV channels first
+        for (const item of xmltvList) {
+          if (!item.id) continue;
+          map.set(item.id, {
+            id: item.id,
+            name: item.name || item.id,
+            icon: item.icon || "",
+            source: "XMLTV Guide",
+          });
+        }
+
+        // Add playlist channels that have tvg_id or epg_channel_id
+        if (playlist && Array.isArray(playlist.channels)) {
+          for (const ch of playlist.channels) {
+            const tvgId = (ch.epg_channel_id || ch.tvg_id || "").trim();
+            if (tvgId && !map.has(tvgId)) {
+              map.set(tvgId, {
+                id: tvgId,
+                name: ch.name || ch.original_name || tvgId,
+                icon: ch.stream_icon || "",
+                stream_id: String(ch.stream_id || ""),
+                source: "Playlist Channel",
+              });
+            }
+          }
+        }
+
+        let results = Array.from(map.values());
+
+        if (q) {
+          results = results.filter((c) =>
+            c.id.toLowerCase().includes(q) ||
+            c.name.toLowerCase().includes(q)
+          );
+        }
+
+        const total = results.length;
+        const capped = results.slice(0, 200);
+
+        return sendJson(res, 200, {
+          status: "success",
+          total,
+          count: capped.length,
+          channels: capped,
+        });
+      } catch (err) {
+        logMessage(`[IPTV EPG Channels Error] ${err.message}`, true);
+        return sendJson(res, 500, { error: err.message });
+      }
+    })();
     return;
   }
 
@@ -2573,6 +2737,13 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
         for (const ch of channelsList) {
           const sid = String(ch.stream_id || "");
           if (!sid) continue;
+
+          // Check if channel has custom assigned EPG in config
+          const chCfg = config.channels && config.channels[sid];
+          const customEpgId = (chCfg?.epgChannelId || chCfg?.epg_channel_id || "").trim();
+          const tvgId = (customEpgId || ch.tvg_id || ch.epg_channel_id || "").trim();
+          const chName = (chCfg?.customName || ch.name || "").trim();
+
           const cacheKey = `epg_${sid}`;
           const cached = iptvShortEpgCache.get(cacheKey);
           if (cached && Date.now() - cached.timestamp < 10 * 60 * 1000) {
@@ -2582,8 +2753,7 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
 
           // Check XMLTV memory cache
           if (iptvXmltvCache && iptvXmltvCache.timestamp > 0) {
-            const tvgId = (ch.tvg_id || ch.epg_channel_id || "").trim();
-            const normName = (ch.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+            const normName = chName.toLowerCase().replace(/[^a-z0-9]/g, "");
             let raw = null;
             if (tvgId && iptvXmltvCache.byTvgId && iptvXmltvCache.byTvgId.has(tvgId)) {
               raw = iptvXmltvCache.byTvgId.get(tvgId);
@@ -2602,7 +2772,8 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
             }
           }
 
-          uncached.push(ch);
+          const targetSid = (customEpgId && /^\d+$/.test(customEpgId)) ? customEpgId : sid;
+          uncached.push({ ...ch, stream_id: sid, target_sid: targetSid, tvg_id: tvgId });
         }
 
         // 2. Query Xtream player_api.php get_short_epg for remaining channels in controlled parallel batches
@@ -2610,9 +2781,10 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
           const toFetch = uncached.slice(0, 20);
           await Promise.all(toFetch.map(async (ch) => {
             const sid = String(ch.stream_id);
+            const targetStreamId = ch.target_sid || sid;
             try {
               const data = await callXtreamApi(config.credentials, "get_short_epg", {
-                stream_id: sid,
+                stream_id: targetStreamId,
                 limit: "10"
               });
               const rawList = data && Array.isArray(data.epg_listings) ? data.epg_listings : [];
@@ -2665,10 +2837,10 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     (async () => {
       try {
         const streamId = parsedUrl.query.stream_id || "";
-        const tvgId = (parsedUrl.query.tvg_id || "").trim();
-        const channelName = (parsedUrl.query.name || "").trim();
+        const queryTvgId = (parsedUrl.query.tvg_id || "").trim();
+        const queryChannelName = (parsedUrl.query.name || "").trim();
 
-        if (!streamId && !tvgId && !channelName) {
+        if (!streamId && !queryTvgId && !queryChannelName) {
           return sendJson(res, 400, { error: "Missing stream_id or tvg_id parameter" });
         }
 
@@ -2677,17 +2849,42 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
           return sendJson(res, 200, { status: "success", epg: [] });
         }
 
-        // 1. FAST PATH: Check short EPG cache or query player_api.php get_short_epg (< 150ms)
+        const chCfg = (streamId && config.channels) ? config.channels[streamId] : null;
+        const customEpgId = (chCfg?.epgChannelId || chCfg?.epg_channel_id || "").trim();
+        const tvgId = (customEpgId || queryTvgId).trim();
+        const channelName = (chCfg?.customName || queryChannelName).trim();
+        const targetStreamId = (customEpgId && /^\d+$/.test(customEpgId)) ? customEpgId : streamId;
+
+        // 1. FAST PATH: Check short EPG cache
         if (streamId) {
           const cacheKey = `epg_${streamId}`;
           const cached = iptvShortEpgCache.get(cacheKey);
           if (cached && Date.now() - cached.timestamp < 10 * 60 * 1000) {
             return sendJson(res, 200, { status: "success", source: "cache", epg: cached.listings });
           }
+        }
 
+        // 2. If custom EPG is set and exists in XMLTV, prioritize XMLTV guide
+        if (customEpgId && iptvXmltvCache && iptvXmltvCache.timestamp > 0) {
+          let rawListings = null;
+          if (iptvXmltvCache.byTvgId && iptvXmltvCache.byTvgId.has(customEpgId)) {
+            rawListings = iptvXmltvCache.byTvgId.get(customEpgId);
+          }
+          if (rawListings && rawListings.length > 0) {
+            const nowSec = Math.floor(Date.now() / 1000);
+            const relevant = rawListings
+              .filter((p) => !p.stop_timestamp || p.stop_timestamp >= nowSec - 7200)
+              .slice(0, 15);
+            if (streamId) iptvShortEpgCache.set(`epg_${streamId}`, { timestamp: Date.now(), listings: relevant });
+            return sendJson(res, 200, { status: "success", source: "xmltv", epg: relevant });
+          }
+        }
+
+        // 3. Query player_api.php get_short_epg (< 150ms)
+        if (targetStreamId) {
           try {
             const data = await callXtreamApi(config.credentials, "get_short_epg", {
-              stream_id: streamId,
+              stream_id: targetStreamId,
               limit: "10"
             });
             const rawList = data && Array.isArray(data.epg_listings) ? data.epg_listings : [];
@@ -2716,22 +2913,22 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
                 };
               });
 
-              iptvShortEpgCache.set(cacheKey, { timestamp: Date.now(), listings });
+              if (streamId) iptvShortEpgCache.set(`epg_${streamId}`, { timestamp: Date.now(), listings });
               return sendJson(res, 200, { status: "success", source: "xtream", epg: listings });
             }
           } catch (e) {}
         }
 
-        // 2. SLOW FALLBACK: Check XMLTV guide if get_short_epg was unavailable or tvgId provided
+        // 4. SLOW FALLBACK: Check XMLTV guide
         if (tvgId || config.credentials.epgUrl) {
           const xmltv = await fetchXmltvEpg(config.credentials);
           let rawListings = [];
 
-          if (tvgId && xmltv.byTvgId.has(tvgId)) {
+          if (tvgId && xmltv.byTvgId && xmltv.byTvgId.has(tvgId)) {
             rawListings = xmltv.byTvgId.get(tvgId);
-          } else if (streamId && xmltv.byTvgId.has(streamId)) {
+          } else if (streamId && xmltv.byTvgId && xmltv.byTvgId.has(streamId)) {
             rawListings = xmltv.byTvgId.get(streamId);
-          } else if (channelName) {
+          } else if (channelName && xmltv.byName) {
             const normName = channelName.toLowerCase().replace(/[^a-z0-9]/g, "");
             if (xmltv.byName.has(normName)) {
               rawListings = xmltv.byName.get(normName);
@@ -2743,6 +2940,7 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
             const relevant = rawListings
               .filter((p) => !p.stop_timestamp || p.stop_timestamp >= nowSec - 7200)
               .slice(0, 15);
+            if (streamId) iptvShortEpgCache.set(`epg_${streamId}`, { timestamp: Date.now(), listings: relevant });
             return sendJson(res, 200, { status: "success", source: "xmltv", epg: relevant });
           }
         }

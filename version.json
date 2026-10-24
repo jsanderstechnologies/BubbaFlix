@@ -1,6 +1,6 @@
 {
-  "versionCode": 62,
-  "versionName": "1.0.61",
+  "versionCode": 63,
+  "versionName": "1.0.62",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.61: Fix Android TV player controls requiring double clicks by setting isFocusableInTouchMode=false and refactoring key dispatch to immediately execute button actions on a single press/click."
+  "releaseNotes": "BubbaFlix TV v1.0.62: Add channel EPG assignment capability with interactive guide search and mapping modal, EPG status filtering in IPTV Setup, and instant guide assignment directly from Live TV."
 }

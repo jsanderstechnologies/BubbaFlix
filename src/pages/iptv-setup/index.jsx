@@ -26,8 +26,10 @@ import {
   FiSliders,
   FiArrowLeft,
   FiList,
+  FiEdit2,
 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
+import ChannelEpgModal from "../../components/channel-epg-modal";
 import "./index.scss";
 
 const IptvSetupPage = () => {
@@ -81,13 +83,15 @@ const IptvSetupPage = () => {
   const [channelSearch, setChannelSearch] = useState("");
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
   const [channelVisibilityFilter, setChannelVisibilityFilter] = useState("all"); // all | visible | hidden
+  const [channelEpgFilter, setChannelEpgFilter] = useState("all"); // all | assigned | missing | custom
   const [batchStartNumber, setBatchStartNumber] = useState(1);
   const [channelDisplayLimit, setChannelDisplayLimit] = useState(300);
+  const [editingEpgChannel, setEditingEpgChannel] = useState(null);
 
   // Reset pagination limit when search or filters change
   useEffect(() => {
     setChannelDisplayLimit(300);
-  }, [channelSearch, selectedCategoryFilter, channelVisibilityFilter]);
+  }, [channelSearch, selectedCategoryFilter, channelVisibilityFilter, channelEpgFilter]);
 
   // Debounce refs to prevent double-activations from TV remotes
   const lastGroupToggleRef = useRef({ id: null, time: 0 });
@@ -506,22 +510,33 @@ const IptvSetupPage = () => {
         }
       }
 
-      // Comprehensive search match across name, original_name, custom alias, category, and channel number
+      // Comprehensive search match across name, original_name, custom alias, category, channel number, and EPG ID
       const sid = String(ch.stream_id);
       const customName = channelsConfig[sid]?.customName || ch.name || "";
       const origName = ch.original_name || "";
       const catName = ch.category_name || "";
       const chNum = channelsConfig[sid]?.channelNumber ?? ch.channel_number ?? "";
 
+      const defaultEpg = ch.default_epg_id || ch.tvg_id || "";
+      const customEpg = channelsConfig[sid]?.epgChannelId !== undefined ? channelsConfig[sid].epgChannelId : channelsConfig[sid]?.epg_channel_id;
+      const currentEpg = (customEpg != null && customEpg !== "") ? customEpg : (ch.epg_channel_id || defaultEpg || "");
+      const hasCustomEpg = Boolean(customEpg && customEpg !== defaultEpg);
+
       if (q) {
         const matchName = customName.toLowerCase().includes(q) || (ch.name && ch.name.toLowerCase().includes(q));
         const matchOrig = origName.toLowerCase().includes(q);
         const matchCat = catName.toLowerCase().includes(q);
         const matchNum = String(chNum).includes(q);
-        if (!matchName && !matchOrig && !matchCat && !matchNum) {
+        const matchEpg = currentEpg.toLowerCase().includes(q);
+        if (!matchName && !matchOrig && !matchCat && !matchNum && !matchEpg) {
           return false;
         }
       }
+
+      // EPG Status filter
+      if (channelEpgFilter === "assigned" && !currentEpg) return false;
+      if (channelEpgFilter === "missing" && currentEpg) return false;
+      if (channelEpgFilter === "custom" && !hasCustomEpg) return false;
 
       // Visibility match
       const catEnabled = checkGroupEnabled(groupsConfig, {
@@ -537,7 +552,7 @@ const IptvSetupPage = () => {
 
       return true;
     });
-  }, [loadedChannels, selectedCategoryFilter, channelSearch, channelVisibilityFilter, channelsConfig, groupsConfig]);
+  }, [loadedChannels, selectedCategoryFilter, channelSearch, channelVisibilityFilter, channelEpgFilter, channelsConfig, groupsConfig]);
 
   // Count of showing channels that are currently enabled
   const showingEnabledCount = useMemo(() => {
@@ -856,6 +871,19 @@ const IptvSetupPage = () => {
                     </select>
                   </div>
 
+                  <div className="selectWrapper">
+                    <label>EPG Guide:</label>
+                    <select
+                      value={channelEpgFilter}
+                      onChange={(e) => setChannelEpgFilter(e.target.value)}
+                    >
+                      <option value="all">All EPG Status</option>
+                      <option value="assigned">Has EPG ID</option>
+                      <option value="missing">Missing EPG (Unassigned)</option>
+                      <option value="custom">Custom Assigned EPG</option>
+                    </select>
+                  </div>
+
                   {/* Channel Search Input with clear button and remote enter navigation */}
                   <div className="searchBox channelSearch">
                     <FiSearch className="searchIcon" />
@@ -1007,6 +1035,7 @@ const IptvSetupPage = () => {
                       <th>Channel Name</th>
                       <th>Category</th>
                       <th>Custom Alias</th>
+                      <th style={{ minWidth: 160 }}>EPG Assignment</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1022,6 +1051,11 @@ const IptvSetupPage = () => {
                       const isEnabled = chCfg?.enabled !== undefined ? chCfg.enabled : (ch.enabled !== undefined ? ch.enabled : isCatEnabled);
                       const channelNumber = chCfg?.channelNumber !== undefined ? chCfg.channelNumber : ch.channel_number;
                       const customName = chCfg?.customName !== undefined ? chCfg.customName : (ch.name !== ch.original_name ? ch.name : "");
+
+                      const defaultEpg = ch.default_epg_id || ch.tvg_id || "";
+                      const customEpg = chCfg?.epgChannelId !== undefined ? chCfg.epgChannelId : chCfg?.epg_channel_id;
+                      const currentEpg = (customEpg != null && customEpg !== "") ? customEpg : (ch.epg_channel_id || defaultEpg || "");
+                      const hasCustomEpg = Boolean(customEpg && customEpg !== defaultEpg);
 
                       return (
                         <tr
@@ -1100,6 +1134,39 @@ const IptvSetupPage = () => {
                               }}
                             />
                           </td>
+                          <td className="epgCell">
+                            <div className="epgCellWrapper">
+                              {currentEpg ? (
+                                <span
+                                  className={`epgPill ${hasCustomEpg ? "custom" : "default"}`}
+                                  title={`EPG ID: ${currentEpg}`}
+                                >
+                                  {currentEpg}
+                                  {hasCustomEpg && <span className="customTag">CUSTOM</span>}
+                                </span>
+                              ) : (
+                                <span className="epgPill none">No EPG</span>
+                              )}
+                              <button
+                                type="button"
+                                tabIndex={0}
+                                className="toolBtn editEpgBtn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingEpgChannel({
+                                    ...ch,
+                                    channel_number: channelNumber,
+                                    name: customName || ch.name || ch.original_name,
+                                    epg_channel_id: currentEpg,
+                                    default_epg_id: defaultEpg,
+                                  });
+                                }}
+                                title="Change EPG Assignment"
+                              >
+                                <FiEdit2 /> Change
+                              </button>
+                            </div>
+                          </td>
                         </tr>
                       );
                     })}
@@ -1129,6 +1196,36 @@ const IptvSetupPage = () => {
           )}
         </div>
       </ContentWrapper>
+
+      {/* Channel EPG Assignment Modal */}
+      {editingEpgChannel && (
+        <ChannelEpgModal
+          channel={editingEpgChannel}
+          isOpen={Boolean(editingEpgChannel)}
+          onClose={() => setEditingEpgChannel(null)}
+          onSave={(streamId, newEpgId) => {
+            const sid = String(streamId);
+            setChannelsConfig((prev) => ({
+              ...prev,
+              [sid]: {
+                ...prev[sid],
+                epgChannelId: newEpgId,
+              },
+            }));
+            setLoadedChannels((prev) =>
+              prev.map((c) =>
+                String(c.stream_id) === sid
+                  ? {
+                      ...c,
+                      epg_channel_id: newEpgId,
+                      custom_epg: Boolean(newEpgId && newEpgId !== (c.default_epg_id || c.tvg_id)),
+                    }
+                  : c
+              )
+            );
+          }}
+        />
+      )}
     </div>
   );
 };

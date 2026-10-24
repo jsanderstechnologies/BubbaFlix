@@ -341,9 +341,9 @@
       z-index: 20;
 
       .timelineCorner {
-        width: 240px;
-        min-width: 240px;
-        max-width: 240px;
+        width: 260px;
+        min-width: 260px;
+        max-width: 260px;
         padding: 10px 16px;
         display: flex;
         align-items: center;
@@ -422,9 +422,9 @@
 
         /* Sticky Left Channel Cell */
         .epgChannelCell {
-          width: 240px;
-          min-width: 240px;
-          max-width: 240px;
+          width: 260px;
+          min-width: 260px;
+          max-width: 260px;
           flex-shrink: 0;
           position: sticky;
           left: 0;
@@ -434,10 +434,10 @@
           border-left: none;
           border-top: none;
           border-bottom: none;
-          padding: 8px 12px;
+          padding: 8px 10px;
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 8px;
           cursor: pointer;
           outline: none;
           text-align: left;
@@ -524,6 +524,39 @@
             padding: 2px 5px;
             border-radius: 4px;
             letter-spacing: 0.5px;
+            flex-shrink: 0;
+          }
+
+          .chEpgPillBtn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            color: rgba(255, 255, 255, 0.7);
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 3px 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: all 0.15s ease;
+
+            &:hover,
+            &:focus,
+            &:focus-visible {
+              background: var(--pink, #da2f68);
+              color: white;
+              border-color: var(--pink, #da2f68);
+              outline: none;
+              box-shadow: 0 0 8px rgba(218, 47, 104, 0.6);
+            }
+
+            &.custom {
+              background: rgba(218, 47, 104, 0.2);
+              border-color: rgba(218, 47, 104, 0.5);
+              color: #ff6b8b;
+            }
           }
         }
 

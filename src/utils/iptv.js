@@ -122,3 +122,38 @@ export const fetchIptvEpgBatch = async (channels = []) => {
     return {};
   }
 };
+
+export const fetchAvailableEpgChannels = async (query = "") => {
+  try {
+    const base = getServerUrl();
+    const qParam = query ? `?query=${encodeURIComponent(query)}` : "";
+    const res = await axios.get(`${base}/api/iptv/epg/channels${qParam}`, {
+      timeout: 10000,
+    });
+    return res.data?.channels || [];
+  } catch (err) {
+    console.error("[IPTV] Failed to fetch available EPG channels:", err.message);
+    return [];
+  }
+};
+
+export const assignChannelEpg = async (streamId, epgChannelId) => {
+  try {
+    const base = getServerUrl();
+    const res = await axios.post(
+      `${base}/api/iptv/channel/epg`,
+      { stream_id: String(streamId), epg_channel_id: epgChannelId },
+      { timeout: 10000 }
+    );
+    return {
+      success: res.data?.status === "success",
+      stream_id: res.data?.stream_id,
+      epg_channel_id: res.data?.epg_channel_id,
+      message: res.data?.message,
+    };
+  } catch (err) {
+    console.error(`[IPTV] Failed to assign EPG for stream ${streamId}:`, err.message);
+    return { success: false, error: err.response?.data?.error || err.message };
+  }
+};
+

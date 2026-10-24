@@ -28,6 +28,7 @@ import {
 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import Hls from "hls.js";
+import ChannelEpgModal from "../../components/channel-epg-modal";
 import "./index.scss";
 
 // Robust Unix timestamp parser from varied date formats (seconds, ms, ISO, XMLTV)
@@ -147,6 +148,7 @@ const LiveTvPage = () => {
   const [currentChannel, setCurrentChannel] = useState(null);
   const [epgData, setEpgData] = useState({}); // streamId -> listings array
   const [focusedItem, setFocusedItem] = useState(null); // { program, channel }
+  const [editingEpgChannel, setEditingEpgChannel] = useState(null);
 
   // Live Player & Channel Control States
   const [isPlayingLive, setIsPlayingLive] = useState(false);
@@ -939,6 +941,20 @@ const LiveTvPage = () => {
                               <FiVolume2 /> LIVE
                             </span>
                           )}
+                          <button
+                            type="button"
+                            tabIndex={0}
+                            className={`chEpgPillBtn ${ch.custom_epg ? "custom" : ""}`}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setEditingEpgChannel(ch);
+                            }}
+                            title={`EPG: ${ch.epg_channel_id || "Unassigned"}. Click to change EPG assignment`}
+                          >
+                            <FiSliders style={{ fontSize: 11 }} />
+                            <span>{ch.epg_channel_id ? "EPG" : "No EPG"}</span>
+                          </button>
                         </button>
 
                         {/* Programs Timeline Track */}
@@ -1288,6 +1304,48 @@ const LiveTvPage = () => {
           </div>,
           document.body
         )}
+
+      {/* Channel EPG Assignment Modal */}
+      {editingEpgChannel && (
+        <ChannelEpgModal
+          channel={editingEpgChannel}
+          isOpen={Boolean(editingEpgChannel)}
+          onClose={() => setEditingEpgChannel(null)}
+          onSave={async (streamId, newEpgId) => {
+            const sid = String(streamId);
+            setChannels((prev) =>
+              prev.map((c) =>
+                String(c.stream_id) === sid
+                  ? {
+                      ...c,
+                      epg_channel_id: newEpgId,
+                      custom_epg: Boolean(newEpgId && newEpgId !== (c.default_epg_id || c.tvg_id)),
+                    }
+                  : c
+              )
+            );
+            // Invalidate current EPG cache for this channel and re-fetch immediately
+            setEpgData((prev) => {
+              const next = { ...prev };
+              delete next[sid];
+              return next;
+            });
+            try {
+              const updatedListings = await fetchIptvEpg(
+                sid,
+                newEpgId,
+                editingEpgChannel.name || editingEpgChannel.original_name
+              );
+              setEpgData((prev) => ({
+                ...prev,
+                [sid]: updatedListings,
+              }));
+            } catch (err) {
+              console.error("Failed to reload EPG for channel:", err);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

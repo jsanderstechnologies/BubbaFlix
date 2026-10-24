@@ -1,0 +1,583 @@
+.channelEpgModalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10060;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: modalFadeIn 0.2s ease;
+
+  .channelEpgModalCard {
+    background: #141724;
+    border: 1.5px solid rgba(218, 47, 104, 0.45);
+    box-shadow: 0 16px 60px rgba(0, 0, 0, 0.8), 0 0 24px rgba(218, 47, 104, 0.2);
+    border-radius: 16px;
+    width: 620px;
+    max-width: 92vw;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    .modalHeader {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background: #10121d;
+
+      .headerTitles {
+        h2 {
+          font-size: 19px;
+          font-weight: 700;
+          color: white;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin: 0 0 4px;
+
+          .headerIcon {
+            color: var(--pink, #da2f68);
+          }
+        }
+
+        p {
+          font-size: 12.5px;
+          color: rgba(255, 255, 255, 0.55);
+          margin: 0;
+        }
+      }
+
+      .closeBtn {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: rgba(255, 255, 255, 0.7);
+        border-radius: 8px;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 16px;
+        transition: all 0.2s ease;
+
+        &:hover,
+        &:focus,
+        &:focus-visible {
+          background: #da2f68;
+          color: white;
+          border-color: #da2f68;
+          outline: none;
+          box-shadow: 0 0 10px rgba(218, 47, 104, 0.6);
+        }
+      }
+    }
+
+    .channelContextCard {
+      margin: 16px 24px 12px;
+      padding: 12px 16px;
+      background: #0b0c13;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+
+      .channelLogoCol {
+        width: 48px;
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.04);
+        border-radius: 6px;
+        overflow: hidden;
+
+        .channelLogoImg {
+          max-width: 100%;
+          max-height: 100%;
+          object-fit: contain;
+        }
+
+        .fallbackIcon {
+          font-size: 24px;
+          color: rgba(255, 255, 255, 0.4);
+        }
+      }
+
+      .channelMetaCol {
+        flex: 1;
+        min-width: 0;
+
+        .nameRow {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 4px;
+
+          .chNumBadge {
+            background: #ffc107;
+            color: #0b0c13;
+            font-size: 12px;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 4px;
+          }
+
+          .chName {
+            font-size: 15px;
+            font-weight: 600;
+            color: white;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+        }
+
+        .detailsRow {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          font-size: 12px;
+
+          .catBadge {
+            color: rgba(255, 255, 255, 0.6);
+            display: inline-flex;
+            align-items: center;
+          }
+
+          .defaultEpgInfo {
+            color: rgba(255, 255, 255, 0.45);
+
+            code {
+              color: #ff9800;
+              font-family: monospace;
+              background: rgba(255, 152, 0, 0.1);
+              padding: 1px 5px;
+              border-radius: 3px;
+            }
+          }
+        }
+      }
+    }
+
+    .saveNotice {
+      margin: 0 24px 10px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      &.success {
+        background: rgba(76, 175, 80, 0.15);
+        color: #4caf50;
+        border: 1px solid rgba(76, 175, 80, 0.3);
+      }
+
+      &.error {
+        background: rgba(244, 67, 54, 0.15);
+        color: #f44336;
+        border: 1px solid rgba(244, 67, 54, 0.3);
+      }
+    }
+
+    .assignmentSection {
+      padding: 0 24px;
+      margin-bottom: 14px;
+
+      .sectionLabelRow {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 6px;
+
+        label {
+          font-size: 12.5px;
+          font-weight: 600;
+          color: rgba(255, 255, 255, 0.8);
+        }
+
+        .quickActions {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+
+          .quickBtn {
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.15s ease;
+
+            &:hover,
+            &:focus,
+            &:focus-visible {
+              background: rgba(255, 255, 255, 0.16);
+              color: white;
+              outline: none;
+            }
+
+            &.resetBtn:hover,
+            &.resetBtn:focus {
+              background: rgba(255, 152, 0, 0.25);
+              color: #ff9800;
+              border-color: #ff9800;
+            }
+
+            &.clearBtn:hover,
+            &.clearBtn:focus {
+              background: rgba(244, 67, 54, 0.25);
+              color: #f44336;
+              border-color: #f44336;
+            }
+          }
+        }
+      }
+
+      .epgInputWrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+
+        .epgIdInput {
+          width: 100%;
+          height: 40px;
+          background: #090a10;
+          border: 1.5px solid rgba(255, 255, 255, 0.16);
+          border-radius: 8px;
+          color: #ffc107;
+          font-size: 14px;
+          font-family: monospace;
+          font-weight: 700;
+          padding: 0 120px 0 14px;
+          outline: none;
+          transition: all 0.2s ease;
+
+          &:focus {
+            border-color: var(--pink, #da2f68);
+            box-shadow: 0 0 0 2px rgba(218, 47, 104, 0.35);
+          }
+        }
+
+        .customBadge {
+          position: absolute;
+          right: 10px;
+          background: rgba(218, 47, 104, 0.2);
+          border: 1px solid rgba(218, 47, 104, 0.5);
+          color: #ff6b8b;
+          font-size: 10px;
+          font-weight: 800;
+          padding: 3px 6px;
+          border-radius: 4px;
+          letter-spacing: 0.5px;
+        }
+      }
+    }
+
+    .databaseSearchSection {
+      padding: 0 24px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+
+      .searchLabelRow {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 6px;
+
+        label {
+          font-size: 12.5px;
+          font-weight: 600;
+          color: rgba(255, 255, 255, 0.8);
+        }
+
+        .countInfo {
+          font-size: 11.5px;
+          color: rgba(255, 255, 255, 0.45);
+        }
+      }
+
+      .searchBoxWrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+
+        .searchIcon {
+          position: absolute;
+          left: 12px;
+          color: rgba(255, 255, 255, 0.4);
+          font-size: 15px;
+        }
+
+        .dbSearchInput {
+          width: 100%;
+          height: 38px;
+          background: #090a10;
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          border-radius: 8px;
+          color: white;
+          font-size: 13px;
+          padding: 0 34px 0 36px;
+          outline: none;
+
+          &:focus {
+            border-color: var(--pink, #da2f68);
+          }
+        }
+
+        .clearSearchBtn {
+          position: absolute;
+          right: 10px;
+          background: transparent;
+          border: none;
+          color: rgba(255, 255, 255, 0.4);
+          cursor: pointer;
+          font-size: 14px;
+
+          &:hover {
+            color: white;
+          }
+        }
+      }
+
+      .epgResultsList {
+        flex: 1;
+        overflow-y: auto;
+        min-height: 180px;
+        max-height: 240px;
+        background: #090a10;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        padding: 4px;
+
+        .resultsLoading,
+        .resultsEmpty {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 30px 16px;
+          font-size: 13px;
+          color: rgba(255, 255, 255, 0.45);
+          text-align: center;
+
+          .spinning {
+            animation: spin 1s linear infinite;
+          }
+        }
+
+        .epgResultItem {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 8px 12px;
+          border-radius: 6px;
+          cursor: pointer;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+          transition: background 0.15s ease;
+
+          &:hover {
+            background: rgba(255, 255, 255, 0.05);
+          }
+
+          &.selected {
+            background: rgba(218, 47, 104, 0.16);
+            border-left: 3px solid var(--pink, #da2f68);
+          }
+
+          .itemIconCol {
+            width: 32px;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 4px;
+
+            .itemIconImg {
+              max-width: 100%;
+              max-height: 100%;
+              object-fit: contain;
+            }
+
+            .itemFallbackIcon {
+              font-size: 16px;
+              color: rgba(255, 255, 255, 0.3);
+            }
+          }
+
+          .itemTextCol {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+
+            .itemDisplayName {
+              font-size: 13px;
+              font-weight: 600;
+              color: white;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+
+            .itemIdTag {
+              font-size: 11px;
+              color: #ffc107;
+              font-family: monospace;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+          }
+
+          .itemSourceCol {
+            .sourceBadge {
+              font-size: 10px;
+              padding: 2px 6px;
+              border-radius: 4px;
+              font-weight: 600;
+
+              &.xmltv {
+                background: rgba(33, 150, 243, 0.15);
+                color: #2196f3;
+                border: 1px solid rgba(33, 150, 243, 0.3);
+              }
+
+              &.playlist {
+                background: rgba(156, 39, 176, 0.15);
+                color: #ba68c8;
+                border: 1px solid rgba(156, 39, 176, 0.3);
+              }
+            }
+          }
+
+          .itemActionCol {
+            .selectBtn {
+              background: rgba(255, 255, 255, 0.08);
+              border: 1px solid rgba(255, 255, 255, 0.15);
+              color: rgba(255, 255, 255, 0.8);
+              font-size: 11.5px;
+              font-weight: 600;
+              padding: 4px 10px;
+              border-radius: 5px;
+              cursor: pointer;
+              display: inline-flex;
+              align-items: center;
+              gap: 4px;
+              transition: all 0.15s ease;
+
+              &:hover,
+              &:focus,
+              &:focus-visible {
+                background: var(--pink, #da2f68);
+                color: white;
+                border-color: var(--pink, #da2f68);
+                outline: none;
+              }
+
+              &.active {
+                background: #4caf50;
+                color: white;
+                border-color: #4caf50;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    .modalFooter {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 12px;
+      padding: 16px 24px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      background: #10121d;
+
+      .cancelBtn {
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 13px;
+        font-weight: 600;
+        padding: 8px 18px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover,
+        &:focus,
+        &:focus-visible {
+          background: rgba(255, 255, 255, 0.08);
+          color: white;
+          outline: none;
+        }
+      }
+
+      .saveBtn {
+        background: var(--pink, #da2f68);
+        border: 1px solid var(--pink, #da2f68);
+        color: white;
+        font-size: 13px;
+        font-weight: 700;
+        padding: 8px 20px;
+        border-radius: 6px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s ease;
+
+        &:hover,
+        &:focus,
+        &:focus-visible {
+          background: #e23b74;
+          box-shadow: 0 0 14px rgba(218, 47, 104, 0.6);
+          outline: none;
+        }
+
+        &:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+      }
+    }
+  }
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
