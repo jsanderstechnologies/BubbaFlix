@@ -76,7 +76,7 @@ const parseStreamDetails = (item) => {
   };
 };
 
-const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, compact = false, posterPath = "" }) => {
+const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, compact = false, posterPath = "", imdbId }) => {
   const [streams, setStreams] = useState([]);
   const [hiddenStreams, setHiddenStreams] = useState([]);
   const [showHiddenStreams, setShowHiddenStreams] = useState(false);
@@ -160,10 +160,10 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
   }, [isOpen, streams]);
   
   useEffect(() => {
-    if (title || tmdbId) {
+    if (title || tmdbId || imdbId) {
       loadStreams();
     }
-  }, [title, tmdbId, year, seasonNum, episodeNum]);
+  }, [title, tmdbId, imdbId, year, seasonNum, episodeNum]);
 
   const headerId =
     seasonNum !== undefined && episodeNum !== undefined
@@ -195,6 +195,7 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
 
     const res = await fetchTorrentStreams({
       tmdbId,
+      imdbId,
       mediaType: mediaType || (seasonNum !== undefined ? "tv" : "movie"),
       seasonNum,
       episodeNum,
@@ -251,7 +252,7 @@ const MagnetSection = ({ title, year, seasonNum, episodeNum, tmdbId, mediaType, 
       if (isSeasonPackStream(item, seasonNum, episodeNum)) {
         return false;
       }
-      if (!isMatchingStreamTitle(item, title, mediaType || (seasonNum !== undefined ? "tv" : "movie"), seasonNum, episodeNum)) {
+      if (!isMatchingStreamTitle(item, title, mediaType || (seasonNum !== undefined ? "tv" : "movie"), seasonNum, episodeNum, year)) {
         return false;
       }
       const itemRes = parseStreamResolution(item);

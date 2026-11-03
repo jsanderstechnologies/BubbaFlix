@@ -305,9 +305,10 @@ export const isSeasonPackStream = (stream, seasonNum, episodeNum) => {
   return false;
 };
 
-export const isMatchingStreamTitle = (stream, expectedTitle, mediaType, seasonNum, episodeNum) => {
+export const isMatchingStreamTitle = (stream, expectedTitle, mediaType, seasonNum, episodeNum, year) => {
   if (!stream || !expectedTitle) return true;
-  const titleText = `${stream.title || ""} ${stream.name || ""}`.toLowerCase().replace(/[._\-\:\,\(\)\[\]]+/g, " ");
+  const rawTitle = `${stream.title || ""} ${stream.name || ""}`;
+  const titleText = rawTitle.toLowerCase().replace(/[._\-\:\,\(\)\[\]]+/g, " ");
 
   const cleanExpected = expectedTitle.toLowerCase().replace(/[^a-z0-9\s]+/g, " ");
   const stopWords = new Set(["the", "a", "an", "and", "or", "of", "in", "on", "for", "to", "with", "at", "by", "from"]);
@@ -331,7 +332,25 @@ export const isMatchingStreamTitle = (stream, expectedTitle, mediaType, seasonNu
     }
   }
 
-  // 2. TV Season & Episode check - block season packs and verify specific episode
+  // 2. Movie Year check - if the stream title explicitly contains a 4-digit release year, it must match expected year (+/- 1)
+  const isMovie = mediaType === "movie" || (seasonNum === undefined && episodeNum === undefined);
+  if (isMovie && year) {
+    const expectedYear = parseInt(year, 10);
+    if (!isNaN(expectedYear) && expectedYear > 1900) {
+      const yearMatches = rawTitle.match(/\b(19\d{2}|20\d{2})\b/g);
+      if (yearMatches && yearMatches.length > 0) {
+        const matchesYear = yearMatches.some((yStr) => {
+          const y = parseInt(yStr, 10);
+          return Math.abs(y - expectedYear) <= 1;
+        });
+        if (!matchesYear) {
+          return false; // Blocked: Explicitly different release year (e.g. 2003 sequel vs 1999)
+        }
+      }
+    }
+  }
+
+  // 3. TV Season & Episode check - block season packs and verify specific episode
   if (mediaType === "tv" || seasonNum !== undefined || episodeNum !== undefined) {
     if (isSeasonPackStream(stream, seasonNum, episodeNum)) {
       return false;

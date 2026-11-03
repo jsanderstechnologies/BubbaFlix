@@ -43,13 +43,14 @@ class DetailsErrorBoundary extends React.Component {
 const DetailsPage = () => {
 	const { mediaType, id } = useParams();
 	const navigate = useNavigate();
-	const { data: detailsData } = useFetch(`/${mediaType}/${id}`);
+	const { data: detailsData } = useFetch(`/${mediaType}/${id}?append_to_response=external_ids`);
 	const { data: videosData } = useFetch(`/${mediaType}/${id}/videos?include_video_language=en,null`);
 	const { data: credits, loading: creditsLoading } = useFetch(
 		`/${mediaType}/${id}/credits`
 	);
 
 	const title = detailsData?.title || detailsData?.name;
+	const resolvedImdbId = detailsData?.imdb_id || detailsData?.external_ids?.imdb_id;
 	const officialTrailer = getOfficialTrailer(videosData?.results);
 
 	useEffect(() => {
@@ -102,7 +103,7 @@ const DetailsPage = () => {
 			</button>
 			<TopNav />
 			<DetailsErrorBoundary>
-				<DetailsBanner video={officialTrailer} crew={credits?.crew} />
+				<DetailsBanner video={officialTrailer} crew={credits?.crew} imdbId={resolvedImdbId} />
 
 				{/* Show season dropdown & episode magnet streams ONLY for TV series */}
 				{mediaType === "tv" && (
@@ -111,6 +112,7 @@ const DetailsPage = () => {
 						seasons={detailsData?.seasons}
 						showTitle={title}
 						posterPath={detailsData?.poster_path}
+						imdbId={resolvedImdbId}
 					/>
 				)}
 

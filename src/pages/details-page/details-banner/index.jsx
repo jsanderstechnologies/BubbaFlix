@@ -18,7 +18,7 @@ import { focusTopLeftPoster } from "../../../utils/dpadNavigation";
 import { PlayIcon } from "../../../components/play-btn";
 import "./index.scss";
 
-const DetailsBanner = ({ video, crew }) => {
+const DetailsBanner = ({ video, crew, imdbId: propImdbId }) => {
 	const { user } = useContext(AuthContext);
 	const disableBg = (localStorage.getItem("disable_backgrounds") !== null ? JSON.parse(localStorage.getItem("disable_backgrounds")) : null) ?? user?.preferences?.disableBackgrounds ?? false;
 	const [show, setShow] = useState(false);
@@ -26,7 +26,7 @@ const DetailsBanner = ({ video, crew }) => {
 
 	const { mediaType, id } = useParams();
 	const navigate = useNavigate();
-	const { data, loading } = useFetch(`/${mediaType}/${id}`);
+	const { data, loading } = useFetch(`/${mediaType}/${id}?append_to_response=external_ids`);
 
 	useEffect(() => {
 		if (!loading && data && mediaType !== "tv") {
@@ -143,6 +143,7 @@ const DetailsBanner = ({ video, crew }) => {
 											title={data?.title || data?.name}
 											year={dayjs(data?.release_date || data?.first_air_date).format("YYYY")}
 											tmdbId={id}
+											imdbId={propImdbId || data?.imdb_id || data?.external_ids?.imdb_id}
 											mediaType={mediaType}
 											compact={true}
 											posterPath={data?.poster_path}

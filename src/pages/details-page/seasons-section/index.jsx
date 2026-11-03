@@ -90,7 +90,7 @@ export const getFirstUnwatchedInfo = (tvId, seasonsList) => {
   return { seasonNumber: validSeasons[0].season_number, episodeNumber: 1 };
 };
 
-const SeasonsSection = ({ tvId, seasons, showTitle, posterPath }) => {
+const SeasonsSection = ({ tvId, seasons, showTitle, posterPath, imdbId }) => {
   const { url } = useSelector((state) => state.home);
 
   const validSeasons = useMemo(() => {
@@ -329,6 +329,7 @@ const SeasonsSection = ({ tvId, seasons, showTitle, posterPath }) => {
                         seasonNum={selectedSeasonNumber}
                         episodeNum={ep.episode_number}
                         tmdbId={tvId}
+                        imdbId={imdbId}
                         mediaType="tv"
                         compact={true}
                         posterPath={posterPath}

@@ -247,29 +247,78 @@ export const testMagnetioConnection = async (customConfig = null) => {
 /**
  * Fetch external IMDb ID for TMDB media items if available
  */
-const fetchImdbId = async (tmdbId, mediaType) => {
-  if (!tmdbId) return null;
-  try {
-    const res = await fetchDataFromAPI(`/${mediaType || "movie"}/${tmdbId}/external_ids`);
-    return res?.imdb_id || null;
-  } catch (err) {
-    return null;
+export const fetchImdbId = async (tmdbId, mediaType = "movie", title = null, year = null) => {
+  if (typeof tmdbId === "string" && tmdbId.startsWith("tt")) {
+    return tmdbId;
   }
+  if (!tmdbId && !title) return null;
+
+  const type = mediaType === "tv" || mediaType === "series" ? "tv" : "movie";
+
+  // 1. Direct external_ids lookup via TMDB API
+  if (tmdbId) {
+    try {
+      const res = await fetchDataFromAPI(`/${type}/${tmdbId}/external_ids`);
+      if (res?.imdb_id && String(res.imdb_id).startsWith("tt")) {
+        return res.imdb_id;
+      }
+    } catch (err) {}
+
+    // 2. Main item details lookup (movies frequently embed imdb_id directly in details)
+    try {
+      const res = await fetchDataFromAPI(`/${type}/${tmdbId}`);
+      if (res?.imdb_id && String(res.imdb_id).startsWith("tt")) {
+        return res.imdb_id;
+      }
+      if (res?.external_ids?.imdb_id && String(res.external_ids.imdb_id).startsWith("tt")) {
+        return res.external_ids.imdb_id;
+      }
+    } catch (err) {}
+  }
+
+  // 3. Strict Title + Year fallback search if tmdbId was missing or failed to return IMDb ID
+  if (title) {
+    try {
+      const params = { query: title };
+      if (year) params.year = year;
+      const searchRes = await fetchDataFromAPI(`/search/${type}`, params);
+      const hit = searchRes?.results?.[0];
+      if (hit?.id) {
+        const extRes = await fetchDataFromAPI(`/${type}/${hit.id}/external_ids`);
+        if (extRes?.imdb_id && String(extRes.imdb_id).startsWith("tt")) {
+          return extRes.imdb_id;
+        }
+      }
+    } catch (err) {}
+  }
+
+  return null;
 };
 
 /**
  * Scrape torrent magnet links for Movies and TV Shows from public torrent indexes, Torrentio & Magnetio
+ * STRICT IDENTIFIER RULE: Never query torrent indexers with plain text ("The Matrix").
+ * Uses IMDb ID (e.g. tt0133093) or TMDB ID plus season/episode syntax (e.g. tt0944947:1:1 or S01E01).
  */
-export const fetchTorrentStreams = async ({ tmdbId, mediaType = "movie", seasonNum, episodeNum, title, year }) => {
+export const fetchTorrentStreams = async ({ tmdbId, imdbId: propImdbId, mediaType = "movie", seasonNum, episodeNum, title, year }) => {
   try {
-    const imdbId = await fetchImdbId(tmdbId, mediaType);
-    const idToUse = imdbId || (tmdbId ? `tmdb:${tmdbId}` : null);
+    let imdbId = propImdbId;
+    if (!imdbId && tmdbId) {
+      imdbId = await fetchImdbId(tmdbId, mediaType, title, year);
+    } else if (!imdbId && title) {
+      imdbId = await fetchImdbId(null, mediaType, title, year);
+    }
 
+    const idToUse = imdbId || (tmdbId ? `tmdb:${tmdbId}` : null);
     const isTv = mediaType === "tv" || seasonNum !== undefined;
+    const s = seasonNum || 1;
+    const e = episodeNum || 1;
     const streams = [];
     const seenHashes = new Set();
 
-    // 1. Primary Scrapers: Torrentio & Magnetio (Queried concurrently via Promise.allSettled)
+    console.log(`[TorrentScraper] Strict query identifier: "${idToUse}" (isTv=${isTv}, S${s}E${e}, title="${title || ""}", year="${year || ""}")`);
+
+    // 1. Primary Scrapers: Torrentio & Magnetio (Queried concurrently with strict ID syntax)
     if (idToUse) {
       const torrentioConfig = getTorrentioConfig();
       const magnetioConfig = getMagnetioConfig();
@@ -277,7 +326,7 @@ export const fetchTorrentStreams = async ({ tmdbId, mediaType = "movie", seasonN
       const [torrentioResult, magnetioResult] = await Promise.allSettled([
         torrentioConfig.enabled !== false
           ? (async () => {
-              const url = buildTorrentioUrl(torrentioConfig, idToUse, isTv, seasonNum, episodeNum);
+              const url = buildTorrentioUrl(torrentioConfig, idToUse, isTv, s, e);
               if (!url) return [];
               const res = await axios.get(url, { timeout: 8000 });
               return res.data?.streams || [];
@@ -285,7 +334,7 @@ export const fetchTorrentStreams = async ({ tmdbId, mediaType = "movie", seasonN
           : Promise.resolve([]),
         magnetioConfig.enabled !== false
           ? (async () => {
-              const url = buildMagnetioUrl(magnetioConfig, idToUse, isTv, seasonNum, episodeNum);
+              const url = buildMagnetioUrl(magnetioConfig, idToUse, isTv, s, e);
               if (!url) return [];
               const res = await axios.get(url, { timeout: 8000 });
               return res.data?.streams || [];
@@ -404,55 +453,66 @@ export const fetchTorrentStreams = async ({ tmdbId, mediaType = "movie", seasonN
     }
 
     // 2. Secondary Scraper: SolidTorrents Search API (fallback if 0 streams returned)
-    if (streams.length === 0 && title) {
+    // STRICT RULE: Do NOT search torrent sites using plain text ("The Matrix").
+    // Must search using the IMDB ID or strict season/episode syntax.
+    if (streams.length === 0 && (imdbId || (isTv && title))) {
       try {
-        let searchQuery = title;
-        if (isTv) {
-          const s = String(seasonNum || 1).padStart(2, "0");
-          const e = String(episodeNum || 1).padStart(2, "0");
-          searchQuery += ` S${s}E${e}`;
-        } else if (year) {
-          searchQuery += ` ${year}`;
+        let searchQuery = "";
+        if (imdbId) {
+          if (isTv) {
+            const sPad = String(s).padStart(2, "0");
+            const ePad = String(e).padStart(2, "0");
+            searchQuery = `${imdbId} S${sPad}E${ePad}`;
+          } else {
+            searchQuery = imdbId;
+          }
+        } else if (isTv && title) {
+          // TV with strict S01E01 syntax: NEVER search bare title alone!
+          const sPad = String(s).padStart(2, "0");
+          const ePad = String(e).padStart(2, "0");
+          searchQuery = `${title} S${sPad}E${ePad}`;
         }
 
-        const solidUrl = `https://solidtorrents.net/api/v1/search?q=${encodeURIComponent(searchQuery)}`;
-        const solidRes = await axios.get(solidUrl, { timeout: 6000 });
+        if (searchQuery) {
+          const solidUrl = `https://solidtorrents.net/api/v1/search?q=${encodeURIComponent(searchQuery)}`;
+          const solidRes = await axios.get(solidUrl, { timeout: 6000 });
 
-        if (solidRes.data && Array.isArray(solidRes.data.results)) {
-          solidRes.data.results.forEach((item) => {
-            if (item.magnet) {
-              if (isTv && isSeasonPackStream({ title: item.title, name: item.name }, seasonNum, episodeNum)) {
-                return;
+          if (solidRes.data && Array.isArray(solidRes.data.results)) {
+            solidRes.data.results.forEach((item) => {
+              if (item.magnet) {
+                if (isTv && isSeasonPackStream({ title: item.title, name: item.name }, s, e)) {
+                  return;
+                }
+
+                const hash = getHash(item.magnet);
+                if (hash) {
+                  if (seenHashes.has(hash)) return;
+                  seenHashes.add(hash);
+                }
+
+                let quality = "HD";
+                const nameStr = item.title || "";
+                if (/2160p|4k|uhd/i.test(nameStr)) quality = "2160p";
+                else if (/1080p|fullhd/i.test(nameStr)) quality = "1080p";
+                else if (/720p|hd/i.test(nameStr)) quality = "720p";
+                else if (/480p|sd/i.test(nameStr)) quality = "480p";
+
+                const sizeMb = item.size ? `${(item.size / (1024 * 1024 * 1024)).toFixed(2)} GB` : "";
+                const seeds = item.swarm?.seeders ? `👤 ${item.swarm.seeders}` : "";
+
+                streams.push({
+                  name: `[SolidTorrents] ${quality}`,
+                  title: item.title,
+                  metaText: [seeds, sizeMb].filter(Boolean).join(" • "),
+                  url: item.magnet,
+                  quality
+                });
               }
-
-              const hash = getHash(item.magnet);
-              if (hash) {
-                if (seenHashes.has(hash)) return;
-                seenHashes.add(hash);
-              }
-
-              let quality = "HD";
-              const nameStr = item.title || "";
-              if (/2160p|4k|uhd/i.test(nameStr)) quality = "2160p";
-              else if (/1080p|fullhd/i.test(nameStr)) quality = "1080p";
-              else if (/720p|hd/i.test(nameStr)) quality = "720p";
-              else if (/480p|sd/i.test(nameStr)) quality = "480p";
-
-              const sizeMb = item.size ? `${(item.size / (1024 * 1024 * 1024)).toFixed(2)} GB` : "";
-              const seeds = item.swarm?.seeders ? `👤 ${item.swarm.seeders}` : "";
-
-              streams.push({
-                name: `[SolidTorrents] ${quality}`,
-                title: item.title,
-                metaText: [seeds, sizeMb].filter(Boolean).join(" • "),
-                url: item.magnet,
-                quality
-              });
-            }
-          });
+            });
+          }
         }
       } catch (err) {
-        console.warn("[TorrentScraper] SolidTorrents search warning:", err.message);
+        console.warn("[TorrentScraper] Secondary search warning:", err.message);
       }
     }
 

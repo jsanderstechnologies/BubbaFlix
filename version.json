@@ -1,6 +1,6 @@
 {
-  "versionCode": 65,
-  "versionName": "1.0.64",
+  "versionCode": 66,
+  "versionName": "1.0.65",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.64: Add Magnetio torrent scraper with 24+ indexers & parallel queries, and fix web asset MIME cache fallback for Android TV."
+  "releaseNotes": "BubbaFlix TV v1.0.65: Require strict IMDb/TMDB identifier and season/episode syntax for torrent lookups; eliminate loose plain text torrent queries."
 }
