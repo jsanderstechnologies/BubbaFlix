@@ -1,6 +1,6 @@
 {
-  "versionCode": 64,
-  "versionName": "1.0.63",
+  "versionCode": 65,
+  "versionName": "1.0.64",
   "apkUrl": "https://raw.githubusercontent.com/jsanderstechnologies/BubbaFlix/master/BubbaFlixTV.apk",
-  "releaseNotes": "BubbaFlix TV v1.0.63: Add Groq AI EPG auto-matching for live TV channels with single-channel instant matching and batch AI auto-matching workbench in IPTV Setup."
+  "releaseNotes": "BubbaFlix TV v1.0.64: Add Magnetio torrent scraper with 24+ indexers & parallel queries, and fix web asset MIME cache fallback for Android TV."
 }

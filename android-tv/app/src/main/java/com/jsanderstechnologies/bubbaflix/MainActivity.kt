@@ -196,6 +196,17 @@ class MainActivity : AppCompatActivity() {
         }
         setContentView(webView)
 
+        val lastVersionCode = prefs.getInt("last_version_code", -1)
+        if (lastVersionCode != BuildConfig.VERSION_CODE) {
+            RemoteLogger.i("MainActivity", "App version changed from $lastVersionCode to ${BuildConfig.VERSION_CODE}. Clearing WebView cache.")
+            try {
+                webView.clearCache(true)
+            } catch (e: Exception) {
+                RemoteLogger.w("MainActivity", "Failed to clear cache on upgrade: ${e.message}")
+            }
+            prefs.edit().putInt("last_version_code", BuildConfig.VERSION_CODE).apply()
+        }
+
         setupWebViewSettings()
 
         val savedUrl = prefs.getString(KEY_SERVER_URL, null)
@@ -363,6 +374,21 @@ class MainActivity : AppCompatActivity() {
                             RemoteLogger.d("WebViewConsole", "[$src:$line] $msg")
                         else ->
                             RemoteLogger.i("WebViewConsole", "[$src:$line] $msg")
+                    }
+
+                    // Auto-heal if WebView cached stale module scripts or received text/html for a script
+                    if (msg.contains("Failed to load module script", ignoreCase = true) ||
+                        msg.contains("Expected a JavaScript-or-Wasm module script", ignoreCase = true) ||
+                        msg.contains("Strict MIME type checking is enforced", ignoreCase = true)) {
+                        RemoteLogger.w("MainActivity", "Detected stale module script error in WebView. Clearing cache and reloading...")
+                        runOnUiThread {
+                            try {
+                                webView.clearCache(true)
+                                webView.reload()
+                            } catch (e: Exception) {
+                                RemoteLogger.e("MainActivity", "Error clearing cache and reloading: ${e.message}")
+                            }
+                        }
                     }
                 }
                 return super.onConsoleMessage(consoleMessage)

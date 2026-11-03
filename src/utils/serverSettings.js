@@ -146,6 +146,11 @@ export const fetchServerSettings = async (forceRefresh = false) => {
         localStorage.setItem("torrentio_config", JSON.stringify(s.torrentioConfig));
       }
     }
+    if (s.magnetioConfig !== undefined) {
+      if (s.magnetioConfig && typeof s.magnetioConfig === "object") {
+        localStorage.setItem("magnetio_config", JSON.stringify(s.magnetioConfig));
+      }
+    }
     // We intentionally do not overwrite user stream_resolutions or stream_exclude_low_quality 
     // with global server settings so that the user's cross-device preferences take precedence.
 

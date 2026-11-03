@@ -3255,23 +3255,25 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
     ".mp4": "video/mp4",
   };
 
+  const isAssetRequest = cleanPath.startsWith("/assets/") || [".js", ".css", ".map", ".wasm", ".png", ".jpg", ".jpeg", ".svg", ".ico", ".woff", ".woff2", ".ttf"].includes(path.extname(cleanPath).toLowerCase());
+
   const serveFile = (targetFile) => {
     const ext = path.extname(targetFile).toLowerCase();
     const contentType = mimeTypes[ext] || "application/octet-stream";
 
     fs.readFile(targetFile, (readErr, content) => {
       if (readErr) {
-        if (targetFile !== path.join(distDir, "index.html")) {
+        if (!isAssetRequest && targetFile !== path.join(distDir, "index.html")) {
           return serveFile(path.join(distDir, "index.html"));
         }
         const duration = Date.now() - startTime;
         logMessage(`[HTTP 404 Warning] Failed to serve file ${targetFile} (${duration}ms) | Client IP: ${initiator.ip}`, true);
-        return sendJson(res, 404, { error: "Endpoint not found." });
+        return sendJson(res, 404, { error: "Asset not found." });
       }
 
       res.writeHead(200, {
         "Content-Type": contentType,
-        "Cache-Control": ext === ".html" ? "no-cache, no-store, must-revalidate" : "public, max-age=31536000",
+        "Cache-Control": ext === ".html" ? "no-cache, no-store, must-revalidate" : (cleanPath.startsWith("/assets/") ? "public, max-age=31536000, immutable" : "public, max-age=86400"),
         "Access-Control-Allow-Origin": "*",
       });
       res.end(content);
@@ -3280,6 +3282,11 @@ const resolveFinalStreamUrl = (startUrl, apiKey, maxRedirects = 5) => {
 
   fs.stat(filePath, (err, stats) => {
     if (err || !stats.isFile()) {
+      if (isAssetRequest) {
+        const duration = Date.now() - startTime;
+        logMessage(`[HTTP 404 Asset Warning] Static asset not found: ${cleanPath} (${duration}ms) | Client IP: ${initiator.ip}`, true);
+        return sendJson(res, 404, { error: "Asset not found." });
+      }
       filePath = path.join(distDir, "index.html");
     }
     serveFile(filePath);

@@ -17,7 +17,11 @@ import {
   DEFAULT_TORRENTIO_CONFIG, 
   getTorrentioConfig, 
   saveTorrentioConfig, 
-  testTorrentioConnection 
+  testTorrentioConnection,
+  DEFAULT_MAGNETIO_CONFIG,
+  getMagnetioConfig,
+  saveMagnetioConfig,
+  testMagnetioConnection
 } from "../../utils/torrentScraper";
 import "./index.scss";
 import { AuthContext } from "../../context/AuthContext";
@@ -93,6 +97,18 @@ const SettingsPage = () => {
   const [torrentioExclude3D, setTorrentioExclude3D] = useState(DEFAULT_TORRENTIO_CONFIG.exclude3D);
   const [torrentioStatus, setTorrentioStatus] = useState(null);
   const [testingTorrentio, setTestingTorrentio] = useState(false);
+
+  // Magnetio Stream Scraper Configuration State
+  const [magnetioEnabled, setMagnetioEnabled] = useState(true);
+  const [magnetioCustomUrl, setMagnetioCustomUrl] = useState(DEFAULT_MAGNETIO_CONFIG.customUrl);
+  const [magnetioSort, setMagnetioSort] = useState(DEFAULT_MAGNETIO_CONFIG.sort);
+  const [magnetioMaxResults, setMagnetioMaxResults] = useState(DEFAULT_MAGNETIO_CONFIG.maxResults);
+  const [magnetioP2pFallback, setMagnetioP2pFallback] = useState(DEFAULT_MAGNETIO_CONFIG.p2pFallback);
+  const [magnetioQualities, setMagnetioQualities] = useState(DEFAULT_MAGNETIO_CONFIG.qualities);
+  const [magnetioLanguage, setMagnetioLanguage] = useState(DEFAULT_MAGNETIO_CONFIG.languages[0] || "en");
+  const [magnetioIncludeDebrid, setMagnetioIncludeDebrid] = useState(DEFAULT_MAGNETIO_CONFIG.includeDebrid);
+  const [magnetioStatus, setMagnetioStatus] = useState(null);
+  const [testingMagnetio, setTestingMagnetio] = useState(false);
 
   // CPU & GPU Topology State
   const [cpuInfo, setCpuInfo] = useState(null);
@@ -269,6 +285,16 @@ const SettingsPage = () => {
     setTorrentioExcludeTeleSync(activeTorrentio.excludeTeleSync ?? true);
     setTorrentioExcludeScreener(activeTorrentio.excludeScreener ?? true);
     setTorrentioExclude3D(activeTorrentio.exclude3D ?? false);
+
+    const activeMagnetio = serverSettings?.magnetioConfig || getMagnetioConfig();
+    setMagnetioEnabled(activeMagnetio.enabled ?? true);
+    setMagnetioCustomUrl(activeMagnetio.customUrl || DEFAULT_MAGNETIO_CONFIG.customUrl);
+    setMagnetioSort(activeMagnetio.sort || DEFAULT_MAGNETIO_CONFIG.sort);
+    setMagnetioMaxResults(activeMagnetio.maxResults || DEFAULT_MAGNETIO_CONFIG.maxResults);
+    setMagnetioP2pFallback(activeMagnetio.p2pFallback ?? DEFAULT_MAGNETIO_CONFIG.p2pFallback);
+    setMagnetioQualities(Array.isArray(activeMagnetio.qualities) ? activeMagnetio.qualities : DEFAULT_MAGNETIO_CONFIG.qualities);
+    setMagnetioLanguage(Array.isArray(activeMagnetio.languages) && activeMagnetio.languages.length > 0 ? activeMagnetio.languages[0] : (activeMagnetio.language || "en"));
+    setMagnetioIncludeDebrid(activeMagnetio.includeDebrid ?? DEFAULT_MAGNETIO_CONFIG.includeDebrid);
 
     if (serverSettings?.cpuTopology) {
       setCpuInfo(serverSettings.cpuTopology);
@@ -595,6 +621,72 @@ const SettingsPage = () => {
       setTorrentioStatus({ type: "error", text: e.message || "Failed to connect to Torrentio." });
     } finally {
       setTestingTorrentio(false);
+    }
+  };
+
+  const handleToggleMagnetioQuality = (qualityVal) => {
+    setMagnetioQualities((prev) => {
+      if (prev.includes(qualityVal)) {
+        if (prev.length <= 1) return prev;
+        return prev.filter((q) => q !== qualityVal);
+      } else {
+        return [...prev, qualityVal];
+      }
+    });
+  };
+
+  const handleSaveMagnetio = async (e) => {
+    if (e) e.preventDefault();
+    setMagnetioStatus(null);
+    const newConfig = {
+      enabled: magnetioEnabled,
+      customUrl: magnetioCustomUrl.trim() || DEFAULT_MAGNETIO_CONFIG.customUrl,
+      sort: magnetioSort,
+      maxResults: magnetioMaxResults,
+      p2pFallback: magnetioP2pFallback,
+      qualities: magnetioQualities,
+      languages: magnetioLanguage ? [magnetioLanguage] : [],
+      includeDebrid: magnetioIncludeDebrid,
+    };
+
+    saveMagnetioConfig(newConfig);
+
+    try {
+      const serverRes = await updateServerSettings({ magnetioConfig: newConfig });
+      if (serverRes.success) {
+        setMagnetioStatus({ type: "success", text: "Magnetio scraper options saved & synced to backend server!" });
+      } else {
+        setMagnetioStatus({ type: "success", text: "Magnetio options saved locally." });
+      }
+    } catch (err) {
+      setMagnetioStatus({ type: "success", text: "Magnetio options saved locally." });
+    }
+  };
+
+  const handleTestMagnetio = async () => {
+    setTestingMagnetio(true);
+    setMagnetioStatus(null);
+    const currentConfig = {
+      enabled: magnetioEnabled,
+      customUrl: magnetioCustomUrl.trim() || DEFAULT_MAGNETIO_CONFIG.customUrl,
+      sort: magnetioSort,
+      maxResults: magnetioMaxResults,
+      p2pFallback: magnetioP2pFallback,
+      qualities: magnetioQualities,
+      languages: magnetioLanguage ? [magnetioLanguage] : [],
+      includeDebrid: magnetioIncludeDebrid,
+    };
+    try {
+      const res = await testMagnetioConnection(currentConfig);
+      if (res.success) {
+        setMagnetioStatus({ type: "success", text: res.message || `Magnetio connected successfully (${res.count} test streams).` });
+      } else {
+        setMagnetioStatus({ type: "error", text: res.message || "Failed to connect to Magnetio." });
+      }
+    } catch (e) {
+      setMagnetioStatus({ type: "error", text: e.message || "Failed to connect to Magnetio." });
+    } finally {
+      setTestingMagnetio(false);
     }
   };
 
@@ -1346,6 +1438,227 @@ const SettingsPage = () => {
                   disabled={testingTorrentio}
                 >
                   <FiRefreshCw className={testingTorrentio ? "spin" : ""} /> {testingTorrentio ? "Testing..." : "Test Connection"}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Magnetio Stream Scraper Card */}
+          <div className="settingsCard">
+            <div className="cardHeader">
+              <h2><FiRadio style={{ marginRight: 8, color: "var(--pink)" }} /> Magnetio Stream Scraper Options</h2>
+              <span className="badge custom"><FiServer style={{ marginRight: 4 }} /> Server Synced</span>
+            </div>
+            <p className="description">
+              Magnetio is an open-source multi-provider torrent scraper with 24+ built-in torrent indexers (YTS, LimeTorrents, EZTV, Knaben, Rutor, BT4G, etc.) and Debrid caching.
+            </p>
+            <form onSubmit={handleSaveMagnetio} className="tokenForm">
+              {/* Master Enable/Disable Toggle */}
+              <div className="inputGroup">
+                <label>MAGNETIO_SCRAPER_STATUS</label>
+                <div
+                  className={`qualityToggle ${magnetioEnabled ? "active" : ""}`}
+                  onClick={() => setMagnetioEnabled(!magnetioEnabled)}
+                  tabIndex="0"
+                  role="button"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setMagnetioEnabled(!magnetioEnabled);
+                    }
+                  }}
+                >
+                  <span className="toggleSwitch" />
+                  <span className="toggleLabel">
+                    {magnetioEnabled
+                      ? "Magnetio Scraper Enabled (Queried concurrently with Torrentio)"
+                      : "Magnetio Scraper Disabled (Only Torrentio and SolidTorrents will be queried)"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Custom Magnetio Base / Manifest URL */}
+              <div className="inputGroup" style={{ marginTop: 20 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                  <label style={{ margin: 0 }}>MAGNETIO_INSTANCE_OR_MANIFEST_URL</label>
+                  <a
+                    href="https://magnetio.peterdsp.dev/configure"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="docLink"
+                    style={{ fontSize: 12, color: "var(--pink)", display: "flex", alignItems: "center", gap: 4, textDecoration: "none" }}
+                  >
+                    Configure on Magnetio Web <FiExternalLink />
+                  </a>
+                </div>
+                <div className="inputWrapper">
+                  <input
+                    type="text"
+                    value={magnetioCustomUrl}
+                    onChange={(e) => setMagnetioCustomUrl(e.target.value)}
+                    placeholder="https://magnetio.peterdsp.dev (or self-hosted http://localhost:7000)"
+                    spellCheck="false"
+                  />
+                </div>
+                <p style={{ fontSize: 12, color: "#9ca3af", marginTop: 6, lineHeight: 1.4 }}>
+                  Default is public instance <code>https://magnetio.peterdsp.dev</code>. You can also paste your self-hosted Magnetio URL or configured manifest.
+                </p>
+              </div>
+
+              {/* Sorting & Max Results Grid */}
+              <div className="twoColGrid" style={{ marginTop: 20 }}>
+                <div className="inputGroup">
+                  <label>MAGNETIO_SORT_ORDER</label>
+                  <select
+                    value={magnetioSort}
+                    onChange={(e) => setMagnetioSort(e.target.value)}
+                    tabIndex="0"
+                  >
+                    <option value="qualityseeders">Quality & Seeders (Recommended)</option>
+                    <option value="seeders">By Seeders (Most Active Seeds First)</option>
+                    <option value="size">By File Size (Largest to Smallest)</option>
+                  </select>
+                </div>
+
+                <div className="inputGroup">
+                  <label>MAX_RESULTS_LIMIT</label>
+                  <select
+                    value={magnetioMaxResults}
+                    onChange={(e) => setMagnetioMaxResults(e.target.value)}
+                    tabIndex="0"
+                  >
+                    <option value="5">5 Streams</option>
+                    <option value="10">10 Streams</option>
+                    <option value="15">15 Streams (Default)</option>
+                    <option value="25">25 Streams</option>
+                    <option value="50">50 Streams</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Languages & Qualities Multi-Select */}
+              <div className="twoColGrid" style={{ marginTop: 15 }}>
+                <div className="inputGroup">
+                  <label>PRIMARY_LANGUAGE</label>
+                  <select
+                    value={magnetioLanguage}
+                    onChange={(e) => setMagnetioLanguage(e.target.value)}
+                    tabIndex="0"
+                  >
+                    <option value="en">English (Default)</option>
+                    <option value="">Any / All Languages</option>
+                    <option value="es">Spanish (Español)</option>
+                    <option value="fr">French (Français)</option>
+                    <option value="de">German (Deutsch)</option>
+                    <option value="it">Italian (Italiano)</option>
+                    <option value="pt">Portuguese (Português)</option>
+                    <option value="ru">Russian (Русский)</option>
+                    <option value="hi">Hindi</option>
+                    <option value="ja">Japanese (日本語)</option>
+                    <option value="ko">Korean (한국어)</option>
+                    <option value="zh">Chinese (中文)</option>
+                  </select>
+                </div>
+
+                <div className="inputGroup">
+                  <label>ENABLED_RESOLUTIONS</label>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginTop: 4 }}>
+                    {[
+                      { id: "4k", label: "4K UHD" },
+                      { id: "1080p", label: "1080p" },
+                      { id: "720p", label: "720p" },
+                    ].map((q) => {
+                      const isSel = magnetioQualities.includes(q.id);
+                      return (
+                        <button
+                          key={q.id}
+                          type="button"
+                          className={`resOption ${isSel ? "selected" : ""}`}
+                          onClick={() => handleToggleMagnetioQuality(q.id)}
+                          tabIndex="0"
+                          style={{ padding: "8px 10px" }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              handleToggleMagnetioQuality(q.id);
+                            }
+                          }}
+                        >
+                          <span className="checkbox">{isSel ? "✓" : ""}</span>
+                          <span className="resLabel" style={{ fontSize: 12 }}>{q.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Toggles: P2P Fallback & Premiumize Integration */}
+              <div className="twoColGrid" style={{ marginTop: 15 }}>
+                <div className="inputGroup">
+                  <label>P2P_TORRENT_FALLBACK</label>
+                  <div
+                    className={`qualityToggle ${magnetioP2pFallback ? "active" : ""}`}
+                    onClick={() => setMagnetioP2pFallback(!magnetioP2pFallback)}
+                    tabIndex="0"
+                    role="button"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setMagnetioP2pFallback(!magnetioP2pFallback);
+                      }
+                    }}
+                  >
+                    <span className="toggleSwitch" />
+                    <span className="toggleLabel">
+                      {magnetioP2pFallback ? "P2P Fallback Enabled (Returns magnet links)" : "Debrid Only (No P2P fallback)"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="inputGroup">
+                  <label>PREMIUMIZE_AUTO_INTEGRATION</label>
+                  <div
+                    className={`qualityToggle ${magnetioIncludeDebrid ? "active" : ""}`}
+                    onClick={() => setMagnetioIncludeDebrid(!magnetioIncludeDebrid)}
+                    tabIndex="0"
+                    role="button"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setMagnetioIncludeDebrid(!magnetioIncludeDebrid);
+                      }
+                    }}
+                  >
+                    <span className="toggleSwitch" />
+                    <span className="toggleLabel">
+                      {magnetioIncludeDebrid ? "Auto-Inject Premiumize Key" : "Don't Send Premiumize Key"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Banner */}
+              {magnetioStatus && (
+                <div className={`statusBanner ${magnetioStatus.type}`} style={{ marginTop: 20 }}>
+                  {magnetioStatus.type === "success" && <FiCheckCircle />}
+                  {magnetioStatus.type === "error" && <FiXCircle />}
+                  <span>{magnetioStatus.text}</span>
+                </div>
+              )}
+
+              {/* Button Group */}
+              <div className="buttonGroup" style={{ marginTop: 20, display: "flex", gap: 12 }}>
+                <button type="submit" className="saveBtn">
+                  <FiSave /> Save Magnetio Settings
+                </button>
+                <button
+                  type="button"
+                  className="testBtn"
+                  onClick={handleTestMagnetio}
+                  disabled={testingMagnetio}
+                >
+                  <FiRefreshCw className={testingMagnetio ? "spin" : ""} /> {testingMagnetio ? "Testing..." : "Test Connection"}
                 </button>
               </div>
             </form>
